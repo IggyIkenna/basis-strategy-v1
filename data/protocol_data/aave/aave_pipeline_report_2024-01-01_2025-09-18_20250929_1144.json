@@ -1,0 +1,218 @@
+{
+  "timestamp": "2025-09-29T11:44:44.249270",
+  "orchestrator": "aave_data_pipeline",
+  "date_range": "2024-01-01 to 2025-09-18",
+  "components_executed": [
+    "download",
+    "process",
+    "calibrate",
+    "analyze"
+  ],
+  "total_stages": 6,
+  "successful_stages": 6,
+  "failed_stages": 0,
+  "total_duration_minutes": 0.4,
+  "pipeline_results": [
+    {
+      "success": true,
+      "downloader": "aave_data",
+      "duration": 6.062902,
+      "result": {
+        "timestamp": "2025-09-29T11:44:21.761543",
+        "downloader": "aavescan_pro",
+        "total_downloads": 4,
+        "successful_downloads": 4,
+        "failed_downloads": 0,
+        "total_records": 2288,
+        "downloads": [
+          {
+            "success": true,
+            "market": "aave-v3-ethereum",
+            "symbol": "WETH",
+            "record_count": 638,
+            "output_file": "data/protocol_data/aave/rates/aave_v3_aave-v3-ethereum_WETH_rates_2024-01-01_2025-09-18.csv",
+            "date_range": "2024-01-01 to 2025-09-18",
+            "method": "csv_export",
+            "filtered": true,
+            "original_count": 974,
+            "floor_date": "2024-01-01"
+          },
+          {
+            "success": true,
+            "market": "aave-v3-ethereum",
+            "symbol": "wstETH",
+            "record_count": 506,
+            "output_file": "data/protocol_data/aave/rates/aave_v3_aave-v3-ethereum_wstETH_rates_2024-05-12_2025-09-18.csv",
+            "date_range": "2024-05-12 to 2025-09-18",
+            "method": "csv_export",
+            "filtered": true,
+            "original_count": 974,
+            "floor_date": "2024-05-12"
+          },
+          {
+            "success": true,
+            "market": "aave-v3-ethereum",
+            "symbol": "weETH",
+            "record_count": 506,
+            "output_file": "data/protocol_data/aave/rates/aave_v3_aave-v3-ethereum_weETH_rates_2024-05-12_2025-09-18.csv",
+            "date_range": "2024-05-12 to 2025-09-18",
+            "method": "csv_export",
+            "filtered": true,
+            "original_count": 533,
+            "floor_date": "2024-05-12"
+          },
+          {
+            "success": true,
+            "market": "aave-v3-ethereum",
+            "symbol": "USDT",
+            "record_count": 638,
+            "output_file": "data/protocol_data/aave/rates/aave_v3_aave-v3-ethereum_USDT_rates_2024-01-01_2025-09-18.csv",
+            "date_range": "2024-01-01 to 2025-09-18",
+            "method": "csv_export",
+            "filtered": true,
+            "original_count": 959,
+            "floor_date": "2024-01-01"
+          }
+        ],
+        "interpolation_applied": true,
+        "interpolated_files": [
+          {
+            "original_file": "data/protocol_data/aave/rates/aave_v3_aave-v3-ethereum_WETH_rates_2024-01-01_2025-09-18.csv",
+            "interpolated_file": "data/protocol_data/aave/rates/aave_v3_aave-v3-ethereum_WETH_rates_2024-01-01_2025-09-18_hourly.csv",
+            "original_records": 638,
+            "hourly_records": 15288,
+            "interpolation_ratio": 23.962382445141067
+          },
+          {
+            "original_file": "data/protocol_data/aave/rates/aave_v3_aave-v3-ethereum_wstETH_rates_2024-05-12_2025-09-18.csv",
+            "interpolated_file": "data/protocol_data/aave/rates/aave_v3_aave-v3-ethereum_wstETH_rates_2024-05-12_2025-09-18_hourly.csv",
+            "original_records": 506,
+            "hourly_records": 12120,
+            "interpolation_ratio": 23.952569169960473
+          },
+          {
+            "original_file": "data/protocol_data/aave/rates/aave_v3_aave-v3-ethereum_weETH_rates_2024-05-12_2025-09-18.csv",
+            "interpolated_file": "data/protocol_data/aave/rates/aave_v3_aave-v3-ethereum_weETH_rates_2024-05-12_2025-09-18_hourly.csv",
+            "original_records": 506,
+            "hourly_records": 12120,
+            "interpolation_ratio": 23.952569169960473
+          },
+          {
+            "original_file": "data/protocol_data/aave/rates/aave_v3_aave-v3-ethereum_USDT_rates_2024-01-01_2025-09-18.csv",
+            "interpolated_file": "data/protocol_data/aave/rates/aave_v3_aave-v3-ethereum_USDT_rates_2024-01-01_2025-09-18_hourly.csv",
+            "original_records": 638,
+            "hourly_records": 15288,
+            "interpolation_ratio": 23.962382445141067
+          }
+        ],
+        "total_original_records": 2288,
+        "total_hourly_records": 54816,
+        "interpolation_ratio": 23.958041958041957
+      }
+    },
+    {
+      "success": true,
+      "processor": "scripts/processors/process_aave_oracle_prices.py",
+      "duration": 1.200878,
+      "output": "\ud83c\udfaf Processing AAVE oracle prices...\n\ud83d\udcca Extracting oracle prices from rates data\n\ud83d\udd04 Creating ETH-denominated prices for liquidation analysis\n\ud83d\udd04 Creating wstETH/ETH oracle ratio for staking yield analysis\n\\n\ud83c\udf89 SUCCESS! AAVE oracle prices processed\n\ud83d\udcca Assets: 4 USD, 3 ETH pairs\n\ud83d\udcca Records: 64,406\n\ud83d\udcbe Output: data/protocol_data/aave/oracle\n"
+    },
+    {
+      "success": true,
+      "processor": "scripts/utilities/create_aave_risk_params.py",
+      "duration": 0.448916,
+      "output": "\ud83c\udfaf AAVE Risk Parameters Created:\n==================================================\n\ud83d\udcc4 Output: data/protocol_data/aave/risk_params/aave_v3_risk_parameters.json\n\ud83d\udcca Normal mode assets: 4\n\ud83d\udcca E-mode pairs: 2\n\\n\ud83d\udccb Key Parameters:\n   wstETH liquidation threshold: 81.0%\n   wstETH max LTV: 78.5%\n   wstETH E-mode liquidation: 95.0%\n   wstETH E-mode max LTV: 93.0%\n\\n\u2705 AAVE risk parameters JSON created successfully!\n"
+    },
+    {
+      "success": true,
+      "processor": "scripts/utilities/proper_hourly_interpolation.py",
+      "duration": 1.290654,
+      "output": "\ud83d\udd0d Found 4 AAVE rate files to process\n\n================================================================================\n\ud83d\udcca PROCESSING: aave_v3_aave-v3-ethereum_wstETH_rates_2024-05-12_2025-09-18.csv\n================================================================================\n\ud83d\udd0d Loading aave_v3_aave-v3-ethereum_wstETH_rates_2024-05-12_2025-09-18.csv...\n\ud83d\udcc5 Original data: 506 daily records\n\ud83d\udcc5 Date range: 2024-05-12 00:00:00+00:00 to 2025-09-29 00:00:00+00:00\n\ud83d\udcca Hourly timestamps: 12121 hours\n\ud83d\udcca Interpolation ratio: 24.0x\n\u2705 Processed 506 daily \u2192 12120 hourly records\n\ud83d\udcc1 File: aave_v3_aave-v3-ethereum_wstETH_rates_2024-05-12_2025-09-18_hourly.csv\n\ud83d\udcca Sample CCR rates: 0.0631% supply, 0.4391% borrow\n\n================================================================================\n\ud83d\udcca PROCESSING: aave_v3_aave-v3-ethereum_weETH_rates_2024-05-12_2025-09-18.csv\n================================================================================\n\ud83d\udd0d Loading aave_v3_aave-v3-ethereum_weETH_rates_2024-05-12_2025-09-18.csv...\n\ud83d\udcc5 Original data: 506 daily records\n\ud83d\udcc5 Date range: 2024-05-12 00:00:00+00:00 to 2025-09-29 00:00:00+00:00\n\ud83d\udcca Hourly timestamps: 12121 hours\n\ud83d\udcca Interpolation ratio: 24.0x\n\u2705 Processed 506 daily \u2192 12120 hourly records\n\ud83d\udcc1 File: aave_v3_aave-v3-ethereum_weETH_rates_2024-05-12_2025-09-18_hourly.csv\n\ud83d\udcca Sample CCR rates: 0.0691% supply, 1.5534% borrow\n\n================================================================================\n\ud83d\udcca PROCESSING: aave_v3_aave-v3-ethereum_WETH_rates_2024-01-01_2025-09-18.csv\n================================================================================\n\ud83d\udd0d Loading aave_v3_aave-v3-ethereum_WETH_rates_2024-01-01_2025-09-18.csv...\n\ud83d\udcc5 Original data: 638 daily records\n\ud83d\udcc5 Date range: 2024-01-01 00:00:00+00:00 to 2025-09-29 00:00:00+00:00\n\ud83d\udcca Hourly timestamps: 15289 hours\n\ud83d\udcca Interpolation ratio: 24.0x\n\u2705 Processed 638 daily \u2192 15288 hourly records\n\ud83d\udcc1 File: aave_v3_aave-v3-ethereum_WETH_rates_2024-01-01_2025-09-18_hourly.csv\n\ud83d\udcca Sample CCR rates: 1.9519% supply, 2.6617% borrow\n\n================================================================================\n\ud83d\udcca PROCESSING: aave_v3_aave-v3-ethereum_USDT_rates_2024-01-01_2025-09-18.csv\n================================================================================\n\ud83d\udd0d Loading aave_v3_aave-v3-ethereum_USDT_rates_2024-01-01_2025-09-18.csv...\n\ud83d\udcc5 Original data: 638 daily records\n\ud83d\udcc5 Date range: 2024-01-01 00:00:00+00:00 to 2025-09-29 00:00:00+00:00\n\ud83d\udcca Hourly timestamps: 15289 hours\n\ud83d\udcca Interpolation ratio: 24.0x\n\u2705 Processed 638 daily \u2192 15288 hourly records\n\ud83d\udcc1 File: aave_v3_aave-v3-ethereum_USDT_rates_2024-01-01_2025-09-18_hourly.csv\n\ud83d\udcca Sample CCR rates: 5.5063% supply, 7.3959% borrow\n\n\ud83c\udfaf ALL ASSETS PROCESSED SUCCESSFULLY!\n\ud83d\udcca Processed 4 AAVE rate files\n\ud83d\udcc1 Output directory: data/protocol_data/aave/rates\n"
+    },
+    {
+      "success": true,
+      "stage": "calibration",
+      "duration": 0,
+      "results": {
+        "timestamp": "2025-09-29T11:44:32.128303",
+        "calibration_summary": {
+          "calibration_timestamp": "2025-09-29T11:44:26.877268",
+          "validation_method": "multi_period_sampling",
+          "error_thresholds": {
+            "USDT": {
+              "supply": 600,
+              "borrow": 120
+            },
+            "weETH": {
+              "supply": 5,
+              "borrow": 150
+            },
+            "wstETH": {
+              "supply": 10,
+              "borrow": 10
+            },
+            "WETH": {
+              "supply": 350,
+              "borrow": 250
+            },
+            "default": {
+              "supply": 10,
+              "borrow": 10
+            }
+          },
+          "assets": {
+            "wstETH": {
+              "borrow_error_bps": 0.1,
+              "supply_error_bps": 5.0,
+              "avg_utilization": 0.177,
+              "calibration_status": "excellent",
+              "real_borrow_rate": 0.003719,
+              "calc_borrow_rate": 0.003727
+            },
+            "USDT": {
+              "borrow_error_bps": 90.0,
+              "supply_error_bps": 492.2,
+              "avg_utilization": 0.812,
+              "calibration_status": "poor",
+              "real_borrow_rate": 0.05936,
+              "calc_borrow_rate": 0.068356
+            },
+            "WETH": {
+              "borrow_error_bps": 194.6,
+              "supply_error_bps": 287.9,
+              "avg_utilization": 0.827,
+              "calibration_status": "poor",
+              "real_borrow_rate": 0.024067,
+              "calc_borrow_rate": 0.043522
+            },
+            "weETH": {
+              "borrow_error_bps": 118.0,
+              "supply_error_bps": 0.0,
+              "avg_utilization": 0.02,
+              "calibration_status": "poor",
+              "real_borrow_rate": 0.012009,
+              "calc_borrow_rate": 0.000209
+            }
+          }
+        },
+        "calibration_plots": [
+          "data/analysis/aave_calibration_WETH_20250929_1144.png",
+          "data/analysis/aave_calibration_wstETH_20250929_1144.png",
+          "data/analysis/aave_calibration_weETH_20250929_1144.png",
+          "data/analysis/aave_calibration_USDT_20250929_1144.png"
+        ],
+        "validation_method": "multi_period_sampling",
+        "summary": {
+          "total_assets": 4,
+          "plots_created": 4,
+          "validation_status": "completed"
+        }
+      }
+    },
+    {
+      "success": true,
+      "processor": "scripts/analyzers/analyze_aave_rate_impact.py",
+      "duration": 12.11382,
+      "output": "Using current borrow rates for WETH calibration\nUsing current supply rates for WETH calibration\nUsing current borrow rates for wstETH calibration\nUsing current supply rates for wstETH calibration\nUsing current borrow rates for weETH calibration\nUsing current supply rates for weETH calibration\nUsing current borrow rates for USDT calibration\nUsing current supply rates for USDT calibration\n\n\ud83c\udf89 AAVE Rate Impact Analysis Complete!\n\ud83d\udcca Combinations analyzed: 4\n\n\ud83d\udcc8 USDT_collateral_WETH_borrow:\n   \ud83d\udcb0 $100K impact:\n     Collateral rate: 0.0 bps\n     Borrow rate: -0.0 bps\n     Net cost: $-0\n   \ud83d\udcb0 $100M impact:\n     Collateral rate: -8.7 bps\n     Borrow rate: 1.2 bps\n     Net cost: $46,687\n\n\ud83d\udcc8 weETH_collateral_WETH_borrow:\n   \ud83d\udcb0 $100K impact:\n     Collateral rate: -0.0 bps\n     Borrow rate: -0.0 bps\n     Net cost: $-0\n   \ud83d\udcb0 $100M impact:\n     Collateral rate: -0.0 bps\n     Borrow rate: 1.2 bps\n     Net cost: $3,072\n\n\ud83d\udcc8 wstETH_collateral_WETH_borrow:\n   \ud83d\udcb0 $100K impact:\n     Collateral rate: -0.0 bps\n     Borrow rate: -0.0 bps\n     Net cost: $-0\n   \ud83d\udcb0 $100M impact:\n     Collateral rate: -0.1 bps\n     Borrow rate: 1.2 bps\n     Net cost: $3,467\n\n\ud83d\udcc8 WETH_collateral_USDT_borrow:\n   \ud83d\udcb0 $100K impact:\n     Collateral rate: -0.0 bps\n     Borrow rate: 0.0 bps\n     Net cost: $0\n   \ud83d\udcb0 $100M impact:\n     Collateral rate: -2.5 bps\n     Borrow rate: 3.3 bps\n     Net cost: $20,956\n\n\ud83d\udcc1 Detailed results saved to: data/analysis/\n"
+    }
+  ]
+}

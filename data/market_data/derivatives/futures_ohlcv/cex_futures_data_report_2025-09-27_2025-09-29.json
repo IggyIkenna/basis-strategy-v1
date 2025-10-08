@@ -1,0 +1,61 @@
+{
+  "timestamp": "2025-09-29T12:07:18.082977",
+  "downloader": "cex_futures_data",
+  "date_range": "2025-09-27 to 2025-09-29",
+  "enforced_dates": {
+    "bybit": "2025-09-27",
+    "okx": "2025-09-27",
+    "binance_futures": "2025-09-27"
+  },
+  "exchanges_requested": [
+    "bybit",
+    "okx",
+    "binance_futures"
+  ],
+  "exchanges_available": [
+    "bybit",
+    "okx",
+    "binance_futures"
+  ],
+  "total_downloads": 3,
+  "successful_downloads": 3,
+  "failed_downloads": 0,
+  "total_records": 3300,
+  "downloads": [
+    {
+      "success": true,
+      "symbol": "ETHUSDT",
+      "record_count": 2000,
+      "output_file": "data/market_data/derivatives/futures_ohlcv/bybit_ETHUSDT_perp_1m_2025-09-27_2025-09-29.csv",
+      "date_range": "2025-09-27 to 2025-09-29",
+      "data_type": "futures_ohlcv",
+      "exchange": "bybit",
+      "symbol_used": "ETHUSDT"
+    },
+    {
+      "success": true,
+      "symbol": "ETHUSDT",
+      "record_count": 300,
+      "files_processed": 0,
+      "files_failed": 0,
+      "output_file": "data/market_data/derivatives/futures_ohlcv/okx_ETHUSDT_perp_1m_2025-09-27_2025-09-29.csv",
+      "date_range": "2025-09-27 to 2025-09-29",
+      "data_type": "futures_ohlcv",
+      "exchange": "okx",
+      "symbol_used": "ETH-USDT-SWAP"
+    },
+    {
+      "success": true,
+      "symbol": "ETHUSDT",
+      "record_count": 1000,
+      "chunks_processed": 1,
+      "chunks_failed": 0,
+      "failed_chunks": [],
+      "output_file": "data/market_data/derivatives/futures_ohlcv/binance_ETHUSDT_perp_1m_2025-09-27_2025-09-29.csv",
+      "date_range": "2025-09-27 to 2025-09-29",
+      "data_type": "futures_ohlcv",
+      "exchange": "binance_futures",
+      "symbol_used": "ETHUSDT"
+    }
+  ]
+}

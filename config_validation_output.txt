@@ -1,0 +1,61 @@
+/Users/ikennaigboaka/Documents/basis-strategy-v1/scripts/validate_config_alignment.py:70: PydanticDeprecatedSince20: The `__fields__` attribute is deprecated, use `model_fields` instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.11/migration/
+  if hasattr(model_class, '__fields__'):
+/Users/ikennaigboaka/Documents/basis-strategy-v1/scripts/validate_config_alignment.py:72: PydanticDeprecatedSince20: The `__fields__` attribute is deprecated, use `model_fields` instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.11/migration/
+  fields.update(model_class.__fields__.keys())
+
+================================================================================
+🔍 CONFIG ALIGNMENT VALIDATION REPORT
+================================================================================
+Loaded 15 configuration files
+🔍 Validating model coverage...
+  default: 109 fields
+  mode_usdt_market_neutral: 34 fields
+  mode_btc_basis: 32 fields
+  mode_pure_lending: 27 fields
+  mode_eth_leveraged: 34 fields
+  mode_usdt_market_neutral_no_leverage: 33 fields
+  mode_eth_staking_only: 30 fields
+  venue_bybit: 21 fields
+  venue_morpho: 27 fields
+  venue_binance: 21 fields
+  venue_etherfi: 30 fields
+  venue_aave_v3: 23 fields
+  venue_okx: 21 fields
+  venue_alchemy: 38 fields
+  venue_lido: 30 fields
+  Total unique config fields: 259
+  Total unique model fields: 63
+🔍 Validating mode-specific configurations...
+  Validating mode: usdt_market_neutral
+  Validating mode: btc_basis
+  Validating mode: pure_lending
+  Validating mode: eth_leveraged
+  Validating mode: usdt_market_neutral_no_leverage
+  Validating mode: eth_staking_only
+🔍 Testing Pydantic validation...
+  ✅ Default config validation: PASS
+  ✅ Mode 'usdt_market_neutral' validation: PASS
+  ✅ Mode 'btc_basis' validation: PASS
+  ✅ Mode 'pure_lending' validation: PASS
+  ✅ Mode 'eth_leveraged' validation: PASS
+  ✅ Mode 'usdt_market_neutral_no_leverage' validation: PASS
+  ✅ Mode 'eth_staking_only' validation: PASS
+
+📊 ALIGNMENT SUMMARY:
+  Coverage: 12.4%
+  Errors: 0
+  Warnings: 8
+
+⚠️  WARNINGS:
+  - Found 227 orphaned config fields: ['risk.aave_health_warning', 'monitoring.position_check_interval', 'contract_addresses.sepolia.oracle', 'execution_costs.model', 'contracts.sepolia.weeth_token', 'redis.enabled', 'contracts.mainnet.morpho_vault', 'output.generate_yield_breakdown_chart', '_comment', 'trading_fees.futures_taker']...
+  - Found 31 orphaned model fields: ['basis_trade_leverage_enabled', 'risk_check_interval', 'aave_ltv_warning', 'hf_target_after_shock', 'margin_warning_pct', 'interest_frequency_hours', 'rebalancing_frequency_hours', 'net_delta_critical', 'max_spot_perp_basis_move', 'aave_ltv_critical']...
+  - Mode 'usdt_market_neutral' has extra fields: ['monitoring.position_check_interval', 'hedge_allocation.bybit', 'mode', 'min_loop_position_usd', 'hedge_allocation.okx']...
+  - Mode 'btc_basis' has extra fields: ['rewards_mode', 'capital_allocation.perp_capital', 'monitoring.position_check_interval', 'hedge_allocation.bybit', 'mode']...
+  - Mode 'pure_lending' has extra fields: ['rewards_mode', 'basis_trade_enabled', 'monitoring.position_check_interval', 'capital_allocation.perp_capital', 'mode']...
+  - Mode 'eth_leveraged' has extra fields: ['basis_trade_enabled', 'monitoring.position_check_interval', 'mode', 'min_loop_position_usd', 'monitoring.health_check_interval']...
+  - Mode 'usdt_market_neutral_no_leverage' has extra fields: ['monitoring.position_check_interval', 'hedge_allocation.bybit', 'mode', 'hedge_allocation.okx', 'monitoring.health_check_interval']...
+  - Mode 'eth_staking_only' has extra fields: ['basis_trade_enabled', 'monitoring.position_check_interval', 'mode', 'monitoring.health_check_interval', 'target_apy']...
+
+❌ FAILURE: 0 alignment issues found
+   - 227 orphaned config fields
+   - 31 orphaned model fields

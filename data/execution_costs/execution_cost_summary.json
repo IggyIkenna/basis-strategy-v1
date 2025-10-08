@@ -1,0 +1,86 @@
+{
+  "generation_date": "2025-09-29T11:50:36.445030",
+  "total_pairs": 11,
+  "total_size_buckets": 3,
+  "total_records": 20691,
+  "pairs_covered": [
+    "ETH/USDT",
+    "ETH/wstETH",
+    "ETH/weETH",
+    "ETH/stETH",
+    "ETH/eETH",
+    "EIGEN/USDT",
+    "ETHFI/USDT",
+    "EIGEN/ETH",
+    "ETHFI/ETH",
+    "ETHUSDT-PERP",
+    "BTCUSDT-PERP"
+  ],
+  "size_buckets": [
+    10000,
+    100000,
+    1000000
+  ],
+  "venue_breakdown": {
+    "DEX": 5,
+    "CEX_SPOT": 4,
+    "CEX_PERP": 2
+  },
+  "cost_ranges": {
+    "ETH/USDT": {
+      "base_cost_bps": 5,
+      "max_cost_bps": 13,
+      "venue": "DEX"
+    },
+    "ETH/wstETH": {
+      "base_cost_bps": 15,
+      "max_cost_bps": 27,
+      "venue": "DEX"
+    },
+    "ETH/weETH": {
+      "base_cost_bps": 20,
+      "max_cost_bps": 35,
+      "venue": "DEX"
+    },
+    "ETH/stETH": {
+      "base_cost_bps": 10,
+      "max_cost_bps": 18,
+      "venue": "DEX"
+    },
+    "ETH/eETH": {
+      "base_cost_bps": 25,
+      "max_cost_bps": 45,
+      "venue": "DEX"
+    },
+    "EIGEN/USDT": {
+      "base_cost_bps": 8,
+      "max_cost_bps": 28,
+      "venue": "CEX_SPOT"
+    },
+    "ETHFI/USDT": {
+      "base_cost_bps": 12,
+      "max_cost_bps": 42,
+      "venue": "CEX_SPOT"
+    },
+    "EIGEN/ETH": {
+      "base_cost_bps": 10,
+      "max_cost_bps": 35,
+      "venue": "CEX_SPOT"
+    },
+    "ETHFI/ETH": {
+      "base_cost_bps": 15,
+      "max_cost_bps": 50,
+      "venue": "CEX_SPOT"
+    },
+    "ETHUSDT-PERP": {
+      "base_cost_bps": 3,
+      "max_cost_bps": 8,
+      "venue": "CEX_PERP"
+    },
+    "BTCUSDT-PERP": {
+      "base_cost_bps": 3,
+      "max_cost_bps": 8,
+      "venue": "CEX_PERP"
+    }
+  }
+}

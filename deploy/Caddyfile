@@ -1,0 +1,24 @@
+localhost:80 {
+  # No TLS for local development
+
+  # Handle API requests first (more specific)
+  handle /api/* {
+    reverse_proxy backend:8001 {
+      header_up Host {host}
+      header_up X-Forwarded-Proto {scheme}
+      header_up X-Forwarded-For {remote}
+    }
+  }
+
+  # Handle health requests
+  handle /health/* {
+    reverse_proxy backend:8001
+  }
+
+  # Handle everything else (frontend)
+  handle {
+    root * /usr/share/caddy
+    try_files {path} /index.html
+    file_server
+  }
+}

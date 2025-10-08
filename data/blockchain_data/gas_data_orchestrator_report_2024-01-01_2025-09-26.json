@@ -1,0 +1,64 @@
+{
+  "timestamp": "2025-09-27T16:06:53.741592",
+  "orchestrator": "gas_data_orchestrator",
+  "date_range": "2024-01-01 to 2025-09-26",
+  "total_downloads": 1,
+  "successful_downloads": 1,
+  "failed_downloads": 0,
+  "total_records": 15240,
+  "total_duration_minutes": 63.6,
+  "downloader_results": [
+    {
+      "name": "gas_data",
+      "success": true,
+      "duration": 3817.940084,
+      "result": {
+        "timestamp": "2025-09-27T16:06:53.110919",
+        "downloader": "onchain_gas_data",
+        "date_range": "2024-01-01 to 2025-09-26",
+        "total_downloads": 1,
+        "successful_downloads": 1,
+        "failed_downloads": 0,
+        "total_records": 15240,
+        "gas_result": {
+          "timestamp": "2025-09-27T16:06:53.110330",
+          "downloader": "alchemy_fast",
+          "total_downloads": 1,
+          "successful_downloads": 1,
+          "failed_downloads": 0,
+          "total_records": 15240,
+          "downloads": [
+            {
+              "success": true,
+              "chain": "ethereum",
+              "record_count": 15240,
+              "output_file": "data/blockchain_data/gas_prices/ethereum_gas_prices_2024-01-01_2025-09-26.csv",
+              "date_range": "2024-01-01 to 2025-09-26",
+              "data_source": "alchemy_rpc_fast"
+            }
+          ]
+        },
+        "downloads": [
+          {
+            "success": true,
+            "chain": "ethereum",
+            "record_count": 15240,
+            "output_file": "data/blockchain_data/gas_prices/ethereum_gas_prices_2024-01-01_2025-09-26.csv",
+            "date_range": "2024-01-01 to 2025-09-26",
+            "data_source": "alchemy_rpc_fast"
+          }
+        ],
+        "data_source": "alchemy"
+      }
+    },
+    {
+      "name": "gas_cost_analysis",
+      "success": true,
+      "duration": 0.630134,
+      "result": {
+        "enhanced_file": "data/blockchain_data/gas_prices/ethereum_gas_prices_enhanced_2024-01-01_2025-09-26.csv",
+        "summary_file": "data/blockchain_data/gas_prices/operation_gas_costs_summary_2024-01-01_2025-09-26.json"
+      }
+    }
+  ]
+}

@@ -1,0 +1,209 @@
+{
+  "timestamp": "2025-09-26T13:06:24.784991",
+  "orchestrator": "cex_data_orchestrator",
+  "date_range": "2020-01-01 to 2025-09-26",
+  "total_duration_seconds": 55.007677,
+  "start_time": "2025-09-26T13:05:29.777314",
+  "end_time": "2025-09-26T13:06:24.784991",
+  "total_downloaders": 4,
+  "successful_downloaders": 4,
+  "failed_downloaders": 0,
+  "skipped_downloaders": 0,
+  "total_downloads": 8,
+  "successful_downloads": 8,
+  "failed_downloads": 0,
+  "total_records": 117889,
+  "downloader_results": [
+    {
+      "timestamp": "2025-09-26T13:05:38.209533",
+      "downloader": "cex_protocol_tokens",
+      "date_range": "2020-01-01 to 2025-09-26",
+      "enforced_dates": {
+        "EIGEN": "2024-10-05",
+        "ETHFI": "2024-06-01"
+      },
+      "total_downloads": 2,
+      "successful_downloads": 2,
+      "failed_downloads": 0,
+      "total_records": 19677,
+      "downloads": [
+        {
+          "success": true,
+          "asset": "EIGEN",
+          "record_count": 8361,
+          "chunks_processed": 9,
+          "chunks_failed": 0,
+          "failed_chunks": [],
+          "output_file": "data/market_data/spot_prices/protocol_tokens/binance_EIGENUSDT_1h_2024-10-05_2025-09-26.csv",
+          "date_range": "2024-10-05 to 2025-09-26"
+        },
+        {
+          "success": true,
+          "asset": "ETHFI",
+          "record_count": 11316,
+          "chunks_processed": 12,
+          "chunks_failed": 0,
+          "failed_chunks": [],
+          "output_file": "data/market_data/spot_prices/protocol_tokens/binance_ETHFIUSDT_1h_2024-06-01_2025-09-26.csv",
+          "date_range": "2024-06-01 to 2025-09-26"
+        }
+      ],
+      "downloader_name": "protocol_tokens",
+      "duration_seconds": 8.432778,
+      "start_time": "2025-09-26T13:05:29.777332",
+      "end_time": "2025-09-26T13:05:38.210110"
+    },
+    {
+      "timestamp": "2025-09-26T13:06:04.609839",
+      "downloader": "cex_spot_data",
+      "date_range": "2020-01-01 to 2025-09-26",
+      "enforced_dates": {
+        "binance_spot": "2020-01-01",
+        "bybit": "2024-01-01",
+        "okx": "2024-01-01"
+      },
+      "exchanges_requested": [
+        "binance_spot",
+        "binance_futures",
+        "bybit"
+      ],
+      "exchanges_available": [
+        "binance_spot",
+        "bybit"
+      ],
+      "total_downloads": 2,
+      "successful_downloads": 2,
+      "failed_downloads": 0,
+      "total_records": 64306,
+      "downloads": [
+        {
+          "success": true,
+          "asset": "ETH",
+          "record_count": 49075,
+          "chunks_processed": 52,
+          "chunks_failed": 0,
+          "failed_chunks": [],
+          "output_file": "data/market_data/spot_prices/eth_usd/binance_ETHUSDT_1h_2020-01-01_2025-09-26.csv",
+          "date_range": "2020-01-01 to 2025-09-26",
+          "exchange": "binance_spot",
+          "data_type": "spot_equivalent"
+        },
+        {
+          "success": true,
+          "symbol": "ETHUSDT",
+          "record_count": 15231,
+          "output_file": "data/market_data/spot_prices/eth_usd/bybit_ETHUSDT_spot_1h_2024-01-01_2025-09-26.csv",
+          "date_range": "2024-01-01 to 2025-09-26",
+          "data_type": "spot_equivalent",
+          "exchange": "bybit"
+        }
+      ],
+      "downloader_name": "spot_data",
+      "duration_seconds": 26.401895,
+      "start_time": "2025-09-26T13:05:38.210161",
+      "end_time": "2025-09-26T13:06:04.612056"
+    },
+    {
+      "timestamp": "2025-09-26T13:06:19.221078",
+      "downloader": "cex_futures_data",
+      "date_range": "2020-01-01 to 2025-09-26",
+      "enforced_dates": {
+        "bybit": "2024-01-01",
+        "okx": "2024-08-01",
+        "binance_futures": "2024-01-01"
+      },
+      "exchanges_requested": [
+        "binance_spot",
+        "binance_futures",
+        "bybit"
+      ],
+      "exchanges_available": [
+        "binance_futures",
+        "bybit"
+      ],
+      "total_downloads": 2,
+      "successful_downloads": 2,
+      "failed_downloads": 0,
+      "total_records": 30102,
+      "downloads": [
+        {
+          "success": true,
+          "symbol": "ETHUSDT",
+          "record_count": 14871,
+          "chunks_processed": 16,
+          "chunks_failed": 0,
+          "failed_chunks": [],
+          "output_file": "data/market_data/derivatives/futures_ohlcv/binance_ETHUSDT_perp_1h_2024-01-01_2025-09-26.csv",
+          "date_range": "2024-01-01 to 2025-09-26",
+          "data_type": "futures_ohlcv",
+          "exchange": "binance_futures",
+          "symbol_used": "ETHUSDT"
+        },
+        {
+          "success": true,
+          "symbol": "ETHUSDT",
+          "record_count": 15231,
+          "output_file": "data/market_data/derivatives/futures_ohlcv/bybit_ETHUSDT_perp_1h_2024-01-01_2025-09-26.csv",
+          "date_range": "2024-01-01 to 2025-09-26",
+          "data_type": "futures_ohlcv",
+          "exchange": "bybit",
+          "symbol_used": "ETHUSDT"
+        }
+      ],
+      "downloader_name": "futures_data",
+      "duration_seconds": 14.609971,
+      "start_time": "2025-09-26T13:06:04.612333",
+      "end_time": "2025-09-26T13:06:19.222304"
+    },
+    {
+      "timestamp": "2025-09-26T13:06:24.784536",
+      "downloader": "cex_funding_rates",
+      "date_range": "2020-01-01 to 2025-09-26",
+      "enforced_dates": {
+        "bybit": "2024-01-01",
+        "okx": "2024-01-01",
+        "binance_futures": "2024-01-01"
+      },
+      "exchanges_requested": [
+        "binance_spot",
+        "binance_futures",
+        "bybit"
+      ],
+      "exchanges_available": [
+        "binance_futures",
+        "bybit"
+      ],
+      "total_downloads": 2,
+      "successful_downloads": 2,
+      "failed_downloads": 0,
+      "total_records": 3804,
+      "downloads": [
+        {
+          "success": true,
+          "symbol": "ETHUSDT",
+          "record_count": 1902,
+          "output_file": "data/market_data/derivatives/funding_rates/binance_ETHUSDT_funding_rates_2024-01-01_2025-09-26.csv",
+          "date_range": "2024-01-01 to 2025-09-26",
+          "data_type": "funding_rates",
+          "exchange": "binance_futures",
+          "symbol_used": "ETHUSDT"
+        },
+        {
+          "success": true,
+          "symbol": "ETHUSDT",
+          "record_count": 1902,
+          "output_file": "data/market_data/derivatives/funding_rates/bybit_ETHUSDT_funding_rates_2024-01-01_2025-09-26.csv",
+          "date_range": "2024-01-01 to 2025-09-26",
+          "data_type": "funding_rates",
+          "exchange": "bybit",
+          "symbol_used": "ETHUSDT"
+        }
+      ],
+      "downloader_name": "funding_rates",
+      "duration_seconds": 5.562583,
+      "start_time": "2025-09-26T13:06:19.222366",
+      "end_time": "2025-09-26T13:06:24.784949"
+    }
+  ],
+  "failed_initializations": []
+}

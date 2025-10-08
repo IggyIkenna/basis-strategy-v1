@@ -1,0 +1,63 @@
+{
+  "agent_name": "Agent A - Monitoring & Calculation",
+  "background_mode": true,
+  "web_browser_mode": true,
+  "focus_areas": [
+    "position_monitor.py",
+    "exposure_monitor.py", 
+    "event_logger.py",
+    "risk_monitor.py",
+    "pnl_calculator.py",
+    "frontend/"
+  ],
+  "context_files": [
+    "AGENT_A_INSTRUCTIONS.md",
+    "AGENT_B_INSTRUCTIONS.md", 
+    "AGENT_CONTEXT_GUIDE.md",
+    "agent-a-progress.txt",
+    "agent-b-progress.txt",
+    "background_agent_tasks.json",
+    "check_agent_progress.sh",
+    "launch_web_agent.sh",
+    "preflight_check.py",
+    "monitor_agents.py",
+    "validate_completion.py",
+    "sync_docs.py",
+    "docs_refactor/ARCHITECTURAL_DECISIONS.md",
+    "docs_refactor/COMPONENT_SPECS_INDEX.md",
+    "docs_refactor/IMPLEMENTATION_ROADMAP.md",
+    "docs_refactor/REFERENCE.md",
+    "scripts/analyzers/analyze_leveraged_restaking_USDT.py",
+    "backend/src/basis_strategy_v1/core/strategies/components/",
+    "backend/src/basis_strategy_v1/core/math/",
+    "backend/src/basis_strategy_v1/api/",
+    "backend/src/basis_strategy_v1/core/models/",
+    "frontend/src/",
+    "tests/",
+    "deploy/",
+    "configs/",
+    "data/"
+  ],
+  "week_1_tasks": [
+    "Implement Position Monitor (docs_refactor/specs/01_POSITION_MONITOR.md)",
+    "Implement Event Logger (docs_refactor/specs/08_EVENT_LOGGER.md)"
+  ],
+  "dependencies": ["redis", "pandas", "pydantic"],
+  "important_notes": [
+    "DO NOT use old docs/ directory - use docs_refactor/ only",
+    "Study scripts/analyzers/analyze_leveraged_restaking_USDT.py for prototype logic",
+    "Follow docs_refactor/ARCHITECTURAL_DECISIONS.md for design decisions",
+    "Use existing codebase patterns for consistency",
+    "ALWAYS update agent-a-progress.txt after completing each task",
+    "ALWAYS update background_agent_tasks.json status to 'completed'",
+    "ALWAYS run tests before marking task complete",
+    "ALWAYS commit changes with descriptive messages"
+  ],
+  "auto_progress_tracking": true,
+  "required_updates": [
+    "agent-a-progress.txt",
+    "background_agent_tasks.json", 
+    "git commit",
+    "test execution"
+  ]
+}

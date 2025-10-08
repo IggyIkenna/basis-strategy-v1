@@ -1,0 +1,44 @@
+{
+  "processing_completed": "2025-09-29T11:29:41.449870",
+  "methodology": "aave_oracle_price_ratio_based",
+  "date_range": "2024-01-01 to 2025-09-18",
+  "assets_processed": [
+    "weeth",
+    "wsteth"
+  ],
+  "results": {
+    "weeth": {
+      "processing_completed": "2025-09-29T11:29:39.864591",
+      "asset": "weETH",
+      "methodology": "aave_oracle_ratio_based",
+      "records_processed": 495,
+      "date_range": "2024-01-01 to 2025-09-18",
+      "yield_statistics": {
+        "average_apr": 0.027561811686148456,
+        "average_apy": 0.027968097069292253,
+        "min_apr": 0.0010548432093466786,
+        "max_apr": 0.0633430159601871
+      },
+      "output_file": "data/protocol_data/staking/base_yields/weeth_oracle_yields_2024-01-01_2025-09-18.csv"
+    },
+    "wsteth": {
+      "processing_completed": "2025-09-29T11:29:41.433985",
+      "asset": "wstETH",
+      "methodology": "aave_oracle_price_based",
+      "records_processed": 11008,
+      "date_range": "2024-01-01 to 2025-09-18",
+      "yield_statistics": {
+        "average_apr": 0.27036790908235947,
+        "average_apy": 58.28946126144185,
+        "min_apr": -0.9999999839036241,
+        "max_apr": 9.988160240316784
+      },
+      "output_file": "data/protocol_data/staking/base_yields/wsteth_oracle_yields_2024-01-01_2025-09-18.csv"
+    }
+  },
+  "total_records": 11503,
+  "average_yields": {
+    "weeth_avg_apr": 0.027561811686148456,
+    "wsteth_avg_apr": 0.27036790908235947
+  }
+}

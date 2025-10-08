@@ -1,0 +1,56 @@
+Defaulting to user installation because normal site-packages is not writeable
+Collecting ccxt
+  Downloading ccxt-4.5.7-py2.py3-none-any.whl.metadata (130 kB)
+Collecting pytest
+  Downloading pytest-8.4.2-py3-none-any.whl.metadata (7.7 kB)
+Collecting pytest-asyncio
+  Downloading pytest_asyncio-1.2.0-py3-none-any.whl.metadata (4.1 kB)
+Collecting setuptools>=60.9.0 (from ccxt)
+  Downloading setuptools-80.9.0-py3-none-any.whl.metadata (6.6 kB)
+Requirement already satisfied: certifi>=2018.1.18 in /home/ubuntu/.local/lib/python3.13/site-packages (from ccxt) (2025.8.3)
+Requirement already satisfied: requests>=2.18.4 in /home/ubuntu/.local/lib/python3.13/site-packages (from ccxt) (2.32.5)
+Collecting cryptography>=2.6.1 (from ccxt)
+  Downloading cryptography-46.0.2-cp311-abi3-manylinux_2_34_x86_64.whl.metadata (5.7 kB)
+Requirement already satisfied: typing-extensions>=4.4.0 in /home/ubuntu/.local/lib/python3.13/site-packages (from ccxt) (4.15.0)
+Requirement already satisfied: aiohttp>=3.10.11 in /home/ubuntu/.local/lib/python3.13/site-packages (from ccxt) (3.12.15)
+Collecting aiodns>=1.1.1 (from ccxt)
+  Downloading aiodns-3.5.0-py3-none-any.whl.metadata (5.8 kB)
+Requirement already satisfied: yarl>=1.7.2 in /home/ubuntu/.local/lib/python3.13/site-packages (from ccxt) (1.20.1)
+Collecting iniconfig>=1 (from pytest)
+  Downloading iniconfig-2.1.0-py3-none-any.whl.metadata (2.7 kB)
+Requirement already satisfied: packaging>=20 in /home/ubuntu/.local/lib/python3.13/site-packages (from pytest) (25.0)
+Collecting pluggy<2,>=1.5 (from pytest)
+  Downloading pluggy-1.6.0-py3-none-any.whl.metadata (4.8 kB)
+Requirement already satisfied: pygments>=2.7.2 in /usr/lib/python3/dist-packages (from pytest) (2.18.0)
+Collecting pycares>=4.9.0 (from aiodns>=1.1.1->ccxt)
+  Downloading pycares-4.11.0-cp313-cp313-manylinux_2_28_x86_64.whl.metadata (4.5 kB)
+Requirement already satisfied: aiohappyeyeballs>=2.5.0 in /home/ubuntu/.local/lib/python3.13/site-packages (from aiohttp>=3.10.11->ccxt) (2.6.1)
+Requirement already satisfied: aiosignal>=1.4.0 in /home/ubuntu/.local/lib/python3.13/site-packages (from aiohttp>=3.10.11->ccxt) (1.4.0)
+Requirement already satisfied: attrs>=17.3.0 in /home/ubuntu/.local/lib/python3.13/site-packages (from aiohttp>=3.10.11->ccxt) (25.3.0)
+Requirement already satisfied: frozenlist>=1.1.1 in /home/ubuntu/.local/lib/python3.13/site-packages (from aiohttp>=3.10.11->ccxt) (1.7.0)
+Requirement already satisfied: multidict<7.0,>=4.5 in /home/ubuntu/.local/lib/python3.13/site-packages (from aiohttp>=3.10.11->ccxt) (6.6.4)
+Requirement already satisfied: propcache>=0.2.0 in /home/ubuntu/.local/lib/python3.13/site-packages (from aiohttp>=3.10.11->ccxt) (0.3.2)
+Collecting cffi>=2.0.0 (from cryptography>=2.6.1->ccxt)
+  Downloading cffi-2.0.0-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.whl.metadata (2.6 kB)
+Requirement already satisfied: charset_normalizer<4,>=2 in /home/ubuntu/.local/lib/python3.13/site-packages (from requests>=2.18.4->ccxt) (3.4.3)
+Requirement already satisfied: idna<4,>=2.5 in /home/ubuntu/.local/lib/python3.13/site-packages (from requests>=2.18.4->ccxt) (3.10)
+Requirement already satisfied: urllib3<3,>=1.21.1 in /home/ubuntu/.local/lib/python3.13/site-packages (from requests>=2.18.4->ccxt) (2.5.0)
+Collecting pycparser (from cffi>=2.0.0->cryptography>=2.6.1->ccxt)
+  Downloading pycparser-2.23-py3-none-any.whl.metadata (993 bytes)
+Downloading ccxt-4.5.7-py2.py3-none-any.whl (5.8 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 5.8/5.8 MB 102.0 MB/s eta 0:00:00
+Downloading pytest-8.4.2-py3-none-any.whl (365 kB)
+Downloading pytest_asyncio-1.2.0-py3-none-any.whl (15 kB)
+Downloading aiodns-3.5.0-py3-none-any.whl (8.1 kB)
+Downloading cryptography-46.0.2-cp311-abi3-manylinux_2_34_x86_64.whl (4.5 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 4.5/4.5 MB 157.6 MB/s eta 0:00:00
+Downloading iniconfig-2.1.0-py3-none-any.whl (6.0 kB)
+Downloading pluggy-1.6.0-py3-none-any.whl (20 kB)
+Downloading setuptools-80.9.0-py3-none-any.whl (1.2 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.2/1.2 MB 110.1 MB/s eta 0:00:00
+Downloading cffi-2.0.0-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.whl (219 kB)
+Downloading pycares-4.11.0-cp313-cp313-manylinux_2_28_x86_64.whl (641 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 641.0/641.0 kB 64.4 MB/s eta 0:00:00
+Downloading pycparser-2.23-py3-none-any.whl (118 kB)
+Installing collected packages: setuptools, pycparser, pluggy, iniconfig, pytest, cffi, pytest-asyncio, pycares, cryptography, aiodns, ccxt
+Successfully installed aiodns-3.5.0 ccxt-4.5.7 cffi-2.0.0 cryptography-46.0.2 iniconfig-2.1.0 pluggy-1.6.0 pycares-4.11.0 pycparser-2.23 pytest-8.4.2 pytest-asyncio-1.2.0 setuptools-80.9.0

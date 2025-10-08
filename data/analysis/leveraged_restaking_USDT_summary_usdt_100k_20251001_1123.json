@@ -1,0 +1,111 @@
+{
+  "config": {
+    "initial_usdt": 100000.0,
+    "allocation_to_long_pct": 0.5,
+    "binance_hedge_pct": 0.5,
+    "bybit_hedge_pct": 0.5,
+    "max_ltv": 0.93
+  },
+  "initial_positions": {
+    "long": {
+      "timestamp": "2024-08-01 00:00:00+00:00",
+      "iteration_count": 23,
+      "weeth_collateral": 171.35524493140153,
+      "weth_debt": 163.51418190957364,
+      "collateral_value_weth": 178.94058133614095,
+      "net_position_weth": 15.426399426567315,
+      "net_position_usd": 49894.317243769336,
+      "long_eth_exposure": 15.426399426567315,
+      "health_factor": 1.039625739395152,
+      "leverage_multiplier": 11.583685846461911,
+      "total_gas_costs_usd": 314.58804181447664,
+      "weeth_price": 1.0442667302525583,
+      "venue_positions": {
+        "etherfi": {
+          "eth_staked": 178.94058133614095,
+          "weeth_received": 171.35524493140153
+        },
+        "aave": {
+          "weeth_collateral": 171.35524493140153,
+          "weth_debt": 163.51418190957364,
+          "aweeth_balance": 171.35524493140153
+        }
+      }
+    },
+    "short": {
+      "binance": {
+        "eth_short": 7.736369290946282,
+        "notional_usd": 25000.0,
+        "entry_price": 3231.49,
+        "margin_posted": 3750.0,
+        "exec_cost": 7.499999999999999,
+        "entry_price_close": 3234.01
+      },
+      "bybit": {
+        "eth_short": 7.736034137571442,
+        "notional_usd": 25000.0,
+        "entry_price": 3231.63,
+        "margin_posted": 3750.0,
+        "exec_cost": 7.499999999999999,
+        "entry_price_close": 3233.7
+      },
+      "total_eth_short": 15.472403428517724,
+      "total_notional_usd": 50000.0,
+      "total_margin_posted": 7500.0,
+      "total_exec_costs": 14.999999999999998
+    },
+    "net_delta_eth": -0.01332884974520887,
+    "delta_pct": -0.08622023056613788
+  },
+  "summary": {
+    "total_hours": 24,
+    "days_analyzed": 1.0,
+    "years_analyzed": 0.0027378507871321013,
+    "initial_usdt": 100000.0,
+    "initial_cex_balance_usd": 49985.0,
+    "initial_eth_wallet_assets_usd": 578755.7994637388,
+    "initial_aave_debt_usd": 528861.4822199694,
+    "initial_eth_gas_debt_usd": 320.56123248184,
+    "initial_total_value_usd": 99558.75601128758,
+    "final_cex_balance_usd": 50454.81208744517,
+    "final_eth_wallet_assets_usd": 573743.2249412652,
+    "final_aave_debt_usd": 524263.91723235516,
+    "final_eth_gas_debt_usd": 317.7515903883659,
+    "final_total_value_usd": 99616.36820596684,
+    "actual_total_pnl_usd": 57.61219467925548,
+    "attribution_pnl_usd": 31.850778540346905,
+    "pnl_reconciliation_diff": 25.761416138908576,
+    "initial_aave_net_usd": 49894.317243769336,
+    "final_aave_net_usd": 49479.30770890999,
+    "initial_net_position_usd": 49894.317243769336,
+    "final_position_value_usd": 49479.30770890999,
+    "cumulative_supply_pnl_usd": 1.2122506261865569,
+    "cumulative_seasonal_pnl_usd": 0.0,
+    "cumulative_borrow_cost_usd": 37.325347127898695,
+    "cumulative_price_change_pnl_usd": 58.146375042059056,
+    "cumulative_funding_cost_usd": 9.817499999999999,
+    "cumulative_perp_mtm_pnl_usd": 0.0,
+    "cumulative_delta_pnl_usd": 1.3478752921855333,
+    "cumulative_net_pnl_usd": 31.850778540346905,
+    "total_gas_costs_usd": 320.56123248184014,
+    "gas_transfer_costs_usd": 5.973190667363479,
+    "gas_leverage_loop_usd": 314.58804181447664,
+    "total_execution_costs_usd": 50.0,
+    "spot_execution_cost_usd": 35.0,
+    "perp_execution_costs_usd": 14.999999999999998,
+    "total_transaction_costs_usd": 370.56123248184014,
+    "initial_eth_purchased": 15.459074578772515,
+    "total_margin_posted": 7500.0,
+    "final_cex_account_balance": 50454.81208744517,
+    "rebalance_triggers": "0",
+    "apr_pct": 23.316276290591922,
+    "apy_pct": -95.26776012537461,
+    "sharpe_ratio": 0,
+    "annualized_volatility": NaN,
+    "max_drawdown_pct": 0.0,
+    "avg_delta_pct_vs_initial": -0.2743198938511123,
+    "max_abs_delta_pct_vs_initial": 0.29575166956291576,
+    "avg_delta_pct_vs_aave": -0.2748385597538982,
+    "max_abs_delta_pct_vs_aave": 0.2963726634694764
+  }
+}

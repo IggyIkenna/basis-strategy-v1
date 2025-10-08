@@ -1,0 +1,45 @@
+{
+  "timestamp": "2025-09-26T13:06:24.784536",
+  "downloader": "cex_funding_rates",
+  "date_range": "2020-01-01 to 2025-09-26",
+  "enforced_dates": {
+    "bybit": "2024-01-01",
+    "okx": "2024-01-01",
+    "binance_futures": "2024-01-01"
+  },
+  "exchanges_requested": [
+    "binance_spot",
+    "binance_futures",
+    "bybit"
+  ],
+  "exchanges_available": [
+    "binance_futures",
+    "bybit"
+  ],
+  "total_downloads": 2,
+  "successful_downloads": 2,
+  "failed_downloads": 0,
+  "total_records": 3804,
+  "downloads": [
+    {
+      "success": true,
+      "symbol": "ETHUSDT",
+      "record_count": 1902,
+      "output_file": "data/market_data/derivatives/funding_rates/binance_ETHUSDT_funding_rates_2024-01-01_2025-09-26.csv",
+      "date_range": "2024-01-01 to 2025-09-26",
+      "data_type": "funding_rates",
+      "exchange": "binance_futures",
+      "symbol_used": "ETHUSDT"
+    },
+    {
+      "success": true,
+      "symbol": "ETHUSDT",
+      "record_count": 1902,
+      "output_file": "data/market_data/derivatives/funding_rates/bybit_ETHUSDT_funding_rates_2024-01-01_2025-09-26.csv",
+      "date_range": "2024-01-01 to 2025-09-26",
+      "data_type": "funding_rates",
+      "exchange": "bybit",
+      "symbol_used": "ETHUSDT"
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+start_date,end_date,payout_date,event,reward_token,reward_per_eeth,extra_yield_pct,source_url,notes
+2024-03-01,2024-03-15,2024-03-18,Season 1 (Launch Airdrop),ETHFI,"~5–15","~0.2–0.6%",https://boxmining.com/ether-fi-ethfi-token-airdrop,"Estimate from 6.8% supply allocation ÷ TVL at launch; assumes loyalty threshold met."
+2024-03-15,2024-06-30,2024-07-01,Season 2,ETHFI,"~3–8","~0.1–0.4%",https://www.bitdegree.org/crypto/tutorials/ethfi-airdrop,"5% supply allocation; per-eETH depends on TVL and loyalty points."
+2024-07-01,2024-09-15,2024-09-30,Season 3,ETHFI,"~6–15","~0.1–0.5%",https://governance.ether.fi/,"DAO proposal ~25M ETHFI; estimate based on TVL share."
+2024-08-15,2024-10-05,2024-10-18,Top-Up #1,ETHFI,0.248,"~0.008–0.013%",https://etherfi.gitbook.io/etherfi/king-protocol-formerly-lrt/king-rewards-distribution,"Exact per-eETH published; % uses ETHFI ~$1.5, ETH ~$2.8–3k."
+2024-10-06,2024-10-12,2024-10-28,Top-Up #2,ETHFI,0.020,"~0.0009–0.0012%",https://etherfi.gitbook.io/etherfi/king-protocol-formerly-lrt/king-rewards-distribution,"Exact figure."
+2024-10-13,2024-10-19,2024-10-31,Top-Up #3,ETHFI,0.013,"~0.0006–0.0008%",https://etherfi.gitbook.io/etherfi/king-protocol-formerly-lrt/king-rewards-distribution,"Exact figure."
+2024-11-10,2024-11-16,2024-11-28,Top-Up #4,ETHFI,0.247,"~0.012–0.014%",https://etherfi.gitbook.io/etherfi/king-protocol-formerly-lrt/king-rewards-distribution,"Exact figure."
+2024-11-17,2024-11-23,2024-12-05,Top-Up #5,ETHFI,0.188,"~0.009–0.011%",https://etherfi.gitbook.io/etherfi/king-protocol-formerly-lrt/king-rewards-distribution,"Exact figure."
+2024-09-15,2025-01-31,2025-02-15,Season 4 (Base),ETHFI,"~1–3","~0.03–0.10%",https://www.reddit.com/r/ethtrader/comments/1iiaecl/etherfi_season_4_complete/,"Snapshot Jan 31; payout Feb; range since no exact per-eETH published."
+2025-02-01,2025-05-31,2025-06-15,Season 5 (Base),ETHFI,"~1–3","~0.02–0.10%",https://governance.ether.fi/t/10-ethfi-dao-proposal-season-5/2786,"DAO allocated 10M ETHFI; excludes Bitget & Liquid ETH boosts."

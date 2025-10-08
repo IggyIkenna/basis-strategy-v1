@@ -1,0 +1,46 @@
+{
+  "timestamp": "2025-09-26T13:06:04.609839",
+  "downloader": "cex_spot_data",
+  "date_range": "2020-01-01 to 2025-09-26",
+  "enforced_dates": {
+    "binance_spot": "2020-01-01",
+    "bybit": "2024-01-01",
+    "okx": "2024-01-01"
+  },
+  "exchanges_requested": [
+    "binance_spot",
+    "binance_futures",
+    "bybit"
+  ],
+  "exchanges_available": [
+    "binance_spot",
+    "bybit"
+  ],
+  "total_downloads": 2,
+  "successful_downloads": 2,
+  "failed_downloads": 0,
+  "total_records": 64306,
+  "downloads": [
+    {
+      "success": true,
+      "asset": "ETH",
+      "record_count": 49075,
+      "chunks_processed": 52,
+      "chunks_failed": 0,
+      "failed_chunks": [],
+      "output_file": "data/market_data/spot_prices/eth_usd/binance_ETHUSDT_1h_2020-01-01_2025-09-26.csv",
+      "date_range": "2020-01-01 to 2025-09-26",
+      "exchange": "binance_spot",
+      "data_type": "spot_equivalent"
+    },
+    {
+      "success": true,
+      "symbol": "ETHUSDT",
+      "record_count": 15231,
+      "output_file": "data/market_data/spot_prices/eth_usd/bybit_ETHUSDT_spot_1h_2024-01-01_2025-09-26.csv",
+      "date_range": "2024-01-01 to 2025-09-26",
+      "data_type": "spot_equivalent",
+      "exchange": "bybit"
+    }
+  ]
+}

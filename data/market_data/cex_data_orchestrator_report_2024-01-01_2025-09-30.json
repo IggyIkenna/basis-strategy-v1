@@ -1,0 +1,207 @@
+{
+  "timestamp": "2025-10-01T17:38:45.170097",
+  "orchestrator": "cex_data_orchestrator",
+  "date_range": "2024-01-01 to 2025-09-30",
+  "total_duration_seconds": 51.010855,
+  "start_time": "2025-10-01T17:37:54.159242",
+  "end_time": "2025-10-01T17:38:45.170097",
+  "total_downloaders": 5,
+  "successful_downloaders": 4,
+  "failed_downloaders": 0,
+  "skipped_downloaders": 0,
+  "total_downloads": 8,
+  "successful_downloads": 8,
+  "failed_downloads": 0,
+  "total_records": 84285,
+  "downloader_results": [
+    {
+      "timestamp": "2025-10-01T17:38:02.544441",
+      "downloader": "cex_protocol_tokens",
+      "date_range": "2024-01-01 to 2025-09-30",
+      "enforced_dates": {
+        "EIGEN": "2024-10-05",
+        "ETHFI": "2024-06-01"
+      },
+      "total_downloads": 2,
+      "successful_downloads": 2,
+      "failed_downloads": 0,
+      "total_records": 19869,
+      "downloads": [
+        {
+          "success": true,
+          "asset": "EIGEN",
+          "record_count": 8457,
+          "chunks_processed": 9,
+          "chunks_failed": 0,
+          "failed_chunks": [],
+          "output_file": "data/market_data/spot_prices/protocol_tokens/binance_EIGENUSDT_1h_2024-10-05_2025-09-30.csv",
+          "date_range": "2024-10-05 to 2025-09-30"
+        },
+        {
+          "success": true,
+          "asset": "ETHFI",
+          "record_count": 11412,
+          "chunks_processed": 12,
+          "chunks_failed": 0,
+          "failed_chunks": [],
+          "output_file": "data/market_data/spot_prices/protocol_tokens/binance_ETHFIUSDT_1h_2024-06-01_2025-09-30.csv",
+          "date_range": "2024-06-01 to 2025-09-30"
+        }
+      ],
+      "downloader_name": "protocol_tokens",
+      "duration_seconds": 8.385924,
+      "start_time": "2025-10-01T17:37:54.159258",
+      "end_time": "2025-10-01T17:38:02.545182"
+    },
+    {
+      "timestamp": "2025-10-01T17:38:21.918491",
+      "downloader": "cex_spot_data",
+      "date_range": "2024-01-01 to 2025-09-30",
+      "enforced_dates": {
+        "binance_spot": "2024-01-01",
+        "bybit": "2024-01-01",
+        "okx": "2024-01-01"
+      },
+      "exchanges_requested": [
+        "binance_spot",
+        "binance_futures",
+        "bybit"
+      ],
+      "exchanges_available": [
+        "binance_spot",
+        "bybit"
+      ],
+      "total_downloads": 2,
+      "successful_downloads": 2,
+      "failed_downloads": 0,
+      "total_records": 30294,
+      "downloads": [
+        {
+          "success": true,
+          "asset": "BTC",
+          "record_count": 14967,
+          "chunks_processed": 16,
+          "chunks_failed": 0,
+          "failed_chunks": [],
+          "output_file": "data/market_data/spot_prices/protocol_tokens/binance_BTCUSDT_1h_2024-01-01_2025-09-30.csv",
+          "date_range": "2024-01-01 to 2025-09-30",
+          "exchange": "binance_spot",
+          "data_type": "spot_equivalent"
+        },
+        {
+          "success": true,
+          "symbol": "BTCUSDT",
+          "record_count": 15327,
+          "output_file": "data/market_data/spot_prices/eth_usd/bybit_BTCUSDT_spot_1h_2024-01-01_2025-09-30.csv",
+          "date_range": "2024-01-01 to 2025-09-30",
+          "data_type": "spot_equivalent",
+          "exchange": "bybit"
+        }
+      ],
+      "downloader_name": "spot_data",
+      "duration_seconds": 19.374047,
+      "start_time": "2025-10-01T17:38:02.545275",
+      "end_time": "2025-10-01T17:38:21.919322"
+    },
+    {
+      "timestamp": "2025-10-01T17:38:38.046452",
+      "downloader": "cex_futures_data",
+      "date_range": "2024-01-01 to 2025-09-30",
+      "enforced_dates": {
+        "bybit": "2024-01-01",
+        "binance_futures": "2024-01-01"
+      },
+      "exchanges_requested": [
+        "binance_spot",
+        "binance_futures",
+        "bybit"
+      ],
+      "exchanges_available": [
+        "binance_futures",
+        "bybit"
+      ],
+      "total_downloads": 2,
+      "successful_downloads": 2,
+      "failed_downloads": 0,
+      "total_records": 30294,
+      "downloads": [
+        {
+          "success": true,
+          "symbol": "BTCUSDT",
+          "record_count": 14967,
+          "chunks_processed": 16,
+          "chunks_failed": 0,
+          "failed_chunks": [],
+          "output_file": "data/market_data/derivatives/futures_ohlcv/binance_BTCUSDT_perp_1h_2024-01-01_2025-09-30.csv",
+          "date_range": "2024-01-01 to 2025-09-30",
+          "data_type": "futures_ohlcv",
+          "exchange": "binance_futures",
+          "symbol_used": "BTCUSDT"
+        },
+        {
+          "success": true,
+          "symbol": "BTCUSDT",
+          "record_count": 15327,
+          "output_file": "data/market_data/derivatives/futures_ohlcv/bybit_BTCUSDT_perp_1h_2024-01-01_2025-09-30.csv",
+          "date_range": "2024-01-01 to 2025-09-30",
+          "data_type": "futures_ohlcv",
+          "exchange": "bybit",
+          "symbol_used": "BTCUSDT"
+        }
+      ],
+      "downloader_name": "futures_data",
+      "duration_seconds": 16.127675,
+      "start_time": "2025-10-01T17:38:21.919399",
+      "end_time": "2025-10-01T17:38:38.047074"
+    },
+    {
+      "timestamp": "2025-10-01T17:38:45.169335",
+      "downloader": "cex_funding_rates",
+      "date_range": "2024-01-01 to 2025-09-30",
+      "enforced_dates": {
+        "bybit": "2024-01-01",
+        "binance_futures": "2024-01-01"
+      },
+      "exchanges_requested": [
+        "binance_spot",
+        "binance_futures",
+        "bybit"
+      ],
+      "exchanges_available": [
+        "binance_futures",
+        "bybit"
+      ],
+      "total_downloads": 2,
+      "successful_downloads": 2,
+      "failed_downloads": 0,
+      "total_records": 3828,
+      "downloads": [
+        {
+          "success": true,
+          "symbol": "BTCUSDT",
+          "record_count": 1914,
+          "output_file": "data/market_data/derivatives/funding_rates/binance_BTCUSDT_funding_rates_2024-01-01_2025-09-30.csv",
+          "date_range": "2024-01-01 to 2025-09-30",
+          "data_type": "funding_rates",
+          "exchange": "binance_futures",
+          "symbol_used": "BTCUSDT"
+        },
+        {
+          "success": true,
+          "symbol": "BTCUSDT",
+          "record_count": 1914,
+          "output_file": "data/market_data/derivatives/funding_rates/bybit_BTCUSDT_funding_rates_2024-01-01_2025-09-30.csv",
+          "date_range": "2024-01-01 to 2025-09-30",
+          "data_type": "funding_rates",
+          "exchange": "bybit",
+          "symbol_used": "BTCUSDT"
+        }
+      ],
+      "downloader_name": "funding_rates",
+      "duration_seconds": 7.122856,
+      "start_time": "2025-10-01T17:38:38.047139",
+      "end_time": "2025-10-01T17:38:45.169995"
+    }
+  ],
+  "failed_initializations": []
+}

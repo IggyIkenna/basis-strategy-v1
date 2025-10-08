@@ -1,0 +1,9 @@
+# Binance Exchange Configuration
+venue: "binance"
+type: "cex"
+
+# REMOVED: trading_fees - not needed in config, handled by execution engine
+
+# Basic limits
+max_leverage: 125
+min_order_size_usd: 10

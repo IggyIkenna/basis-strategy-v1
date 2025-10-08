@@ -1,0 +1,75 @@
+{
+  "timestamp": "2025-09-29T12:19:14.029458",
+  "calibration_summary": {
+    "calibration_timestamp": "2025-09-29T12:19:05.583306",
+    "validation_method": "multi_period_sampling",
+    "error_thresholds": {
+      "USDT": {
+        "supply": 600,
+        "borrow": 150
+      },
+      "weETH": {
+        "supply": 5,
+        "borrow": 150
+      },
+      "wstETH": {
+        "supply": 10,
+        "borrow": 10
+      },
+      "WETH": {
+        "supply": 350,
+        "borrow": 250
+      },
+      "default": {
+        "supply": 10,
+        "borrow": 10
+      }
+    },
+    "assets": {
+      "wstETH": {
+        "borrow_error_bps": 3.5,
+        "supply_error_bps": 5.9,
+        "avg_utilization": 0.192,
+        "calibration_status": "excellent",
+        "real_borrow_rate": 0.003692,
+        "calc_borrow_rate": 0.004043
+      },
+      "USDT": {
+        "borrow_error_bps": 143.2,
+        "supply_error_bps": 523.4,
+        "avg_utilization": 0.837,
+        "calibration_status": "poor",
+        "real_borrow_rate": 0.056172,
+        "calc_borrow_rate": 0.070494
+      },
+      "WETH": {
+        "borrow_error_bps": 200.5,
+        "supply_error_bps": 321.2,
+        "avg_utilization": 0.873,
+        "calibration_status": "poor",
+        "real_borrow_rate": 0.025921,
+        "calc_borrow_rate": 0.045969
+      },
+      "weETH": {
+        "borrow_error_bps": 11.5,
+        "supply_error_bps": 0.4,
+        "avg_utilization": 0.005,
+        "calibration_status": "poor",
+        "real_borrow_rate": 0.011202,
+        "calc_borrow_rate": 0.010054
+      }
+    }
+  },
+  "calibration_plots": [
+    "data/analysis/aave_calibration_WETH_20250929_1219.png",
+    "data/analysis/aave_calibration_wstETH_20250929_1219.png",
+    "data/analysis/aave_calibration_weETH_20250929_1219.png",
+    "data/analysis/aave_calibration_USDT_20250929_1219.png"
+  ],
+  "validation_method": "multi_period_sampling",
+  "summary": {
+    "total_assets": 4,
+    "plots_created": 4,
+    "validation_status": "completed"
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "timestamp": "2025-10-01T17:38:02.544441",
+  "downloader": "cex_protocol_tokens",
+  "date_range": "2024-01-01 to 2025-09-30",
+  "enforced_dates": {
+    "EIGEN": "2024-10-05",
+    "ETHFI": "2024-06-01"
+  },
+  "total_downloads": 2,
+  "successful_downloads": 2,
+  "failed_downloads": 0,
+  "total_records": 19869,
+  "downloads": [
+    {
+      "success": true,
+      "asset": "EIGEN",
+      "record_count": 8457,
+      "chunks_processed": 9,
+      "chunks_failed": 0,
+      "failed_chunks": [],
+      "output_file": "data/market_data/spot_prices/protocol_tokens/binance_EIGENUSDT_1h_2024-10-05_2025-09-30.csv",
+      "date_range": "2024-10-05 to 2025-09-30"
+    },
+    {
+      "success": true,
+      "asset": "ETHFI",
+      "record_count": 11412,
+      "chunks_processed": 12,
+      "chunks_failed": 0,
+      "failed_chunks": [],
+      "output_file": "data/market_data/spot_prices/protocol_tokens/binance_ETHFIUSDT_1h_2024-06-01_2025-09-30.csv",
+      "date_range": "2024-06-01 to 2025-09-30"
+    }
+  ]
+}

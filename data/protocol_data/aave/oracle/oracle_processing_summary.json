@@ -1,0 +1,21 @@
+{
+  "processing_completed": "2025-09-29T11:44:24.572784",
+  "source_directory": "data/protocol_data/aave/rates",
+  "output_directory": "data/protocol_data/aave/oracle",
+  "usd_denominated_assets": 4,
+  "eth_denominated_pairs": 3,
+  "wsteth_eth_oracle_created": false,
+  "wsteth_eth_records": 0,
+  "total_records_processed": 64406,
+  "assets_processed": [
+    "wstETH",
+    "weETH",
+    "WETH",
+    "USDT"
+  ],
+  "eth_pairs_created": [
+    "wstETH_ETH",
+    "weETH_ETH",
+    "USDT_ETH"
+  ]
+}

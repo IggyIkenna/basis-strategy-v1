@@ -1,0 +1,75 @@
+{
+  "timestamp": "2025-09-29T11:44:32.128303",
+  "calibration_summary": {
+    "calibration_timestamp": "2025-09-29T11:44:26.877268",
+    "validation_method": "multi_period_sampling",
+    "error_thresholds": {
+      "USDT": {
+        "supply": 600,
+        "borrow": 120
+      },
+      "weETH": {
+        "supply": 5,
+        "borrow": 150
+      },
+      "wstETH": {
+        "supply": 10,
+        "borrow": 10
+      },
+      "WETH": {
+        "supply": 350,
+        "borrow": 250
+      },
+      "default": {
+        "supply": 10,
+        "borrow": 10
+      }
+    },
+    "assets": {
+      "wstETH": {
+        "borrow_error_bps": 0.1,
+        "supply_error_bps": 5.0,
+        "avg_utilization": 0.177,
+        "calibration_status": "excellent",
+        "real_borrow_rate": 0.003719,
+        "calc_borrow_rate": 0.003727
+      },
+      "USDT": {
+        "borrow_error_bps": 90.0,
+        "supply_error_bps": 492.2,
+        "avg_utilization": 0.812,
+        "calibration_status": "poor",
+        "real_borrow_rate": 0.05936,
+        "calc_borrow_rate": 0.068356
+      },
+      "WETH": {
+        "borrow_error_bps": 194.6,
+        "supply_error_bps": 287.9,
+        "avg_utilization": 0.827,
+        "calibration_status": "poor",
+        "real_borrow_rate": 0.024067,
+        "calc_borrow_rate": 0.043522
+      },
+      "weETH": {
+        "borrow_error_bps": 118.0,
+        "supply_error_bps": 0.0,
+        "avg_utilization": 0.02,
+        "calibration_status": "poor",
+        "real_borrow_rate": 0.012009,
+        "calc_borrow_rate": 0.000209
+      }
+    }
+  },
+  "calibration_plots": [
+    "data/analysis/aave_calibration_WETH_20250929_1144.png",
+    "data/analysis/aave_calibration_wstETH_20250929_1144.png",
+    "data/analysis/aave_calibration_weETH_20250929_1144.png",
+    "data/analysis/aave_calibration_USDT_20250929_1144.png"
+  ],
+  "validation_method": "multi_period_sampling",
+  "summary": {
+    "total_assets": 4,
+    "plots_created": 4,
+    "validation_status": "completed"
+  }
+}

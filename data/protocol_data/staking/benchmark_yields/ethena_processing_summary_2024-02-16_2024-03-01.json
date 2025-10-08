@@ -1,0 +1,22 @@
+{
+  "processing_completed": "2025-09-29T11:39:57.016322",
+  "source_file": "ethena_susde_historical_20250923.csv",
+  "output_file": "ethena_susde_apr_benchmark_2024-02-16_2024-03-01.csv",
+  "hourly_output_file": "ethena_susde_apr_benchmark_hourly_2024-02-16_2024-03-01.csv",
+  "records_processed": 15,
+  "hourly_records_created": 337,
+  "date_range": "2024-02-16 to 2024-03-01",
+  "yield_statistics": {
+    "average_apy_percent": 21.182666666666663,
+    "average_apr_percent": 19.16791125832328,
+    "min_apy_percent": 15.66,
+    "max_apy_percent": 28.58,
+    "apy_to_apr_conversion": "applied_for_consistency"
+  },
+  "methodology": {
+    "apy_source": "defillama_manual_csv_download",
+    "apr_calculation": "apy_to_apr_daily_compounding_formula",
+    "hourly_interpolation": "linear_interpolation_applied",
+    "purpose": "benchmark_comparison_with_restaking_strategy"
+  }
+}

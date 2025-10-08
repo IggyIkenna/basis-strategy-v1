@@ -1,0 +1,7 @@
+# EtherFi Venue Configuration
+venue: "etherfi"
+type: "defi"
+
+# Basic staking parameters
+min_stake_amount: 0.01  # ETH
+unstaking_period: 7  # days

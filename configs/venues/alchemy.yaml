@@ -1,0 +1,6 @@
+# Alchemy Infrastructure Configuration
+venue: "alchemy"
+type: "infrastructure"
+
+# Service type
+service: "rpc_provider"

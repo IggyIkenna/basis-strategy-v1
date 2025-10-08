@@ -1,0 +1,9 @@
+# Bybit Exchange Configuration
+venue: "bybit"
+type: "cex"
+
+# REMOVED: trading_fees - not needed in config, handled by execution engine
+
+# Basic limits
+max_leverage: 100
+min_order_size_usd: 10

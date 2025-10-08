@@ -1,0 +1,51 @@
+# BTC Basis Trading Mode Configuration
+# BTC basis trading strategy with short side hedging in Binance, Bybit, and OKX perps
+
+mode: "btc_basis"
+
+# Strategy parameters
+lending_enabled: false
+staking_enabled: false
+basis_trade_enabled: true
+borrowing_enabled: false
+# No borrowing/leverage loops
+enable_market_impact: true
+
+# Asset configuration
+share_class: "USDT"
+asset: "BTC"
+lst_type: null
+rewards_mode: "base_only"
+
+# Execution parameters
+use_flash_loan: false
+unwind_mode: "fast"
+hedge_venues: ["binance", "bybit", "okx"]
+hedge_allocation_binance: 0.4
+hedge_allocation_bybit: 0.3
+hedge_allocation_okx: 0.3
+
+# REMOVED: capital_allocation - not needed in config, calculated at runtime
+
+# Risk parameters
+margin_ratio_target: 0.8  # Target CEX margin ratio for futures (80% conservative)
+# NOTE: No AAVE in this mode, so no max_ltv/liquidation_threshold/max_stake_spread_move
+
+# Delta neutrality parameters
+delta_tolerance: 0.005  # 0.5% tolerance of gross exposure for delta neutrality
+
+# Data requirements
+data_requirements:
+  - "btc_prices"  # Binance BTC/USDT spot
+  - "btc_futures"  # CEX futures data
+  - "funding_rates"  # CEX funding rates (all venues)
+  - "gas_costs"  # Ethereum gas prices
+  - "execution_costs"  # Execution cost model
+
+# Monitoring
+monitoring_position_check_interval: 300
+monitoring_risk_check_interval: 60
+
+# Performance targets
+target_apy: 0.08  # 8% APY target (funding rate collection)
+max_drawdown: 0.02  # 2% max drawdown (usually positive funding)

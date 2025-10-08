@@ -1,0 +1,124 @@
+{
+  "config": {
+    "initial_usdt": 100000.0,
+    "allocation_to_long_pct": 0.5,
+    "binance_hedge_pct": 0.33,
+    "bybit_hedge_pct": 0.33,
+    "max_ltv": 0.93
+  },
+  "initial_positions": {
+    "long": {
+      "timestamp": "2024-05-12 00:00:00+00:00",
+      "iteration_count": 1,
+      "mode": "ATOMIC_FLASH",
+      "flash_amount_usd": 501515.8884735185,
+      "flash_fee_usd": 0.0,
+      "weeth_collateral": 182.19487562041522,
+      "weth_debt": 172.01120880207472,
+      "collateral_value_weth": 189.14791535970642,
+      "net_position_weth": 17.136706557631697,
+      "net_position_usd": 49963.78244542032,
+      "long_eth_exposure": 17.136706557631697,
+      "health_factor": 1.0446442464018877,
+      "leverage_multiplier": 11.037588507662852,
+      "total_gas_costs_usd": 15.21943224551184,
+      "weeth_price": 1.0381626525752412,
+      "ltv_target": 0.9094005000000001,
+      "ltv_actual": 0.9094005000000002,
+      "venue_positions": {
+        "etherfi": {
+          "eth_staked": 189.14791535970642,
+          "weeth_received": 182.19487562041522
+        },
+        "aave": {
+          "weeth_collateral": 182.19487562041522,
+          "weth_debt": 172.01120880207472,
+          "aweeth_balance": 182.19487562041522
+        }
+      }
+    },
+    "short": {
+      "binance": {
+        "eth_short": 5.667629591209335,
+        "notional_usd": 16500.0,
+        "entry_price": 2911.27,
+        "margin_posted": 2475.0,
+        "exec_cost": 4.949999999999999,
+        "entry_price_close": 2919.77
+      },
+      "bybit": {
+        "eth_short": 5.667824276837147,
+        "notional_usd": 16500.0,
+        "entry_price": 2911.17,
+        "margin_posted": 2475.0,
+        "exec_cost": 4.949999999999999,
+        "entry_price_close": 2919.92
+      },
+      "okx": {
+        "eth_short": 5.257769901432279,
+        "notional_usd": 17000.0,
+        "entry_price": 3233.31,
+        "margin_posted": 2550.0,
+        "exec_cost": 11.9,
+        "entry_price_close": 3235.43
+      },
+      "total_eth_short": 16.59322376947876,
+      "total_notional_usd": 50000.0,
+      "total_margin_posted": 7500.0,
+      "total_exec_costs": 21.799999999999997
+    },
+    "net_delta_eth": 0.5559047781362771,
+    "delta_pct": 3.241591994559909
+  },
+  "summary": {
+    "total_hours": 1176,
+    "days_analyzed": 49.0,
+    "years_analyzed": 0.13415468856947296,
+    "initial_usdt": 100000.0,
+    "initial_cex_balance_usd": 32990.1,
+    "initial_eth_wallet_assets_usd": 551479.6709189388,
+    "initial_aave_debt_usd": 501515.8884735185,
+    "initial_eth_gas_debt_usd": 18.872095984434683,
+    "initial_total_value_usd": 82935.01034943588,
+    "final_cex_balance_usd": 44552.00675791694,
+    "final_eth_wallet_assets_usd": 641965.7497378574,
+    "final_aave_debt_usd": 583391.4031923288,
+    "final_eth_gas_debt_usd": 21.880109829452962,
+    "final_total_value_usd": 103104.47319361605,
+    "actual_total_pnl_usd": 20169.462844180176,
+    "attribution_pnl_usd": 1297.3072620366315,
+    "pnl_reconciliation_diff": 18872.155582143543,
+    "initial_aave_net_usd": 49963.78244542032,
+    "final_aave_net_usd": 58574.346545528606,
+    "initial_net_position_usd": 49963.78244542032,
+    "final_position_value_usd": 58574.346545528606,
+    "cumulative_supply_pnl_usd": 379.22847770537777,
+    "cumulative_seasonal_pnl_usd": 0.0,
+    "cumulative_borrow_cost_usd": 2015.930630049066,
+    "cumulative_price_change_pnl_usd": 2318.002985253199,
+    "cumulative_funding_cost_usd": 616.0064291271194,
+    "cumulative_perp_mtm_pnl_usd": -6042.199671210141,
+    "cumulative_delta_pnl_usd": 218.08930569145636,
+    "cumulative_net_pnl_usd": 1297.3072620366315,
+    "total_gas_costs_usd": 18.87209598443468,
+    "gas_transfer_costs_usd": 3.6526637389228416,
+    "gas_leverage_loop_usd": 15.21943224551184,
+    "total_execution_costs_usd": 56.8,
+    "spot_execution_cost_usd": 35.0,
+    "perp_execution_costs_usd": 21.799999999999997,
+    "total_transaction_costs_usd": 75.67209598443468,
+    "initial_eth_purchased": 17.14912854761504,
+    "total_margin_posted": 7500.0,
+    "final_cex_account_balance": 44552.00675791694,
+    "rebalance_triggers": "0",
+    "apr_pct": 19.35448791215578,
+    "apy_pct": 227.1299563255718,
+    "sharpe_ratio": 36.56499335690683,
+    "annualized_volatility": 0.5293174190745442,
+    "max_drawdown_pct": -0.032462365223279784,
+    "avg_delta_pct_vs_initial": 3.7225185227152022,
+    "max_abs_delta_pct_vs_initial": 4.299226503888438,
+    "avg_delta_pct_vs_aave": 3.703528417836716,
+    "max_abs_delta_pct_vs_aave": 4.254232275238523
+  }
+}

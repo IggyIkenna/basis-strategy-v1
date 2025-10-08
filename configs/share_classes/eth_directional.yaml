@@ -1,0 +1,27 @@
+# ETH Directional Share Class Configuration
+# ETH-denominated share class for directional strategies
+
+share_class: "ETH"
+type: "directional"
+description: "ETH directional share class for leveraged staking and basis trading strategies"
+
+# Currency Configuration
+base_currency: "ETH"
+quote_currency: "ETH"
+decimal_places: 18
+
+# Risk Profile
+risk_level: "high"
+market_neutral: false
+allows_hedging: false
+
+# Supported Strategies (modes available for this share class)
+supported_strategies:
+  - "eth_leveraged"
+  - "eth_staking_only"
+  - "eth_basis"
+
+# Share Class Features
+leverage_supported: true
+staking_supported: true
+basis_trading_supported: true

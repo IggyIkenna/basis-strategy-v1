@@ -1,0 +1,32 @@
+{
+  "timestamp": "2025-10-01T10:27:44.139994",
+  "downloader": "cex_funding_rates",
+  "date_range": "2025-09-01 to 2025-09-18",
+  "enforced_dates": {
+    "bybit": "2025-09-01",
+    "okx": "2025-09-01",
+    "binance_futures": "2025-09-01"
+  },
+  "exchanges_requested": [
+    "okx"
+  ],
+  "exchanges_available": [
+    "okx"
+  ],
+  "total_downloads": 1,
+  "successful_downloads": 0,
+  "failed_downloads": 1,
+  "total_records": 0,
+  "downloads": [
+    {
+      "success": false,
+      "symbol": "ETHUSDT",
+      "record_count": 0,
+      "output_file": null,
+      "date_range": "2025-09-01 to 2025-09-18",
+      "data_type": "funding_rates",
+      "exchange": "okx",
+      "symbol_used": "ETH-USDT-SWAP"
+    }
+  ]
+}

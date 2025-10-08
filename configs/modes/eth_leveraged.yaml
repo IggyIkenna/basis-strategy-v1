@@ -1,0 +1,57 @@
+# ETH Leveraged Staking Mode Configuration
+# ETH leveraged (borrowing to stake) staking with LST rewards (staking rewards + seasonal bonuses in ETHFI and EIGEN wrapped up as KING tokens)
+# No hedge as ETH share class. we only leverage the staking spread not the overall eth deltas which we keep neutral outside initial + pnl
+
+
+mode: "eth_leveraged"
+
+# Strategy parameters
+lending_enabled: true
+staking_enabled: true
+basis_trade_enabled: false
+borrowing_enabled: true
+  # Enable borrowing for leverage loops
+enable_market_impact: true
+
+# Asset configuration
+share_class: "ETH"
+asset: "ETH"
+lst_type: "weeth"  # or "wsteth"
+rewards_mode: "base_eigen"  # base + EIGEN rewards
+
+# Execution parameters
+use_flash_loan: false
+unwind_mode: "slow"  # Direct protocol unwinding
+hedge_venues: []
+hedge_allocation: {}
+
+# Risk parameters
+margin_ratio_target: 1.0  # Target CEX margin ratio (only for USDT share class with hedging)
+max_stake_spread_move: 0.02215  # Max expected adverse weETH/ETH oracle move (2.215%)
+max_ltv: 0.91  # Maximum LTV for weETH (derived from AAVE risk params)
+liquidation_threshold: 0.95  # Liquidation threshold for weETH (derived from AAVE risk params)
+
+# Sequential leverage parameters (used if use_flash_loan: false)
+max_leverage_loops: 23  # Maximum iterations for sequential leverage
+min_loop_position_usd: 10000.0  # Minimum position size to continue looping
+
+# Performance targets
+target_apy: 0.20  # 20% APY target (leveraged staking)
+max_drawdown: 0.04  # 4% max drawdown
+
+# Data requirements
+data_requirements:
+  - "eth_prices"  # Binance ETH/USDT spot
+  - "weeth_prices"  # AAVE oracle prices
+  - "aave_lending_rates"  # AAVE rates (weETH, WETH)
+  - "staking_rewards"  # Base staking yields
+  - "eigen_rewards"  # EIGEN distributions
+  - "gas_costs"  # Ethereum gas prices
+  - "execution_costs"  # Execution cost model
+  - "aave_risk_params"  # AAVE v3 risk parameters JSON
+
+# Monitoring
+monitoring_position_check_interval: 300
+monitoring_risk_check_interval: 60
+
+# REMOVED: capital_allocation - not needed in config, calculated at runtime

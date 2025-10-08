@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Backtest Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { max-width: 600px; margin: 0 auto; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input, select { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
+        button { background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        button:disabled { background: #ccc; cursor: not-allowed; }
+        .result { margin-top: 20px; padding: 10px; border-radius: 4px; }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        /* Health banner */
+        .health-banner { position: fixed; top: 16px; right: 16px; background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 8px 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.05); font-size: 12px; min-width: 220px; }
+        .health-row { display: flex; align-items: center; justify-content: space-between; margin: 4px 0; }
+        .health-title { font-weight: 600; font-size: 12px; margin-bottom: 4px; }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+        .dot-healthy { background: #22c55e; }
+        .dot-degraded { background: #f59e0b; }
+        .dot-unhealthy { background: #ef4444; }
+        .dot-unknown { background: #94a3b8; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>DeFi Backtest Test</h1>
+        <div id="healthBanner" class="health-banner" aria-live="polite"></div>
+        
+        <div class="form-group">
+            <button onclick="testConnection()">Test Backend Connection</button>
+        </div>
+        
+        <div class="form-group">
+            <button onclick="loadStrategies()">Load Available Strategies</button>
+        </div>
+        
+        <div class="form-group">
+            <button onclick="resetForm()" style="background: #6c757d;">Reset Form to Defaults</button>
+        </div>
+        
+        <form id="backtestForm" onsubmit="createBacktest(event)">
+            <div class="form-group">
+                <label for="strategy">Strategy:</label>
+                <select id="strategy" required>
+                    <option value="">Select a strategy...</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="capital">Initial Capital:</label>
+                <input type="number" id="capital" value="100000" min="1000" step="1000" required>
+                <small style="color: #666; font-size: 12px;">Recommended: $100k+ for leveraged strategies, $10k+ for simple strategies</small>
+            </div>
+            
+            <div class="form-group">
+                <label for="startDate">Start Date:</label>
+                <input type="date" id="startDate" value="2024-01-01" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="endDate">End Date:</label>
+                <input type="date" id="endDate" value="2024-01-31" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="shareClass">Share Class:</label>
+                <select id="shareClass" required>
+                    <option value="USDT">USDT</option>
+                    <option value="ETH">ETH</option>
+                </select>
+            </div>
+            
+            <button type="submit" id="submitBtn">Create Backtest</button>
+        </form>
+        
+        <div id="results"></div>
+
+        <div class="form-group" style="margin-top: 30px;">
+            <h2>Config Controls</h2>
+            <p style="font-size: 14px; color: #555;">
+                Load the merged, validated config (YAML) and optionally add YAML overrides that will be applied to this backtest only.
+            </p>
+            <div style="background: #e3f2fd; border: 1px solid #2196f3; border-radius: 6px; padding: 12px; margin-bottom: 15px; font-size: 13px;">
+                <strong>💡 Tip:</strong> Make sure your Initial Capital field above shows the correct amount before loading config. 
+                Use the "Reset Form to Defaults" button if needed to ensure clean form state.
+            </div>
+            <div class="form-group">
+                <button onclick="loadFullConfig()">Load Full Config (YAML)</button>
+            </div>
+            <div class="form-group">
+                <label for="fullConfigYaml">Full Config (read-only YAML)</label>
+                <textarea id="fullConfigYaml" rows="12" style="width: 100%; font-family: monospace;" readonly></textarea>
+            </div>
+            <div class="form-group">
+                <label for="overridesYaml">Overrides (YAML)</label>
+                <textarea id="overridesYaml" rows="10" style="width: 100%; font-family: monospace;" placeholder="e.g.\nstrategy:\n  staking_leverage_enabled: true\n  basis_trade_enabled: true\nfees:\n  gas_cost_usd: 15\nrates:\n  eth_staking_apr: 0.03"></textarea>
+            </div>
+            <div class="form-group">
+                <label>Overrides Builder</label>
+                <div id="overridesBuilder" class="panel"></div>
+                <div class="form-group" style="margin-top: 10px; display: flex; gap: 8px;">
+                    <button onclick="resetOverrides()">Reset Overrides</button>
+                    <button onclick="applyBuilderToYaml()">Generate Overrides YAML</button>
+                </div>
+            </div>
+            <div id="configStatus" class="result info" style="display:none;"></div>
+        </div>
+
+        <div class="form-group" style="margin-top: 30px;">
+            <button onclick="loadResults()">Load Existing Results</button>
+        </div>
+        
+        <div id="resultsList"></div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js"></script>
+    <script>
+        // Auto-detect API base URL based on environment
+        const API_BASE = (function() {
+            const hostname = window.location.hostname;
+            const port = window.location.port;
+            const protocol = window.location.protocol;
+            const href = window.location.href;
+            
+            console.log('🔍 API Detection Debug:', { hostname, port, protocol, href });
+            
+            // ONLY use direct backend for native development
+            if (hostname === 'localhost' && port === '5173') {
+                console.log('✅ Detected: Native development (localhost:5173) - using direct backend');
+                return 'http://localhost:8001';
+            }
+            
+            // ALL other cases: use relative URLs
+            console.log('✅ Detected: Production/Docker environment - using relative URLs');
+            console.log('🌐 API calls will go to: ' + window.location.origin + '/api/v1/...');
+            return '';
+        })();
+        
+        // Log the final API_BASE for debugging
+        console.log('🎯 Final API_BASE:', API_BASE || 'RELATIVE URLS');
+        console.log('🧪 Test URL example:', (API_BASE || window.location.origin) + '/health/');
+        let FULL_CONFIG = null; // merged validated config (JSON)
+        let OVERRIDES = {};     // builder overrides state
+        // ------- Health Banner -------
+        function statusToClass(s) {
+            if (!s) return 'dot-unknown';
+            const m = String(s).toLowerCase();
+            if (m === 'healthy') return 'dot-healthy';
+            if (m === 'degraded') return 'dot-degraded';
+            if (m === 'unhealthy') return 'dot-unhealthy';
+            return 'dot-unknown';
+        }
+        function renderHealthBanner(data) {
+            const el = document.getElementById('healthBanner');
+            if (!el) return;
+            if (!data || typeof data !== 'object') {
+                el.innerHTML = '<div class="health-title">System Health</div><div class="health-row"><span><span class="status-dot dot-unknown"></span>status</span><span>unknown</span></div>';
+                return;
+            }
+            const overall = data.status || 'unknown';
+            const components = data.components || {};
+            const cache = components.cache || 'not_configured';
+            const db = components.database || 'not_configured';
+            const dp = components.data_provider || 'unknown';
+            el.innerHTML = `
+                <div class="health-title">System Health</div>
+                <div class="health-row"><span><span class="status-dot ${statusToClass(overall)}"></span>overall</span><span>${overall}</span></div>
+                <div class="health-row"><span><span class="status-dot ${statusToClass(cache)}"></span>cache</span><span>${cache}</span></div>
+                <div class="health-row"><span><span class="status-dot ${statusToClass(db)}"></span>database</span><span>${db}</span></div>
+                <div class="health-row"><span><span class="status-dot ${statusToClass(dp)}"></span>data</span><span>${dp}</span></div>
+            `;
+        }
+        async function fetchDetailedHealth() {
+            try {
+                const resp = await fetch(`${API_BASE}/health/detailed`);
+                const data = await resp.json();
+                renderHealthBanner(data);
+            } catch (e) {
+                renderHealthBanner(null);
+            }
+        }
+        
+        function showResult(message, type = 'info') {
+            const results = document.getElementById('results');
+            results.innerHTML = `<div class="result ${type}">${message}</div>`;
+        }
+        
+        function formatDateTime(dateStr, isEndDate = false) {
+            const time = isEndDate ? 'T23:59:59Z' : 'T00:00:00Z';
+            return dateStr.includes('T') ? dateStr : `${dateStr}${time}`;
+        }
+        
+        function goToChartsWithId(requestId) {
+            // Send a message to the parent app to switch to Charts tab and preload id
+            if (window.parent) {
+                window.parent.postMessage({ type: 'openCharts', requestId }, '*');
+            }
+        }
+        
+        async function testConnection() {
+            try {
+                showResult('Testing backend connection...', 'info');
+                const response = await fetch(`${API_BASE}/health/`);
+                const data = await response.json();
+                showResult(`✅ Backend is healthy: ${data.status}`, 'success');
+            } catch (error) {
+                showResult(`❌ Backend connection failed: ${error.message}`, 'error');
+            }
+        }
+        
+        async function loadStrategies() {
+            try {
+                showResult('Loading strategies...', 'info');
+                const response = await fetch(`${API_BASE}/api/v1/strategies/`);
+                const data = await response.json();
+                
+                if (data.success && data.data.strategies) {
+                    const select = document.getElementById('strategy');
+                    select.innerHTML = '<option value="">Select a strategy...</option>';
+                    
+                    data.data.strategies.forEach(strategy => {
+                        const option = document.createElement('option');
+                        option.value = strategy.name;
+                        option.textContent = `${strategy.name} (${strategy.share_class})`;
+                        option.dataset.shareClass = strategy.share_class;
+                        select.appendChild(option);
+                    });
+                    
+                    showResult(`✅ Loaded ${data.data.strategies.length} strategies`, 'success');
+                    
+                    // Auto-select share class when strategy changes
+                    select.addEventListener('change', function() {
+                        const selectedOption = this.options[this.selectedIndex];
+                        if (selectedOption.dataset.shareClass) {
+                            document.getElementById('shareClass').value = selectedOption.dataset.shareClass;
+                        }
+                    });
+                } else {
+                    showResult('❌ Failed to load strategies', 'error');
+                }
+            } catch (error) {
+                showResult(`❌ Error loading strategies: ${error.message}`, 'error');
+            }
+        }
+        
+        async function createBacktest(event) {
+            event.preventDefault();
+            
+            // Validate form inputs first
+            if (!validateFormInputs()) {
+                return;
+            }
+            
+            const submitBtn = document.getElementById('submitBtn');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Creating...';
+            
+            try {
+                const formData = {
+                    strategy_name: document.getElementById('strategy').value,
+                    initial_capital: parseInt(document.getElementById('capital').value),
+                    start_date: formatDateTime(document.getElementById('startDate').value),
+                    end_date: formatDateTime(document.getElementById('endDate').value, true),
+                    share_class: document.getElementById('shareClass').value
+                };
+                // Attach YAML overrides if provided
+                const overridesEl = document.getElementById('overridesYaml');
+                if (overridesEl && overridesEl.value.trim()) {
+                    try {
+                        const parsed = jsyaml.load(overridesEl.value);
+                        if (parsed && typeof parsed === 'object') {
+                            formData.config_overrides = parsed;
+                        } else {
+                            showResult('❌ Overrides must be a YAML mapping (object).', 'error');
+                            return;
+                        }
+                    } catch (e) {
+                        showResult(`❌ Invalid YAML in overrides: ${e.message}`, 'error');
+                        return;
+                    }
+                }
+                
+                showResult('Creating backtest...', 'info');
+                
+                const response = await fetch(`${API_BASE}/api/v1/backtest/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(formData)
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    const reqId = data.data.request_id;
+                    const s = document.getElementById('startDate').value;
+                    const e = document.getElementById('endDate').value;
+                    const cap = parseFloat(document.getElementById('capital').value || '0');
+                    const strat = document.getElementById('strategy').value || 'N/A';
+                    let days = 'N/A';
+                    try {
+                        const sd = new Date(s);
+                        const ed = new Date(e);
+                        if (!isNaN(sd) && !isNaN(ed)) days = Math.max(1, Math.round((ed - sd) / (1000*60*60*24))).toString();
+                    } catch (_) {}
+                    const fmtCurrency = (num) => (isNaN(num) ? 'N/A' : `$${num.toLocaleString()}`);
+                    showResult(`
+                        🚀 Backtest Created (Processing...)<br>
+                        <span style="color:#555">Request ID:</span> ${reqId}<br>
+                        Strategy: ${strat}<br>
+                        Start: ${s} &nbsp; End: ${e} &nbsp; (${days} days)<br>
+                        Starting Balance: ${fmtCurrency(cap)}<br>
+                        <div style="margin-top:8px;">
+                          <button onclick="goToChartsWithId('${reqId}')" style="padding:4px 8px; font-size:12px;">Open Charts</button>
+                          <button onclick="resetForm()" style="padding:4px 8px; font-size:12px; margin-left:8px; background:#6c757d;">Reset Form</button>
+                        </div>
+                        <div style="margin-top:8px; font-size:12px; color:#666;">
+                          ⏳ Waiting for completion... Results will update automatically.
+                        </div>
+                    `, 'info');
+                    
+                    // Start polling for status
+                    pollBacktestStatus(reqId);
+                } else {
+                    showResult(`❌ Failed to create backtest: ${JSON.stringify(data)}`, 'error');
+                }
+            } catch (error) {
+                showResult(`❌ Error creating backtest: ${error.message}`, 'error');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Create Backtest';
+            }
+        }
+        async function loadFullConfig() {
+            try {
+                const strategy = document.getElementById('strategy').value;
+                if (!strategy) {
+                    showResult('❌ Select a strategy first', 'error');
+                    return;
+                }
+                
+                // Validate form inputs before loading config
+                if (!validateFormInputs()) {
+                    return;
+                }
+                
+                // Preserve current form state
+                const formState = preserveFormState();
+                
+                const start = formState.startDate || '2024-01-01';
+                const end = formState.endDate || '2024-01-31';
+                const capital = formState.capital || '100000';  // Default to 100k
+                const sc = formState.shareClass || 'USDT';
+                
+                // Debug logging to help troubleshoot
+                console.log('Loading config with parameters:', {
+                    strategy, start, end, capital, share_class: sc
+                });
+                showResult(`Loading config with capital: $${parseInt(capital).toLocaleString()}...`, 'info');
+                const url = `${API_BASE}/api/v1/strategies/${encodeURIComponent(strategy)}/config/merged?start_date=${encodeURIComponent(start)}&end_date=${encodeURIComponent(end)}&initial_capital=${encodeURIComponent(capital)}&share_class=${encodeURIComponent(sc)}`;
+                showResult('Loading full config...', 'info');
+                const resp = await fetch(url);
+                const data = await resp.json();
+                if (!resp.ok || !data.success) {
+                    const detail = data.detail || (data.error && data.error.message) || JSON.stringify(data);
+                    
+                    // Special handling for capital validation errors
+                    if (detail.includes('min_loop_position_usd') && detail.includes('initial_capital')) {
+                        const suggestion = `💡 Try increasing Initial Capital to $50,000+ for leveraged strategies, or select a simpler strategy like "usdt_pure_lending"`;
+                        throw new Error(`${detail}\n\n${suggestion}`);
+                    }
+                    
+                    throw new Error(detail);
+                }
+                const yamlText = data.data && data.data.config_yaml ? data.data.config_yaml : '';
+                const fullYamlEl = document.getElementById('fullConfigYaml');
+                if (fullYamlEl) fullYamlEl.value = yamlText;
+                // cache json config for builder
+                FULL_CONFIG = (data.data && data.data.config_json) ? data.data.config_json : null;
+                OVERRIDES = {};
+                renderOverridesBuilder(FULL_CONFIG);
+                const statusEl = document.getElementById('configStatus');
+                if (statusEl) {
+                    statusEl.style.display = 'block';
+                    statusEl.className = 'result success';
+                    statusEl.textContent = '✅ Loaded merged config. You can now add YAML overrides below.';
+                }
+                showResult('✅ Full config loaded.', 'success');
+            } catch (error) {
+                const statusEl = document.getElementById('configStatus');
+                if (statusEl) {
+                    statusEl.style.display = 'block';
+                    statusEl.className = 'result error';
+                    statusEl.textContent = `❌ Failed to load full config: ${error.message}`;
+                }
+                showResult(`❌ Failed to load full config: ${error.message}`, 'error');
+            }
+        }
+        
+        async function pollBacktestStatus(requestId, pollCount = 0) {
+            try {
+                // Add cache-busting timestamp and longer initial delay for first run
+                const timestamp = Date.now();
+                const response = await fetch(`${API_BASE}/api/v1/backtest/${requestId}/status?_t=${timestamp}`, {
+                    cache: 'no-cache',  // Prevent browser caching
+                    headers: {
+                        'Cache-Control': 'no-cache',
+                        'Pragma': 'no-cache'
+                    }
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    const status = data.data.status;
+                    const progress = data.data.progress || 0;
+                    
+                    // Show more detailed status with progress
+                    if (status === 'pending' || status === 'running') {
+                        showResult(`🔄 Backtest ${status}... (${(progress * 100).toFixed(0)}%) - Poll #${pollCount + 1}`, 'info');
+                    } else {
+                    showResult(`Backtest status: ${status}`, 'info');
+                    }
+                    
+                    if (status === 'completed') {
+                        showResult(`✅ Backtest completed! Loading results...`, 'success');
+                        // Add small delay to ensure results are fully written
+                        setTimeout(() => loadBacktestResult(requestId), 500);
+                    } else if (status === 'failed') {
+                        const errorMsg = data.data.error_message || data.data.message || 'Unknown error';
+                        showResult(`❌ Backtest failed: ${errorMsg}`, 'error');
+                    } else if (status === 'pending' || status === 'running') {
+                        // Use progressive polling: longer delays for first few polls
+                        const delay = pollCount < 3 ? 3000 : 2000;  // 3s for first 3 polls, then 2s
+                        setTimeout(() => pollBacktestStatus(requestId, pollCount + 1), delay);
+                    }
+                }
+            } catch (error) {
+                showResult(`❌ Error checking status: ${error.message}`, 'error');
+            }
+        }
+        
+        async function loadBacktestResult(requestId) {
+            try {
+                // Add cache-busting to ensure fresh results
+                const timestamp = Date.now();
+                const response = await fetch(`${API_BASE}/api/v1/results/${requestId}?_t=${timestamp}`, {
+                    cache: 'no-cache',
+                    headers: {
+                        'Cache-Control': 'no-cache',
+                        'Pragma': 'no-cache'
+                    }
+                });
+                const data = await response.json();
+                if (!response.ok || !data.success) throw new Error(data.detail || JSON.stringify(data));
+                const result = data.data || {};
+                const initialCapital = result.initial_capital != null ? parseFloat(result.initial_capital) : null;
+                const finalValue = result.final_value != null ? parseFloat(result.final_value) : null;
+                const totalReturn = result.total_return != null ? parseFloat(result.total_return) : (initialCapital != null && finalValue != null ? (finalValue - initialCapital) / initialCapital : null);
+                const roiPct = totalReturn != null && !isNaN(totalReturn) ? totalReturn * 100 : null;
+                const annualizedReturn = result.annualized_return != null ? parseFloat(result.annualized_return) : null;
+                const sharpeRatio = result.sharpe_ratio != null ? parseFloat(result.sharpe_ratio) : null;
+                const maxDrawdown = result.max_drawdown != null ? parseFloat(result.max_drawdown) : null;
+                const totalTrades = result.total_trades != null ? parseInt(result.total_trades) : null;
+                const formatNumber = (num) => (num == null || isNaN(num) ? 'N/A' : num.toFixed(2));
+                const formatPercent = (num) => (num == null || isNaN(num) ? 'N/A' : `${num.toFixed(2)}%`);
+                const formatCurrency = (num) => (num == null || isNaN(num) ? 'N/A' : `$${num.toLocaleString()}`);
+                let durationDays = result.duration_days;
+                if (durationDays == null && result.start_date && result.end_date) {
+                    const start = new Date(result.start_date);
+                    const end = new Date(result.end_date);
+                    if (!isNaN(start) && !isNaN(end)) {
+                        durationDays = Math.max(1, Math.round((end - start) / (1000 * 60 * 60 * 24)));
+                    }
+                }
+                const displayTime = new Date().toLocaleTimeString();
+                showResult(`
+                    ✅ Backtest Results: <span style="font-size:11px; color:#888;">(Updated: ${displayTime})</span><br>
+                    <span style="color:#555">Request ID:</span> ${requestId} &nbsp; <button onclick="goToChartsWithId('${requestId}')" style="padding:2px 6px;font-size:12px;">Open Charts</button><br>
+                    Strategy: ${result.strategy_name || 'N/A'}<br>
+                    Period: ${(result.start_date || '').split('T')[0]} to ${(result.end_date || '').split('T')[0]}<br>
+                    Initial Capital: ${formatCurrency(initialCapital)}<br>
+                    Final Value: ${formatCurrency(finalValue)}<br>
+                    Total Return: ${formatPercent(roiPct)}<br>
+                    Annualized Return: ${formatPercent(annualizedReturn != null ? annualizedReturn * 100 : null)}<br>
+                    Sharpe Ratio: ${formatNumber(sharpeRatio)}<br>
+                    Max Drawdown: ${formatPercent(maxDrawdown != null ? maxDrawdown * 100 : null)}<br>
+                    Trades: ${totalTrades == null || isNaN(totalTrades) ? 'N/A' : totalTrades}<br>
+                `, 'success');
+            } catch (error) {
+                showResult(`❌ Error loading results: ${error.message}`, 'error');
+            }
+        }
+        
+        async function loadResults() {
+            try {
+                showResult('Loading existing results...', 'info');
+                const response = await fetch(`${API_BASE}/api/v1/results/?limit=10000`);
+                const data = await response.json();
+                
+                const resultsList = document.getElementById('resultsList');
+                
+                if (data.success && data.data.length > 0) {
+                    let html = '<h3>Existing Results:</h3><ul>';
+                    data.data.forEach(result => {
+                        const initialCapital = result.initial_capital != null ? parseFloat(result.initial_capital) : null;
+                        const finalValue = result.final_value != null ? parseFloat(result.final_value) : null;
+                        const totalReturn = result.total_return != null ? parseFloat(result.total_return) : (initialCapital != null && finalValue != null ? (finalValue - initialCapital) / initialCapital : null);
+                        const roiPct = totalReturn != null && !isNaN(totalReturn) ? (totalReturn * 100) : null;
+                        const roiText = roiPct == null ? 'N/A' : roiPct.toFixed(2) + '%';
+                        let durationText = 'N/A';
+                        if (result.start_date && result.end_date) {
+                            const s = new Date(result.start_date), e = new Date(result.end_date);
+                            if (!isNaN(s) && !isNaN(e)) durationText = Math.max(1, Math.round((e - s) / (1000 * 60 * 60 * 24)));
+                        }
+                        const rid = result.request_id || '';
+                        html += `
+                            <li>
+                                <div>
+                                    <strong>${result.strategy_name || 'N/A'}</strong>
+                                    <div class="muted">ID: ${rid}</div>
+                                </div>
+                                <div>
+                                    ROI: ${roiText} - ${durationText} days
+                                    <button onclick="goToChartsWithId('${rid}')" style="margin-left: 10px; padding: 2px 8px; font-size: 12px;">View Details</button>
+                                </div>
+                            </li>
+                        `;
+                    });
+                    html += '</ul>';
+                    resultsList.innerHTML = html;
+                    showResult(`✅ Found ${data.data.length} existing results`, 'success');
+                } else {
+                    resultsList.innerHTML = '<p>No existing results found.</p>';
+                    showResult('No existing results found', 'info');
+                }
+            } catch (error) {
+                showResult(`❌ Error loading results: ${error.message}`, 'error');
+            }
+        }
+        
+        // Form state management
+        const DEFAULT_FORM_VALUES = {
+            strategy: '',
+            capital: '100000',  // Default to 100k instead of 10k
+            startDate: '2024-01-01',
+            endDate: '2024-01-31',
+            shareClass: 'USDT'
+        };
+
+        function resetForm() {
+            document.getElementById('strategy').value = DEFAULT_FORM_VALUES.strategy;
+            document.getElementById('capital').value = DEFAULT_FORM_VALUES.capital;
+            document.getElementById('startDate').value = DEFAULT_FORM_VALUES.startDate;
+            document.getElementById('endDate').value = DEFAULT_FORM_VALUES.endDate;
+            document.getElementById('shareClass').value = DEFAULT_FORM_VALUES.shareClass;
+            
+            // Clear overrides
+            document.getElementById('overridesYaml').value = '';
+            document.getElementById('fullConfigYaml').value = '';
+            OVERRIDES = {};
+            FULL_CONFIG = null;
+            
+            // Clear status
+            const statusEl = document.getElementById('configStatus');
+            if (statusEl) statusEl.style.display = 'none';
+            
+            showResult('✅ Form reset to defaults', 'success');
+        }
+
+        function preserveFormState() {
+            // Store current form values to prevent accidental overwrites
+            return {
+                strategy: document.getElementById('strategy').value,
+                capital: document.getElementById('capital').value,
+                startDate: document.getElementById('startDate').value,
+                endDate: document.getElementById('endDate').value,
+                shareClass: document.getElementById('shareClass').value
+            };
+        }
+
+        function validateFormInputs() {
+            const capital = parseFloat(document.getElementById('capital').value || '0');
+            const strategy = document.getElementById('strategy').value;
+            
+            if (capital < 1000) {
+                showResult('❌ Initial capital must be at least $1,000', 'error');
+                return false;
+            }
+            
+            if (capital < 50000 && strategy.includes('leveraged')) {
+                showResult('⚠️ Warning: Leveraged strategies typically require $50k+ capital', 'info');
+            }
+            
+            return true;
+        }
+        
+        // Auto-load strategies on page load
+        window.addEventListener('load', function() {
+            testConnection();
+            setTimeout(loadStrategies, 1000);
+            fetchDetailedHealth();
+            setInterval(fetchDetailedHealth, 30000);
+            
+            // Set better defaults
+            document.getElementById('capital').value = DEFAULT_FORM_VALUES.capital;
+        });
+
+        // Ensure functions are accessible for inline handlers
+        window.loadBacktestResult = loadBacktestResult;
+        window.goToChartsWithId = goToChartsWithId;
+        window.loadStrategies = loadStrategies;
+        window.testConnection = testConnection;
+        window.loadFullConfig = loadFullConfig;
+        window.resetForm = resetForm;
+        window.pollBacktestStatus = pollBacktestStatus;
+        window.createBacktest = createBacktest;
+        window.loadResults = loadResults;
+
+        // ------- Overrides Builder -------
+        function resetOverrides() {
+            OVERRIDES = {};
+            renderOverridesBuilder(FULL_CONFIG);
+            const statusEl = document.getElementById('configStatus');
+            if (statusEl) {
+                statusEl.style.display = 'block';
+                statusEl.className = 'result info';
+                statusEl.textContent = 'Overrides cleared.';
+            }
+        }
+
+        function applyBuilderToYaml() {
+            try {
+                const yamlOut = jsyaml.dump(OVERRIDES, { noRefs: true, skipInvalid: true });
+                const overridesEl = document.getElementById('overridesYaml');
+                overridesEl.value = yamlOut;
+                const statusEl = document.getElementById('configStatus');
+                if (statusEl) {
+                    statusEl.style.display = 'block';
+                    statusEl.className = 'result success';
+                    statusEl.textContent = '✅ Generated overrides YAML from builder.';
+                }
+            } catch (e) {
+                showResult(`❌ Failed to generate YAML: ${e.message}`, 'error');
+            }
+        }
+
+        function renderOverridesBuilder(config) {
+            const container = document.getElementById('overridesBuilder');
+            if (!container) return;
+            container.innerHTML = '';
+            if (!config) {
+                container.innerHTML = '<div class="muted">Load full config first.</div>';
+                return;
+            }
+            const sections = ['backtest', 'strategy', 'fees', 'rates', 'execution', 'rebalancing', 'risk'];
+            sections.forEach((section) => {
+                if (!(section in config)) return;
+                const secData = config[section];
+                const details = document.createElement('details');
+                details.open = false;
+                const summary = document.createElement('summary');
+                summary.textContent = section;
+                summary.style.fontWeight = '600';
+                details.appendChild(summary);
+                const secWrapper = document.createElement('div');
+                secWrapper.style.marginTop = '8px';
+                secWrapper.style.paddingLeft = '8px';
+                renderFields(secWrapper, secData, section);
+                details.appendChild(secWrapper);
+                container.appendChild(details);
+            });
+        }
+
+        function renderFields(parentEl, obj, pathPrefix) {
+            Object.keys(obj).forEach((key) => {
+                const value = obj[key];
+                const path = `${pathPrefix}.${key}`;
+                if (value && typeof value === 'object' && !Array.isArray(value)) {
+                    const nestedDetails = document.createElement('details');
+                    const sum = document.createElement('summary');
+                    sum.textContent = key;
+                    nestedDetails.appendChild(sum);
+                    const nestedWrapper = document.createElement('div');
+                    nestedWrapper.style.marginLeft = '12px';
+                    renderFields(nestedWrapper, value, path);
+                    nestedDetails.appendChild(nestedWrapper);
+                    parentEl.appendChild(nestedDetails);
+                    return;
+                }
+                const row = document.createElement('div');
+                row.style.display = 'flex';
+                row.style.alignItems = 'center';
+                row.style.gap = '8px';
+                row.style.margin = '6px 0';
+                const label = document.createElement('label');
+                label.style.minWidth = '220px';
+                label.style.fontSize = '12px';
+                label.textContent = `${key}`;
+                row.appendChild(label);
+                let input;
+                if (typeof value === 'boolean') {
+                    input = document.createElement('input');
+                    input.type = 'checkbox';
+                    input.checked = getOverrideOrDefault(path, value) === true;
+                    input.addEventListener('change', () => setOverride(path, input.checked, value));
+                } else if (typeof value === 'number') {
+                    input = document.createElement('input');
+                    input.type = 'number';
+                    input.step = 'any';
+                    input.value = getOverrideOrDefault(path, value);
+                    input.addEventListener('change', () => setOverride(path, parseFloatSafe(input.value), value));
+                } else {
+                    input = document.createElement('input');
+                    input.type = 'text';
+                    input.value = getOverrideOrDefault(path, value);
+                    input.addEventListener('change', () => setOverride(path, input.value, value));
+                }
+                input.style.flex = '1';
+                input.style.padding = '6px 8px';
+                input.style.border = '1px solid #ddd';
+                input.style.borderRadius = '6px';
+                row.appendChild(input);
+                const hint = document.createElement('span');
+                hint.className = 'muted';
+                hint.textContent = `default: ${String(value)}`;
+                row.appendChild(hint);
+                parentEl.appendChild(row);
+            });
+        }
+
+        function parseFloatSafe(v) {
+            const n = parseFloat(v);
+            return isNaN(n) ? 0 : n;
+        }
+
+        function getOverrideOrDefault(path, defVal) {
+            const ov = getDeep(OVERRIDES, path);
+            return ov !== undefined ? ov : defVal;
+        }
+
+        function setOverride(path, newVal, originalVal) {
+            if (JSON.stringify(newVal) === JSON.stringify(originalVal)) {
+                deleteDeep(OVERRIDES, path);
+            } else {
+                setDeep(OVERRIDES, path, newVal);
+            }
+        }
+
+        function setDeep(obj, path, value) {
+            const parts = path.split('.');
+            let curr = obj;
+            for (let i = 0; i < parts.length - 1; i++) {
+                const p = parts[i];
+                if (!(p in curr) || typeof curr[p] !== 'object' || curr[p] === null) {
+                    curr[p] = {};
+                }
+                curr = curr[p];
+            }
+            curr[parts[parts.length - 1]] = value;
+        }
+
+        function getDeep(obj, path) {
+            const parts = path.split('.');
+            let curr = obj;
+            for (let i = 0; i < parts.length; i++) {
+                const p = parts[i];
+                if (!curr || !(p in curr)) return undefined;
+                curr = curr[p];
+            }
+            return curr;
+        }
+
+        function deleteDeep(obj, path) {
+            const parts = path.split('.');
+            let curr = obj;
+            const stack = [];
+            for (let i = 0; i < parts.length - 1; i++) {
+                const p = parts[i];
+                if (!(p in curr)) return;
+                stack.push({ parent: curr, key: p });
+                curr = curr[p];
+                if (typeof curr !== 'object' || curr === null) return;
+            }
+            delete curr[parts[parts.length - 1]];
+            for (let i = stack.length - 1; i >= 0; i--) {
+                const { parent, key } = stack[i];
+                if (parent && typeof parent[key] === 'object' && parent[key] && Object.keys(parent[key]).length === 0) {
+                    delete parent[key];
+                }
+            }
+        }
+    </script>
+</body>
+</html>

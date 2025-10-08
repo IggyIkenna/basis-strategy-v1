@@ -1,0 +1,87 @@
+{
+  "timestamp": "2025-10-01T12:09:30.908549",
+  "orchestrator": "cex_data_orchestrator",
+  "date_range": "2024-01-01 to 2025-09-18",
+  "total_duration_seconds": 0.174096,
+  "start_time": "2025-10-01T12:09:30.734453",
+  "end_time": "2025-10-01T12:09:30.908549",
+  "total_downloaders": 5,
+  "successful_downloaders": 1,
+  "failed_downloaders": 0,
+  "skipped_downloaders": 0,
+  "total_downloads": 2,
+  "successful_downloads": 2,
+  "failed_downloads": 0,
+  "total_records": 558,
+  "downloader_results": [
+    {
+      "success": true,
+      "total_downloads": 2,
+      "successful_downloads": 2,
+      "failed_downloads": 0,
+      "total_records": 558,
+      "date_range": "2024-01-01 to 2025-09-18",
+      "downloads": [
+        {
+          "instrument": "ETHUSDT",
+          "success": true,
+          "records": 279,
+          "filepath": "data/market_data/derivatives/funding_rates/okx_ETHUSDT_funding_rates_2024-01-01_2025-09-18.csv",
+          "date_range": "2024-01-01 to 2025-09-18",
+          "sample_data": [
+            {
+              "funding_timestamp": "2024-05-01T00:00:00Z",
+              "funding_rate": 7.49890225669e-05,
+              "symbol": "ETHUSDT",
+              "source": "okx"
+            },
+            {
+              "funding_timestamp": "2024-05-01T08:00:00Z",
+              "funding_rate": 5.0748186666e-06,
+              "symbol": "ETHUSDT",
+              "source": "okx"
+            },
+            {
+              "funding_timestamp": "2024-05-01T16:00:00Z",
+              "funding_rate": 2.0488518906e-06,
+              "symbol": "ETHUSDT",
+              "source": "okx"
+            }
+          ]
+        },
+        {
+          "instrument": "BTCUSDT",
+          "success": true,
+          "records": 279,
+          "filepath": "data/market_data/derivatives/funding_rates/okx_BTCUSDT_funding_rates_2024-01-01_2025-09-18.csv",
+          "date_range": "2024-01-01 to 2025-09-18",
+          "sample_data": [
+            {
+              "funding_timestamp": "2024-05-01T00:00:00Z",
+              "funding_rate": 0.0001521422572668,
+              "symbol": "BTCUSDT",
+              "source": "okx"
+            },
+            {
+              "funding_timestamp": "2024-05-01T08:00:00Z",
+              "funding_rate": 7.52886032957e-05,
+              "symbol": "BTCUSDT",
+              "source": "okx"
+            },
+            {
+              "funding_timestamp": "2024-05-01T16:00:00Z",
+              "funding_rate": 3.9713477865e-05,
+              "symbol": "BTCUSDT",
+              "source": "okx"
+            }
+          ]
+        }
+      ],
+      "downloader_name": "okx_funding_rates",
+      "duration_seconds": 0.174052,
+      "start_time": "2025-10-01T12:09:30.734469",
+      "end_time": "2025-10-01T12:09:30.908521"
+    }
+  ],
+  "failed_initializations": []
+}

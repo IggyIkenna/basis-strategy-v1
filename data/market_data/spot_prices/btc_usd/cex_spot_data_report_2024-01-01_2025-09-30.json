@@ -1,0 +1,46 @@
+{
+  "timestamp": "2025-10-01T17:38:21.918491",
+  "downloader": "cex_spot_data",
+  "date_range": "2024-01-01 to 2025-09-30",
+  "enforced_dates": {
+    "binance_spot": "2024-01-01",
+    "bybit": "2024-01-01",
+    "okx": "2024-01-01"
+  },
+  "exchanges_requested": [
+    "binance_spot",
+    "binance_futures",
+    "bybit"
+  ],
+  "exchanges_available": [
+    "binance_spot",
+    "bybit"
+  ],
+  "total_downloads": 2,
+  "successful_downloads": 2,
+  "failed_downloads": 0,
+  "total_records": 30294,
+  "downloads": [
+    {
+      "success": true,
+      "asset": "BTC",
+      "record_count": 14967,
+      "chunks_processed": 16,
+      "chunks_failed": 0,
+      "failed_chunks": [],
+      "output_file": "data/market_data/spot_prices/protocol_tokens/binance_BTCUSDT_1h_2024-01-01_2025-09-30.csv",
+      "date_range": "2024-01-01 to 2025-09-30",
+      "exchange": "binance_spot",
+      "data_type": "spot_equivalent"
+    },
+    {
+      "success": true,
+      "symbol": "BTCUSDT",
+      "record_count": 15327,
+      "output_file": "data/market_data/spot_prices/eth_usd/bybit_BTCUSDT_spot_1h_2024-01-01_2025-09-30.csv",
+      "date_range": "2024-01-01 to 2025-09-30",
+      "data_type": "spot_equivalent",
+      "exchange": "bybit"
+    }
+  ]
+}

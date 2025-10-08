@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Charts Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 1200px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; }
+        .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+        .input { padding: 8px 10px; min-width: 420px; border: 1px solid #ddd; border-radius: 6px; }
+        .btn { padding: 10px 14px; border: none; border-radius: 6px; cursor: pointer; }
+        .btn-primary { background: #007bff; color: white; }
+        .btn-secondary { background: #6c757d; color: white; }
+        .btn-link { background: transparent; color: #007bff; text-decoration: underline; padding: 0; }
+        .muted { color: #666; font-size: 12px; }
+        .section { margin-top: 18px; }
+        .panel { padding: 12px; border: 1px solid #e5e7eb; border-radius: 8px; background: #fafafa; }
+        .grid { display: grid; grid-template-columns: 1fr; gap: 16px; }
+        @media (min-width: 900px) { .grid-2 { grid-template-columns: 1fr 1fr; } }
+        iframe { width: 100%; height: 560px; border: 1px solid #e5e7eb; border-radius: 6px; background: white; }
+        .list { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .item { display: flex; justify-content: space-between; align-items: center; background: #fff; border: 1px solid #eee; border-radius: 6px; padding: 8px 10px; }
+        .item .actions { display: flex; gap: 8px; }
+        .debug { font-size: 12px; color: #555; max-height: 220px; overflow: auto; background: #f8f9fa; border-radius: 6px; padding: 10px; }
+        table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        th, td { border: 1px solid #e5e7eb; padding: 6px 8px; text-align: left; }
+        th { background: #f1f5f9; }
+        .table-wrap { max-height: 360px; overflow: auto; background: #fff; border: 1px solid #e5e7eb; border-radius: 6px; }
+        /* Health banner */
+        .health-banner { position: fixed; top: 16px; right: 16px; background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 8px 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.05); font-size: 12px; min-width: 220px; }
+        .health-row { display: flex; align-items: center; justify-content: space-between; margin: 4px 0; }
+        .health-title { font-weight: 600; font-size: 12px; margin-bottom: 4px; }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+        .dot-healthy { background: #22c55e; }
+        .dot-degraded { background: #f59e0b; }
+        .dot-unhealthy { background: #ef4444; }
+        .dot-unknown { background: #94a3b8; }
+    </style>
+    <script>
+        // Auto-detect API base URL based on environment
+        const API_BASE = (function() {
+            const hostname = window.location.hostname;
+            const port = window.location.port;
+            const protocol = window.location.protocol;
+            
+            console.log('API Detection:', { hostname, port, protocol, href: window.location.href });
+            
+            // Native development (Vite dev server on localhost:5173)
+            if (hostname === 'localhost' && port === '5173') {
+                console.log('Detected: Native development - using direct backend');
+                return 'http://localhost:8001';
+            }
+            
+            // All other cases: Docker localhost, production domains, etc.
+            // Use relative URLs that go through Caddy proxy
+            console.log('Detected: Production/Docker - using relative URLs through proxy');
+            return '';
+        })();
+        let lastCharts = null;
+        let eventsState = { total: 0, limit: 200, offset: 0, rows: [] };
+
+        function setStatus(message, type = 'info') {
+            const el = document.getElementById('status');
+            el.textContent = message;
+            el.className = type === 'error' ? 'muted' : 'muted';
+        }
+
+        // Health banner
+        function statusToClass(s) {
+            if (!s) return 'dot-unknown';
+            const m = String(s).toLowerCase();
+            if (m === 'healthy') return 'dot-healthy';
+            if (m === 'degraded') return 'dot-degraded';
+            if (m === 'unhealthy') return 'dot-unhealthy';
+            return 'dot-unknown';
+        }
+        function renderHealthBanner(data) {
+            const el = document.getElementById('healthBanner');
+            if (!el) return;
+            if (!data || typeof data !== 'object') {
+                el.innerHTML = '<div class="health-title">System Health</div><div class="health-row"><span><span class="status-dot dot-unknown"></span>status</span><span>unknown</span></div>';
+                return;
+            }
+            const overall = data.status || 'unknown';
+            const components = data.components || {};
+            const cache = components.cache || 'not_configured';
+            const db = components.database || 'not_configured';
+            const dp = components.data_provider || 'unknown';
+            el.innerHTML = `
+                <div class="health-title">System Health</div>
+                <div class="health-row"><span><span class="status-dot ${statusToClass(overall)}"></span>overall</span><span>${overall}</span></div>
+                <div class="health-row"><span><span class="status-dot ${statusToClass(cache)}"></span>cache</span><span>${cache}</span></div>
+                <div class="health-row"><span><span class="status-dot ${statusToClass(db)}"></span>database</span><span>${db}</span></div>
+                <div class="health-row"><span><span class="status-dot ${statusToClass(dp)}"></span>data</span><span>${dp}</span></div>
+            `;
+        }
+        async function fetchDetailedHealth() {
+            try {
+                const resp = await fetch(`${API_BASE}/health/detailed`);
+                const data = await resp.json();
+                renderHealthBanner(data);
+            } catch (e) {
+                renderHealthBanner(null);
+            }
+        }
+
+        function logDebug(message) {
+            const dbg = document.getElementById('debug');
+            const ts = new Date().toLocaleTimeString();
+            dbg.innerHTML += `[${ts}] ${message}<br/>`;
+            dbg.scrollTop = dbg.scrollHeight;
+        }
+
+        function getParam(name) {
+            const url = new URL(window.location.href);
+            return url.searchParams.get(name);
+        }
+
+        function fillFromQuery() {
+            const id = getParam('id');
+            if (id) {
+                document.getElementById('requestId').value = id;
+                loadCharts();
+                loadEvents();
+            }
+        }
+
+        async function listCharts(requestId) {
+            const url = `${API_BASE}/api/v1/results/${requestId}/charts`;
+            const resp = await fetch(url);
+            if (!resp.ok) {
+                const text = await resp.text();
+                throw new Error(`HTTP ${resp.status}: ${resp.statusText}\n${text}`);
+            }
+            const data = await resp.json();
+            if (!data || !data.charts) throw new Error('Invalid charts response');
+            return data.charts;
+        }
+
+        function renderChartList(charts, requestId) {
+            const list = document.getElementById('chartList');
+            list.innerHTML = '';
+            const entries = Object.entries(charts);
+            if (!entries.length) {
+                list.innerHTML = '<div class="muted">No charts available for this request.</div>';
+                return;
+            }
+            entries.forEach(([name, path]) => {
+                const fullUrl = `${API_BASE}${path}`;
+                const row = document.createElement('div');
+                row.className = 'item';
+                row.innerHTML = `
+                    <div><strong>${name}</strong><div class="muted">${fullUrl}</div></div>
+                    <div class="actions">
+                        <button class="btn btn-secondary" onclick="embedChart('${fullUrl}', '${name}')">Embed</button>
+                        <a class="btn btn-link" href="${fullUrl}" target="_blank" rel="noopener">Open</a>
+                    </div>
+                `;
+                list.appendChild(row);
+            });
+        }
+
+        function embedChart(url, name) {
+            const grid = document.getElementById('chartsGrid');
+            const wrapper = document.createElement('div');
+            wrapper.className = 'panel';
+            wrapper.innerHTML = `
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                    <div><strong>${name}</strong></div>
+                    <div class="muted">${url}</div>
+                </div>
+                <iframe src="${url}" loading="lazy"></iframe>
+            `;
+            grid.appendChild(wrapper);
+        }
+
+        async function loadCharts() {
+            const input = document.getElementById('requestId');
+            const id = input.value.trim();
+            document.getElementById('chartsGrid').innerHTML = '';
+            document.getElementById('chartList').innerHTML = '';
+            if (!id) {
+                setStatus('Enter a request ID from a completed backtest.', 'info');
+                return;
+            }
+            try {
+                setStatus('Loading charts list...');
+                logDebug(`Listing charts for ${id}...`);
+                const charts = await listCharts(id);
+                lastCharts = charts;
+                setStatus('Charts loaded. Click Embed or Open to view.');
+                renderChartList(charts, id);
+
+                // Prefer embedding dashboard automatically if present
+                if (charts.dashboard) {
+                    embedChart(`${API_BASE}${charts.dashboard}`, 'dashboard');
+                } else if (charts.equity_curve) {
+                    embedChart(`${API_BASE}${charts.equity_curve}`, 'equity_curve');
+                }
+            } catch (err) {
+                setStatus(`Error: ${err.message}`, 'error');
+                logDebug(`Error loading charts: ${err.stack || err.message}`);
+            }
+        }
+
+        function embedAll() {
+            if (!lastCharts) return;
+            const grid = document.getElementById('chartsGrid');
+            grid.innerHTML = '';
+            Object.entries(lastCharts).forEach(([name, path]) => embedChart(`${API_BASE}${path}`, name));
+        }
+
+        async function loadEvents(direction) {
+            const id = document.getElementById('requestId').value.trim();
+            if (!id) return;
+            if (direction === 'next') eventsState.offset += eventsState.limit;
+            if (direction === 'prev') eventsState.offset = Math.max(0, eventsState.offset - eventsState.limit);
+            try {
+                const url = `${API_BASE}/api/v1/results/${id}/events?limit=${eventsState.limit}&offset=${eventsState.offset}`;
+                logDebug(`Fetching events: ${url}`);
+                const resp = await fetch(url);
+                if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
+                const data = await resp.json();
+                const { events, total_events, has_event_log } = data.data || {};
+                eventsState.rows = Array.isArray(events) ? events : [];
+                eventsState.total = total_events || eventsState.rows.length;
+                renderEventsTable(eventsState.rows, has_event_log);
+                renderEventsPager();
+            } catch (e) {
+                logDebug(`Error loading events: ${e.message}`);
+            }
+        }
+
+        function renderEventsTable(rows, rich) {
+            const container = document.getElementById('eventsTable');
+            if (!rows.length) {
+                container.innerHTML = '<div class="muted">No events found. Run a backtest first.</div>';
+                return;
+            }
+            // Determine columns
+            const coreCols = ['timestamp','event_type','gross_value','net_value','total_fees_paid'];
+            const hasPositions = !!rows[0].positions;
+            const hasPnl = !!rows[0].pnl_attribution;
+            let html = '<div class="table-wrap"><table><thead><tr>';
+            coreCols.forEach(c => html += `<th>${c}</th>`);
+            if (hasPnl) html += '<th>pnl_attribution</th>';
+            if (hasPositions) html += '<th>positions</th>';
+            html += '</tr></thead><tbody>';
+            rows.forEach(r => {
+                const ts = r.timestamp || '';
+                html += '<tr>';
+                html += `<td>${typeof ts === 'string' ? ts : new Date(ts).toISOString()}</td>`;
+                html += `<td>${r.event_type || ''}</td>`;
+                html += `<td>${Number(r.gross_value ?? '').toLocaleString()}</td>`;
+                html += `<td>${Number(r.net_value ?? '').toLocaleString()}</td>`;
+                html += `<td>${Number(r.total_fees_paid ?? '').toLocaleString()}</td>`;
+                if (hasPnl) html += `<td><code>${JSON.stringify(r.pnl_attribution || {})}</code></td>`;
+                if (hasPositions) html += `<td><code>${Object.entries(r.positions || {}).map(([k,v])=>`${k}=${v}`).join('; ')}</code></td>`;
+                html += '</tr>';
+            });
+            html += '</tbody></table></div>';
+            if (!rich) html += '<div class="muted">Note: Showing trade_history fallback (limited). Run a new backtest to populate full event_log.</div>';
+            container.innerHTML = html;
+        }
+
+        function renderEventsPager() {
+            const el = document.getElementById('eventsPager');
+            const start = eventsState.offset + 1;
+            const end = Math.min(eventsState.offset + eventsState.limit, eventsState.total);
+            el.innerHTML = `
+                <div class="row">
+                    <div class="muted">Showing ${start}-${end} of ${eventsState.total}</div>
+                    <div style="margin-left:auto;display:flex;gap:8px;">
+                        <button class="btn" onclick="loadEvents('prev')">Prev</button>
+                        <button class="btn" onclick="loadEvents('next')">Next</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        async function downloadAll() {
+            const id = document.getElementById('requestId').value.trim();
+            if (!id) return;
+            try {
+                setStatus('Creating download ZIP...', 'info');
+                
+                // Create download link
+                const downloadUrl = `${API_BASE}/api/v1/results/${id}/download`;
+                
+                // Trigger download
+                const link = document.createElement('a');
+                link.href = downloadUrl;
+                link.download = `${id}_export.zip`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                
+                setStatus('Download started! Check your Downloads folder.', 'success');
+                logDebug(`Download initiated for ${id}`);
+            } catch (e) {
+                setStatus(`Download error: ${e.message}`, 'error');
+            }
+        }
+
+
+
+        window.addEventListener('load', () => { fillFromQuery(); fetchDetailedHealth(); setInterval(fetchDetailedHealth, 30000); });
+    </script>
+    
+</head>
+<body>
+    <div id="healthBanner" class="health-banner" aria-live="polite"></div>
+    <div class="container">
+        <h1>📈 Charts Test</h1>
+        <div class="muted">Paste a backtest request ID (from the test page) to view charts and events.</div>
+
+        <div class="section row">
+            <input id="requestId" class="input" placeholder="e.g. 123e4567-e89b-12d3-a456-426614174000" />
+            <button class="btn btn-primary" onclick="loadCharts(); loadEvents();">Load</button>
+            <button class="btn" onclick="embedAll()">Embed All Charts</button>
+        </div>
+        <div class="section row">
+            <button class="btn btn-primary" onclick="downloadAll()">Download Charts + CSV (ZIP)</button>
+        </div>
+
+        <div id="status" class="muted section">Idle</div>
+
+        <div class="section">
+            <h3>Available Charts</h3>
+            <div id="chartList" class="list"></div>
+        </div>
+
+        <div class="section">
+            <h3>Embedded Charts</h3>
+            <div id="chartsGrid" class="grid grid-2"></div>
+        </div>
+
+        <div class="section">
+            <h3>Events</h3>
+            <div id="eventsPager" class="panel" style="margin-bottom:8px;"></div>
+            <div id="eventsTable"></div>
+        </div>
+
+        <div class="section">
+            <h3>Debug</h3>
+            <div id="debug" class="debug"></div>
+        </div>
+    </div>
+</body>
+</html>
+
+

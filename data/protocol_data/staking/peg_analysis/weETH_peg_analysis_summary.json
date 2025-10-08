@@ -1,0 +1,44 @@
+{
+  "processing_completed": "2025-09-29T17:28:39.744449",
+  "data_sources": {
+    "fair_value_source": "aave_oracle_derived_hourly",
+    "market_data_source": "dex_pools_24h_median",
+    "oracle_file": "weETH_ETH_oracle_2024-01-01_2025-09-18_hourly.csv",
+    "market_files": [
+      "curve"
+    ],
+    "market_methodology": "24_hour_rolling_median",
+    "aave_interpolation": "pre_interpolated_by_fetch_aave_data"
+  },
+  "output_file": "weETH_peg_analysis_2024-01-01_2025-09-18.csv",
+  "records_processed": 12063,
+  "asset": "weETH",
+  "base_asset": "ETH",
+  "peg_statistics": {
+    "average_premium_percent": -0.06936319180023455,
+    "std_dev_premium_percent": 0.07917628798626827,
+    "min_premium_percent": -0.5169794814825865,
+    "max_premium_percent": 0.0695195348965278
+  },
+  "route_analysis": {
+    "direct_etherfi_optimal": 11127,
+    "dex_swap_optimal": 936,
+    "direct_etherfi_percentage": 92.24073613528972,
+    "dex_swap_percentage": 7.759263864710271
+  },
+  "cost_analysis": {
+    "simulation_size_usd": 10000,
+    "average_direct_cost_usd": 19.650169941142337,
+    "average_dex_cost_usd": 39.65016994114234,
+    "average_cost_difference_usd": 20.0,
+    "profitable_dex_opportunities": 936,
+    "profitable_dex_percentage": 7.759263864710271,
+    "direct_etherfi_optimal_with_costs": 11127,
+    "dex_swap_optimal_with_costs": 936
+  },
+  "usage": {
+    "purpose": "staking_spread_risk_analysis",
+    "integration": "backtest_entry_exit_route_optimization",
+    "methodology": "aave_oracle_as_fair_value_benchmark"
+  }
+}

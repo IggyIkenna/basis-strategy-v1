@@ -1,0 +1,44 @@
+{
+  "processing_completed": "2025-09-29T17:28:33.420631",
+  "data_sources": {
+    "fair_value_source": "aave_oracle_derived_hourly",
+    "market_data_source": "dex_pools_24h_median",
+    "oracle_file": "wstETH_ETH_oracle_2024-01-01_2025-09-18_hourly.csv",
+    "market_files": [
+      "uniswap"
+    ],
+    "market_methodology": "24_hour_rolling_median",
+    "aave_interpolation": "pre_interpolated_by_fetch_aave_data"
+  },
+  "output_file": "wstETH_peg_analysis_2024-01-01_2025-09-18.csv",
+  "records_processed": 12068,
+  "asset": "wstETH",
+  "base_asset": "ETH",
+  "peg_statistics": {
+    "average_premium_percent": -0.07149690902836146,
+    "std_dev_premium_percent": 0.06227863680199071,
+    "min_premium_percent": -0.3405662329249357,
+    "max_premium_percent": -0.003340932670047197
+  },
+  "route_analysis": {
+    "direct_lido_optimal": 10710,
+    "dex_swap_optimal": 1358,
+    "direct_lido_percentage": 88.74709976798144,
+    "dex_swap_percentage": 11.252900232018561
+  },
+  "cost_analysis": {
+    "simulation_size_usd": 10000,
+    "average_direct_cost_usd": 14.737736161750083,
+    "average_dex_cost_usd": 29.73773616175008,
+    "average_cost_difference_usd": 15.0,
+    "profitable_dex_opportunities": 1358,
+    "profitable_dex_percentage": 11.252900232018561,
+    "direct_lido_optimal_with_costs": 10710,
+    "dex_swap_optimal_with_costs": 1358
+  },
+  "usage": {
+    "purpose": "staking_spread_risk_analysis",
+    "integration": "backtest_entry_exit_route_optimization",
+    "methodology": "aave_oracle_as_fair_value_benchmark"
+  }
+}

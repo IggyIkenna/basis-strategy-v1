@@ -1,0 +1,32 @@
+# Frontend build + Caddy server Dockerfile (multi-stage)
+
+# ======================
+# Build frontend
+# ======================
+FROM node:20-alpine AS webbuilder
+WORKDIR /workspace
+COPY frontend/ ./frontend/
+WORKDIR /workspace/frontend
+
+# Clear npm cache and install with legacy peer deps to handle conflicts
+RUN npm cache clean --force && \
+    npm install --no-audit --no-fund --legacy-peer-deps && \
+    npm run build
+
+# ======================
+# Caddy static server + reverse proxy
+# ======================
+FROM caddy:2-alpine
+
+ENV APP_DOMAIN=localhost
+ENV ACME_EMAIL=admin@example.com
+
+# Caddyfile configuration
+COPY deploy/Caddyfile /etc/caddy/Caddyfile
+
+# Static assets from Vite build
+COPY --from=webbuilder /workspace/frontend/dist /usr/share/caddy
+
+EXPOSE 80 443
+
+

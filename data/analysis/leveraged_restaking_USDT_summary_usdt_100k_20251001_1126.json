@@ -1,0 +1,116 @@
+{
+  "config": {
+    "initial_usdt": 100000.0,
+    "allocation_to_long_pct": 0.5,
+    "binance_hedge_pct": 0.5,
+    "bybit_hedge_pct": 0.5,
+    "max_ltv": 0.93
+  },
+  "initial_positions": {
+    "long": {
+      "timestamp": "2024-05-12 00:00:00+00:00",
+      "iteration_count": 1,
+      "mode": "ATOMIC_FLASH",
+      "flash_amount_usd": 501515.8884735185,
+      "flash_fee_usd": 0.0,
+      "weeth_collateral": 182.19487562041522,
+      "weth_debt": 172.01120880207472,
+      "collateral_value_weth": 189.14791535970642,
+      "net_position_weth": 17.136706557631697,
+      "net_position_usd": 49963.78244542032,
+      "long_eth_exposure": 17.136706557631697,
+      "health_factor": 1.0446442464018877,
+      "leverage_multiplier": 11.037588507662852,
+      "total_gas_costs_usd": 15.21943224551184,
+      "weeth_price": 1.0381626525752412,
+      "ltv_target": 0.9094005000000001,
+      "ltv_actual": 0.9094005000000002,
+      "venue_positions": {
+        "etherfi": {
+          "eth_staked": 189.14791535970642,
+          "weeth_received": 182.19487562041522
+        },
+        "aave": {
+          "weeth_collateral": 182.19487562041522,
+          "weth_debt": 172.01120880207472,
+          "aweeth_balance": 182.19487562041522
+        }
+      }
+    },
+    "short": {
+      "binance": {
+        "eth_short": 8.587317562438386,
+        "notional_usd": 25000.0,
+        "entry_price": 2911.27,
+        "margin_posted": 3750.0,
+        "exec_cost": 7.499999999999999,
+        "entry_price_close": 2919.77
+      },
+      "bybit": {
+        "eth_short": 8.587612540662345,
+        "notional_usd": 25000.0,
+        "entry_price": 2911.17,
+        "margin_posted": 3750.0,
+        "exec_cost": 7.499999999999999,
+        "entry_price_close": 2919.92
+      },
+      "total_eth_short": 17.17493010310073,
+      "total_notional_usd": 50000.0,
+      "total_margin_posted": 7500.0,
+      "total_exec_costs": 14.999999999999998
+    },
+    "net_delta_eth": -0.025801555485692518,
+    "delta_pct": -0.15045403277521519
+  },
+  "summary": {
+    "total_hours": 1176,
+    "days_analyzed": 49.0,
+    "years_analyzed": 0.13415468856947296,
+    "initial_usdt": 100000.0,
+    "initial_cex_balance_usd": 49985.0,
+    "initial_eth_wallet_assets_usd": 551479.6709189388,
+    "initial_aave_debt_usd": 501515.8884735185,
+    "initial_eth_gas_debt_usd": 18.872095984434683,
+    "initial_total_value_usd": 99929.9103494359,
+    "final_cex_balance_usd": 42645.02778176461,
+    "final_eth_wallet_assets_usd": 641965.7497378574,
+    "final_aave_debt_usd": 583391.4031923288,
+    "final_eth_gas_debt_usd": 21.880109829452962,
+    "final_total_value_usd": 101197.4942174638,
+    "actual_total_pnl_usd": 1267.5838680278976,
+    "attribution_pnl_usd": 1346.4775829095115,
+    "pnl_reconciliation_diff": -78.89371488161396,
+    "initial_aave_net_usd": 49963.78244542032,
+    "final_aave_net_usd": 58574.346545528606,
+    "initial_net_position_usd": 49963.78244542032,
+    "final_position_value_usd": 58574.346545528606,
+    "cumulative_supply_pnl_usd": 379.22847770537777,
+    "cumulative_seasonal_pnl_usd": 0.0,
+    "cumulative_borrow_cost_usd": 2015.930630049066,
+    "cumulative_price_change_pnl_usd": 2318.002985253199,
+    "cumulative_funding_cost_usd": 665.1767499999997,
+    "cumulative_perp_mtm_pnl_usd": 0.0,
+    "cumulative_delta_pnl_usd": -52.15787860579174,
+    "cumulative_net_pnl_usd": 1346.4775829095115,
+    "total_gas_costs_usd": 18.87209598443468,
+    "gas_transfer_costs_usd": 3.6526637389228416,
+    "gas_leverage_loop_usd": 15.21943224551184,
+    "total_execution_costs_usd": 50.0,
+    "spot_execution_cost_usd": 35.0,
+    "perp_execution_costs_usd": 14.999999999999998,
+    "total_transaction_costs_usd": 68.87209598443468,
+    "initial_eth_purchased": 17.14912854761504,
+    "total_margin_posted": 7500.0,
+    "final_cex_account_balance": 42645.02778176461,
+    "rebalance_triggers": "0",
+    "apr_pct": 20.088058446153227,
+    "apy_pct": 227.1299563255718,
+    "sharpe_ratio": 39.32422078799014,
+    "annualized_volatility": 0.5108316971988989,
+    "max_drawdown_pct": -0.030885383141828236,
+    "avg_delta_pct_vs_initial": 0.33047249538007806,
+    "max_abs_delta_pct_vs_initial": 0.9071804765533129,
+    "avg_delta_pct_vs_aave": 0.3276764313271637,
+    "max_abs_delta_pct_vs_aave": 0.8976862371239968
+  }
+}

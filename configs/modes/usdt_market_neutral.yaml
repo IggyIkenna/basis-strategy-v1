@@ -1,0 +1,64 @@
+# USDT Market Neutral Mode Configuration
+# ETH staking leveraged (borrowing to stake) staking with LST rewards (staking rewards + seasonal bonuses in ETHFI and EIGEN wrapped up as KING tokens)
+# Hedged to USDT neutrality as USDT share class. we do this via shorting the perp on CEX. we only leverage the staking spread not the overall eth deltas which we keep neutral by the short perps. as we get pnl from funding rates, staking yield and seasonal rewards etc we expand the size of our overall trade. vice versa we shrink the trade as we lose money . stratgey manager needs ot decide on this 
+# We take stake_allocation_eth porpotion of our equity (which can change as we make/lose money) and buy eth with it, after which point we staje that eth get lst back and (for this mode) no leveraged staking so we then send the rest of the equity to cex to short perp (the amount which hedges us to flat). as our equity ratio betwen venues deviates from target we rebalance by increasing or unwinding the leveraged stakiing trade vs the perp short margin trade (margin on cex being equity there and our net assets on aave in usd (share class) terms being equity there). after rebalance our ltv on aave and margin ratio on cex shoudl be back at initial levels as when we first traded
+
+
+mode: "usdt_market_neutral"
+
+# Strategy parameters
+lending_enabled: true
+staking_enabled: true
+basis_trade_enabled: true
+borrowing_enabled: true
+  # Enable borrowing for leverage loops
+enable_market_impact: true
+
+# Asset configuration
+share_class: "USDT"
+asset: "ETH"
+lst_type: "weeth"  # or "wsteth"
+rewards_mode: "base_eigen_seasonal"  # base + EIGEN + seasonal rewards
+stake_allocation_eth: 0.5 #how much of initial capital to stake in eth vs freed up for margin on perp shorting
+dust_delta: 0.002
+
+# Execution parameters
+use_flash_loan: true
+unwind_mode: "fast"  # Flash loan unwinding
+hedge_venues: ["binance", "bybit", "okx"]
+hedge_allocation_binance: 0.4
+hedge_allocation_bybit: 0.3
+hedge_allocation_okx: 0.3
+
+# Risk parameters
+margin_ratio_target: 1.0  # Target CEX margin ratio (100% = full capital utilization)
+max_stake_spread_move: 0.02215  # Max expected adverse weETH/ETH oracle move (2.215%)
+# NOTE: max_ltv and liquidation_threshold loaded from data/protocol_data/aave/risk_params/aave_v3_risk_parameters.json
+
+# Sequential leverage parameters (used if use_flash_loan: false)
+max_leverage_loops: 23  # Maximum iterations for sequential leverage
+min_loop_position_usd: 10000.0  # Minimum position size to continue looping
+
+# Performance targets
+target_apy: 0.15  # 15% APY target (market neutral with leverage)
+max_drawdown: 0.04  # 4% max drawdown
+
+# REMOVED: capital_allocation - not needed in config, calculated at runtime
+
+# Data requirements
+data_requirements:
+  - "eth_prices"  # Binance ETH/USDT spot
+  - "weeth_prices"  # AAVE oracle prices
+  - "aave_lending_rates"  # AAVE rates (weETH, WETH)
+  - "staking_rewards"  # Base staking yields
+  - "eigen_rewards"  # EIGEN distributions (if rewards_mode != base_only)
+  - "ethfi_rewards"  # ETHFI distributions (if rewards_mode == base_eigen_seasonal)
+  - "funding_rates"  # CEX funding rates (all venues)
+  - "gas_costs"  # Ethereum gas prices
+  - "execution_costs"  # Execution cost model
+  - "aave_risk_params"  # AAVE v3 risk parameters JSON
+  - "lst_market_prices"  # LST/ETH market prices (Curve/Uniswap)
+
+# Monitoring
+monitoring_position_check_interval: 300  # 5 minutes
+monitoring_risk_check_interval: 60  # 1 minute

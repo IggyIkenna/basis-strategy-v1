@@ -1,0 +1,92 @@
+# Cursor Rules for Basis Strategy Project
+
+## Business Case Context
+
+### **Product Overview**
+This is a live and backtesting framework for multiple web3 and CEX trading strategies focused on **yield generation through staking and funding rates with optional leverage**. Think Ethena-style strategy enhanced with:
+- **Share Classes**: USDT and ETH share classes for client investments
+- **Fast Withdrawals**: Dynamic buffer management for rapid client redemptions
+- **Dynamic Rebalancing**: Maximum capital allocation to strategies minus withdrawal buffer
+- **Multiple Strategy Modes**: Several modes per share class (weighted average or client-selected)
+
+### **Product Offering**
+- Clients invest in either **USDT share class** or **ETH share class**
+- Strategy dynamically rebalances to ensure maximum capital allocated to active strategies
+- Buffer maintained for fast client withdrawals
+- Multiple strategy modes available (weighting/selection approach TBD)
+- **Fully automated** with web UI access
+
+### **Architecture Philosophy**
+- **Common architecture** for live and backtesting (easy testing)
+- Some divergences allowed for messaging and data simulations in backtest mode
+- Backtest mode uses historical data and simulations
+- Live mode uses real-time APIs and executions
+
+### **Development Roadmap**
+1. **Current Goal**: 100% working, tested, and deployed **backtesting system**
+2. **Phase 2**: Simulate full e2e workflows in staging env with small capital
+3. **Final Quality Gate**: Live trading on full capital deployment
+
+### **Testing Requirements** 
+- **MANDATORY**: Every completed task must include minimum 80% unit test coverage
+- Target: 80% unit and integration test coverage overall
+- Target: 100% e2e test coverage
+- No task is complete without comprehensive tests
+
+### **Key Strategies**
+- Pure lending (AAVE, Morpho, etc.)
+- Basis trading (funding rate arbitrage)
+- Leveraged staking with optional hedging
+- Market-neutral strategies
+- Cross-venue liquidity optimization
+
+## Refactoring Rules
+- **NEVER facilitate backward compatibility during refactors** - this introduces confusion and technical debt
+- When refactoring, break things cleanly and update all references
+- If something needs to be preserved, document it explicitly as a migration requirement
+- Prefer clean breaks over maintaining legacy support
+
+## Code Quality Rules
+- Use Pydantic for all data validation
+- Follow the new YAML-based config structure (modes/venues/scenarios)
+- All components must use the new config system
+- Tests must validate the new architecture, not legacy patterns
+
+## Documentation Rules
+- Keep docs/ as the single source of truth
+- Update docs/ first, then implement
+- If implementation differs from docs/, update docs/ to match reality
+- Never maintain multiple versions of the same information
+- **ALWAYS update docs/ when making breaking changes** to config, data, codebase, backend, or frontend
+- **ALWAYS check docs/ consistency** - ensure all docs reference the same logic and don't conflict
+- **ALWAYS run test suite** after changes to ensure everything still works
+- **NEVER create summary docs** - they waste context and become stale. Update existing docs instead
+
+## Testing Rules
+- **MANDATORY**: Every completed task MUST include minimum 80% unit test coverage
+- **ALWAYS run the test suite** in tests/ at the end of every set of changes
+- Follow the testing instructions in tests/README.md
+- Ensure all tests pass before considering changes complete
+- If tests fail, fix the issues before proceeding
+- Target: 80% unit/integration coverage, 100% e2e coverage
+- No task is complete without comprehensive tests
+
+## Configuration Rules
+- **ALWAYS check downstream usage** when adjusting config (adding/removing fields)
+- **ALWAYS update frontend/backend/tests** that use the config changes
+- **ALWAYS check data/ usage** when changing data files or business logic
+- **ALWAYS update filenames and business logic** when data is added/removed
+- **NO DUPLICATION** - Each config should have a single source of truth
+
+## README Compliance Rules
+- **ALWAYS update README files** when making changes to their respective directories
+- **ALWAYS follow instructions** in README files (tests/README.md, docs/README.md, etc.)
+- **ALWAYS update directory-specific READMEs** when changing structure, processes, or requirements
+- **ALWAYS validate** that README instructions still work after changes
+
+## Server Management Rules
+- **ALWAYS restart backend server** before running quality gates or long-running tests
+- **Use `./platform.sh backtest`** to start backend in backtest mode
+- **Use `./platform.sh stop-local`** to stop running servers before restarting
+- **If commands hang or timeout**, restart the server and try again
+- **Check server status** with `ps aux | grep python` if needed

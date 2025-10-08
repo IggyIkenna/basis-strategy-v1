@@ -1,0 +1,23 @@
+{
+  "timestamp": "2025-09-29T11:50:36.507071",
+  "orchestrator": "execution_cost_orchestrator",
+  "date_range": "2024-01-01 to 2025-09-18",
+  "total_downloads": 1,
+  "successful_downloads": 1,
+  "failed_downloads": 0,
+  "total_files_generated": 3,
+  "total_duration_minutes": 0.1,
+  "downloader_results": [
+    {
+      "name": "execution_costs",
+      "success": true,
+      "duration": 7.507536888122559,
+      "result": {
+        "csv_files": 1,
+        "json_files": 1,
+        "lookup_files": 1,
+        "total_files": 3
+      }
+    }
+  ]
+}

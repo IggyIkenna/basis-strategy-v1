@@ -1,0 +1,7 @@
+# Source: aave_oracle_derived
+# Asset_pair: USDT_ETH
+# Quote_currency: ETH
+# Methodology: asset_usd / eth_usd
+# Processed: 2025-09-29T11:44:24.572485
+# Records: 0
+timestamp,oracle_price_eth,asset,source,quote_currency

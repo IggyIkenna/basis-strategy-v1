@@ -1,0 +1,890 @@
+{
+  "base_configs": {
+    "configs/local.json": {
+      "status": "success",
+      "file_exists": true,
+      "valid_json": true,
+      "required_sections": {
+        "environment": true,
+        "api": true,
+        "database": true,
+        "redis": true,
+        "data": true,
+        "execution": true
+      },
+      "missing_sections": [],
+      "config_keys": [
+        "_comment",
+        "environment",
+        "debug",
+        "api",
+        "database",
+        "redis",
+        "cache",
+        "data",
+        "execution"
+      ]
+    },
+    "configs/default.json": {
+      "status": "success",
+      "file_exists": true,
+      "valid_json": true,
+      "required_sections": {
+        "environment": true,
+        "api": true,
+        "database": true,
+        "redis": true,
+        "data": true,
+        "execution": true
+      },
+      "missing_sections": [],
+      "config_keys": [
+        "_comment",
+        "environment",
+        "debug",
+        "api",
+        "database",
+        "redis",
+        "cache",
+        "storage",
+        "monitoring",
+        "backtest",
+        "data",
+        "output",
+        "fees",
+        "execution",
+        "execution_costs",
+        "ltv",
+        "operational_timing",
+        "health"
+      ]
+    }
+  },
+  "mode_configs": {
+    "configs/modes/btc_basis.yaml": {
+      "status": "success",
+      "file_exists": true,
+      "valid_yaml": true,
+      "required_fields": {
+        "mode": true,
+        "description": true,
+        "share_class": true,
+        "data_requirements": true
+      },
+      "missing_fields": [],
+      "mode": "btc_basis",
+      "share_class": "USDT",
+      "data_requirements_count": 5,
+      "data_requirements": [
+        "btc_prices",
+        "btc_futures_prices",
+        "funding_rates",
+        "gas_costs",
+        "execution_costs"
+      ]
+    },
+    "configs/modes/eth_leveraged.yaml": {
+      "status": "success",
+      "file_exists": true,
+      "valid_yaml": true,
+      "required_fields": {
+        "mode": true,
+        "description": true,
+        "share_class": true,
+        "data_requirements": true
+      },
+      "missing_fields": [],
+      "mode": "eth_leveraged",
+      "share_class": "ETH",
+      "data_requirements_count": 9,
+      "data_requirements": [
+        "eth_prices",
+        "weeth_prices",
+        "aave_lending_rates",
+        "staking_rewards",
+        "eigen_rewards",
+        "gas_costs",
+        "execution_costs",
+        "aave_risk_params",
+        "lst_market_prices"
+      ]
+    },
+    "configs/modes/eth_staking_only.yaml": {
+      "status": "success",
+      "file_exists": true,
+      "valid_yaml": true,
+      "required_fields": {
+        "mode": true,
+        "description": true,
+        "share_class": true,
+        "data_requirements": true
+      },
+      "missing_fields": [],
+      "mode": "eth_staking_only",
+      "share_class": "ETH",
+      "data_requirements_count": 7,
+      "data_requirements": [
+        "eth_prices",
+        "weeth_prices",
+        "staking_rewards",
+        "eigen_rewards",
+        "gas_costs",
+        "execution_costs",
+        "lst_market_prices"
+      ]
+    },
+    "configs/modes/pure_lending.yaml": {
+      "status": "success",
+      "file_exists": true,
+      "valid_yaml": true,
+      "required_fields": {
+        "mode": true,
+        "description": true,
+        "share_class": true,
+        "data_requirements": true
+      },
+      "missing_fields": [],
+      "mode": "pure_lending",
+      "share_class": "USDT",
+      "data_requirements_count": 5,
+      "data_requirements": [
+        "aave_lending_rates",
+        "usdt_prices",
+        "gas_costs",
+        "execution_costs",
+        "aave_risk_params"
+      ]
+    },
+    "configs/modes/usdt_market_neutral_no_leverage.yaml": {
+      "status": "success",
+      "file_exists": true,
+      "valid_yaml": true,
+      "required_fields": {
+        "mode": true,
+        "description": true,
+        "share_class": true,
+        "data_requirements": true
+      },
+      "missing_fields": [],
+      "mode": "usdt_market_neutral_no_leverage",
+      "share_class": "USDT",
+      "data_requirements_count": 8,
+      "data_requirements": [
+        "eth_prices",
+        "weeth_prices",
+        "staking_rewards",
+        "eigen_rewards",
+        "funding_rates",
+        "gas_costs",
+        "execution_costs",
+        "lst_market_prices"
+      ]
+    },
+    "configs/modes/usdt_market_neutral.yaml": {
+      "status": "success",
+      "file_exists": true,
+      "valid_yaml": true,
+      "required_fields": {
+        "mode": true,
+        "description": true,
+        "share_class": true,
+        "data_requirements": true
+      },
+      "missing_fields": [],
+      "mode": "usdt_market_neutral",
+      "share_class": "USDT",
+      "data_requirements_count": 11,
+      "data_requirements": [
+        "eth_prices",
+        "weeth_prices",
+        "aave_lending_rates",
+        "staking_rewards",
+        "eigen_rewards",
+        "ethfi_rewards",
+        "funding_rates",
+        "gas_costs",
+        "execution_costs",
+        "aave_risk_params",
+        "lst_market_prices"
+      ]
+    }
+  },
+  "venue_configs": {
+    "configs/venues/aave_v3.yaml": {
+      "status": "success",
+      "file_exists": true,
+      "valid_yaml": true,
+      "required_fields": {
+        "venue": true,
+        "type": true,
+        "description": true
+      },
+      "missing_fields": [],
+      "venue": "aave_v3",
+      "type": "defi",
+      "config_keys": [
+        "venue",
+        "type",
+        "description",
+        "network",
+        "contract_addresses",
+        "supported_assets",
+        "protocol_fees",
+        "gas_limits"
+      ]
+    },
+    "configs/venues/alchemy.yaml": {
+      "status": "success",
+      "file_exists": true,
+      "valid_yaml": true,
+      "required_fields": {
+        "venue": true,
+        "type": true,
+        "description": true
+      },
+      "missing_fields": [],
+      "venue": "alchemy",
+      "type": "infrastructure",
+      "config_keys": [
+        "venue",
+        "type",
+        "protocol",
+        "description",
+        "rpc",
+        "features",
+        "gas",
+        "rate_limits",
+        "premium",
+        "risk",
+        "monitoring"
+      ]
+    },
+    "configs/venues/binance.yaml": {
+      "status": "success",
+      "file_exists": true,
+      "valid_yaml": true,
+      "required_fields": {
+        "venue": true,
+        "type": true,
+        "description": true
+      },
+      "missing_fields": [],
+      "venue": "binance",
+      "type": "cex",
+      "config_keys": [
+        "venue",
+        "type",
+        "description",
+        "api_endpoints",
+        "trading_fees",
+        "max_position_size_usd",
+        "min_order_size_usd",
+        "max_leverage",
+        "supported_assets",
+        "rate_limits"
+      ]
+    },
+    "configs/venues/bybit.yaml": {
+      "status": "success",
+      "file_exists": true,
+      "valid_yaml": true,
+      "required_fields": {
+        "venue": true,
+        "type": true,
+        "description": true
+      },
+      "missing_fields": [],
+      "venue": "bybit",
+      "type": "cex",
+      "config_keys": [
+        "venue",
+        "type",
+        "description",
+        "api_endpoints",
+        "trading_fees",
+        "max_position_size_usd",
+        "min_order_size_usd",
+        "max_leverage",
+        "supported_assets",
+        "rate_limits"
+      ]
+    },
+    "configs/venues/etherfi.yaml": {
+      "status": "success",
+      "file_exists": true,
+      "valid_yaml": true,
+      "required_fields": {
+        "venue": true,
+        "type": true,
+        "description": true
+      },
+      "missing_fields": [],
+      "venue": "etherfi",
+      "type": "defi",
+      "config_keys": [
+        "venue",
+        "type",
+        "protocol",
+        "description",
+        "contracts",
+        "staking",
+        "rewards",
+        "risk",
+        "integration"
+      ]
+    },
+    "configs/venues/okx.yaml": {
+      "status": "success",
+      "file_exists": true,
+      "valid_yaml": true,
+      "required_fields": {
+        "venue": true,
+        "type": true,
+        "description": true
+      },
+      "missing_fields": [],
+      "venue": "okx",
+      "type": "cex",
+      "config_keys": [
+        "venue",
+        "type",
+        "description",
+        "api_endpoints",
+        "trading_fees",
+        "max_position_size_usd",
+        "min_order_size_usd",
+        "max_leverage",
+        "supported_assets",
+        "rate_limits"
+      ]
+    },
+    "configs/venues/lido.yaml": {
+      "status": "success",
+      "file_exists": true,
+      "valid_yaml": true,
+      "required_fields": {
+        "venue": true,
+        "type": true,
+        "description": true
+      },
+      "missing_fields": [],
+      "venue": "lido",
+      "type": "defi",
+      "config_keys": [
+        "venue",
+        "type",
+        "protocol",
+        "description",
+        "contracts",
+        "staking",
+        "rewards",
+        "risk",
+        "integration"
+      ]
+    },
+    "configs/venues/morpho.yaml": {
+      "status": "success",
+      "file_exists": true,
+      "valid_yaml": true,
+      "required_fields": {
+        "venue": true,
+        "type": true,
+        "description": true
+      },
+      "missing_fields": [],
+      "venue": "morpho",
+      "type": "defi",
+      "config_keys": [
+        "venue",
+        "type",
+        "protocol",
+        "description",
+        "contracts",
+        "flash_loans",
+        "supported_assets",
+        "risk",
+        "integration"
+      ]
+    }
+  },
+  "share_class_configs": {
+    "configs/share_classes/eth_directional.yaml": {
+      "status": "success",
+      "file_exists": true,
+      "valid_yaml": true,
+      "required_fields": {
+        "share_class": true,
+        "type": true,
+        "description": true,
+        "supported_strategies": true
+      },
+      "missing_fields": [],
+      "share_class": "ETH",
+      "type": "directional",
+      "supported_strategies": [
+        "eth_leveraged",
+        "eth_staking_only"
+      ]
+    },
+    "configs/share_classes/usdt_stable.yaml": {
+      "status": "success",
+      "file_exists": true,
+      "valid_yaml": true,
+      "required_fields": {
+        "share_class": true,
+        "type": true,
+        "description": true,
+        "supported_strategies": true
+      },
+      "missing_fields": [],
+      "share_class": "USDT",
+      "type": "stable",
+      "supported_strategies": [
+        "pure_lending",
+        "btc_basis",
+        "usdt_market_neutral",
+        "usdt_market_neutral_no_leverage"
+      ]
+    }
+  },
+  "env_variables": {
+    "backend/env.unified": {
+      "status": "success",
+      "file_exists": true,
+      "total_vars": 101,
+      "critical_vars": {
+        "BASIS_ENVIRONMENT": true,
+        "BASIS_EXECUTION_MODE": true,
+        "BASIS_API__PORT": true,
+        "BASIS_REDIS__URL": true
+      },
+      "missing_critical": [],
+      "sample_vars": {
+        "BASIS_EXECUTION_MODE": "backtest",
+        "BASIS_ENVIRONMENT": "staging",
+        "BASIS_DEPLOYMENT": "cloud",
+        "BASIS_API__PORT": "8001",
+        "BASIS_API__RELOAD": "false"
+      }
+    },
+    "deploy/.env": {
+      "status": "success",
+      "file_exists": true,
+      "total_vars": 6,
+      "critical_vars": {
+        "BASIS_ENVIRONMENT": false,
+        "BASIS_EXECUTION_MODE": false,
+        "BASIS_API__PORT": false,
+        "BASIS_REDIS__URL": false
+      },
+      "missing_critical": [
+        "BASIS_ENVIRONMENT",
+        "BASIS_EXECUTION_MODE",
+        "BASIS_API__PORT",
+        "BASIS_REDIS__URL"
+      ],
+      "sample_vars": {
+        "APP_DOMAIN": "defi-project.odum-research.com",
+        "ACME_EMAIL": "ikenna@odum-research.com",
+        "BASIC_AUTH_HASH": "$2a$14$QADrrN7lrn3YnNfeyz6p7ObcX/vXtlUZnqaQylevtyJ4VvKKtPQ9O",
+        "HTTP_PORT": "80",
+        "HTTPS_PORT": "443"
+      }
+    },
+    "deploy/.env.local": {
+      "status": "success",
+      "file_exists": true,
+      "total_vars": 6,
+      "critical_vars": {
+        "BASIS_ENVIRONMENT": false,
+        "BASIS_EXECUTION_MODE": false,
+        "BASIS_API__PORT": false,
+        "BASIS_REDIS__URL": false
+      },
+      "missing_critical": [
+        "BASIS_ENVIRONMENT",
+        "BASIS_EXECUTION_MODE",
+        "BASIS_API__PORT",
+        "BASIS_REDIS__URL"
+      ],
+      "sample_vars": {
+        "APP_DOMAIN": "localhost",
+        "ACME_EMAIL": "ikenna@odum-research.com",
+        "BASIC_AUTH_HASH": "",
+        "HTTP_PORT": "80",
+        "HTTPS_PORT": "8080  # Alternative port to avoid Chrome HSTS cache"
+      }
+    },
+    "deploy/.env.staging": {
+      "status": "success",
+      "file_exists": true,
+      "total_vars": 6,
+      "critical_vars": {
+        "BASIS_ENVIRONMENT": false,
+        "BASIS_EXECUTION_MODE": false,
+        "BASIS_API__PORT": false,
+        "BASIS_REDIS__URL": false
+      },
+      "missing_critical": [
+        "BASIS_ENVIRONMENT",
+        "BASIS_EXECUTION_MODE",
+        "BASIS_API__PORT",
+        "BASIS_REDIS__URL"
+      ],
+      "sample_vars": {
+        "APP_DOMAIN": "defi-project-uat.odum-research.com",
+        "ACME_EMAIL": "ikenna@odum-research.com",
+        "BASIC_AUTH_HASH": "$2a$14$QADrrN7lrn3YnNfeyz6p7ObcX/vXtlUZnqaQylevtyJ4VvKKtPQ9O",
+        "HTTP_PORT": "80",
+        "HTTPS_PORT": "443"
+      }
+    }
+  },
+  "data_requirements": {
+    "total_requirements": 14,
+    "unique_requirements": [
+      "eth_prices",
+      "aave_lending_rates",
+      "ethfi_rewards",
+      "funding_rates",
+      "usdt_prices",
+      "staking_rewards",
+      "lst_market_prices",
+      "eigen_rewards",
+      "aave_risk_params",
+      "btc_futures_prices",
+      "execution_costs",
+      "gas_costs",
+      "btc_prices",
+      "weeth_prices"
+    ],
+    "mode_requirements": {
+      "btc_basis": [
+        "btc_prices",
+        "btc_futures_prices",
+        "funding_rates",
+        "gas_costs",
+        "execution_costs"
+      ],
+      "eth_leveraged": [
+        "eth_prices",
+        "weeth_prices",
+        "aave_lending_rates",
+        "staking_rewards",
+        "eigen_rewards",
+        "gas_costs",
+        "execution_costs",
+        "aave_risk_params",
+        "lst_market_prices"
+      ],
+      "eth_staking_only": [
+        "eth_prices",
+        "weeth_prices",
+        "staking_rewards",
+        "eigen_rewards",
+        "gas_costs",
+        "execution_costs",
+        "lst_market_prices"
+      ],
+      "pure_lending": [
+        "aave_lending_rates",
+        "usdt_prices",
+        "gas_costs",
+        "execution_costs",
+        "aave_risk_params"
+      ],
+      "usdt_market_neutral_no_leverage": [
+        "eth_prices",
+        "weeth_prices",
+        "staking_rewards",
+        "eigen_rewards",
+        "funding_rates",
+        "gas_costs",
+        "execution_costs",
+        "lst_market_prices"
+      ],
+      "usdt_market_neutral": [
+        "eth_prices",
+        "weeth_prices",
+        "aave_lending_rates",
+        "staking_rewards",
+        "eigen_rewards",
+        "ethfi_rewards",
+        "funding_rates",
+        "gas_costs",
+        "execution_costs",
+        "aave_risk_params",
+        "lst_market_prices"
+      ]
+    },
+    "data_directories": [
+      "execution_costs",
+      "analysis",
+      "market_data",
+      "blockchain_data",
+      "manual_sources",
+      "protocol_data"
+    ],
+    "requirement_mapping": {
+      "eth_prices": "market_data/spot_prices/eth_usd/binance_ETHUSDT_1h_2020-01-01_2025-09-26.csv",
+      "btc_prices": "market_data/spot_prices/btc_usd/binance_BTCUSDT_1h_2024-01-01_2025-09-30.csv",
+      "aave_lending_rates": [
+        "protocol_data/aave/rates/aave_v3_aave-v3-ethereum_weETH_rates_2024-05-12_2025-09-18_hourly.csv",
+        "protocol_data/aave/rates/aave_v3_aave-v3-ethereum_wstETH_rates_2024-01-01_2025-09-18_hourly.csv",
+        "protocol_data/aave/rates/aave_v3_aave-v3-ethereum_WETH_rates_2024-01-01_2025-09-18_hourly.csv",
+        "protocol_data/aave/rates/aave_v3_aave-v3-ethereum_USDT_rates_2024-01-01_2025-09-18_hourly.csv"
+      ],
+      "aave_risk_params": "protocol_data/aave/risk_params/aave_v3_risk_parameters.json",
+      "lst_market_prices": [
+        "market_data/spot_prices/lst_eth_ratios/curve_weETHWETH_1h_2024-05-12_2025-09-27.csv",
+        "market_data/spot_prices/lst_eth_ratios/uniswapv3_wstETHWETH_1h_2024-05-12_2025-09-27.csv"
+      ],
+      "gas_costs": [
+        "blockchain_data/gas_prices/ethereum_gas_prices_enhanced_2024-01-01_2025-09-26.csv",
+        "blockchain_data/gas_prices/ethereum_gas_prices_2024-01-01_2025-09-26.csv"
+      ],
+      "execution_costs": [
+        "execution_costs/execution_cost_simulation_results.csv",
+        "execution_costs/lookup_tables/execution_costs_lookup.json"
+      ],
+      "funding_rates": [
+        "market_data/derivatives/funding_rates/binance_BTCUSDT_funding_rates_2024-01-01_2025-09-30.csv",
+        "market_data/derivatives/funding_rates/bybit_BTCUSDT_funding_rates_2024-01-01_2025-09-30.csv",
+        "market_data/derivatives/funding_rates/okx_BTCUSDT_funding_rates_2024-05-01_2025-09-07.csv",
+        "market_data/derivatives/funding_rates/binance_ETHUSDT_funding_rates_2024-01-01_2025-09-26.csv",
+        "market_data/derivatives/funding_rates/bybit_ETHUSDT_funding_rates_2024-01-01_2025-09-26.csv",
+        "market_data/derivatives/funding_rates/okx_ETHUSDT_funding_rates_2024-05-01_2025-09-07.csv"
+      ],
+      "staking_rewards": [
+        "protocol_data/staking/base_staking_yields_2024-01-01_2025-09-18_hourly.csv",
+        "protocol_data/staking/base_yields/weeth_oracle_yields_2024-01-01_2025-09-18.csv",
+        "protocol_data/staking/base_staking_yields_2024-01-01_2025-09-18.csv"
+      ],
+      "eigen_rewards": "protocol_data/staking/restaking_final/etherfi_seasonal_rewards_2024-01-01_2025-09-18.csv",
+      "ethfi_rewards": "protocol_data/staking/restaking_final/etherfi_seasonal_rewards_2024-01-01_2025-09-18.csv"
+    },
+    "data_availability": {
+      "eth_prices": {
+        "type": "single_file",
+        "expected_path": "/Users/ikennaigboaka/Documents/basis-strategy-v1/tests/../data/market_data/spot_prices/eth_usd/binance_ETHUSDT_1h_2020-01-01_2025-09-26.csv",
+        "exists": true,
+        "size": 5283792
+      },
+      "aave_lending_rates": {
+        "type": "multiple_files",
+        "files": [
+          {
+            "file": "protocol_data/aave/rates/aave_v3_aave-v3-ethereum_weETH_rates_2024-05-12_2025-09-18_hourly.csv",
+            "exists": true,
+            "size": 4084362
+          },
+          {
+            "file": "protocol_data/aave/rates/aave_v3_aave-v3-ethereum_wstETH_rates_2024-01-01_2025-09-18_hourly.csv",
+            "exists": false,
+            "size": 0
+          },
+          {
+            "file": "protocol_data/aave/rates/aave_v3_aave-v3-ethereum_WETH_rates_2024-01-01_2025-09-18_hourly.csv",
+            "exists": true,
+            "size": 5077367
+          },
+          {
+            "file": "protocol_data/aave/rates/aave_v3_aave-v3-ethereum_USDT_rates_2024-01-01_2025-09-18_hourly.csv",
+            "exists": true,
+            "size": 5033018
+          }
+        ],
+        "exists": true,
+        "file_count": 3
+      },
+      "ethfi_rewards": {
+        "type": "single_file",
+        "expected_path": "/Users/ikennaigboaka/Documents/basis-strategy-v1/tests/../data/protocol_data/staking/restaking_final/etherfi_seasonal_rewards_2024-01-01_2025-09-18.csv",
+        "exists": true,
+        "size": 29472
+      },
+      "funding_rates": {
+        "type": "multiple_files",
+        "files": [
+          {
+            "file": "market_data/derivatives/funding_rates/binance_BTCUSDT_funding_rates_2024-01-01_2025-09-30.csv",
+            "exists": true,
+            "size": 108891
+          },
+          {
+            "file": "market_data/derivatives/funding_rates/bybit_BTCUSDT_funding_rates_2024-01-01_2025-09-30.csv",
+            "exists": true,
+            "size": 86052
+          },
+          {
+            "file": "market_data/derivatives/funding_rates/okx_BTCUSDT_funding_rates_2024-05-01_2025-09-07.csv",
+            "exists": true,
+            "size": 79050
+          },
+          {
+            "file": "market_data/derivatives/funding_rates/binance_ETHUSDT_funding_rates_2024-01-01_2025-09-26.csv",
+            "exists": true,
+            "size": 108216
+          },
+          {
+            "file": "market_data/derivatives/funding_rates/bybit_ETHUSDT_funding_rates_2024-01-01_2025-09-26.csv",
+            "exists": true,
+            "size": 85556
+          },
+          {
+            "file": "market_data/derivatives/funding_rates/okx_ETHUSDT_funding_rates_2024-05-01_2025-09-07.csv",
+            "exists": true,
+            "size": 79316
+          }
+        ],
+        "exists": true,
+        "file_count": 6
+      },
+      "staking_rewards": {
+        "type": "multiple_files",
+        "files": [
+          {
+            "file": "protocol_data/staking/base_staking_yields_2024-01-01_2025-09-18_hourly.csv",
+            "exists": false,
+            "size": 0
+          },
+          {
+            "file": "protocol_data/staking/base_yields/weeth_oracle_yields_2024-01-01_2025-09-18.csv",
+            "exists": true,
+            "size": 149418
+          },
+          {
+            "file": "protocol_data/staking/base_staking_yields_2024-01-01_2025-09-18.csv",
+            "exists": false,
+            "size": 0
+          }
+        ],
+        "exists": true,
+        "file_count": 1
+      },
+      "lst_market_prices": {
+        "type": "multiple_files",
+        "files": [
+          {
+            "file": "market_data/spot_prices/lst_eth_ratios/curve_weETHWETH_1h_2024-05-12_2025-09-27.csv",
+            "exists": true,
+            "size": 2506839
+          },
+          {
+            "file": "market_data/spot_prices/lst_eth_ratios/uniswapv3_wstETHWETH_1h_2024-05-12_2025-09-27.csv",
+            "exists": true,
+            "size": 2598069
+          }
+        ],
+        "exists": true,
+        "file_count": 2
+      },
+      "eigen_rewards": {
+        "type": "single_file",
+        "expected_path": "/Users/ikennaigboaka/Documents/basis-strategy-v1/tests/../data/protocol_data/staking/restaking_final/etherfi_seasonal_rewards_2024-01-01_2025-09-18.csv",
+        "exists": true,
+        "size": 29472
+      },
+      "aave_risk_params": {
+        "type": "single_file",
+        "expected_path": "/Users/ikennaigboaka/Documents/basis-strategy-v1/tests/../data/protocol_data/aave/risk_params/aave_v3_risk_parameters.json",
+        "exists": true,
+        "size": 2530
+      },
+      "execution_costs": {
+        "type": "multiple_files",
+        "files": [
+          {
+            "file": "execution_costs/execution_cost_simulation_results.csv",
+            "exists": true,
+            "size": 12688673
+          },
+          {
+            "file": "execution_costs/lookup_tables/execution_costs_lookup.json",
+            "exists": true,
+            "size": 491808
+          }
+        ],
+        "exists": true,
+        "file_count": 2
+      },
+      "gas_costs": {
+        "type": "multiple_files",
+        "files": [
+          {
+            "file": "blockchain_data/gas_prices/ethereum_gas_prices_enhanced_2024-01-01_2025-09-26.csv",
+            "exists": true,
+            "size": 13284016
+          },
+          {
+            "file": "blockchain_data/gas_prices/ethereum_gas_prices_2024-01-01_2025-09-26.csv",
+            "exists": true,
+            "size": 2356036
+          }
+        ],
+        "exists": true,
+        "file_count": 2
+      },
+      "btc_prices": {
+        "type": "single_file",
+        "expected_path": "/Users/ikennaigboaka/Documents/basis-strategy-v1/tests/../data/market_data/spot_prices/btc_usd/binance_BTCUSDT_1h_2024-01-01_2025-09-30.csv",
+        "exists": true,
+        "size": 1704865
+      }
+    }
+  },
+  "config_consistency": {
+    "mode_share_classes": {
+      "btc_basis": "USDT",
+      "eth_leveraged": "ETH",
+      "eth_staking_only": "ETH",
+      "pure_lending": "USDT",
+      "usdt_market_neutral_no_leverage": "USDT",
+      "usdt_market_neutral": "USDT"
+    },
+    "share_class_strategies": {
+      "ETH": [
+        "eth_leveraged",
+        "eth_staking_only"
+      ],
+      "USDT": [
+        "pure_lending",
+        "btc_basis",
+        "usdt_market_neutral",
+        "usdt_market_neutral_no_leverage"
+      ]
+    },
+    "consistency_issues": [],
+    "is_consistent": true
+  },
+  "separation_of_concerns": {
+    "base_config_overlap": {
+      "overlapping_keys": [
+        "execution",
+        "_comment",
+        "cache",
+        "data",
+        "debug",
+        "environment",
+        "database",
+        "api",
+        "redis"
+      ],
+      "identical_values": [
+        "execution",
+        "debug",
+        "environment"
+      ],
+      "potential_duplication": 3
+    },
+    "base_config_strategy_keys": [],
+    "separation_violations": false
+  },
+  "errors": [],
+  "warnings": [
+    "Missing critical vars in deploy/.env: ['BASIS_ENVIRONMENT', 'BASIS_EXECUTION_MODE', 'BASIS_API__PORT', 'BASIS_REDIS__URL']",
+    "Missing critical vars in deploy/.env.local: ['BASIS_ENVIRONMENT', 'BASIS_EXECUTION_MODE', 'BASIS_API__PORT', 'BASIS_REDIS__URL']",
+    "Missing critical vars in deploy/.env.staging: ['BASIS_ENVIRONMENT', 'BASIS_EXECUTION_MODE', 'BASIS_API__PORT', 'BASIS_REDIS__URL']",
+    "Identical values in base configs (potential duplication): ['execution', 'debug', 'environment']"
+  ]
+}

@@ -1,0 +1,44 @@
+# Pure Lending Mode Configuration
+# Simple lending USDT strategy without leverage or staking or hedging
+
+mode: "pure_lending"
+
+# Strategy parameters
+lending_enabled: true
+staking_enabled: false
+basis_trade_enabled: false
+borrowing_enabled: false
+  # No borrowing/leverage loops
+enable_market_impact: true
+
+# Asset configuration
+share_class: "USDT"
+asset: "USDT"
+lst_type: null
+rewards_mode: "base_only"
+
+# Execution parameters
+use_flash_loan: false
+unwind_mode: "fast"  # Not applicable but required
+
+# Risk parameters
+margin_ratio_target: 1.0  # Not applicable (no CEX margin, no borrowing)
+# NOTE: No AAVE borrowing in this mode, so no max_ltv/liquidation_threshold/max_stake_spread_move
+
+# Data requirements
+data_requirements:
+  - "usdt_prices"  # USDT/USD spot
+  - "aave_lending_rates"  # AAVE rates (USDT)
+  - "gas_costs"  # Ethereum gas prices
+  - "execution_costs"  # Execution cost model
+
+# Monitoring
+monitoring_position_check_interval: 300
+monitoring_risk_check_interval: 60
+
+# REMOVED: capital_allocation - not needed in config, calculated at runtime
+
+# Performance targets
+target_apy: 0.05  # 5% APY target
+max_drawdown: 0.005  # 0.5% max drawdown (only gas/conversion costs)
+

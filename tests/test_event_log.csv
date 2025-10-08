@@ -1,0 +1,16 @@
+actions_taken,amount,amount_out,atoken_received,bundle_name,conversion_note,current_value,debt_token_received,delta_exposure,detail_count,detail_orders,entry_price,event_type,execution_cost_usd,fee_type,from_venue,funding_rate,gas_cost_eth,gas_cost_usd,gas_price_gwei,gas_units,input_token,instrument,iteration,liquidity_index,net_result,notional_usd,oracle_price,order,output_token,parent_event,pnl_type,pnl_usd,purpose,rebalance_type,risk_type,severity,side,status,threshold,timestamp,to_venue,token,transaction_type,venue
+,0.0035,,,,,,,,,,,GAS_FEE_PAID,,STAKE_DEPOSIT,,,0.0035,8.75,25.0,150000,,,,,,,,1,,,,,Gas fee for STAKE_DEPOSIT,,,,,completed,,2025-10-05T14:43:41.555279+00:00,,ETH,GAS_FEE,ETHEREUM
+,50.0,49.8,,,,,,,,,,STAKE_DEPOSIT,,,,,,,,,ETH,,,,,,3000.0,2,weETH,,,,Stake 50.0 ETH to ETHERFI,,,,,completed,,2025-10-05T14:43:41.555279+00:00,,ETH,STAKE,ETHERFI
+,49.8,,47.43,,49.8 weETH → 47.43 aweETH (index=1.05),,,,,,,COLLATERAL_SUPPLIED,,,,,,,,,,,,1.05,,,,3,,,,,Supply 49.8 weETH to AAVE,,,,,completed,,2025-10-05T14:43:41.555279+00:00,,weETH,AAVE_SUPPLY,AAVE
+,40.0,,,,40.0 WETH borrowed → 38.1 debt token (index=1.05),,38.1,,,,,LOAN_CREATED,,,,,,,,,,,,1.05,,,,4,,,,,Borrow 40.0 WETH from AAVE,,,,,completed,,2025-10-05T14:43:41.555279+00:00,,WETH,AAVE_BORROW,AAVE
+,8.562,,,,,,,,,,2920.0,TRADE_EXECUTED,7.5,,,,,,,,,ETHUSDT-PERP,,,,25000.0,,5,,,,,SHORT 8.562 ETH on binance at 2920.0,,,,SHORT,completed,,2025-10-05T14:43:41.555279+00:00,,ETH,PERP_TRADE,BINANCE
+,2.5,,,,,,,,,,,FUNDING_PAYMENT,,,,0.0001,,,,,,,,,,25000.0,,6,,,PAID,-2.5,Funding payment: PAID 2.5 USDT,,,,,completed,,2025-10-05T14:43:41.555279+00:00,,USDT,FUNDING,BINANCE
+,50000.0,,,,,,,,,,,VENUE_TRANSFER,,,WALLET,,,,,,,,,,,,,7,,,,,Transfer USDT for perp trading,,,,,completed,,2025-10-05T14:43:41.555279+00:00,binance,USDT,TRANSFER,WALLET→binance
+,1,,,ATOMIC_LEVERAGE_ENTRY,,,,,5,"[9, 10, 11, 12, 13]",,ATOMIC_TRANSACTION,,,,,,,,,,,,,"{""collateral_added"": 47.43, ""debt_added"": 38.1, ""net_leverage"": 1.8}",,,8,,,,,Atomic transaction: ATOMIC_LEVERAGE_ENTRY,,,,,completed,,2025-10-05T14:43:41.555279+00:00,,COMPOSITE,ATOMIC_BUNDLE,INSTADAPP
+,100.0,,,,,,,,,,,FLASH_BORROW,,,,,,,,,,,,,,,,9,,8,,,Flash borrow WETH for leverage loop,,,,,completed,,2025-10-05T14:43:41.555279+00:00,,WETH,,BALANCER
+,100.0,,,,,,,,,,,STAKE_DEPOSIT,,,,,,,,,,,,,,,,10,,8,,,Stake borrowed ETH,,,,,completed,,2025-10-05T14:43:41.555279+00:00,,ETH,,ETHERFI
+,99.5,,,,,,,,,,,COLLATERAL_SUPPLIED,,,,,,,,,,,,,,,,11,,8,,,Supply staked weETH as collateral,,,,,completed,,2025-10-05T14:43:41.555279+00:00,,weETH,,AAVE
+,80.0,,,,,,,,,,,LOAN_CREATED,,,,,,,,,,,,,,,,12,,8,,,Borrow against collateral,,,,,completed,,2025-10-05T14:43:41.555279+00:00,,WETH,,AAVE
+,100.0,,,,,,,,,,,FLASH_REPAID,,,,,,,,,,,,,,,,13,,8,,,Repay flash loan,,,,,completed,,2025-10-05T14:43:41.555279+00:00,,WETH,,BALANCER
+,1.15,,,,,1.15,,,,,,RISK_ALERT,,,,,,,,,,,,,,,,14,,,,,Risk alert: HEALTH_FACTOR = 1.15 (threshold: 1.2),,HEALTH_FACTOR,WARNING,,completed,1.2,2025-10-05T14:43:41.555279+00:00,,COMPOSITE,RISK_ALERT,RISK_MONITOR
+"[""SHORT_ETH_PERP"", ""ADJUST_LEVERAGE""]",0.05,,,,,,,-0.05,,,,REBALANCE_EXECUTED,,,,,,,,,,,,,,,,15,,,,,Rebalance: DELTA_HEDGE (delta: -0.05),DELTA_HEDGE,,,,completed,,2025-10-05T14:43:41.555279+00:00,,COMPOSITE,REBALANCE,STRATEGY

@@ -1,0 +1,28 @@
+# USDT Stable Share Class Configuration
+# USDT-denominated share class for stablecoin strategies
+
+share_class: "USDT"
+type: "stable"
+description: "USDT stablecoin share class for market neutral strategies"
+
+# Currency Configuration
+base_currency: "USDT"
+quote_currency: "USDT"
+decimal_places: 6
+
+# Risk Profile
+risk_level: "low_to_medium"
+market_neutral: true
+allows_hedging: true
+
+# Supported Strategies (modes available for this share class)
+supported_strategies:
+  - "pure_lending"
+  - "btc_basis"
+  - "usdt_market_neutral"
+  - "usdt_market_neutral_no_leverage"
+
+# Share Class Features
+leverage_supported: true
+staking_supported: false
+basis_trading_supported: true

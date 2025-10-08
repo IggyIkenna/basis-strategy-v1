@@ -1,0 +1,87 @@
+{
+  "snapshot": "POPULATED_FROM_SETTINGS",
+  "install": "pip install -r requirements.txt && cd frontend && npm install && cd ..",
+  "start": "sudo service redis-server start && sudo service docker start",
+  "terminals": [
+    {
+      "name": "Backend API Server",
+      "command": "./platform.sh backtest"
+    },
+    {
+      "name": "Quality Gates Monitor",
+      "command": "python scripts/monitor_quality_gates.py"
+    },
+    {
+      "name": "Test Coverage Analysis",
+      "command": "python scripts/analyze_test_coverage.py"
+    },
+    {
+      "name": "Pure Lending Quality Gates",
+      "command": "python scripts/test_pure_lending_quality_gates.py"
+    },
+    {
+      "name": "BTC Basis Quality Gates", 
+      "command": "python scripts/test_btc_basis_quality_gates.py"
+    },
+    {
+      "name": "Tight Loop Architecture Tests",
+      "command": "python scripts/test_tight_loop_quality_gates.py"
+    },
+    {
+      "name": "Position Monitor Persistence Tests",
+      "command": "python scripts/test_position_monitor_persistence_quality_gates.py"
+    },
+    {
+      "name": "Full Quality Gates Suite",
+      "command": "python scripts/run_quality_gates.py"
+    },
+    {
+      "name": "Orchestrated Quality Gates",
+      "command": "python scripts/orchestrate_quality_gates.py"
+    },
+    {
+      "name": "E2E Backtest Flow",
+      "command": "python scripts/test_e2e_backtest_flow.py"
+    },
+    {
+      "name": "Config and Data Validation",
+      "command": "python scripts/test_config_and_data_validation.py"
+    },
+    {
+      "name": "Phases 1-3 Execution",
+      "command": "python scripts/run_phases_1_to_3.py"
+    },
+    {
+      "name": "Backend Test Suite",
+      "command": "cd backend && python -m pytest tests/ -v --tb=short --cov=basis_strategy_v1 --cov-report=term-missing"
+    },
+    {
+      "name": "Frontend Test Suite",
+      "command": "cd frontend && npm test -- --watchAll=false"
+    },
+    {
+      "name": "BTC Exposure Debug",
+      "command": "python test_exposure_monitor_btc.py"
+    },
+    {
+      "name": "Pure Lending Backtest",
+      "command": "python run_pure_lending_backtest.py"
+    },
+    {
+      "name": "Backtest Results Analysis",
+      "command": "python analyze_backtest_results.py"
+    },
+    {
+      "name": "Config Validation",
+      "command": "python validate_config.py"
+    },
+    {
+      "name": "Docs Validation",
+      "command": "python validate_docs.py"
+    },
+    {
+      "name": "Completion Validation",
+      "command": "python validate_completion.py"
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "timestamp": "2025-09-29T12:18:37.038857",
+  "orchestrator": "aave_data_pipeline",
+  "date_range": "2024-01-01 to 2025-09-29",
+  "components_executed": [
+    "calibrate"
+  ],
+  "total_stages": 1,
+  "successful_stages": 0,
+  "failed_stages": 1,
+  "total_duration_minutes": 0.0,
+  "pipeline_results": [
+    {
+      "success": false,
+      "stage": "calibration",
+      "duration": 0,
+      "error": "Rate model for USDT is critically miscalibrated (143.2 bps error)"
+    }
+  ]
+}

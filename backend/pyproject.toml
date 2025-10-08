@@ -1,0 +1,123 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "basis-strategy-v1"
+version = "2.0.0"
+description = "Basis Trading Strategy Platform with DeFi Integration"
+readme = "README.md"
+authors = [
+    {name = "Basis Strategy Team", email = "team@basis-strategy-v1.io"}
+]
+license = {file = "LICENSE"}
+requires-python = ">=3.10"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Financial and Insurance Industry",
+    "Topic :: Office/Business :: Financial :: Investment",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+dependencies = [
+    "fastapi>=0.104.0",
+    "uvicorn[standard]>=0.24.0",
+    "pydantic>=2.4.0",
+    "pandas>=2.1.0",
+    "numpy>=1.24.0",
+    "plotly>=5.17.0",
+    "pyyaml>=6.0",
+    "python-dotenv>=1.0.0",
+    "prometheus-client>=0.18.0",
+    "structlog>=23.2.0",
+    "redis>=5.0.0",
+    
+    "websockets>=12.0",
+    "httpx>=0.25.0",
+    "cachetools>=5.3.0",
+    "python-multipart>=0.0.6",
+    "email-validator>=2.1.0",
+    "psutil>=5.9.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-cov>=4.1.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-mock>=3.11.0",
+    "black>=23.9.0",
+    "ruff>=0.1.0",
+    "mypy>=1.5.0",
+    "pre-commit>=3.4.0",
+    "ipykernel>=6.25.0",
+    "jupyter>=1.0.0",
+]
+monitoring = [
+    "grafana-api>=1.0.3",
+    "opentelemetry-api>=1.20.0",
+    "opentelemetry-sdk>=1.20.0",
+    "opentelemetry-instrumentation-fastapi>=0.41b0",
+]
+live = [
+    "ccxt>=4.0.0",
+    "aioredis>=2.0.1",
+    "aiokafka>=0.8.1",
+]
+
+[project.scripts]
+basis-strategy-v1 = "basis_strategy_v1.cli:main"
+basis-api = "basis_strategy_v1.api.main:run"
+
+[project.urls]
+Homepage = "https://github.com/basis-strategy-v1/basis-strategy-v1"
+Documentation = "https://docs.basis-strategy-v1.io"
+Repository = "https://github.com/basis-strategy-v1/basis-strategy-v1.git"
+"Bug Tracker" = "https://github.com/basis-strategy-v1/basis-strategy-v1/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["basis_strategy_v1*"]
+
+[tool.setuptools.package-data]
+basis_strategy_v1 = ["*.yaml", "*.json"]
+
+[tool.black]
+line-length = 100
+target-version = ['py310', 'py311']
+include = '\.pyi?$'
+
+[tool.ruff]
+line-length = 100
+select = ["E", "F", "I", "N", "W"]
+ignore = ["E501"]
+target-version = "py310"
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+addopts = [
+    "-v",
+    "--strict-markers",
+    "--tb=short",
+    "--cov=basis_strategy_v1",
+    "--cov-report=term-missing",
+    "--cov-report=html",
+]
+markers = [
+    "unit: Unit tests",
+    "integration: Integration tests",
+    "e2e: End-to-end tests",
+    "slow: Slow tests",
+]

@@ -1,0 +1,47 @@
+{
+  "timestamp": "2025-10-01T17:38:38.046452",
+  "downloader": "cex_futures_data",
+  "date_range": "2024-01-01 to 2025-09-30",
+  "enforced_dates": {
+    "bybit": "2024-01-01",
+    "binance_futures": "2024-01-01"
+  },
+  "exchanges_requested": [
+    "binance_spot",
+    "binance_futures",
+    "bybit"
+  ],
+  "exchanges_available": [
+    "binance_futures",
+    "bybit"
+  ],
+  "total_downloads": 2,
+  "successful_downloads": 2,
+  "failed_downloads": 0,
+  "total_records": 30294,
+  "downloads": [
+    {
+      "success": true,
+      "symbol": "BTCUSDT",
+      "record_count": 14967,
+      "chunks_processed": 16,
+      "chunks_failed": 0,
+      "failed_chunks": [],
+      "output_file": "data/market_data/derivatives/futures_ohlcv/binance_BTCUSDT_perp_1h_2024-01-01_2025-09-30.csv",
+      "date_range": "2024-01-01 to 2025-09-30",
+      "data_type": "futures_ohlcv",
+      "exchange": "binance_futures",
+      "symbol_used": "BTCUSDT"
+    },
+    {
+      "success": true,
+      "symbol": "BTCUSDT",
+      "record_count": 15327,
+      "output_file": "data/market_data/derivatives/futures_ohlcv/bybit_BTCUSDT_perp_1h_2024-01-01_2025-09-30.csv",
+      "date_range": "2024-01-01 to 2025-09-30",
+      "data_type": "futures_ohlcv",
+      "exchange": "bybit",
+      "symbol_used": "BTCUSDT"
+    }
+  ]
+}

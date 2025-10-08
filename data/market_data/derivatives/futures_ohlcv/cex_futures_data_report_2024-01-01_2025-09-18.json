@@ -1,0 +1,34 @@
+{
+  "timestamp": "2025-10-01T10:20:43.202057",
+  "downloader": "cex_futures_data",
+  "date_range": "2024-01-01 to 2025-09-18",
+  "enforced_dates": {
+    "bybit": "2024-01-01",
+    "okx": "2024-08-01",
+    "binance_futures": "2024-01-01"
+  },
+  "exchanges_requested": [
+    "okx"
+  ],
+  "exchanges_available": [
+    "okx"
+  ],
+  "total_downloads": 1,
+  "successful_downloads": 1,
+  "failed_downloads": 0,
+  "total_records": 8064,
+  "downloads": [
+    {
+      "success": true,
+      "symbol": "ETHUSDT",
+      "record_count": 8064,
+      "files_processed": 12,
+      "files_failed": 0,
+      "output_file": "data/market_data/derivatives/futures_ohlcv/okx_ETHUSDT_perp_1h_2024-08-01_2025-09-18.csv",
+      "date_range": "2024-08-01 to 2025-09-18",
+      "data_type": "futures_ohlcv",
+      "exchange": "okx",
+      "symbol_used": "ETH-USDT-SWAP"
+    }
+  ]
+}

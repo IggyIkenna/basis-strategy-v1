@@ -1,0 +1,6 @@
+# Morpho Venue Configuration
+venue: "morpho"
+type: "defi"
+
+# Protocol Configuration
+network: "ethereum"

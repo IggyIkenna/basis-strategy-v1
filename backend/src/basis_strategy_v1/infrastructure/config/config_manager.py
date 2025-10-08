@@ -1,0 +1,373 @@
+"""
+Unified Configuration Manager
+
+Single source of truth for all configuration operations:
+- Environment variable loading (FAIL FAST - no defaults)
+- Configuration file loading and merging
+- Strategy discovery and validation
+- Configuration caching and health checking
+"""
+
+import os
+import yaml
+import json
+from pathlib import Path
+from typing import Dict, List, Any, Optional, Tuple
+from functools import lru_cache
+import logging
+
+# from .config_models import ConfigSchema, load_and_validate_config
+# from .config_validator import validate_configuration, ValidationResult
+from .health_check import register_component, mark_component_healthy, mark_component_unhealthy
+# from ..monitoring.logging import log_structured_error
+
+logger = logging.getLogger(__name__)
+
+# Error codes for Config Manager
+ERROR_CODES = {
+    'CONFIG-MGR-001': 'Configuration loading failed',
+    'CONFIG-MGR-002': 'Environment variable not set',
+    'CONFIG-MGR-003': 'Configuration file not found',
+    'CONFIG-MGR-004': 'Configuration parsing error',
+    'CONFIG-MGR-005': 'Configuration validation failed',
+    'CONFIG-MGR-006': 'Strategy not found',
+    'CONFIG-MGR-007': 'Configuration merge failed',
+    'CONFIG-MGR-008': 'Configuration health check failed'
+}
+
+
+class ConfigManager:
+    """Unified configuration manager with fail-fast policy."""
+    
+    def __init__(self):
+        self.base_dir = Path(__file__).parent.parent.parent.parent.parent.parent
+        self.config_cache: Dict[str, Any] = {}
+        self._validation_result: Optional[ValidationResult] = None
+        
+        # Load and validate configuration
+        self._load_all_config()
+        self._validate_config()
+        
+        # Mark config manager as healthy
+        register_component('config_manager')
+        mark_component_healthy('config_manager')
+    
+    def _load_all_config(self):
+        """Load all configuration files and environment variables."""
+        logger.info("🔄 Loading configuration...")
+        
+        # Load base configuration
+        self.config_cache['base'] = self._load_base_config()
+        
+        # Load mode configurations
+        self.config_cache['modes'] = self._load_all_mode_configs()
+        
+        # Load venue configurations
+        self.config_cache['venues'] = self._load_all_venue_configs()
+        
+        # Load share class configurations
+        self.config_cache['share_classes'] = self._load_all_share_class_configs()
+        
+        # Load environment variables (FAIL FAST)
+        self.config_cache['env'] = self._load_environment_variables()
+        
+        logger.info("✅ Configuration loaded successfully")
+    
+    def _load_environment_variables(self) -> Dict[str, str]:
+        """Load environment variables with FAIL FAST policy."""
+        # First load from backend/env.unified
+        self._load_env_file(self.base_dir / "backend" / "env.unified")
+        
+        # Then load override files based on deployment mode
+        deployment_mode = os.getenv('BASIS_DEPLOYMENT_MODE', 'local')
+        
+        if deployment_mode == 'local' and (self.base_dir / ".env.local").exists():
+            self._load_env_file(self.base_dir / ".env.local")
+        elif deployment_mode == 'docker' and (self.base_dir / "deploy" / ".env.docker").exists():
+            self._load_env_file(self.base_dir / "deploy" / ".env.docker")
+        elif deployment_mode == 'production' and (self.base_dir / ".env.production").exists():
+            self._load_env_file(self.base_dir / ".env.production")
+        
+        env_vars = {}
+        required_vars = [
+            'BASIS_ENVIRONMENT',
+            'BASIS_DEPLOYMENT_MODE', 
+            'BASIS_DATA_DIR',
+            'BASIS_RESULTS_DIR',
+            'BASIS_REDIS_URL',
+            'BASIS_DEBUG',
+            'BASIS_LOG_LEVEL',
+            'BASIS_STARTUP_MODE',
+            'BASIS_DATA_START_DATE',
+            'BASIS_DATA_END_DATE'
+        ]
+        
+        for var in required_vars:
+            value = os.getenv(var)
+            if not value:
+                logger.error(f"CONFIG-MGR-002: REQUIRED environment variable not set: {var}")
+                raise ValueError(f"REQUIRED environment variable not set: {var}")
+            env_vars[var] = value
+        
+        # Load optional variables
+        for key, value in os.environ.items():
+            if key.startswith('BASIS_') and key not in env_vars:
+                env_vars[key] = value
+        
+        return env_vars
+    
+    def _load_env_file(self, file_path: Path):
+        """Load environment variables from a file."""
+        if not file_path.exists():
+            return
+        
+        logger.info(f"Loading environment variables from {file_path}")
+        
+        with open(file_path, 'r') as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith('#') and '=' in line:
+                    key, value = line.split('=', 1)
+                    key = key.strip()
+                    value = value.strip()
+                    if value:  # Only set non-empty values
+                        os.environ[key] = value
+    
+    def get_startup_mode(self) -> str:
+        """Get startup mode from environment variables."""
+        return self.config_cache['env']['BASIS_STARTUP_MODE']
+    
+    def get_data_directory(self) -> str:
+        """Get data directory from environment variables."""
+        return self.config_cache['env']['BASIS_DATA_DIR']
+    
+    def get_results_directory(self) -> str:
+        """Get results directory from environment variables."""
+        return self.config_cache['env']['BASIS_RESULTS_DIR']
+    
+    def get_redis_url(self) -> str:
+        """Get Redis URL from environment variables."""
+        return self.config_cache['env']['BASIS_REDIS_URL']
+    
+    def get_data_date_range(self) -> Tuple[str, str]:
+        """Get data date range from environment variables."""
+        start_date = self.config_cache['env']['BASIS_DATA_START_DATE']
+        end_date = self.config_cache['env']['BASIS_DATA_END_DATE']
+        return start_date, end_date
+    
+    def get_settings(self) -> Dict[str, Any]:
+        """Get complete settings (alias for get_complete_config)."""
+        return self.get_complete_config()
+    
+    def get_complete_config(self, mode: str = None, venue: str = None, scenario: str = None) -> Dict[str, Any]:
+        """Get complete configuration by merging all relevant configs."""
+        config = self.config_cache['base'].copy()
+        
+        if mode:
+            mode_config = self.config_cache['modes'].get(mode, {})
+            config = self._deep_merge(config, mode_config)
+        
+        if venue:
+            venue_config = self.config_cache['venues'].get(venue, {})
+            config = self._deep_merge(config, venue_config)
+        
+        return config
+    
+    def get_available_strategies(self) -> List[str]:
+        """Get list of all available strategy names."""
+        return list(self.config_cache['modes'].keys())
+    
+    def strategy_exists(self, strategy_name: str) -> bool:
+        """Check if a strategy exists."""
+        return strategy_name in self.config_cache['modes']
+    
+    def validate_strategy_name(self, strategy_name: str) -> None:
+        """Validate that a strategy name exists."""
+        if not self.strategy_exists(strategy_name):
+            available_strategies = self.get_available_strategies()
+            raise ValueError(
+                f"Unknown strategy: {strategy_name}\n"
+                f"Available strategies: {available_strategies}"
+            )
+    
+    def _validate_config(self):
+        """Validate the loaded configuration."""
+        logger.info("🔍 Validating loaded configuration...")
+        
+        # Basic validation - check that required configs are loaded
+        # Note: base config is now empty (JSON configs eliminated), so just check it exists
+        if 'base' not in self.config_cache:
+            raise ValueError("Base configuration cache not initialized")
+        if not self.config_cache.get('env'):
+            raise ValueError("Environment variables not loaded")
+        
+        logger.info("✅ Configuration validation passed")
+    
+    def is_healthy(self) -> bool:
+        """Check if configuration is healthy."""
+        return 'base' in self.config_cache and self.config_cache.get('env') is not None
+    
+    def _load_base_config(self) -> Dict[str, Any]:
+        """Load base configuration - ELIMINATED JSON configs, return empty dict."""
+        logger.info("✅ Base configuration eliminated - infrastructure handled by environment variables")
+        
+        # DESIGN DECISION: All infrastructure configuration moved to environment variables
+        # - Database/Redis/Storage URLs: Environment-specific variables
+        # - API settings: Environment-specific variables  
+        # - Cross-network/Rates: Hardcoded defaults in components
+        # - Testnet: Live trading only, not needed for backtest focus
+        
+        return {}  # Empty base config since everything is in environment variables or hardcoded
+    
+    def _load_all_mode_configs(self) -> Dict[str, Any]:
+        """Load all mode configurations from configs/modes/."""
+        modes_dir = self.base_dir / "configs" / "modes"
+        modes = {}
+        
+        if not modes_dir.exists():
+            logger.warning(f"Modes directory not found: {modes_dir}")
+            return modes
+        
+        for yaml_file in modes_dir.glob("*.yaml"):
+            try:
+                with open(yaml_file, 'r') as f:
+                    mode_name = yaml_file.stem
+                    modes[mode_name] = yaml.safe_load(f) or {}
+            except (yaml.YAMLError, IOError) as e:
+                logger.error(f"CONFIG-MGR-004: Failed to parse mode configuration: {str(e)}")
+                raise ValueError(f"Failed to parse mode configuration {yaml_file}: {e}")
+        
+        return modes
+    
+    def _load_all_venue_configs(self) -> Dict[str, Any]:
+        """Load all venue configurations from configs/venues/."""
+        venues_dir = self.base_dir / "configs" / "venues"
+        venues = {}
+        
+        if not venues_dir.exists():
+            logger.warning(f"Venues directory not found: {venues_dir}")
+            return venues
+        
+        for yaml_file in venues_dir.glob("*.yaml"):
+            try:
+                with open(yaml_file, 'r') as f:
+                    venue_name = yaml_file.stem
+                    venues[venue_name] = yaml.safe_load(f) or {}
+            except (yaml.YAMLError, IOError) as e:
+                logger.error(f"CONFIG-MGR-004: Failed to parse venue configuration: {str(e)}")
+                raise ValueError(f"Failed to parse venue configuration {yaml_file}: {e}")
+        
+        return venues
+    
+    def _load_all_share_class_configs(self) -> Dict[str, Any]:
+        """Load all share class configurations from configs/share_classes/."""
+        share_classes_dir = self.base_dir / "configs" / "share_classes"
+        share_classes = {}
+        
+        if not share_classes_dir.exists():
+            logger.warning(f"Share classes directory not found: {share_classes_dir}")
+            return share_classes
+        
+        for yaml_file in share_classes_dir.glob("*.yaml"):
+            try:
+                with open(yaml_file, 'r') as f:
+                    share_class_name = yaml_file.stem
+                    share_classes[share_class_name] = yaml.safe_load(f) or {}
+            except (yaml.YAMLError, IOError) as e:
+                logger.error(f"CONFIG-MGR-004: Failed to parse share class configuration: {str(e)}")
+                raise ValueError(f"Failed to parse share class configuration {yaml_file}: {e}")
+        
+        return share_classes
+    
+    def _deep_merge(self, base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]:
+        """Deep merge two dictionaries."""
+        result = base.copy()
+        
+        for key, value in override.items():
+            if key in result and isinstance(result[key], dict) and isinstance(value, dict):
+                result[key] = self._deep_merge(result[key], value)
+            else:
+                result[key] = value
+        
+        return result
+
+
+# Global config manager instance
+_config_manager: Optional[ConfigManager] = None
+
+def get_config_manager() -> ConfigManager:
+    """Get the global configuration manager instance."""
+    global _config_manager
+    
+    if _config_manager is None:
+        _config_manager = ConfigManager()
+    
+    return _config_manager
+
+
+# Compatibility functions for existing imports
+def get_settings() -> Dict[str, Any]:
+    """Get complete settings (compatibility function)."""
+    cm = get_config_manager()
+    return cm.get_complete_config()
+
+
+def get_environment() -> str:
+    """Get current environment (compatibility function)."""
+    cm = get_config_manager()
+    return cm.config_cache['env']['BASIS_ENVIRONMENT']
+
+
+def load_mode_config(mode: str) -> Dict[str, Any]:
+    """Load mode configuration (compatibility function)."""
+    cm = get_config_manager()
+    return cm.config_cache['modes'].get(mode, {})
+
+
+def load_venue_config(venue: str) -> Dict[str, Any]:
+    """Load venue configuration (compatibility function)."""
+    cm = get_config_manager()
+    return cm.config_cache['venues'].get(venue, {})
+
+
+def load_share_class_config(share_class: str) -> Dict[str, Any]:
+    """Load share class configuration (compatibility function)."""
+    cm = get_config_manager()
+    return cm.config_cache['share_classes'].get(share_class, {})
+
+
+def load_scenario_config(scenario: str) -> Dict[str, Any]:
+    """Load scenario configuration (compatibility function)."""
+    # For now, return empty dict - scenarios not implemented yet
+    return {}
+
+
+def load_strategy_config(strategy_name: str) -> Dict[str, Any]:
+    """Load strategy configuration (compatibility function)."""
+    cm = get_config_manager()
+    cm.validate_strategy_name(strategy_name)
+    return cm.get_complete_config(mode=strategy_name)
+
+
+def get_available_strategies() -> List[str]:
+    """Get available strategies (compatibility function)."""
+    cm = get_config_manager()
+    return cm.get_available_strategies()
+
+
+def get_strategy_file_path(strategy_name: str) -> Optional[Path]:
+    """Get strategy file path (compatibility function)."""
+    cm = get_config_manager()
+    if not cm.strategy_exists(strategy_name):
+        return None
+    return cm.base_dir / "configs" / "modes" / f"{strategy_name}.yaml"
+
+
+def validate_strategy_name(strategy_name: str) -> None:
+    """Validate strategy name (compatibility function)."""
+    cm = get_config_manager()
+    cm.validate_strategy_name(strategy_name)
+
+
+# Constants for compatibility
+_BASE_DIR = Path(__file__).parent.parent.parent.parent.parent.parent

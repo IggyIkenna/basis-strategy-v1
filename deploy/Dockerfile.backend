@@ -1,0 +1,41 @@
+# DeFi Yield Optimization Platform - Backend Dockerfile (working version)
+
+FROM python:3.11-slim
+WORKDIR /app
+
+ENV PYTHONUNBUFFERED=1
+ENV BASIS_API__PORT=8001
+
+# System dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements first for better caching
+COPY requirements.txt ./
+
+# Install dependencies
+RUN pip install --upgrade pip \
+ && pip install -r requirements.txt \
+ && pip install gunicorn uvicorn[standard]
+
+# Copy backend source
+COPY backend/ ./backend/
+
+# Install backend package
+RUN pip install -e ./backend
+
+# Copy configs
+COPY configs/ ./configs/
+
+# Create directories for persistence
+RUN mkdir -p /app/data /app/results /app/backend/logs
+
+# Expose internal API port
+EXPOSE 8001
+
+# Run the API using uvicorn directly
+CMD ["uvicorn", "basis_strategy_v1.api.main:app", "--host", "0.0.0.0", "--port", "8001", "--log-level", "debug"]
+
+
+

@@ -1,0 +1,16 @@
+date,protocol,symbol,apy_percent,apr_percent,apy_decimal,apr_decimal,base_apy_percent,reward_apy_percent,source,processed_date,methodology
+2024-02-16,ethena,sUSDE,24.71,22.088766647247237,0.24710000000000001,0.22088766647247238,24.71,0.0,defillama_manual_csv,2025-09-29T11:39:56.964781,apy_converted_to_apr_for_consistency
+2024-02-17,ethena,sUSDE,24.31,21.767314031775562,0.24309999999999998,0.21767314031775564,24.31,0.0,defillama_manual_csv,2025-09-29T11:39:56.964825,apy_converted_to_apr_for_consistency
+2024-02-18,ethena,sUSDE,24.12,21.614262509800696,0.2412,0.21614262509800697,24.12,0.0,defillama_manual_csv,2025-09-29T11:39:56.964852,apy_converted_to_apr_for_consistency
+2024-02-19,ethena,sUSDE,20.88,18.967739917705394,0.20879999999999999,0.18967739917705395,20.88,0.0,defillama_manual_csv,2025-09-29T11:39:56.964875,apy_converted_to_apr_for_consistency
+2024-02-20,ethena,sUSDE,20.85,18.94290594602044,0.20850000000000002,0.18942905946020439,20.85,0.0,defillama_manual_csv,2025-09-29T11:39:56.964897,apy_converted_to_apr_for_consistency
+2024-02-21,ethena,sUSDE,19.84,18.10322129997699,0.1984,0.1810322129997699,19.84,0.0,defillama_manual_csv,2025-09-29T11:39:56.964917,apy_converted_to_apr_for_consistency
+2024-02-22,ethena,sUSDE,19.93,18.1783305587675,0.1993,0.18178330558767497,19.93,0.0,defillama_manual_csv,2025-09-29T11:39:56.964937,apy_converted_to_apr_for_consistency
+2024-02-23,ethena,sUSDE,19.82,18.086522714440335,0.19820000000000002,0.18086522714440334,19.82,0.0,defillama_manual_csv,2025-09-29T11:39:56.964964,apy_converted_to_apr_for_consistency
+2024-02-24,ethena,sUSDE,19.69,17.977914107609514,0.19690000000000002,0.17977914107609516,19.69,0.0,defillama_manual_csv,2025-09-29T11:39:56.964985,apy_converted_to_apr_for_consistency
+2024-02-25,ethena,sUSDE,19.33,17.676536731223933,0.19329999999999997,0.17676536731223935,19.33,0.0,defillama_manual_csv,2025-09-29T11:39:56.965004,apy_converted_to_apr_for_consistency
+2024-02-26,ethena,sUSDE,16.38,15.172203817154784,0.1638,0.15172203817154784,16.38,0.0,defillama_manual_csv,2025-09-29T11:39:56.965023,apy_converted_to_apr_for_consistency
+2024-02-27,ethena,sUSDE,15.84,14.706936400475822,0.15839999999999999,0.14706936400475823,15.84,0.0,defillama_manual_csv,2025-09-29T11:39:56.965043,apy_converted_to_apr_for_consistency
+2024-02-28,ethena,sUSDE,15.66,14.551366482509987,0.1566,0.14551366482509986,15.66,0.0,defillama_manual_csv,2025-09-29T11:39:56.965061,apy_converted_to_apr_for_consistency
+2024-02-29,ethena,sUSDE,27.8,24.53787994944623,0.278,0.24537879949446229,27.8,0.0,defillama_manual_csv,2025-09-29T11:39:56.965101,apy_converted_to_apr_for_consistency
+2024-03-01,ethena,sUSDE,28.58,25.1467677606948,0.2858,0.251467677606948,28.58,0.0,defillama_manual_csv,2025-09-29T11:39:56.965145,apy_converted_to_apr_for_consistency

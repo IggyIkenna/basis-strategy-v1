@@ -1,0 +1,42 @@
+{
+  "emode": {
+    "ltv_limits": {
+      "weETH_WETH": 0.93,
+      "wstETH_WETH": 0.93,
+      "ETH_WETH": 0.93
+    },
+    "liquidation_thresholds": {
+      "weETH_WETH": 0.95,
+      "wstETH_WETH": 0.95,
+      "ETH_WETH": 0.95
+    },
+    "liquidation_bonus": {
+      "weETH_WETH": 0.01,
+      "wstETH_WETH": 0.01,
+      "ETH_WETH": 0.01
+    }
+  },
+  "standard": {
+    "ltv_limits": {
+      "weETH_WETH": 0.80,
+      "wstETH_WETH": 0.80,
+      "ETH_WETH": 0.80
+    },
+    "liquidation_thresholds": {
+      "weETH_WETH": 0.85,
+      "wstETH_WETH": 0.85,
+      "ETH_WETH": 0.85
+    },
+    "liquidation_bonus": {
+      "weETH_WETH": 0.05,
+      "wstETH_WETH": 0.05,
+      "ETH_WETH": 0.05
+    }
+  },
+  "reserve_factors": {
+    "weETH": 0.10,
+    "wstETH": 0.10,
+    "WETH": 0.10,
+    "USDT": 0.10
+  }
+}

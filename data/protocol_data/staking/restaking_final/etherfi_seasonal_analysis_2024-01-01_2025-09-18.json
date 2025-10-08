@@ -1,0 +1,44 @@
+{
+  "analysis_completed": "2025-09-29T21:14:46.846280",
+  "methodology": "daily_yield_distribution_analysis",
+  "total_periods": 114,
+  "reward_breakdown": {
+    "eigen_weekly_periods": 102,
+    "ethfi_topup_periods": 7,
+    "ethfi_seasonal_periods": 5
+  },
+  "daily_yield_analysis": {
+    "eigen_daily_yield": 3.220287497684581e-05,
+    "ethfi_topup_daily_yield": 9.667951797630734e-06,
+    "ethfi_seasonal_daily_yield": 4.2874995111421206e-05,
+    "total_daily_yield": 8.474582188589775e-05
+  },
+  "daily_yield_analysis_percent": {
+    "eigen_daily_percent": 0.0032202874976845807,
+    "ethfi_topup_daily_percent": 0.0009667951797630734,
+    "ethfi_seasonal_daily_percent": 0.004287499511142121,
+    "total_daily_percent": 0.008474582188589775
+  },
+  "conservative_estimates": {
+    "eigen_daily_conservative": 0.002596439285193669,
+    "ethfi_topup_daily_conservative": 0.000870115661786766,
+    "ethfi_seasonal_daily_conservative": 0.004287499511142121,
+    "total_daily_conservative": 0.007754054458122555
+  },
+  "aggressive_estimates": {
+    "eigen_daily_aggressive": 0.003930746940372643,
+    "ethfi_topup_daily_aggressive": 0.0010634746977393808,
+    "ethfi_seasonal_daily_aggressive": 0.007962499092121085,
+    "total_daily_aggressive": 0.01295672073023311
+  },
+  "data_quality": {
+    "exact_data_periods": 51,
+    "estimated_data_periods": 63
+  },
+  "timeline_coverage": {
+    "eigen_start_date": "2024-08-15",
+    "eigen_end_date": "2025-09-29",
+    "ethfi_start_date": "2024-03-01",
+    "ethfi_end_date": "2025-05-31"
+  }
+}

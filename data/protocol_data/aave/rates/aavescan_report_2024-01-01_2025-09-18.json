@@ -1,0 +1,58 @@
+{
+  "timestamp": "2025-09-29T11:44:21.761543",
+  "downloader": "aavescan_pro",
+  "total_downloads": 4,
+  "successful_downloads": 4,
+  "failed_downloads": 0,
+  "total_records": 2288,
+  "downloads": [
+    {
+      "success": true,
+      "market": "aave-v3-ethereum",
+      "symbol": "WETH",
+      "record_count": 638,
+      "output_file": "data/protocol_data/aave/rates/aave_v3_aave-v3-ethereum_WETH_rates_2024-01-01_2025-09-18.csv",
+      "date_range": "2024-01-01 to 2025-09-18",
+      "method": "csv_export",
+      "filtered": true,
+      "original_count": 974,
+      "floor_date": "2024-01-01"
+    },
+    {
+      "success": true,
+      "market": "aave-v3-ethereum",
+      "symbol": "wstETH",
+      "record_count": 506,
+      "output_file": "data/protocol_data/aave/rates/aave_v3_aave-v3-ethereum_wstETH_rates_2024-05-12_2025-09-18.csv",
+      "date_range": "2024-05-12 to 2025-09-18",
+      "method": "csv_export",
+      "filtered": true,
+      "original_count": 974,
+      "floor_date": "2024-05-12"
+    },
+    {
+      "success": true,
+      "market": "aave-v3-ethereum",
+      "symbol": "weETH",
+      "record_count": 506,
+      "output_file": "data/protocol_data/aave/rates/aave_v3_aave-v3-ethereum_weETH_rates_2024-05-12_2025-09-18.csv",
+      "date_range": "2024-05-12 to 2025-09-18",
+      "method": "csv_export",
+      "filtered": true,
+      "original_count": 533,
+      "floor_date": "2024-05-12"
+    },
+    {
+      "success": true,
+      "market": "aave-v3-ethereum",
+      "symbol": "USDT",
+      "record_count": 638,
+      "output_file": "data/protocol_data/aave/rates/aave_v3_aave-v3-ethereum_USDT_rates_2024-01-01_2025-09-18.csv",
+      "date_range": "2024-01-01 to 2025-09-18",
+      "method": "csv_export",
+      "filtered": true,
+      "original_count": 959,
+      "floor_date": "2024-01-01"
+    }
+  ]
+}

@@ -1,0 +1,70 @@
+# Virtual environment (excluded - use requirements.txt for dependencies)
+venv/
+
+# Python cache (recursive)
+**/__pycache__/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pytest_cache
+.Python
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+backend/logs/
+
+# Data files (large datasets)
+# data/
+# *.csv
+# *.json
+*.zip
+
+# Large result files and package-lock files
+pure_lending_backtest_results_*.json
+*package-lock.json
+results/
+tests/tmp/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# Node modules (including nested ones)
+**/node_modules/
+node_modules/
+
+# Configuration directories (runtime configs, not source code)
+configs/
+
+# Scripts subdirectories (utility scripts, not core application code)
+scripts/analyzers/
+scripts/downloaders/
+scripts/orchestrators/
+scripts/processors/
+scripts/utilities/
+
+# Environment files (sensitive will remove later)
+#.env
+#.env.local
+#.env.production
+#.env.staging
+
+# Coverage reports
+htmlcov/
+.coverage
+coverage.json
+
+ 

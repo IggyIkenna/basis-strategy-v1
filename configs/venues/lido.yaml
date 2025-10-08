@@ -1,0 +1,7 @@
+# Lido Venue Configuration
+venue: "lido"
+type: "defi"
+
+# Basic staking parameters
+min_stake_amount: 0.01  # ETH
+unstaking_period: 0  # days (instant for wstETH)

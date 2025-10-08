@@ -1,0 +1,87 @@
+{
+  "name": "Basis Strategy Project Rules",
+  "version": "1.0.0",
+  "description": "Architecture and coding standards for the Basis Strategy project",
+  "rules": [
+    {
+      "id": "no-hardcoded-values",
+      "title": "No Hardcoded Values",
+      "description": "Never use hardcoded values to fix issues. Always use proper data flow and component integration.",
+      "severity": "error",
+      "examples": {
+        "wrong": [
+          "liquidity_index = 1.070100",
+          "amount_out = amount * 1.07",
+          "gas_cost = 0.001"
+        ],
+        "correct": [
+          "liquidity_index = await self.data_provider.get_liquidity_index('USDT', timestamp)",
+          "amount_out = amount / liquidity_index",
+          "gas_cost = market_data.get('gas_price_gwei', 20.0) * gas_used"
+        ]
+      }
+    },
+    {
+      "id": "data-provider-integration",
+      "title": "Data Provider Integration",
+      "description": "All external data must come from the data provider, not hardcoded values.",
+      "severity": "error",
+      "requirements": [
+        "Query data provider for current timestamp data",
+        "Use dynamic data, not static values",
+        "Maintain proper component chain integration"
+      ]
+    },
+    {
+      "id": "configuration-architecture",
+      "title": "Configuration Architecture",
+      "description": "All configuration must be loaded from YAML files and validated through Pydantic models.",
+      "severity": "error",
+      "requirements": [
+        "Load all configuration from YAML files in configs/ directory",
+        "Validate all configuration through Pydantic models in config_models.py",
+        "Follow YAML-based config structure (modes/venues/scenarios)",
+        "Use environment variables only when specified in .env files",
+        "Add configuration entries to appropriate YAML files if missing",
+        "Update Pydantic models if new config fields are added"
+      ],
+      "examples": {
+        "wrong": [
+          "api_key = \"sk-1234567890abcdef\"",
+          "data_file = \"/path/to/data.csv\"",
+          "timeout = 30"
+        ],
+        "correct": [
+          "api_key = self.config.get('api_key')",
+          "data_file = self.config.get('data_file_path')",
+          "timeout = self.config.get('timeout_seconds', 30)"
+        ]
+      }
+    },
+    {
+      "id": "architecture-integrity",
+      "title": "Architecture Integrity",
+      "description": "Maintain the tight loop architecture and component chain.",
+      "severity": "error",
+      "requirements": [
+        "Data flows through proper component chain",
+        "No bypassing of components",
+        "Root causes addressed, not symptoms"
+      ]
+    }
+  ],
+  "validation": {
+    "before_commit": [
+      "No hardcoded values used (including config values)",
+      "Data comes from data provider",
+      "Configuration loaded from YAML files",
+      "Pydantic validation passes for all config",
+      "Component chain is maintained",
+      "Architecture integrity preserved",
+      "Dynamic data used, not static values",
+      "Root cause addressed, not symptoms",
+      "Configuration entries added to appropriate YAML files",
+      "Pydantic models updated if new config fields added"
+    ]
+  }
+}

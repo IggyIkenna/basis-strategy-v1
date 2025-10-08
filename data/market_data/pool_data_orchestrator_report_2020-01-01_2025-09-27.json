@@ -1,0 +1,101 @@
+{
+  "timestamp": "2025-09-27T19:33:50.186783",
+  "orchestrator": "pool_data_orchestrator",
+  "date_range": "2020-01-01 to present",
+  "total_duration_seconds": 55.024494,
+  "start_time": "2025-09-27T19:32:55.162289",
+  "end_time": "2025-09-27T19:33:50.186783",
+  "total_downloaders": 1,
+  "successful_downloaders": 1,
+  "failed_downloaders": 0,
+  "skipped_downloaders": 0,
+  "total_pools": 5,
+  "successful_downloads": 5,
+  "failed_downloads": 0,
+  "total_records": 61098,
+  "enforced_dates": {
+    "lst_pools": "2024-05-12",
+    "eth_usdt": "2024-01-01",
+    "eigen_eth": "2024-10-05",
+    "ethfi_eth": "2024-04-01"
+  },
+  "downloader_results": [
+    {
+      "timestamp": "2025-09-27T19:33:50.186274",
+      "downloader": "spot_data",
+      "date_range": "2020-01-01 to present",
+      "total_pools": 5,
+      "successful_downloads": 5,
+      "failed_downloads": 0,
+      "total_records": 61098,
+      "output_directory": "data/market_data/spot_prices",
+      "downloads": [
+        {
+          "success": true,
+          "pool": "0x4e68ccd3e89f51c3074ca5072bbac773960dfa36",
+          "pool_name": "WETH/USDT",
+          "base_symbol": "WETH",
+          "quote_symbol": "USDT",
+          "dex": "Uniswap v3",
+          "fee_tier": "0.3%",
+          "record_count": 15259,
+          "output_file": "data/market_data/spot_prices/eth_usd/uniswapv3_WETHUSDT_1h_2024-01-01_2025-09-27.csv",
+          "date_range": "2020-01-01 to 2025-09-27"
+        },
+        {
+          "success": true,
+          "pool": "0xc2c390c6cd3c4e6c2b70727d35a45e8a072f18ca",
+          "pool_name": "EIGEN/WETH",
+          "base_symbol": "EIGEN",
+          "quote_symbol": "WETH",
+          "dex": "Uniswap v3",
+          "fee_tier": "0.3%",
+          "record_count": 8587,
+          "output_file": "data/market_data/spot_prices/protocol_tokens/uniswapv3_EIGENWETH_1h_2024-10-05_2025-09-27.csv",
+          "date_range": "2020-01-01 to 2025-09-27"
+        },
+        {
+          "success": true,
+          "pool": "0x06f00544c0bc62e6db10f46d370dfccdc23d8189",
+          "pool_name": "ETHFI/WETH",
+          "base_symbol": "ETHFI",
+          "quote_symbol": "WETH",
+          "dex": "Uniswap v3",
+          "fee_tier": "0.3%",
+          "record_count": 13075,
+          "output_file": "data/market_data/spot_prices/protocol_tokens/uniswapv3_ETHFIWETH_1h_2024-04-01_2025-09-27.csv",
+          "date_range": "2020-01-01 to 2025-09-27"
+        },
+        {
+          "success": true,
+          "pool": "0x109830a1aaad605bbf02a9dfa7b0b92ec2fb7daa",
+          "pool_name": "wstETH/WETH",
+          "base_symbol": "wstETH",
+          "quote_symbol": "WETH",
+          "dex": "Uniswap v3",
+          "fee_tier": "0.01%",
+          "record_count": 12091,
+          "output_file": "data/market_data/spot_prices/lst_eth_ratios/uniswapv3_wstETHWETH_1h_2024-05-12_2025-09-27.csv",
+          "date_range": "2020-01-01 to 2025-09-27"
+        },
+        {
+          "success": true,
+          "pool": "0xdb74dfdd3bb46be8ce6c33dc9d82777bcfc3ded5",
+          "pool_name": "weETH/WETH",
+          "base_symbol": "weETH",
+          "quote_symbol": "WETH",
+          "dex": "Curve",
+          "fee_tier": "weeth-ng",
+          "record_count": 12086,
+          "output_file": "data/market_data/spot_prices/lst_eth_ratios/curve_weETHWETH_1h_2024-05-12_2025-09-27.csv",
+          "date_range": "2020-01-01 to 2025-09-27"
+        }
+      ],
+      "downloader_name": "unified_pools",
+      "duration_seconds": 55.024452,
+      "start_time": "2025-09-27T19:32:55.162301",
+      "end_time": "2025-09-27T19:33:50.186753"
+    }
+  ],
+  "failed_initializations": []
+}
