@@ -106,67 +106,54 @@ create_directories() {
 load_environment() {
     echo -e "${BLUE}🔧 Loading environment variables...${NC}"
     
-    # Load base environment from backend/env.unified
-    if [ -f "backend/env.unified" ]; then
-        echo -e "${BLUE}📋 Loading base environment from backend/env.unified...${NC}"
+    # Load base environment from env.unified
+    if [ -f "env.unified" ]; then
+        echo -e "${BLUE}📋 Loading base environment from env.unified...${NC}"
         set -a
-        source backend/env.unified
+        source env.unified
         set +a
     else
-        echo -e "${RED}❌ backend/env.unified not found${NC}"
+        echo -e "${RED}❌ env.unified not found${NC}"
         return 1
     fi
     
-    # Determine deployment mode and load override file
-    local deployment_mode=${BASIS_DEPLOYMENT_MODE:-local}
-    echo -e "${BLUE}🏗️ Deployment mode: $deployment_mode${NC}"
+    # Load environment-specific override file (platform.sh only uses root env files)
+    local environment=${BASIS_ENVIRONMENT:-dev}
+    echo -e "${BLUE}🏗️ Environment: $environment${NC}"
     
-    case $deployment_mode in
-        "local")
-            if [ -f ".env.local" ]; then
-                echo -e "${BLUE}📋 Loading local overrides from .env.local...${NC}"
+    case $environment in
+        "dev")
+            if [ -f ".env.dev" ]; then
+                echo -e "${BLUE}📋 Loading local overrides from .env.dev...${NC}"
                 set -a
-                source .env.local
+                source .env.dev
                 set +a
             else
-                echo -e "${YELLOW}⚠️ .env.local not found, using base configuration${NC}"
+                echo -e "${YELLOW}⚠️ .env.dev not found, using base configuration${NC}"
             fi
             ;;
-        "docker")
-            # For Docker, use deploy/.env.local for dev or deploy/.env.prod for production
-            local environment=${BASIS_ENVIRONMENT:-dev}
-            if [ "$environment" = "prod" ]; then
-                if [ -f "deploy/.env.prod" ]; then
-                    echo -e "${BLUE}📋 Loading production Docker overrides from deploy/.env.prod...${NC}"
-                    set -a
-                    source deploy/.env.prod
-                    set +a
-                else
-                    echo -e "${YELLOW}⚠️ deploy/.env.prod not found, using base configuration${NC}"
-                fi
-            else
-                if [ -f "deploy/.env.local" ]; then
-                    echo -e "${BLUE}📋 Loading development Docker overrides from deploy/.env.local...${NC}"
-                    set -a
-                    source deploy/.env.local
-                    set +a
-                else
-                    echo -e "${YELLOW}⚠️ deploy/.env.local not found, using base configuration${NC}"
-                fi
-            fi
-            ;;
-        "production")
-            if [ -f ".env.prod" ]; then
-                echo -e "${BLUE}📋 Loading production overrides from .env.prod...${NC}"
+        "staging")
+            if [ -f ".env.staging" ]; then
+                echo -e "${BLUE}📋 Loading staging overrides from .env.staging...${NC}"
                 set -a
-                source .env.prod
+                source .env.staging
                 set +a
             else
-                echo -e "${YELLOW}⚠️ .env.prod not found, using base configuration${NC}"
+                echo -e "${YELLOW}⚠️ .env.staging not found, using base configuration${NC}"
+            fi
+            ;;
+        "prod")
+            if [ -f ".env.production" ]; then
+                echo -e "${BLUE}📋 Loading production overrides from .env.production...${NC}"
+                set -a
+                source .env.production
+                set +a
+            else
+                echo -e "${YELLOW}⚠️ .env.production not found, using base configuration${NC}"
             fi
             ;;
         *)
-            echo -e "${YELLOW}⚠️ Unknown deployment mode: $deployment_mode, using base configuration${NC}"
+            echo -e "${YELLOW}⚠️ Unknown environment: $environment, using base configuration${NC}"
             ;;
     esac
     
@@ -174,15 +161,27 @@ load_environment() {
     local required_vars=(
         "BASIS_ENVIRONMENT"
         "BASIS_DEPLOYMENT_MODE"
+        "BASIS_DEPLOYMENT_MACHINE"
         "BASIS_DATA_DIR"
         "BASIS_RESULTS_DIR"
         "BASIS_REDIS_URL"
         "BASIS_DEBUG"
         "BASIS_LOG_LEVEL"
-        "BASIS_STARTUP_MODE"
+        "BASIS_EXECUTION_MODE"
         "BASIS_DATA_START_DATE"
         "BASIS_DATA_END_DATE"
     )
+    
+    # Add frontend vars if not in backend-only mode
+    if [ "${BACKEND_ONLY:-false}" = "false" ]; then
+        required_vars+=(
+            "APP_DOMAIN"
+            "ACME_EMAIL"
+            "HTTP_PORT"
+            "HTTPS_PORT"
+            "HEALTH_CHECK_INTERVAL"
+        )
+    fi
     
     local missing_vars=()
     for var in "${required_vars[@]}"; do
@@ -251,6 +250,10 @@ start_backend() {
     while [ $timeout_count -lt $max_timeout ]; do
         if curl -s http://localhost:$BACKEND_PORT/health/ >/dev/null 2>&1; then
             echo -e "${GREEN}✅ Backend started successfully on port $BACKEND_PORT (PID: $BACKEND_PID)${NC}"
+            
+            # Start health monitor
+            start_health_monitor
+            
             return 0
         fi
         
@@ -324,6 +327,10 @@ start_backtest() {
         return 1
     fi
     
+    # Force backtest mode (override env file setting)
+    export BASIS_EXECUTION_MODE=backtest
+    echo -e "${BLUE}🔧 Forcing BASIS_EXECUTION_MODE=backtest (overriding env file)${NC}"
+    
     # Create required directories
     create_directories
     
@@ -349,6 +356,9 @@ start_backtest() {
     if curl -s http://localhost:$BACKEND_PORT/health/ >/dev/null 2>&1; then
         echo -e "${GREEN}✅ Backend started successfully in backtest mode on port $BACKEND_PORT (PID: $BACKEND_PID)${NC}"
         echo -e "${BLUE}📊 Backtest API available at: http://localhost:$BACKEND_PORT/backtest/${NC}"
+        
+        # Start health monitor
+        start_health_monitor
     else
         echo -e "${RED}❌ Backend failed to start. Check logs: tail -f backend/logs/api.log${NC}"
         return 1
@@ -358,6 +368,9 @@ start_backtest() {
 # Function to stop all services
 stop_all() {
     echo -e "${BLUE}🛑 Stopping all services...${NC}"
+    
+    # Stop health monitor first
+    stop_health_monitor
     
     # Stop backend
     if [ ! -z "$BACKEND_PID" ]; then
@@ -484,6 +497,33 @@ set_environment() {
     fi
 }
 
+# Function to start health monitor
+start_health_monitor() {
+    echo -e "${BLUE}🏥 Starting health monitor...${NC}"
+    
+    if [ -z "$HEALTH_CHECK_INTERVAL" ]; then
+        echo -e "${YELLOW}⚠️ HEALTH_CHECK_INTERVAL not set, skipping health monitor${NC}"
+        return 0
+    fi
+    
+    # Start monitor in background
+    ./scripts/health_monitor.sh > logs/health_monitor.log 2>&1 &
+    echo $! > logs/health_monitor.pid
+    
+    echo -e "${GREEN}✅ Health monitor started (PID: $(cat logs/health_monitor.pid))${NC}"
+}
+
+# Function to stop health monitor
+stop_health_monitor() {
+    if [ -f "logs/health_monitor.pid" ]; then
+        local pid=$(cat logs/health_monitor.pid)
+        echo -e "${BLUE}🛑 Stopping health monitor (PID: $pid)...${NC}"
+        kill $pid 2>/dev/null || true
+        rm logs/health_monitor.pid
+        echo -e "${GREEN}✅ Health monitor stopped${NC}"
+    fi
+}
+
 # Function to show help
 show_help() {
     echo -e "${BLUE}DeFi Yield Optimization Platform Management Script${NC}"
@@ -491,10 +531,11 @@ show_help() {
     echo -e "${YELLOW}Usage: $0 [COMMAND]${NC}"
     echo ""
     echo -e "${GREEN}Commands:${NC}"
-    echo -e "  ${BLUE}start${NC}        Start backend and frontend"
+    echo -e "  ${BLUE}start${NC}        Start backend and frontend (uses env file BASIS_EXECUTION_MODE)"
     echo -e "  ${BLUE}stop${NC}         Stop all services"
     echo -e "  ${BLUE}restart${NC}      Restart all services"
-    echo -e "  ${BLUE}backtest${NC}     Start in backtest mode (backend only)"
+    echo -e "  ${BLUE}backtest${NC}     Force backtest mode (backend only, overrides env file)"
+    echo -e "  ${BLUE}backend${NC}      Start backend only (uses env file BASIS_EXECUTION_MODE)"
     echo -e "  ${BLUE}status${NC}       Show service status"
     echo -e "  ${BLUE}logs${NC}         Show logs [backend|frontend|all]"
     echo -e "  ${BLUE}test${NC}         Run all tests"
@@ -503,7 +544,7 @@ show_help() {
     echo ""
     echo -e "${GREEN}Environment Variables:${NC}"
     echo -e "  ${BLUE}BASIS_API_PORT${NC}     Backend port (default: 8001)"
-    echo -e "  ${BLUE}BASIS_DEPLOYMENT_MODE${NC}  Deployment mode (local|docker|production)"
+    echo -e "  ${BLUE}BASIS_DEPLOYMENT_MODE${NC}  Deployment mode (local|docker)"
     echo ""
     echo -e "${GREEN}Examples:${NC}"
     echo -e "  ${BLUE}$0 env dev${NC}         # Set development environment"

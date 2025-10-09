@@ -1,6 +1,25 @@
 """
 Centralized Configuration Loader
 
+TODO-REFACTOR: CONFIGURATION LOADING ARCHITECTURE VIOLATION - 08_configuration_architecture_guide.md
+ISSUE: This component may violate configuration loading architecture requirements:
+
+1. CONFIGURATION ARCHITECTURE REQUIREMENTS:
+   - Proper YAML-based configuration loading
+   - Environment variable integration
+   - Configuration hierarchy validation
+   - Fail-fast configuration validation
+
+2. REQUIRED VERIFICATION:
+   - Verify proper YAML configuration loading
+   - Check environment variable integration
+   - Validate configuration hierarchy
+   - Ensure fail-fast validation
+
+3. CANONICAL SOURCE:
+   - .cursor/tasks/08_configuration_architecture_guide.md
+   - YAML-only configuration system
+
 Loads all configuration from a single place and ensures consistency.
 Config is loaded once at startup and cached. Environment variables
 are loaded once and cached. Changes require a full system restart.
@@ -89,6 +108,17 @@ class ConfigLoader:
     
     def _load_base_config(self) -> Dict[str, Any]:
         """Load base configuration from JSON files with environment-specific overrides."""
+        # TODO: [CONFIG_SEPARATION_OF_CONCERNS] - Remove JSON configuration loading
+        # Current Issue: Config loader still loads JSON files that should be removed per separation of concerns
+        # Required Changes:
+        #   1. Remove JSON configuration loading (default.json, {environment}.json, local.json)
+        #   2. Database/Redis configuration should be in env.unified (deployment-specific)
+        #   3. Strategy/venue configuration should be in YAML files (static configs)
+        #   4. Environment variables should handle deployment-specific overrides
+        # Reference: docs/specs/CONFIGURATION.md - Separation of Concerns section
+        # Reference: docs/ENVIRONMENT_VARIABLES.md - Configuration Separation of Concerns section
+        # Status: PENDING
+        
         config = {}
         
         # Load default.json (base configuration)
@@ -294,6 +324,11 @@ class ConfigLoader:
         logger.warning("🔄 Reloading configuration...")
         logger.warning("⚠️ Environment variables will not be reloaded - restart required")
         
+        # TODO-REFACTOR: STATE CLEARING - 16_clean_component_architecture_requirements.md
+        # ISSUE: Cache clearing may indicate architectural problem
+        # Canonical: .cursor/tasks/16_clean_component_architecture_requirements.md
+        # Fix: Design components to be naturally clean without needing state clearing
+        # Status: PENDING
         self._config_cache.clear()
         self._load_all_config()
         self._validate_config()

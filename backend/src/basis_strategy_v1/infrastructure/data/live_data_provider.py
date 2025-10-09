@@ -495,15 +495,20 @@ class LiveDataProvider:
                 snapshot[f'{venue}_funding_rate'] = await self.get_funding_rate('ETH', venue)
             except Exception as e:
                 logger.warning(f"Failed to get {venue} funding rate: {e}")
-                snapshot[f'{venue}_funding_rate'] = 0.0
+                # TODO-REFACTOR: Funding rate data access failed - should fail fast with error code
+                # Canonical: .cursor/tasks/06_architecture_compliance_rules.md
+                # Fix: Fail fast with error code, don't use hardcoded values
+                raise ValueError(f"Failed to get {venue} funding rate data: {e}")
 
         # Gas costs
         try:
             # Convert to gwei
             snapshot['gas_price_gwei'] = await self.get_gas_cost('standard') * 1e9
         except Exception as e:
-            logger.warning(f"Failed to get gas cost: {e}")
-            snapshot['gas_price_gwei'] = 20.0  # Default
+            # TODO-REFACTOR: Gas price data access failed - should fail fast with error code
+            # Canonical: .cursor/tasks/06_architecture_compliance_rules.md
+            # Fix: Fail fast with error code, don't use hardcoded values
+            raise ValueError(f"Failed to get gas cost data: {e}")
 
         return snapshot
 
@@ -753,6 +758,11 @@ class LiveDataProvider:
     async def clear_cache(self):
         """Clear all cached data."""
         if not self.redis_client:
+            # TODO-REFACTOR: STATE CLEARING - 16_clean_component_architecture_requirements.md
+            # ISSUE: Cache clearing may indicate architectural problem
+            # Canonical: .cursor/tasks/16_clean_component_architecture_requirements.md
+            # Fix: Design components to be naturally clean without needing state clearing
+            # Status: PENDING
             self._price_cache.clear()
             self._last_update.clear()
             return

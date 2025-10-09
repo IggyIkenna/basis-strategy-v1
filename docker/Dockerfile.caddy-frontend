@@ -1,0 +1,40 @@
+# Frontend build + Caddy server Dockerfile (multi-stage)
+
+# ======================
+# Build frontend
+# ======================
+FROM node:20-alpine AS webbuilder
+WORKDIR /workspace
+COPY frontend/ ./frontend/
+WORKDIR /workspace/frontend
+
+# Accept build args for environment
+ARG BUILD_ENV=production
+ARG VITE_API_BASE_URL=/api/v1
+
+# Copy appropriate .env file if it exists
+COPY frontend/.env.${BUILD_ENV} .env.production 2>/dev/null || echo "No .env.${BUILD_ENV} file found, using defaults"
+
+# Clear npm cache and install with legacy peer deps to handle conflicts
+RUN npm cache clean --force && \
+    npm install --no-audit --no-fund --legacy-peer-deps && \
+    npm run build
+
+# ======================
+# Caddy static server + reverse proxy
+# ======================
+FROM caddy:2-alpine
+
+# Copy Caddyfile generation script
+COPY docker/generate-caddyfile.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/generate-caddyfile.sh
+
+# Static assets from Vite build
+COPY --from=webbuilder /workspace/frontend/dist /usr/share/caddy
+
+EXPOSE 80 443
+
+# Generate Caddyfile and start Caddy
+CMD ["/bin/sh", "-c", "generate-caddyfile.sh && caddy run --config /etc/caddy/Caddyfile --adapter caddyfile"]
+
+

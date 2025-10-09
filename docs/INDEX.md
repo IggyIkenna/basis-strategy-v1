@@ -2,7 +2,19 @@
 
 **Quick Navigation** - Find what you need in < 3 clicks  
 **Status**: Backend implemented ✅ Core components working, critical issues remain  
-**Updated**: October 5, 2025 - Implementation completed
+**Updated**: October 5, 2025 - Implementation completed  
+**Last Reviewed**: October 8, 2025  
+**Status**: ✅ Aligned with canonical sources (.cursor/tasks/ + MODES.md)
+
+---
+
+## 📚 **Canonical Sources**
+
+**This index aligns with canonical architectural principles**:
+- **Architectural Principles**: [CANONICAL_ARCHITECTURAL_PRINCIPLES.md](CANONICAL_ARCHITECTURAL_PRINCIPLES.md) - Consolidated from all .cursor/tasks/
+- **Strategy Specifications**: [MODES.md](MODES.md) - Canonical strategy mode definitions
+- **Design Decisions**: [ARCHITECTURAL_DECISIONS.md](ARCHITECTURAL_DECISIONS.md) - Core design decisions
+- **Task Specifications**: `.cursor/tasks/` - Individual task specifications
 
 ---
 
@@ -76,7 +88,7 @@
 - Integration testing requirements
 
 ### **Configuration**
-→ **[CONFIG_WORKFLOW.md](CONFIG_WORKFLOW.md)**
+→ **[specs/CONFIGURATION.md](specs/CONFIGURATION.md)**
 - Configuration hierarchy & validation
 - Mode/venue/share class configs
 - Update workflow & restart procedures
@@ -98,8 +110,7 @@
 → **[SCRIPTS_DATA_GUIDE.md](SCRIPTS_DATA_GUIDE.md)** - Data pipeline & orchestrators  
 → **[WALLET_SETUP_GUIDE.md](WALLET_SETUP_GUIDE.md)** - Wallet configuration  
 → **[KING_TOKEN_HANDLING_GUIDE.md](KING_TOKEN_HANDLING_GUIDE.md)** - KING token unwrapping  
-→ **[DATA_VALIDATION_GUIDE.md](DATA_VALIDATION_GUIDE.md)** - Complete data validation guide (primary)  
-→ **[DATA_REQUIREMENTS_AND_VALIDATION_GUIDE.md](DATA_REQUIREMENTS_AND_VALIDATION_GUIDE.md)** - Quick reference (lightweight)  
+→ **[specs/09_DATA_PROVIDER](specs/09_DATA_PROVIDER)** - Complete data provider spec with comprehensive validation guide  
 → **[ENVIRONMENT_VARIABLES.md](ENVIRONMENT_VARIABLES.md)** - Environment variables
 
 ---
@@ -147,7 +158,7 @@ All component specs in **[specs/](specs/)** directory:
 | Quality gates & validation | [QUALITY_GATES.md](QUALITY_GATES.md) |
 | AAVE index mechanics | [specs/02_EXPOSURE_MONITOR.md](specs/02_EXPOSURE_MONITOR.md) |
 | Timing & event model | [ARCHITECTURAL_DECISIONS.md](ARCHITECTURAL_DECISIONS.md) |
-| Mode configurations | [CONFIG_WORKFLOW.md](CONFIG_WORKFLOW.md) |
+| Mode configurations | [specs/CONFIGURATION.md](specs/CONFIGURATION.md) |
 | Component data flow | [COMPONENT_SPECS_INDEX.md](COMPONENT_SPECS_INDEX.md) |
 | Implementation tasks | [REQUIREMENTS.md](REQUIREMENTS.md) |
 | API endpoints | [REFERENCE.md](REFERENCE.md) |

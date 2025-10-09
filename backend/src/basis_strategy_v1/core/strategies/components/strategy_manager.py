@@ -1,19 +1,44 @@
 """
 Strategy Manager Component
 
-Mode-specific orchestration and rebalancing decisions.
+TODO-REFACTOR: MAJOR ARCHITECTURE VIOLATION - strategy_manager_refactor.md
+ISSUE: This component violates canonical architecture requirements in multiple ways:
 
-Key Principles:
-- Unified interface: Same methods for all position changes (initial, rebalancing, deposits, withdrawals)
-- Mode-specific logic: Desired position different per mode (if/else on mode)
-- Actual vs Desired: Compare current exposure to target, generate instructions to close gap
-- Instruction generation: Creates tasks for execution managers
+1. STRATEGY MANAGER REFACTOR VIOLATIONS:
+   - Still uses complex transfer_manager.py (1068 lines) that should be removed
+   - Missing inheritance-based strategy modes with standardized wrapper actions
+   - No strategy factory for mode-based instantiation
+   - Has hardcoded mode checks instead of config-driven parameters
 
-Handles:
-- Initial position setup (t=0)
-- Deposits/withdrawals (user adds/removes capital)
-- Rebalancing (risk-triggered)
-- Unwinding (exit strategy)
+2. REQUIRED NEW ARCHITECTURE (per strategy_manager_refactor.md + docs/MODES.md):
+   - Create BaseStrategyManager with standardized wrapper actions:
+     * entry_full() - Enter full position (initial setup or large deposits)
+     * entry_partial() - Scale up position (small deposits or PnL gains)  
+     * exit_full() - Exit entire position (withdrawals or risk override)
+     * exit_partial() - Scale down position (small withdrawals or risk reduction)
+     * sell_dust() - Convert non-share-class tokens to share class currency
+   - Create strategy-specific implementations: BTCBasisStrategyManager, ETHLeveragedStrategyManager, etc.
+   - Create StrategyFactory for mode-based instantiation
+   - Remove transfer_manager.py completely
+   - **Reference**: docs/MODES.md - Standardized Strategy Manager Architecture section
+
+3. GENERIC VS MODE-SPECIFIC VIOLATIONS (per 18_generic_vs_mode_specific_architecture.md):
+   - Strategy Manager should be strategy mode specific by nature ✅
+   - But should use config-driven parameters, not hardcoded mode logic
+   - Should care about: share_class, asset, lst_type, hedge_allocation from config
+   - Should NOT care about: hardcoded strategy mode logic
+
+4. ENVIRONMENT VARIABLE INTEGRATION VIOLATIONS:
+   - Missing BASIS_ENVIRONMENT routing for venue credentials
+   - Missing BASIS_EXECUTION_MODE routing for backtest vs live execution
+   - Should route to appropriate environment-specific credentials
+
+5. SEPARATION OF CONCERNS:
+   - BASIS_DEPLOYMENT_MODE: Controls port/host forwarding and dependency injection (local vs docker)
+   - BASIS_ENVIRONMENT: Controls venue credential routing (dev/staging/prod) and data sources (CSV vs DB)
+   - BASIS_EXECUTION_MODE: Controls venue execution behavior (backtest simulation vs live execution)
+
+CURRENT STATE: This file needs complete refactoring to align with canonical architecture.
 """
 
 import pandas as pd

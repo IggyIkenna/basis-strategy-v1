@@ -18,7 +18,7 @@ import logging
 
 # from .config_models import ConfigSchema, load_and_validate_config
 # from .config_validator import validate_configuration, ValidationResult
-from .health_check import register_component, mark_component_healthy, mark_component_unhealthy
+# Health check functions removed - now handled by unified health manager
 # from ..monitoring.logging import log_structured_error
 
 logger = logging.getLogger(__name__)
@@ -37,7 +37,35 @@ ERROR_CODES = {
 
 
 class ConfigManager:
-    """Unified configuration manager with fail-fast policy."""
+    """Unified configuration manager with fail-fast policy.
+    
+    TODO-REFACTOR: ENVIRONMENT VARIABLE INTEGRATION VIOLATION - 19_venue_based_execution_architecture.md
+    ISSUE: This component has environment variable naming inconsistencies:
+    
+    1. ENVIRONMENT VARIABLE NAMING VIOLATIONS:
+       - Uses BASIS_DEPLOYMENT_MODE but canonical docs reference BASIS_ENVIRONMENT
+       - Creates confusion between deployment style vs environment
+       - Missing BASIS_EXECUTION_MODE integration
+    
+    2. REQUIRED ARCHITECTURE (per 19_venue_based_execution_architecture.md):
+       - Should use THREE DISTINCT VARIABLES:
+         * BASIS_DEPLOYMENT_MODE=local|docker (port/host forwarding and dependency injection)
+         * BASIS_ENVIRONMENT=dev|staging|production (dtestnet vs mainnet APIs)
+         * BASIS_DATA_MODE=csv|db (data source: CSV vs DB)
+         * BASIS_EXECUTION_MODE=backtest|live (venue execution: simulated vs real)
+    
+    3. CURRENT VIOLATIONS:
+       - Inconsistent environment variable usage
+       - Missing BASIS_EXECUTION_MODE integration
+       - Confusion between deployment mode and environment
+    
+    4. REQUIRED FIX:
+       - Clarify BASIS_DEPLOYMENT_MODE vs BASIS_ENVIRONMENT distinction
+       - Add BASIS_EXECUTION_MODE integration
+       - Ensure consistent environment variable usage across all components
+    
+    CURRENT STATE: This component needs environment variable naming clarification.
+    """
     
     def __init__(self):
         self.base_dir = Path(__file__).parent.parent.parent.parent.parent.parent
@@ -48,9 +76,7 @@ class ConfigManager:
         self._load_all_config()
         self._validate_config()
         
-        # Mark config manager as healthy
-        register_component('config_manager')
-        mark_component_healthy('config_manager')
+        # Config manager health now handled by unified health manager
     
     def _load_all_config(self):
         """Load all configuration files and environment variables."""
@@ -75,14 +101,25 @@ class ConfigManager:
     
     def _load_environment_variables(self) -> Dict[str, str]:
         """Load environment variables with FAIL FAST policy."""
-        # First load from backend/env.unified
-        self._load_env_file(self.base_dir / "backend" / "env.unified")
+        # First load from env.unified
+        self._load_env_file(self.base_dir / "env.unified")
         
-        # Then load override files based on deployment mode
-        deployment_mode = os.getenv('BASIS_DEPLOYMENT_MODE', 'local')
+        # Then load override files based on deployment mode. If not set FAIL FAST
+        deployment_mode = os.getenv('BASIS_DEPLOYMENT_MODE')
         
-        if deployment_mode == 'local' and (self.base_dir / ".env.local").exists():
-            self._load_env_file(self.base_dir / ".env.local")
+        # TODO: [ENV_VAR_CREDENTIAL_ROUTING] - Environment-specific credential routing
+        # Current Issue: Missing environment-specific credential routing for venue clients
+        # Required Changes:
+        #   1. Add BASIS_ENVIRONMENT routing to select dev/staging/prod credentials
+        #   2. Route venue credentials based on environment (BASIS_DEV__CEX__BINANCE_SPOT_API_KEY vs BASIS_PROD__CEX__BINANCE_SPOT_API_KEY)
+        #   3. Add BASIS_EXECUTION_MODE routing for backtest vs live mode credential requirements
+        #   4. Implement venue client initialization based on environment-specific credentials
+        # Reference: docs/ENVIRONMENT_VARIABLES.md - Environment-Specific Credential Routing section
+        # Reference: .cursor/tasks/19_venue_based_execution_architecture.md (canonical: docs/VENUE_ARCHITECTURE.md)
+        # Status: PENDING
+        
+        if deployment_mode == 'local' and (self.base_dir / ".env.dev").exists():
+            self._load_env_file(self.base_dir / ".env.dev")
         elif deployment_mode == 'docker' and (self.base_dir / "deploy" / ".env.docker").exists():
             self._load_env_file(self.base_dir / "deploy" / ".env.docker")
         elif deployment_mode == 'production' and (self.base_dir / ".env.production").exists():
@@ -97,7 +134,7 @@ class ConfigManager:
             'BASIS_REDIS_URL',
             'BASIS_DEBUG',
             'BASIS_LOG_LEVEL',
-            'BASIS_STARTUP_MODE',
+            'BASIS_EXECUTION_MODE',
             'BASIS_DATA_START_DATE',
             'BASIS_DATA_END_DATE'
         ]
@@ -133,9 +170,9 @@ class ConfigManager:
                     if value:  # Only set non-empty values
                         os.environ[key] = value
     
-    def get_startup_mode(self) -> str:
+    def get_execution_mode(self) -> str:
         """Get startup mode from environment variables."""
-        return self.config_cache['env']['BASIS_STARTUP_MODE']
+        return self.config_cache['env']['BASIS_EXECUTION_MODE']
     
     def get_data_directory(self) -> str:
         """Get data directory from environment variables."""

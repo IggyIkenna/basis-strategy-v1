@@ -1,14 +1,12 @@
 """Health check endpoints."""
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Request
 from typing import Dict, Any, Optional
-import psutil
-from datetime import datetime
 import structlog
+from datetime import datetime
 
-from ...infrastructure.monitoring.health import HealthChecker
-from ..models.responses import StandardResponse, HealthResponse
-from ..dependencies import get_health_checker_async
+from ...core.health import unified_health_manager
+from ..models.responses import HealthResponse
 
 logger = structlog.get_logger()
 router = APIRouter()
@@ -18,87 +16,64 @@ router = APIRouter()
     "/",
     response_model=HealthResponse,
     summary="Basic health check",
-    description="Basic health check - no authentication required"
+    description="Fast heartbeat check (< 50ms) - no authentication required"
 )
 async def basic_health() -> HealthResponse:
     """
-    Basic health check - no authentication required.
+    Fast heartbeat check (< 50ms) - no authentication required.
     Used by Docker/Kubernetes for basic liveness checks.
     """
-    # Get basic system info for the health check
     try:
-        cpu_percent = psutil.cpu_percent(interval=0.1)
-        memory = psutil.virtual_memory()
+        health_data = await unified_health_manager.check_basic_health()
         
         return HealthResponse(
-            status="healthy",
-            timestamp=datetime.utcnow(),
-            components={
-                "service": "basis-strategy-v1",
-                "api": "operational",
-                "system": "operational"
-            },
-            metrics={
-                "cpu_percent": cpu_percent,
-                "memory_percent": memory.percent,
-                "memory_available_gb": round(memory.available / (1024**3), 2)
-            }
+            status=health_data["status"],
+            timestamp=datetime.fromisoformat(health_data["timestamp"].replace('Z', '+00:00')),
+            service=health_data.get("service"),
+            execution_mode=health_data.get("execution_mode"),
+            uptime_seconds=health_data.get("uptime_seconds"),
+            system=health_data.get("system")
         )
     except Exception as e:
-        logger.warning(f"Could not get system metrics: {e}")
+        logger.error(f"Basic health check failed: {e}")
         return HealthResponse(
-            status="healthy",
+            status="unhealthy",
             timestamp=datetime.utcnow(),
-            components={
-                "service": "basis-strategy-v1",
-                "api": "operational"
-            }
+            service="basis-strategy-v1",
+            error=str(e)
         )
-
-
-"""Optional liveness endpoint removed for simplification."""
-
-
-"""Optional readiness endpoint removed for simplification."""
 
 
 @router.get(
     "/detailed",
     response_model=HealthResponse,
     summary="Detailed health check",
-    description="Detailed health with Redis, data provider, and database status"
+    description="Comprehensive health with all components, system metrics, and summary - no authentication required"
 )
 async def detailed_health(request: Request) -> HealthResponse:
+    """
+    Comprehensive health check - no authentication required.
+    Returns all components (mode-filtered), system metrics, and summary.
+    Includes live trading health when in live mode.
+    """
     correlation_id = getattr(request.state, "correlation_id", "unknown")
     try:
         logger.info(
             "Detailed health check requested",
             correlation_id=correlation_id
         )
-        checker = await get_health_checker_async()
-        detailed = await checker.get_detailed_health()
-        metrics = {}
-        if "system" in detailed:
-            metrics.update(detailed["system"])
-        if "process" in detailed:
-            metrics.update(detailed["process"])
-        if "performance" in detailed:
-            metrics.update(detailed["performance"])
-        if "uptime_seconds" in detailed:
-            metrics["uptime_seconds"] = detailed["uptime_seconds"]
-        # Include explicit data provider details for CSV troubleshooting
-        if "data_provider_details" in detailed and detailed["data_provider_details"]:
-            metrics["data_provider_details"] = detailed["data_provider_details"]
-
+        
+        health_data = await unified_health_manager.check_detailed_health()
+        
         return HealthResponse(
-            status=detailed.get("status", "healthy"),
-            timestamp=datetime.utcnow(),
-            components=detailed.get("components", {
-                "cache": "not_configured",
-                "data_provider": "unknown",
-                "database": "not_configured"
-            }),
-            metrics=metrics if metrics else None
+            status=health_data["status"],
+            timestamp=datetime.fromisoformat(health_data["timestamp"].replace('Z', '+00:00')),
+            service="basis-strategy-v1",
+            execution_mode=health_data.get("execution_mode"),
+            uptime_seconds=health_data.get("system", {}).get("uptime_seconds"),
+            system=health_data.get("system"),
+            components=health_data.get("components"),
+            summary=health_data.get("summary")
         )
     except Exception as e:
         logger.error(
@@ -109,7 +84,8 @@ async def detailed_health(request: Request) -> HealthResponse:
         return HealthResponse(
             status="unhealthy",
             timestamp=datetime.utcnow(),
-            components={"error": str(e)}
+            service="basis-strategy-v1",
+            error=str(e)
         )
 
 

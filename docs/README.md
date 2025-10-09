@@ -2,7 +2,19 @@
 
 **Purpose**: Complete specifications for component-based service architecture  
 **Status**: ✅ ALL SPECIFICATIONS COMPLETE - Ready for implementation  
-**Updated**: October 3, 2025 - Documentation cleanup & streamlining
+**Updated**: October 3, 2025 - Documentation cleanup & streamlining  
+**Last Reviewed**: October 8, 2025  
+**Status**: ✅ Aligned with canonical sources (.cursor/tasks/ + MODES.md)
+
+---
+
+## 📚 **Canonical Sources**
+
+**This documentation aligns with canonical architectural principles**:
+- **Architectural Principles**: [CANONICAL_ARCHITECTURAL_PRINCIPLES.md](CANONICAL_ARCHITECTURAL_PRINCIPLES.md) - Consolidated from all .cursor/tasks/
+- **Strategy Specifications**: [MODES.md](MODES.md) - Canonical strategy mode definitions
+- **Design Decisions**: [ARCHITECTURAL_DECISIONS.md](ARCHITECTURAL_DECISIONS.md) - Core design decisions
+- **Task Specifications**: `.cursor/tasks/` - Individual task specifications
 
 ---
 
@@ -71,15 +83,15 @@ This project builds a **live and backtesting framework for multi-strategy yield 
 
 ### **Configuration & Data Infrastructure** (Updated December 2024)
 ✅ **Configuration Separation**: Fixed separation of concerns between base, environment-specific, and local configs
-✅ **Environment-Specific Configs**: Added staging.json and production.json for proper environment management
+✅ **Environment-Specific Configs**: Environment variables handle environment-specific configuration
 ✅ **Deployment Configuration**: Cleaned up deploy/.env* files to only contain Caddy-specific variables
 ✅ **Data Mapping**: Fixed historical data mapping to point to actual files using DataProvider file maps
 ✅ **Live Data Provider**: Implemented real-time data provider for live trading mode with caching and error handling
 ✅ **Configuration Validation**: Comprehensive validation script for all configuration sources and data availability
-- Configuration system: YAML-based (modes/, venues/, share_classes/) - JSON hierarchy not yet implemented
+- Configuration system: YAML-based (modes/, venues/, share_classes/) with environment variable overrides
 - Live data sources: Binance, Bybit, OKX, AAVE, EtherFi, Lido, Chainlink, Etherscan
 - Caching strategy: In-memory and Redis support with configurable TTL
-- Documentation updated: ENVIRONMENT_VARIABLES.md, DEPLOYMENT_GUIDE.md, DATA_VALIDATION_GUIDE.md, ARCHITECTURAL_DECISIONS.md
+- Documentation updated: ENVIRONMENT_VARIABLES.md, DEPLOYMENT_GUIDE.md, specs/09_DATA_PROVIDER, ARCHITECTURAL_DECISIONS.md
 
 ### **Backend Infrastructure**
 - ✅ Core components exist (~4,500 lines of math engines & infrastructure)
@@ -95,7 +107,7 @@ This project builds a **live and backtesting framework for multi-strategy yield 
 ### **Critical Issues Remaining**
 - 🔄 **Pure Lending Yield Calculation**: Unrealistic 1166% APY (should be 3-8%)
 - 🔄 **Scripts Directory Quality Gates**: Only 5/14 scripts passing (35.7%)
-- 🔄 **Configuration System**: JSON hierarchy documented but not implemented
+- ✅ **Configuration System**: YAML-based with environment variable overrides
 
 ### **Implementation Status**
 - **Timeline**: 1-2 weeks to production-ready (critical issues need resolution)
@@ -129,7 +141,7 @@ This project builds a **live and backtesting framework for multi-strategy yield 
 - Integration plan → [REPO_INTEGRATION_PLAN.md](REPO_INTEGRATION_PLAN.md)
 
 **For Configuration**:
-- Config workflow & validation → [CONFIG_WORKFLOW.md](CONFIG_WORKFLOW.md)
+- Config workflow & validation → [specs/CONFIGURATION.md](specs/CONFIGURATION.md)
 - Environment variables → [ENVIRONMENT_VARIABLES.md](ENVIRONMENT_VARIABLES.md)
 - Config reference → [REFERENCE.md](REFERENCE.md) (Config section)
 
@@ -188,7 +200,7 @@ For complete details, see individual component specs:
 
 **Reference**:
 - [REFERENCE.md](REFERENCE.md) - API, events, config, data structures
-- [CONFIG_WORKFLOW.md](CONFIG_WORKFLOW.md) - Configuration guide
+- [specs/CONFIGURATION.md](specs/CONFIGURATION.md) - Configuration guide
 
 **User Documentation**:
 - [QUICK_START.md](QUICK_START.md), [USER_GUIDE.md](USER_GUIDE.md)

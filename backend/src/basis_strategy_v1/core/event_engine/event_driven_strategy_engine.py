@@ -1,6 +1,23 @@
 """
 New Event-Driven Strategy Engine using the new component architecture.
 
+TODO-REFACTOR: SINGLETON PATTERN VIOLATION - 13_singleton_pattern_requirements.md
+ISSUE: This component may violate singleton pattern requirements:
+
+1. SINGLETON PATTERN REQUIREMENTS:
+   - All components must use singleton pattern correctly
+   - Single instances across the system
+   - Proper instance management and lifecycle
+
+2. REQUIRED VERIFICATION:
+   - Verify all 9 components use singleton pattern
+   - Ensure proper instance management
+   - Check for multiple instantiation issues
+
+3. CANONICAL SOURCE:
+   - .cursor/tasks/13_singleton_pattern_requirements.md
+   - All components must be single instances
+
 This engine wires together all 9 components:
 - Position Monitor (Agent A)
 - Event Logger (Agent A) 
@@ -136,7 +153,7 @@ class EventDrivenStrategyEngine:
         
         Phase 3: Components initialized in dependency order with injected parameters.
         """
-        from ...infrastructure.config.health_check import mark_component_healthy, mark_component_unhealthy
+        # Health check functions now handled by unified health manager
         
         initialized_components = []
         
@@ -151,12 +168,12 @@ class EventDrivenStrategyEngine:
                 data_provider=self.data_provider,
                 debug_mode=self.debug_mode
             )
-            mark_component_healthy('position_monitor')
+            # Component health now handled by unified health manager
             initialized_components.append('position_monitor')
             logger.info("✅ Position Monitor initialized successfully")
             
         except Exception as e:
-            mark_component_unhealthy('position_monitor', str(e))
+            # Component health now handled by unified health manager
             logger.error(f"❌ Position Monitor initialization failed: {e}")
             raise ValueError(f"Position Monitor initialization failed: {e}")
         
@@ -166,15 +183,12 @@ class EventDrivenStrategyEngine:
             self.event_logger = EventLogger(
                 execution_mode=self.execution_mode
             )
-            mark_component_healthy('event_logger')
+            # Component health now handled by unified health manager
             initialized_components.append('event_logger')
             logger.info("✅ Event Logger initialized successfully")
             
         except Exception as e:
-            mark_component_unhealthy('event_logger', str(e))
-            # Mark downstream components as unhealthy
-            for downstream in ['exposure_monitor', 'risk_monitor', 'pnl_calculator']:
-                mark_component_unhealthy(downstream, f"Dependency event_logger failed: {e}")
+            # Component health now handled by unified health manager
             logger.error(f"❌ Event Logger initialization failed: {e}")
             raise ValueError(f"Event Logger initialization failed: {e}")
         
@@ -188,15 +202,12 @@ class EventDrivenStrategyEngine:
                 data_provider=self.data_provider,
                 debug_mode=self.debug_mode
             )
-            mark_component_healthy('exposure_monitor')
+            # Component health now handled by unified health manager
             initialized_components.append('exposure_monitor')
             logger.info("✅ Exposure Monitor initialized successfully")
             
         except Exception as e:
-            mark_component_unhealthy('exposure_monitor', str(e))
-            # Mark downstream components as unhealthy
-            for downstream in ['risk_monitor', 'pnl_calculator']:
-                mark_component_unhealthy(downstream, f"Dependency exposure_monitor failed: {e}")
+            # Component health now handled by unified health manager
             logger.error(f"❌ Exposure Monitor initialization failed: {e}")
             raise ValueError(f"Exposure Monitor initialization failed: {e}")
         
@@ -211,12 +222,12 @@ class EventDrivenStrategyEngine:
                 share_class=self.share_class,
                 debug_mode=self.debug_mode
             )
-            mark_component_healthy('risk_monitor')
+            # Component health now handled by unified health manager
             initialized_components.append('risk_monitor')
             logger.info("✅ Risk Monitor initialized successfully")
             
         except Exception as e:
-            mark_component_unhealthy('risk_monitor', str(e))
+            # Component health now handled by unified health manager
             logger.error(f"❌ Risk Monitor initialization failed: {e}")
             raise ValueError(f"Risk Monitor initialization failed: {e}")
         
@@ -230,12 +241,12 @@ class EventDrivenStrategyEngine:
             )
             # Inject data provider for funding rate lookups
             self.pnl_calculator.set_data_provider(self.data_provider)
-            mark_component_healthy('pnl_calculator')
+            # Component health now handled by unified health manager
             initialized_components.append('pnl_calculator')
             logger.info("✅ P&L Calculator initialized successfully")
             
         except Exception as e:
-            mark_component_unhealthy('pnl_calculator', str(e))
+            # Component health now handled by unified health manager
             logger.error(f"❌ P&L Calculator initialization failed: {e}")
             raise ValueError(f"P&L Calculator initialization failed: {e}")
         
@@ -252,12 +263,12 @@ class EventDrivenStrategyEngine:
                 exposure_monitor=self.exposure_monitor,
                 risk_monitor=self.risk_monitor
             )
-            mark_component_healthy('strategy_manager')
+            # Component health now handled by unified health manager
             initialized_components.append('strategy_manager')
             logger.info("✅ Strategy Manager initialized successfully")
             
         except Exception as e:
-            mark_component_unhealthy('strategy_manager', str(e))
+            # Component health now handled by unified health manager
             logger.error(f"❌ Strategy Manager initialization failed: {e}")
             raise ValueError(f"Strategy Manager initialization failed: {e}")
         # Create execution interfaces using factory
@@ -328,27 +339,29 @@ class EventDrivenStrategyEngine:
             raise
     
     def _register_health_checkers(self):
-        """Register all components with the health check system."""
+        """Register all components with the unified health check system."""
         try:
+            from ..health import unified_health_manager
+            
             # Register core components
-            system_health_aggregator.register_component(
+            unified_health_manager.register_component(
                 "position_monitor", 
                 PositionMonitorHealthChecker(self.position_monitor)
             )
-            system_health_aggregator.register_component(
+            unified_health_manager.register_component(
                 "data_provider", 
                 DataProviderHealthChecker(self.data_provider)
             )
-            system_health_aggregator.register_component(
+            unified_health_manager.register_component(
                 "risk_monitor", 
                 RiskMonitorHealthChecker(self.risk_monitor)
             )
-            system_health_aggregator.register_component(
+            unified_health_manager.register_component(
                 "event_logger", 
                 EventLoggerHealthChecker(self.event_logger)
             )
             
-            logger.info("Health checkers registered for all components")
+            logger.info("Health checkers registered with unified health manager")
         except Exception as e:
             logger.error(f"Failed to register health checkers: {e}")
     
@@ -365,6 +378,17 @@ class EventDrivenStrategyEngine:
             
         Raises:
             ValueError: If start_date or end_date is not provided or invalid
+            
+        # TODO: [WORKFLOW_TIME_TRIGGERED] - Implement time-triggered workflow for backtest execution
+        # Current Issue: Backtest execution loop needs to implement time-triggered workflow pattern
+        # Required Changes:
+        #   1. Implement simulated hourly data loop for backtest time triggers
+        #   2. Execute full component chain on each time trigger
+        #   3. Handle business logic (deposits, withdrawals, risk checks) in time-triggered workflow
+        #   4. Implement reserve management, dust management, and equity tracking workflows
+        # Reference: docs/WORKFLOW_GUIDE.md - Internal System Event Workflows section
+        # Reference: docs/WORKFLOW_GUIDE.md - Time-Triggered Workflow (Primary) section
+        # Status: PENDING
         """
         # Validate required parameters
         if not start_date:

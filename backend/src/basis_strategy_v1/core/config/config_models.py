@@ -1,5 +1,22 @@
 """Canonical Configuration Models - Venue-aware mathematical derivation.
 
+TODO-REFACTOR: MODE-SPECIFIC LOGIC IN GENERIC COMPONENTS VIOLATION - 18_generic_vs_mode_specific_architecture.md
+ISSUE: This component may have mode-specific logic that should be generic:
+
+1. GENERIC VS MODE-SPECIFIC REQUIREMENTS:
+   - Components should be mode-agnostic where possible
+   - Mode-specific logic should be isolated
+   - Generic components should not contain strategy-specific code
+
+2. REQUIRED VERIFICATION:
+   - Check for mode-specific logic in generic configuration models
+   - Ensure configuration models are truly generic
+   - Isolate any mode-specific validation logic
+
+3. CANONICAL SOURCE:
+   - .cursor/tasks/18_generic_vs_mode_specific_architecture.md
+   - Components must be mode-agnostic
+
 This is the SINGLE SOURCE OF TRUTH for all configuration validation.
 Features intelligent parameter derivation from venue constants + user risk tolerance.
 

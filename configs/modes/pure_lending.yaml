@@ -16,6 +16,7 @@ share_class: "USDT"
 asset: "USDT"
 lst_type: null
 rewards_mode: "base_only"
+reserve_ratio: 0.1
 
 # Execution parameters
 use_flash_loan: false
@@ -32,9 +33,8 @@ data_requirements:
   - "gas_costs"  # Ethereum gas prices
   - "execution_costs"  # Execution cost model
 
-# Monitoring
-monitoring_position_check_interval: 300
-monitoring_risk_check_interval: 60
+# Live time throttling 
+time_throttle_interval: 60
 
 # REMOVED: capital_allocation - not needed in config, calculated at runtime
 

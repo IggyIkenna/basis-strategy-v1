@@ -3,7 +3,18 @@
 **Component**: Position Monitor (wraps Token + Derivative monitors)  
 **Responsibility**: Track raw balances across all venues with sync guarantee  
 **Priority**: ⭐⭐⭐ CRITICAL (Foundation for all other components)  
-**Backend File**: `backend/src/basis_strategy_v1/core/strategies/components/position_monitor.py`
+**Backend File**: `backend/src/basis_strategy_v1/core/strategies/components/position_monitor.py`  
+**Last Reviewed**: October 8, 2025  
+**Status**: ✅ Aligned with canonical sources (.cursor/tasks/ + MODES.md)
+
+---
+
+## 📚 **Canonical Sources**
+
+**This component spec aligns with canonical architectural principles**:
+- **Architectural Principles**: [CANONICAL_ARCHITECTURAL_PRINCIPLES.md](../CANONICAL_ARCHITECTURAL_PRINCIPLES.md) - Consolidated from all .cursor/tasks/
+- **Strategy Specifications**: [MODES.md](MODES.md) - Canonical strategy mode definitions
+- **Task Specifications**: `.cursor/tasks/` - Individual task specifications
 
 ---
 
@@ -17,7 +28,7 @@ Track raw ERC-20/token balances and derivative positions with **NO conversions**
 - Perp position is just a size (doesn't know its USD exposure)
 
 **Data Flow Integration**:
-- **Initialization**: Receives `initial_capital` and `share_class` in constructor
+- **Initialization**: Initalizes balances based on `initial_capital` and `share_class` in constructor (for backtest mode) or from external API venue requests (for live mode - real balances)
 - **State Management**: Maintains internal balance state, no external data dependencies
 - **Output**: Provides `get_snapshot()` method for other components
 - **No Market Data**: Pure balance tracking, no price conversions
@@ -162,22 +173,22 @@ class PositionMonitor:
         # Initialize capital based on share class (NO DEFAULTS)
         self._initialize_capital()
         
-        # Redis for inter-component communication
+        # Redis for inter-component communication (used in both backtest and live modes)
         self.redis = None
-        if execution_mode == 'live':
-            try:
-                import os
-                redis_url = os.getenv('BASIS_REDIS_URL')
-                if not redis_url:
-                    raise ValueError("BASIS_REDIS_URL environment variable required for live mode")
-                
+        try:
+            import os
+            redis_url = os.getenv('BASIS_REDIS_URL')
+            if redis_url:
+                import redis
                 self.redis = redis.Redis.from_url(redis_url, decode_responses=True)
                 # Test connection
                 self.redis.ping()
                 logger.info("Redis connection established for Position Monitor")
-            except Exception as e:
-                logger.error(f"Redis connection failed for live mode: {e}")
-                raise ValueError(f"Redis required for live mode but connection failed: {e}")
+            else:
+                logger.warning("BASIS_REDIS_URL not set - Redis communication disabled")
+        except Exception as e:
+            logger.warning(f"Redis connection failed: {e}")
+            self.redis = None
         
         logger.info(f"Position Monitor initialized: {execution_mode} mode, {share_class} share class, {initial_capital} initial capital")
     

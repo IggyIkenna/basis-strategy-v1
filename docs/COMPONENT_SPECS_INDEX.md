@@ -2,7 +2,19 @@
 
 **Purpose**: Central index to all component specifications  
 **Status**: ✅ Core components implemented, critical issues remain  
-**Updated**: October 5, 2025 - Core components working, critical issues remain
+**Updated**: October 5, 2025 - Core components working, critical issues remain  
+**Last Reviewed**: October 8, 2025  
+**Status**: ✅ Aligned with canonical sources (.cursor/tasks/ + MODES.md)
+
+---
+
+## 📚 **Canonical Sources**
+
+**This index aligns with canonical architectural principles**:
+- **Architectural Principles**: [CANONICAL_ARCHITECTURAL_PRINCIPLES.md](CANONICAL_ARCHITECTURAL_PRINCIPLES.md) - Consolidated from all .cursor/tasks/
+- **Strategy Specifications**: [MODES.md](MODES.md) - Canonical strategy mode definitions
+- **Design Decisions**: [ARCHITECTURAL_DECISIONS.md](ARCHITECTURAL_DECISIONS.md) - Core design decisions
+- **Task Specifications**: `.cursor/tasks/` - Individual task specifications
 
 ---
 
@@ -29,7 +41,7 @@
 6. **[CEX Execution Interface](specs/06_CEX_EXECUTION_MANAGER.md)** - Off-chain execution
 7. **[OnChain Execution Interface](specs/07_ONCHAIN_EXECUTION_MANAGER.md)** - On-chain execution
 8. **[Execution Interfaces](specs/08_EXECUTION_INTERFACES.md)** - Unified execution abstraction (backtest/live)
-9. **[Transfer Manager](specs/03_RISK_MONITOR.md)** - Cross-venue transfer orchestration
+9. **[Execution Manager](specs/08_EXECUTION_INTERFACES.md)** - Cross-venue execution orchestration
 
 ### **Supporting Infrastructure** (Always Active)
 10. **[Event Logger](specs/08_EVENT_LOGGER.md)** - Audit-grade event tracking
@@ -110,7 +122,7 @@ All components use centralized config infrastructure:
 - **ConfigValidator** (`infrastructure/config/config_validator.py`)
 - **HealthChecker** (`infrastructure/config/health_check.py`)
 
-**For config details**: See [CONFIG_WORKFLOW.md](CONFIG_WORKFLOW.md)
+**For config details**: See [specs/CONFIGURATION.md](specs/CONFIGURATION.md)
 
 ---
 
@@ -132,7 +144,7 @@ All components use centralized config infrastructure:
 1. **Start implementing?** → [IMPLEMENTATION_ROADMAP.md](IMPLEMENTATION_ROADMAP.md)
 2. **Need component details?** → [specs/](specs/) directory (12 detailed specs)
 3. **Architecture questions?** → [ARCHITECTURAL_DECISIONS.md](ARCHITECTURAL_DECISIONS.md)
-4. **Configuration help?** → [CONFIG_WORKFLOW.md](CONFIG_WORKFLOW.md)
+4. **Configuration help?** → [specs/CONFIGURATION.md](specs/CONFIGURATION.md)
 
 ---
 

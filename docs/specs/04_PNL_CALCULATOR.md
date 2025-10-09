@@ -3,7 +3,18 @@
 **Component**: P&L Calculator  
 **Responsibility**: Calculate balance-based & attribution P&L with reconciliation  
 **Priority**: ⭐⭐⭐ CRITICAL (Core performance metric)  
-**Backend File**: `backend/src/basis_strategy_v1/core/math/pnl_calculator.py`
+**Backend File**: `backend/src/basis_strategy_v1/core/math/pnl_calculator.py`  
+**Last Reviewed**: October 8, 2025  
+**Status**: ✅ Aligned with canonical sources (.cursor/tasks/ + MODES.md)
+
+---
+
+## 📚 **Canonical Sources**
+
+**This component spec aligns with canonical architectural principles**:
+- **Architectural Principles**: [CANONICAL_ARCHITECTURAL_PRINCIPLES.md](../CANONICAL_ARCHITECTURAL_PRINCIPLES.md) - Consolidated from all .cursor/tasks/
+- **Strategy Specifications**: [MODES.md](MODES.md) - Canonical strategy mode definitions
+- **Task Specifications**: `.cursor/tasks/` - Individual task specifications
 
 ---
 

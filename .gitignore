@@ -18,6 +18,9 @@ results/
 *.tar.gz
 logs/
 backend/logs/
+# Health monitor logs and PID files
+logs/health_monitor.log
+logs/health_monitor.pid
 
 # Python cache
 __pycache__/
@@ -41,7 +44,7 @@ Thumbs.db
 
 # # Environment files (uncomment later for security but for now we need it committed)
 # .env
-# .env.local
+# .env.dev
 # .env.*.local
 
 # Build outputs

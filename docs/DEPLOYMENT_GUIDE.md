@@ -1,553 +1,278 @@
- # Deployment Guide - Docker + GCloud 🚀
+# Deployment Guide - Production & Environment Management 🚀
 
-**Platform**: Docker containers + Caddy reverse proxy  
-**Target**: GCloud VM (defi-project.odum-research.com)  
-**Status**: ✅ Infrastructure already configured, works with new component architecture  
-**Updated**: October 3, 2025
+**Platform**: Non-Docker (dev/staging/prod) + Docker (dev/staging/prod)  
+**Target**: Local development, staging, and production environments  
+**Status**: ✅ Infrastructure configured, works with component architecture  
+**Updated**: October 9, 2025
 
 ---
 
 ## 📚 **Related Documentation**
 
-- **Configuration** → [CONFIG_WORKFLOW.md](CONFIG_WORKFLOW.md) (environment setup)
+- **Getting Started** → [GETTING_STARTED.md](GETTING_STARTED.md) (basic setup)
+- **Configuration** → [specs/CONFIGURATION.md](specs/CONFIGURATION.md) (environment setup)
 - **Component Health** → [COMPONENT_SPECS_INDEX.md](COMPONENT_SPECS_INDEX.md) (health monitoring)
 - **Environment Variables** → [ENVIRONMENT_VARIABLES.md](ENVIRONMENT_VARIABLES.md) (required vars)
+- **Venue Architecture** → [VENUE_ARCHITECTURE.md](VENUE_ARCHITECTURE.md) (venue client initialization)
+- **Strategy Modes** → [MODES.md](MODES.md) (strategy specifications)
 
 ---
 
-## 🎯 **Quick Reference**
+## 🎯 **Deployment Options Overview**
 
-**Local dev**:
+### **Non-Docker Deployment** (Direct Python)
 ```bash
-cd deploy
-./deploy.sh local     # Start backend + frontend
+# From project root
+pip install -r requirements.txt
+./platform.sh backtest     # Backend only
+./platform.sh start        # Backend + Frontend
+./platform.sh stop         # Stop all services
 ```
 
-**Production Deployment**:
+**Environments**: dev, staging, production  
+**Use Case**: Development, testing, simple deployments
+
+### **Docker Deployment** (Containerized)
 ```bash
-cd deploy
-./deploy.sh prod      # Deploy to GCloud VM
+cd docker
+./deploy.sh local backend start     # Local backend only
+./deploy.sh prod all start          # Production full stack
+./deploy.sh staging backend stop    # Stop staging backend
+./deploy.sh local all status        # Check status
 ```
 
-**Data Upload** (NOT YET IMPLEMENTED):
+**Environments**: local, staging, prod  
+**Use Case**: Production deployments, consistent environments
+
+---
+
+## 🏗️ **Architecture Overview**
+
+### **Deployment Modes**
+
+| **Mode** | **Command** | **Services** | **Use Case** |
+|----------|-------------|--------------|--------------|
+| **Non-Docker** | `./platform.sh` | Backend + Frontend (local) | Development, testing |
+| **Docker** | `cd docker && ./deploy.sh` | Backend + Caddy + Redis | All environments |
+
+### **Backend Startup Initialization Sequence**
+
+The backend follows a specific initialization sequence when starting up:
+
+#### **1. Environment Variable Loading**
 ```bash
-# TODO: Create upload_data_to_gcs.sh script
-# ./scripts/deployment/upload_data_to_gcs.sh    # Upload data/ to GCS
+# Load base environment from env.unified
+source env.unified
+
+# Load environment-specific overrides
+# Non-Docker: .env.dev, .env.staging, .env.production
+# Docker: docker/.env.dev, docker/.env.staging, docker/.env.prod
 ```
+
+#### **2. Main() Entry Point Orchestration**
+The `main()` function orchestrates startup with these steps:
+
+1. **Initialize Metrics**: Set up monitoring and metrics collection
+2. **Load Configuration**: 
+   - Pick up YAML files from `configs/` (mounted by docker if using docker)
+   - Load, merge and validate against schemas in `config_models.py`
+   - Quality gates ensure only valid config exists in YAML files
+   - Single config instance per deployment (no runtime updates)
+3. **Initialize Data Provider**:
+   - Load data sources (if BASIS_DATA_MODE=csv, load from CSV files in `data/` directory else if BASIS_DATA_MODE=db, load from database)
+   - Validate data sources vs environment config
+   - Route based on `BASIS_ENVIRONMENT` (dev/staging/prod)
+   - Separate data loading vs external API heartbeat operations
+4. **Run Basic Health Checks**: 
+   - Initialize components in dependency order
+   - Register components with unified health manager
+   - Components report health status automatically
+   - Fail fast if any component initialization fails
+
+#### **3. Environment Variable Integration**
+The system uses three distinct environment variables:
+
+- **`BASIS_DEPLOYMENT_MODE`**: `local` vs `docker` (port/host forwarding and dependency injection)
+- **`BASIS_ENVIRONMENT`**: `dev` vs `staging` vs `production` ( mainly for testnet vs mainnet APIs and any other environment specific credentials we want to override in the env file)
+- **`BASIS_DATA_MODE`**: `csv` vs `db` (data source: CSV vs DB)
+- **`BASIS_EXECUTION_MODE`**: `backtest` vs `live` (venue execution: simulated in backtest vs real)
+
+**Critical Distinction**:
+- **Deployment Mode**: Controls how services are deployed (local vs containerized)
+- **Environment**: Controls data sources and API endpoints (dev/staging/prod)
+- **Execution Mode**: Controls venue behavior (simulated vs real execution)
+
+#### **4. Main() Entry Point Orchestration Details**
+The `main()` function orchestrates the complete startup sequence:
+
+```python
+def main():
+    """Main entry point orchestration for backend startup."""
+    
+    # 1. Initialize metrics
+    setup_metrics()
+    
+    # 2. Load configuration
+    config_manager = get_config_manager()
+    startup_mode = config_manager.get_startup_mode()
+    
+    # 3. Initialize data provider
+    data_provider = get_data_provider()
+    data_provider._validate_data_at_startup()
+    
+    # 4. Run basic health checks
+    # - Initialize components in dependency order
+    # - Register components with unified health manager
+    # - Components report health status automatically
+    # - Fail fast if any component fails
+    
+    # 5. Start FastAPI application
+    app = create_application()
+    return app
+```
+
+**Key Orchestration Principles**:
+- **Fail Fast**: No fallbacks if missing environment variables or config validation fails
+- **Single Instance**: One config instance and one data provider instance per deployment
+- **Dependency Order**: Components initialized in proper dependency sequence
+- **Health Monitoring**: All components registered with unified health manager for monitoring
+
+### **Environment Configuration**
+
+**Base Configuration**: `env.unified` (empty values, must be overridden)
+
+**Override Files**:
+- **Non-Docker**: `.env.dev`, `.env.staging`, `.env.production` (project root)
+- **Docker**: `docker/.env.dev`, `docker/.env.staging`, `docker/.env.prod`
+
+**Configuration Dimensions**:
+- **Execution Mode**: `backtest` vs `live` (simulated vs real API calls)
+- **Environment**: `dev` vs `staging` vs `production` (data source, API endpoints)
+- **Deployment**: `local` vs `docker` (dependency injection, port forwarding)
+- **Deployment Machine**: `local_mac` vs `gcloud_linux_vm` (deployment target)
+
+---
+
+## 🌐 **Frontend Deployment**
+
+### **Frontend Environment Variables**
+
+The frontend uses the same unified environment structure as the backend:
+
+**Frontend-specific variables**:
+- `VITE_API_BASE_URL`: API base URL for frontend API calls (default: `/api/v1`)
+- `APP_DOMAIN`: Domain for Caddy configuration (e.g., `defi-project.odum-research.com`)
+- `ACME_EMAIL`: Email for Let's Encrypt certificates
+- `BASIC_AUTH_HASH`: Basic authentication hash for Caddy
+- `HTTP_PORT`: HTTP port (default: 80)
+- `HTTPS_PORT`: HTTPS port (default: 443)
+
+**Frontend Environment Files**:
+- `frontend/.env.dev`: Development frontend configuration
+- `frontend/.env.staging`: Staging frontend configuration  
+- `frontend/.env.production`: Production frontend configuration
+
+### **Frontend Deployment Modes**
+
+**Backend-Only Mode**:
+```bash
+# Platform.sh - backend only (uses env file BASIS_EXECUTION_MODE)
+./platform.sh backend
+
+# Platform.sh - force backtest mode (overrides env file)
+./platform.sh backtest
+
+# Docker - backend only
+cd docker && ./deploy.sh backend
+```
+
+**Full-Stack Mode**:
+```bash
+# Platform.sh - full stack (uses env file BASIS_EXECUTION_MODE)
+./platform.sh start
+
+# Docker - full stack
+cd docker && ./deploy.sh all
+```
+
+**Execution Mode Control**:
+- **Environment Files**: Set `BASIS_EXECUTION_MODE=backtest` or `BASIS_EXECUTION_MODE=live` in `.env.*` files
+- **Command Override**: `./platform.sh backtest` **always forces backtest mode** regardless of env file
+- **Default Behavior**: `dev`/`staging` = backtest, `production` = live
+
+### **Frontend Health Checks**
+
+The deployment scripts automatically test frontend accessibility:
+- **IP Test**: `http://localhost/` (always tested)
+- **Domain Test**: `http://APP_DOMAIN/` (if not localhost)
+- **Build Failure**: Deployment fails if frontend is not accessible
+
+### **Caddy Configuration**
+
+Caddy automatically generates configuration based on `APP_DOMAIN`:
+- **localhost**: HTTP only, no TLS
+- **External domain**: HTTP + HTTPS with Let's Encrypt
 
 ---
 
 ## 🚀 **Live Trading Deployment**
 
-### **Configuration Structure**
+### **Strategy Selection**
+Strategy modes are selected via API parameters, not environment variables:
 
-**Deployment Configuration** (`deploy/.env*`):
-- **Purpose**: Caddy-specific deployment variables only
-- **Files**: `.env.local`, `.env.staging`, `.env.prod`
-- **Active File**: `.env` (copied from environment-specific file by `switch-env.sh`)
-- **Variables**: Domain names, TLS settings, port mappings, basic auth
-- **Separation**: BASIS configuration is in `backend/env.unified`, not in deploy files
-- **Switching**: Use `./switch-env.sh [local|staging|prod]` to switch environments
+```python
+# Backtest Request
+{
+    "strategy_name": "usdt_pure_lending",
+    "start_date": "2024-01-01T00:00:00Z",
+    "end_date": "2024-01-31T00:00:00Z",
+    "initial_capital": 100000,
+    "share_class": "USDT"
+}
 
-**Environment-Specific Configuration** (`configs/{dev,staging,production}.json`):
-- **Purpose**: Environment-specific BASIS configuration overrides
-- **Files**: `dev.json`, `staging.json`, `production.json`
-- **Variables**: Database URLs, API ports, CORS origins, feature flags
+# Live Trading Request  
+{
+    "strategy_name": "eth_leveraged_staking",
+    "share_class": "ETH",
+    "exchange": "bybit",
+    "api_credentials": {
+        "api_key": "your_api_key",
+        "api_secret": "your_api_secret"
+    }
+}
+```
 
-### **Live Trading vs Backtest Deployment**
+**Available Strategies**: See `docs/MODES.md` for complete list of 7 strategy modes
+
+### **Venue Client Initialization**
+- **Environment-Specific Credentials**: All venue credentials are environment-specific (dev/staging/prod)
+- **Venue Selection Logic**: Each strategy mode requires specific venues (CEX, DeFi, Infrastructure)
+- **Client Factory Pattern**: Venue clients are created via execution interface factory
+- **Reference**: See `docs/VENUE_ARCHITECTURE.md` for complete venue architecture
+
+**Key Venue Categories**:
+- **CEX Venues**: Binance, Bybit, OKX (spot + perpetual futures)
+- **DeFi Venues**: AAVE V3, Lido, EtherFi, Morpho (smart contracts)
+- **Infrastructure**: Alchemy, Uniswap, Instadapp (middleware)
+
+### **Live Trading vs Backtest**
 
 | **Aspect** | **Backtest Mode** | **Live Trading Mode** |
 |------------|-------------------|----------------------|
 | **Data Source** | Historical CSV files | Real-time APIs via LiveDataProvider |
-| **Execution** | Simulated | Real blockchain/CEX |
+| **Execution** | Simulated API calls | Real API calls to testnet/prod |
 | **Risk Management** | Historical validation | Real-time circuit breakers |
 | **Monitoring** | Basic metrics | Full observability |
-| **Deployment** | Standard containers | Production-grade setup |
-
-### **Unified Environment Configuration**
-
-#### **1. Single Environment File Approach**
-
-**File**: `backend/env.unified` (one file for all configurations)
-
-**Configuration Dimensions**:
-- **Execution Mode**: `backtest` vs `live` (data source & API interaction)
-- **Environment**: `dev` vs `production` (code branch & deployment)
-- **Deployment**: `local` vs `cloud` (UI rendering & ports)
-
-```bash
-# =============================================================================
-# UNIFIED ENVIRONMENT CONFIGURATION
-# =============================================================================
-
-# =============================================================================
-# EXECUTION MODE (backtest vs live)
-# =============================================================================
-# backtest: Uses historical data, simulated execution
-# live: Uses real-time data, real execution
-BASIS_EXECUTION_MODE=backtest
-
-# =============================================================================
-# ENVIRONMENT (dev vs production)
-# =============================================================================
-# dev: Development branch, testnet credentials, debug logging
-# production: Production branch, mainnet credentials, optimized logging
-BASIS_ENVIRONMENT=dev
-
-# =============================================================================
-# DEPLOYMENT (local vs cloud)
-# =============================================================================
-# local: Local development, localhost ports, dev UI
-# cloud: Cloud deployment, domain URLs, production UI
-BASIS_DEPLOYMENT=local
-
-# =============================================================================
-# API CONFIGURATION (adjusts based on deployment)
-# =============================================================================
-BASIS_API__PORT=8001
-BASIS_API__RELOAD=true  # false for production
-BASIS_API__CORS_ORIGINS=["http://localhost:5173"]  # ["https://defi-project.odum-research.com"] for cloud
-
-# =============================================================================
-# DATA PROVIDER CONFIGURATION (adjusts based on execution mode)
-# =============================================================================
-BASIS_DATA__CACHE_ENABLED=true
-BASIS_DATA__DATA_DIR=./data
-BASIS_DATA_PROVIDER__MODE=backtest  # live for real-time data
-BASIS_DATA_PROVIDER__REFRESH_INTERVAL_SECONDS=3600  # 30 for live
-BASIS_DATA_PROVIDER__MAX_DATA_AGE_SECONDS=86400  # 60 for live
-
-# =============================================================================
-# LIVE TRADING CONFIGURATION (only used when BASIS_EXECUTION_MODE=live)
-# =============================================================================
-BASIS_LIVE_TRADING__ENABLED=false  # true for live trading
-BASIS_LIVE_TRADING__READ_ONLY=true  # false for real trading
-BASIS_LIVE_TRADING__MAX_TRADE_SIZE_USD=100  # 1000000 for production
-BASIS_LIVE_TRADING__EMERGENCY_STOP_LOSS_PCT=0.15
-BASIS_LIVE_TRADING__HEARTBEAT_TIMEOUT_SECONDS=300
-BASIS_LIVE_TRADING__CIRCUIT_BREAKER_ENABLED=true
-
-# =============================================================================
-# RISK MANAGEMENT
-# =============================================================================
-BASIS_RISK__MODE=strict
-BASIS_RISK__MAX_POSITION_SIZE_USD=100  # 1000000 for production
-BASIS_RISK__DAILY_LOSS_LIMIT_PCT=0.15
-BASIS_RISK__MARGIN_WARNING_THRESHOLD=0.20
-BASIS_RISK__MARGIN_CRITICAL_THRESHOLD=0.10
-
-# =============================================================================
-# REDIS CONFIGURATION (adjusts based on deployment)
-# =============================================================================
-BASIS_REDIS__ENABLED=true
-BASIS_REDIS__URL=redis://localhost:6379/0  # redis://redis:6379/0 for cloud
-BASIS_REDIS__SESSION_TTL=3600
-BASIS_REDIS__CACHE_TTL=300
-
-# =============================================================================
-# MONITORING AND LOGGING (adjusts based on environment)
-# =============================================================================
-BASIS_DEBUG=true  # false for production
-BASIS_MONITORING__LOG_LEVEL=DEBUG  # INFO for production
-BASIS_MONITORING__ENABLE_METRICS=true
-BASIS_MONITORING__ENABLE_TRACING=true
-
-# =============================================================================
-# CEX API CREDENTIALS (adjusts based on environment)
-# =============================================================================
-# DEV ENVIRONMENT (Testnet APIs)
-BASIS_DEV__CEX__BINANCE_SPOT_API_KEY=your_testnet_binance_spot_api_key
-BASIS_DEV__CEX__BINANCE_SPOT_SECRET=your_testnet_binance_spot_secret
-BASIS_DEV__CEX__BINANCE_FUTURES_API_KEY=your_testnet_binance_futures_api_key
-BASIS_DEV__CEX__BINANCE_FUTURES_SECRET=your_testnet_binance_futures_secret
-BASIS_DEV__CEX__BYBIT_API_KEY=your_testnet_bybit_api_key
-BASIS_DEV__CEX__BYBIT_SECRET=your_testnet_bybit_secret
-BASIS_DEV__CEX__OKX_API_KEY=your_testnet_okx_api_key
-BASIS_DEV__CEX__OKX_SECRET=your_testnet_okx_secret
-BASIS_DEV__CEX__OKX_PASSPHRASE=your_testnet_okx_passphrase
-
-# PRODUCTION ENVIRONMENT (Mainnet APIs)
-BASIS_PROD__CEX__BINANCE_SPOT_API_KEY=your_prod_binance_spot_api_key
-BASIS_PROD__CEX__BINANCE_SPOT_SECRET=your_prod_binance_spot_secret
-BASIS_PROD__CEX__BINANCE_FUTURES_API_KEY=your_prod_binance_futures_api_key
-BASIS_PROD__CEX__BINANCE_FUTURES_SECRET=your_prod_binance_futures_secret
-BASIS_PROD__CEX__BYBIT_API_KEY=your_prod_bybit_api_key
-BASIS_PROD__CEX__BYBIT_SECRET=your_prod_bybit_secret
-BASIS_PROD__CEX__OKX_API_KEY=your_prod_okx_api_key
-BASIS_PROD__CEX__OKX_SECRET=your_prod_okx_secret
-BASIS_PROD__CEX__OKX_PASSPHRASE=your_prod_okx_passphrase
-
-# =============================================================================
-# WALLET CONFIGURATION (adjusts based on environment)
-# =============================================================================
-# DEV ENVIRONMENT (Testnet Wallet)
-BASIS_DEV__ALCHEMY__PRIVATE_KEY=your_testnet_erc20_wallet_private_key
-BASIS_DEV__ALCHEMY__WALLET_ADDRESS=0x...
-BASIS_DEV__ALCHEMY__RPC_URL=https://eth-sepolia.g.alchemy.com/v2/your_testnet_key
-BASIS_DEV__ALCHEMY__NETWORK=sepolia
-BASIS_DEV__ALCHEMY__CHAIN_ID=11155111
-
-# PRODUCTION ENVIRONMENT (Mainnet Wallet)
-BASIS_PROD__ALCHEMY__PRIVATE_KEY=your_prod_mainnet_erc20_wallet_private_key
-BASIS_PROD__ALCHEMY__WALLET_ADDRESS=0x...
-BASIS_PROD__ALCHEMY__RPC_URL=https://eth-mainnet.g.alchemy.com/v2/your_prod_key
-BASIS_PROD__ALCHEMY__NETWORK=mainnet
-BASIS_PROD__ALCHEMY__CHAIN_ID=1
-
-# =============================================================================
-# DATA PROVIDER API KEYS (shared across environments)
-# =============================================================================
-BASIS_DOWNLOADERS__COINGECKO_API_KEY=your_coingecko_key
-BASIS_DOWNLOADERS__ALCHEMY_API_KEY=your_alchemy_key
-BASIS_DOWNLOADERS__INFURA_API_KEY=your_infura_key
-
-# =============================================================================
-# INSTADAPP CONFIGURATION (adjusts based on environment)
-# =============================================================================
-BASIS_INSTADAPP__API_KEY=your_instadapp_api_key
-BASIS_INSTADAPP__API_SECRET=your_instadapp_secret
-BASIS_INSTADAPP__TESTNET=true  # false for production
-```
-
-**Configuration Matrix**:
-
-| **Scenario** | **Execution Mode** | **Environment** | **Deployment** | **Key Settings** |
-|--------------|-------------------|-----------------|----------------|------------------|
-| **Local Dev** | `backtest` | `dev` | `local` | Testnet APIs, debug logging |
-| **Local Live** | `live` | `dev` | `local` | Testnet APIs, read-only trading |
-| **Cloud Prod Backtest** | `backtest` | `production` | `cloud` | Production APIs, optimized logging |
-| **Cloud Prod Live** | `live` | `production` | `cloud` | Production APIs, real trading |
-
-**Configuration Examples**:
-```bash
-# Local Development (backtest + dev + local)
-BASIS_EXECUTION_MODE=backtest
-BASIS_ENVIRONMENT=dev
-BASIS_DEPLOYMENT=local
-
-# Local Live Trading (live + dev + local)
-BASIS_EXECUTION_MODE=live
-BASIS_ENVIRONMENT=dev
-BASIS_DEPLOYMENT=local
-BASIS_LIVE_TRADING__ENABLED=true
-BASIS_LIVE_TRADING__READ_ONLY=true
-
-# Cloud Production Backtest (backtest + production + cloud)
-BASIS_EXECUTION_MODE=backtest
-BASIS_ENVIRONMENT=production
-BASIS_DEPLOYMENT=cloud
-BASIS_API__CORS_ORIGINS=["https://defi-project.odum-research.com"]
-BASIS_REDIS__URL=redis://redis:6379/0
-
-# Cloud Production Live Trading (live + production + cloud)
-BASIS_EXECUTION_MODE=live
-BASIS_ENVIRONMENT=production
-BASIS_DEPLOYMENT=cloud
-BASIS_LIVE_TRADING__ENABLED=true
-BASIS_LIVE_TRADING__READ_ONLY=false
-BASIS_LIVE_TRADING__MAX_TRADE_SIZE_USD=1000000
-```
-
-#### **2. Unified Docker Compose**
-```yaml
-# deploy/docker-compose.yml (works for all configurations)
-services:
-  redis:
-    image: redis:7-alpine
-    restart: unless-stopped
-
-  backend:
-    build:
-      context: ..
-      dockerfile: deploy/Dockerfile.backend
-    env_file:
-      - ../backend/env.unified  # Backend configuration
-      - .env                    # Caddy-specific configuration (CORS, etc.)
-    depends_on:
-      - redis
-    volumes:
-      - ../data:/app/data
-      - ../results:/app/results
-      - ../configs:/app/configs:ro
-      - ../backend/env.unified:/app/env.unified:ro
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8001/health/"]
-      interval: ${HEALTH_CHECK_INTERVAL:-30s}
-      timeout: 3s
-      retries: 10
-    restart: unless-stopped
-
-  caddy:
-    build:
-      context: ..
-      dockerfile: deploy/Dockerfile.caddy-frontend
-    env_file:
-      - .env  # For Caddy-specific variables (domain, email, auth)
-    environment:
-      - APP_DOMAIN=${APP_DOMAIN:-localhost}
-      - ACME_EMAIL=${ACME_EMAIL:-you@example.com}
-      - BASIC_AUTH_HASH=${BASIC_AUTH_HASH:-}
-    depends_on:
-      - backend
-    ports:
-      - "${HTTP_PORT:-80}:80"
-      - "${HTTPS_PORT:-443}:443"
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy_data:/data
-      - caddy_config:/config
-    restart: unless-stopped
-
-  # Frontend development service (optional - for testing)
-  frontend-dev:
-    build:
-      context: ..
-      dockerfile: deploy/Dockerfile.frontend-test
-    ports:
-      - "5173:5173"  # Vite dev server port
-    volumes:
-      - ../frontend:/app
-      - /app/node_modules
-    environment:
-      - NODE_ENV=dev
-    command: ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
-    stdin_open: true
-    tty: true
-    profiles:
-      - frontend-test  # Only start with --profile frontend-test
-
-volumes:
-  caddy_data:
-  caddy_config:
-```
-
-#### **3. Unified Deployment Script**
-```bash
-#!/bin/bash
-# deploy/deploy.sh
-
-set -e
-
-echo "🚀 Deploying Basis Strategy System..."
-
-# Check if environment file exists
-if [ ! -f "../backend/env.unified" ]; then
-    echo "❌ Error: backend/env.unified not found"
-    echo "Please configure your environment file first"
-    exit 1
-fi
-
-# Validate environment file
-echo "🔍 Validating environment configuration..."
-source ../backend/env.unified
-
-# Check critical environment variables
-required_vars=(
-    "BASIS_EXECUTION_MODE"
-    "BASIS_ENVIRONMENT"
-    "BASIS_DEPLOYMENT"
-)
-
-for var in "${required_vars[@]}"; do
-    if [ -z "${!var}" ]; then
-        echo "❌ Error: $var is not set in backend/env.unified"
-        exit 1
-    fi
-done
-
-# Display configuration
-echo "📋 Configuration:"
-echo "   Execution Mode: $BASIS_EXECUTION_MODE"
-echo "   Environment: $BASIS_ENVIRONMENT"
-echo "   Deployment: $BASIS_DEPLOYMENT"
-
-# Additional validation for live trading
-if [ "$BASIS_EXECUTION_MODE" = "live" ]; then
-    echo "🔍 Validating live trading configuration..."
-    
-    if [ "$BASIS_LIVE_TRADING__ENABLED" != "true" ]; then
-        echo "❌ Error: BASIS_LIVE_TRADING__ENABLED must be 'true' for live trading"
-        exit 1
-    fi
-    
-    # Check for production credentials if in production environment
-    if [ "$BASIS_ENVIRONMENT" = "production" ]; then
-        prod_vars=(
-            "BASIS_PROD__CEX__BINANCE_SPOT_API_KEY"
-            "BASIS_PROD__ALCHEMY__PRIVATE_KEY"
-        )
-        
-        for var in "${prod_vars[@]}"; do
-            if [ -z "${!var}" ]; then
-                echo "❌ Error: $var is not set for production live trading"
-                exit 1
-            fi
-        done
-    fi
-fi
-
-# Build and deploy
-echo "📦 Building containers..."
-docker-compose build
-
-echo "🔄 Stopping existing containers..."
-docker-compose down
-
-echo "🚀 Starting system..."
-docker-compose up -d
-
-echo "⏳ Waiting for services to be healthy..."
-sleep 30
-
-# Health checks
-echo "🔍 Running health checks..."
-curl -f http://localhost:8001/health || {
-    echo "❌ Backend health check failed"
-    exit 1
-}
-
-curl -f http://localhost:5173 || {
-    echo "❌ Frontend health check failed"
-    exit 1
-}
-
-echo "✅ System deployed successfully!"
-echo "🌐 Frontend: http://localhost:5173"
-echo "🔧 Backend API: http://localhost:8001"
-echo ""
-echo "🔐 Environment: backend/env.unified"
-echo "⚡ Execution Mode: $BASIS_EXECUTION_MODE"
-echo "🌍 Environment: $BASIS_ENVIRONMENT"
-echo "🚀 Deployment: $BASIS_DEPLOYMENT"
-
-if [ "$BASIS_EXECUTION_MODE" = "live" ]; then
-    echo "💰 Max Trade Size: $BASIS_LIVE_TRADING__MAX_TRADE_SIZE_USD USD"
-    echo "🔒 Read Only: $BASIS_LIVE_TRADING__READ_ONLY"
-fi
-```
-
-### **Live Trading Monitoring & Observability**
-
-#### **1. Health Monitoring**
-```python
-# Live Trading Health Checks
-class LiveTradingHealthMonitor:
-    """Comprehensive health monitoring for live trading."""
-    
-    async def check_system_health(self) -> Dict[str, Any]:
-        """Check all system components."""
-        return {
-            'data_provider': await self.check_data_provider(),
-            'execution_managers': await self.check_execution_managers(),
-            'risk_monitor': await self.check_risk_monitor(),
-            'wallet_connectivity': await self.check_wallet_connectivity(),
-            'api_connectivity': await self.check_api_connectivity(),
-            'market_data_freshness': await self.check_market_data_freshness(),
-            'position_consistency': await self.check_position_consistency()
-        }
-    
-    async def check_data_provider(self) -> Dict[str, Any]:
-        """Check data provider health."""
-        try:
-            market_data = await self.data_provider.get_market_snapshot()
-            return {
-                'status': 'healthy',
-                'data_age_seconds': market_data['data_age_seconds'],
-                'last_update': market_data['timestamp']
-            }
-        except Exception as e:
-            return {
-                'status': 'unhealthy',
-                'error': str(e)
-            }
-```
-
-#### **2. Circuit Breakers**
-```python
-# Live Trading Circuit Breakers
-class LiveTradingCircuitBreaker:
-    """Circuit breakers for live trading safety."""
-    
-    def __init__(self):
-        self.max_daily_loss_pct = 0.15  # 15% max daily loss
-        self.max_position_size_usd = 1000000
-        self.heartbeat_timeout_seconds = 300
-        self.data_age_threshold_seconds = 60
-    
-    async def check_circuit_breakers(self) -> List[str]:
-        """Check all circuit breakers."""
-        breaches = []
-        
-        # Check daily loss
-        daily_pnl_pct = await self.get_daily_pnl_percentage()
-        if daily_pnl_pct < -self.max_daily_loss_pct:
-            breaches.append(f"Daily loss limit breached: {daily_pnl_pct:.2%}")
-        
-        # Check position size
-        total_position_usd = await self.get_total_position_size()
-        if total_position_usd > self.max_position_size_usd:
-            breaches.append(f"Position size limit breached: ${total_position_usd:,.2f}")
-        
-        # Check heartbeat
-        last_heartbeat = await self.get_last_heartbeat()
-        if (datetime.utcnow() - last_heartbeat).seconds > self.heartbeat_timeout_seconds:
-            breaches.append("Heartbeat timeout")
-        
-        # Check data freshness
-        market_data_age = await self.get_market_data_age()
-        if market_data_age > self.data_age_threshold_seconds:
-            breaches.append(f"Market data too old: {market_data_age}s")
-        
-        return breaches
-```
-
-### **Unified Deployment Commands**
-
-```bash
-# 1. Configure environment file
-vim backend/env.unified  # Edit the single environment file
-
-# 2. Deploy system (works for all configurations)
-cd deploy
-./deploy.sh local      # Local development
-./deploy.sh staging    # Staging deployment
-./deploy.sh prod       # Production deployment
-
-# 3. Check system status
-docker compose ps
-
-# 4. View logs
-docker compose logs -f backend
-
-# 5. Emergency stop
-docker compose stop backend
-
-# 6. Restart with new config
-docker compose restart backend
-
-# 7. Update system
-git pull
-./deploy.sh local  # or staging/prod
-
-# 8. Switch configurations (automated)
-./switch-env.sh local    # Sets backend/env.unified + copies .env.local
-./switch-env.sh staging  # Sets backend/env.unified + copies .env.staging
-./switch-env.sh prod     # Sets backend/env.unified + uses .env
-docker compose restart backend
-
-# 9. Frontend testing (optional)
-docker compose --profile frontend-test up
-```
+| **Architecture** | Same component chain | Same component chain |
 
 ---
 
-## 🏠 **Local dev**
+## 🏠 **Non-Docker Deployment**
 
 ### **Quick Start**
-
 ```bash
 # From project root
-cd deploy && ./deploy.sh local
+./platform.sh start
 
 # Access points
 # - Frontend: http://localhost:5173
@@ -555,116 +280,100 @@ cd deploy && ./deploy.sh local
 # - API Docs: http://localhost:8001/docs
 ```
 
-**Services Started**:
-- Backend (FastAPI on port 8001)
-- Frontend (Vite dev server on port 5173)
-- Redis (localhost:6379) - NEW! Used by components
+### **Environment Setup**
+**File**: `env.unified` + override files
 
-### **Environment Configuration**
-
-**File**: `backend/env.unified` (single unified configuration)
-
-**Default Configuration** (Local Development):
+**Local Development Override** (`.env.dev`):
 ```bash
-# Configuration Dimensions
-BASIS_EXECUTION_MODE=backtest
+# Core configuration
 BASIS_ENVIRONMENT=dev
-BASIS_DEPLOYMENT=local
+BASIS_DEPLOYMENT_MODE=local
+BASIS_DATA_DIR=./data
+BASIS_DATA_MODE=csv
+BASIS_RESULTS_DIR=./results
+BASIS_REDIS_URL=redis://localhost:6379/0
+BASIS_DEBUG=true
+BASIS_LOG_LEVEL=DEBUG
+BASIS_EXECUTION_MODE=backtest
 
 # API Configuration
-BASIS_API__PORT=8001
-BASIS_API__RELOAD=true
-BASIS_API__CORS_ORIGINS=["http://localhost:5173"]
-
-# Redis Configuration
-BASIS_REDIS__ENABLED=true
-BASIS_REDIS__URL=redis://localhost:6379/0
-
-# Data Provider Settings
-BASIS_DATA__CACHE_ENABLED=true
-BASIS_DATA__DATA_DIR=./data
-
-# Development Settings
-BASIS_DEBUG=true
-BASIS_MONITORING__LOG_LEVEL=DEBUG
-
-# Live Trading (disabled by default)
-BASIS_LIVE_TRADING__ENABLED=false
-BASIS_LIVE_TRADING__READ_ONLY=true
-BASIS_LIVE_TRADING__MAX_TRADE_SIZE_USD=100
+BASIS_API_PORT=8001
+BASIS_API_HOST=0.0.0.0
+BASIS_API_CORS_ORIGINS=http://localhost:5173,http://localhost:3000
 ```
 
-**Configuration Switching**:
+### **Commands**
 ```bash
-# Switch to live trading (edit backend/env.unified):
-BASIS_EXECUTION_MODE=live
-BASIS_LIVE_TRADING__ENABLED=true
-BASIS_LIVE_TRADING__READ_ONLY=true  # Start with read-only
-
-# Switch to production (edit backend/env.unified):
-BASIS_ENVIRONMENT=production
-BASIS_DEPLOYMENT=cloud
-BASIS_API__CORS_ORIGINS=["https://defi-project.odum-research.com"]
-BASIS_REDIS__URL=redis://redis:6379/0
-
-# Then restart: docker-compose restart backend
+./platform.sh start        # Start backend + frontend
+./platform.sh backtest     # Start backend only (backtest mode)
+./platform.sh stop         # Stop all services
+./platform.sh restart      # Restart all services
+./platform.sh status       # Show service status
+./platform.sh logs backend # Show backend logs
 ```
 
-### **Docker Compose Commands**
+---
 
+## 🐳 **Docker Deployment**
+
+### **Unified Deployment Script**
 ```bash
-cd deploy
-./deploy.sh local         # Start all services
-./stop-local.sh           # Stop all services
-docker compose restart    # Restart all services
-docker compose ps         # Check service status
-docker compose logs -f backend   # View backend logs
-docker compose logs -f caddy     # View frontend logs
-
-# Build optimization commands
-docker compose build backend     # Optimized build with caching
-./build-optimized.sh            # Demo script showing caching benefits
-docker compose build --no-cache # Force rebuild (no cache)
+cd docker
+./deploy.sh [ENVIRONMENT] [SERVICES] [ACTION]
 ```
+
+**Parameters**:
+- **ENVIRONMENT**: `local|staging|prod` (default: local)
+- **SERVICES**: `backend|frontend|all` (default: all)
+- **ACTION**: `start|stop|restart|status|logs` (default: start)
+
+### **Examples**
+```bash
+# Start backend only in local environment
+./deploy.sh local backend start
+
+# Start full stack in production
+./deploy.sh prod all start
+
+# Stop staging backend
+./deploy.sh staging backend stop
+
+# Check status and view logs
+./deploy.sh local all status
+./deploy.sh prod backend logs
+```
+
+### **Environment Files**
+**Docker Override Files**:
+- `docker/.env.dev` - Local development
+- `docker/.env.staging` - Staging environment  
+- `docker/.env.prod` - Production environment
+
+**Environment Switching**:
+The `deploy.sh` script automatically switches environments by copying the appropriate override file to `.env` before deployment.
+
+### **Services**
+- **backend**: Backend API + Redis
+- **frontend**: Backend + Caddy (reverse proxy)
+- **all**: Backend + Caddy + Redis
+
+### **Access Points**
+- **Backend API**: http://localhost:8001
+- **API Docs**: http://localhost:8001/docs
+- **Frontend**: http://localhost/ (via Caddy)
+- **Health Check**: http://localhost:8001/health
+- **Detailed Health**: http://localhost:8001/health/detailed
 
 ---
 
 ## ☁️ **GCloud VM Deployment**
 
-### **Prerequisites**
-
-**Already Configured** ✅:
+### **Prerequisites** ✅
 - Domain: defi-project.odum-research.com
 - VM: GCloud (europe-west1-b)
 - TLS: Let's Encrypt (ikenna@odum-research.com)
 - Static IP: Attached
 - Firewall: TCP 22/80/443 open
-
-### **New Requirement**: GCS Data Bucket
-
-**Create GCS Bucket** (one-time setup):
-```bash
-# Create bucket
-gsutil mb -l europe-west1 gs://basis-strategy-v1-data
-
-# Set lifecycle (optional - keep data 90 days)
-gsutil lifecycle set lifecycle.json gs://basis-strategy-v1-data
-```
-
-**Upload Data** (from local):
-```bash
-# Upload entire data/ directory to GCS
-./scripts/deployment/upload_data_to_gcs.sh
-
-# Or manual:
-gsutil -m rsync -r data/ gs://basis-strategy-v1-data/
-```
-
-**Download on VM** (before starting services):
-```bash
-# On GCloud VM
-gsutil -m rsync -r gs://basis-strategy-v1-data/ data/
-```
 
 ### **Deployment Steps**
 
@@ -675,89 +384,51 @@ cd ~/basis-strategy-v1
 git pull origin main
 ```
 
-**2. Download Data from GCS**:
+**2. Configure Environment**:
 ```bash
-# Download latest data (NEW step!)
-gsutil -m rsync -r gs://basis-strategy-v1-data/ data/
-
-# Verify data
-ls -lh data/market_data/spot_prices/eth_usd/
+cd docker
+# Edit production environment file
+vim .env.prod
 ```
 
-**3. Configure Environment**:
+**Production Configuration** (`docker/.env.prod`):
 ```bash
-cd deploy
-cp .env.example .env
+# Core configuration
+BASIS_ENVIRONMENT=prod
+BASIS_DEPLOYMENT_MODE=docker
+BASIS_DATA_DIR=/app/data
+BASIS_DATA_MODE=db
+BASIS_RESULTS_DIR=/app/results
+BASIS_REDIS_URL=redis://redis:6379/0
+BASIS_DEBUG=false
+BASIS_LOG_LEVEL=INFO
+BASIS_EXECUTION_MODE=backtest  # Start with backtest, switch to live when ready
 
-# Edit .env
-vim .env
-```
-
-**Contents**:
-```bash
+# Caddy Configuration
 APP_DOMAIN=defi-project.odum-research.com
 ACME_EMAIL=ikenna@odum-research.com
-BASIS_API__CORS_ORIGINS=["https://defi-project.odum-research.com"]
-
-# Redis (required!)
-BASIS_REDIS__ENABLED=true
-BASIS_REDIS__URL=redis://redis:6379/0
-
-# Data location
-BASIS_DATA__DATA_DIR=/app/data
-
-# Environment mode (backtest for production deployment)
-BASIS_ENVIRONMENT=production
-BASIS_EXECUTION_MODE=backtest
-```
-
-**4. Configure Backend Environment**:
-```bash
-# Edit the unified environment file
-vim backend/env.unified
-```
-
-**Production Configuration** (edit in `backend/env.unified`):
-```bash
-# Production Environment
-BASIS_ENVIRONMENT=production
-BASIS_EXECUTION_MODE=backtest  # Start with backtest, switch to live when ready
-BASIS_DEPLOYMENT=cloud
+BASIC_AUTH_HASH=  # Set if needed
+HTTP_PORT=80
+HTTPS_PORT=443
 
 # API Configuration
-BASIS_API__PORT=8001
-BASIS_API__RELOAD=false
-BASIS_API__CORS_ORIGINS=["https://defi-project.odum-research.com"]
-
-# Redis Configuration
-BASIS_REDIS__ENABLED=true
-BASIS_REDIS__URL=redis://redis:6379/0
-
-# Data Provider Settings
-BASIS_DATA__CACHE_ENABLED=true
-BASIS_DATA__DATA_DIR=/app/data
-
-# Production Settings
-BASIS_DEBUG=false
-BASIS_MONITORING__LOG_LEVEL=INFO
-
-# Add your production API keys here when ready for live trading
-# BASIS_PROD__CEX__BINANCE_SPOT_API_KEY=your_key
-# BASIS_PROD__ALCHEMY__PRIVATE_KEY=your_key
+BASIS_API_PORT=8001
+BASIS_API_HOST=0.0.0.0
 ```
 
-**5. Build and Deploy**:
+**3. Deploy**:
 ```bash
-./deploy.sh prod
+./deploy.sh prod all start
 ```
 
-**6. Verify Deployment**:
+**4. Verify**:
 ```bash
 # Check containers
-docker ps
+docker compose ps
 
 # Check health
-curl https://defi-project.odum-research.com/health/
+curl https://defi-project.odum-research.com/health
+curl https://defi-project.odum-research.com/health/detailed
 
 # Check API
 curl https://defi-project.odum-research.com/api/v1/strategies/
@@ -765,142 +436,269 @@ curl https://defi-project.odum-research.com/api/v1/strategies/
 
 ---
 
-## 🐳 **Docker Setup**
+## 🔧 **Environment Variables**
 
-### **Optimized Build System** ⚡
+### **Base Configuration** (`env.unified`)
+Contains empty values that must be overridden by environment-specific files:
 
-**Performance**: 99% faster builds with dependency caching
-
-#### **Multi-Stage Dockerfile Architecture**
-```dockerfile
-# Dependencies stage - Only rebuilds when requirements change
-FROM python:3.11-slim AS dependencies
-COPY requirements.txt ./
-RUN pip install -r requirements.txt
-
-# Builder stage - Only rebuilds when source code changes  
-FROM dependencies AS builder
-COPY backend/ ./backend/
-RUN pip install -e ./backend
-
-# Runtime stage - Minimal final image
-FROM python:3.11-slim
-COPY --from=dependencies /usr/local/lib/python3.11 /usr/local/lib/python3.11
-COPY --from=builder /app/backend/ ./backend/
-```
-
-#### **Build Performance Results**
-| Change Type | Build Time | What Rebuilds |
-|-------------|------------|---------------|
-| **No changes** | ~1-2 seconds | Nothing (all cached) |
-| **Source code only** | ~5-10 seconds | Builder + Runtime stages |
-| **Requirements change** | ~105 seconds | Dependencies + Builder + Runtime |
-| **Config change** | ~2-3 seconds | Runtime stage only |
-
-#### **Optimization Features**
-- **`.dockerignore`**: Excludes docs, tests, logs, and development files
-- **BuildKit Caching**: Inline cache support for better layer reuse
-- **Multi-stage Cache**: Separate cache targets for dependencies, builder, and runtime
-- **Build Context**: Reduced from ~2MB to essential files only
-
-#### **Usage**
 ```bash
-# Regular optimized build
-docker compose build backend
+# Core startup configuration (REQUIRED - no defaults)
+BASIS_ENVIRONMENT=
+BASIS_DEPLOYMENT_MODE=
+BASIS_DATA_DIR=
+BASIS_DATA_MODE=
+BASIS_RESULTS_DIR=
+BASIS_REDIS_URL=
+BASIS_DEBUG=
+BASIS_LOG_LEVEL=
+BASIS_EXECUTION_MODE=
+BASIS_DATA_START_DATE=
+BASIS_DATA_END_DATE=
 
-# Demo script showing caching benefits
-./deploy/build-optimized.sh
+# API configuration
+BASIS_API_PORT=
+BASIS_API_HOST=
+BASIS_API_CORS_ORIGINS=
 
-# Force rebuild (no cache)
-docker compose build backend --no-cache
+# Live trading configuration (only used when BASIS_EXECUTION_MODE=live)
+BASIS_LIVE_TRADING__ENABLED=false
+BASIS_LIVE_TRADING__READ_ONLY=true
+BASIS_LIVE_TRADING__MAX_TRADE_SIZE_USD=100
+BASIS_LIVE_TRADING__EMERGENCY_STOP_LOSS_PCT=0.15
+BASIS_LIVE_TRADING__HEARTBEAT_TIMEOUT_SECONDS=300
+BASIS_LIVE_TRADING__CIRCUIT_BREAKER_ENABLED=true
+
+# Environment-specific API keys (dev/staging/prod)
+BASIS_DEV__ALCHEMY__PRIVATE_KEY=
+BASIS_DEV__ALCHEMY__RPC_URL=
+BASIS_DEV__ALCHEMY__WALLET_ADDRESS=
+BASIS_DEV__ALCHEMY__NETWORK=sepolia
+BASIS_DEV__ALCHEMY__CHAIN_ID=11155111
+# ... (similar for staging and prod environments)
 ```
 
-### **Services**
+### **Environment-Specific Overrides**
+Each environment file overrides the empty values in `env.unified`:
 
-**docker-compose.yml** (unified for all environments):
-```yaml
-services:
-  redis:              # Required by components
-    image: redis:7-alpine
-    restart: unless-stopped
-  
-  backend:
-    build: ../backend
-    env_file:
-      - ../backend/env.unified  # Backend configuration
-      - .env                    # Caddy-specific configuration
-    volumes:
-      - ../data:/app/data:ro    # Data read-only
-      - ../configs:/app/configs:ro
-      - ../backend/env.unified:/app/env.unified:ro
-    depends_on:
-      - redis
-  
-  caddy:
-    build: ./Dockerfile.caddy-frontend
-    env_file:
-      - .env  # For Caddy-specific variables
-    ports:
-      - "${HTTP_PORT:-80}:80"
-      - "${HTTPS_PORT:-443}:443"
-    depends_on:
-      - backend
+**Local Development** (`.env.dev` or `docker/.env.dev`):
+```bash
+BASIS_ENVIRONMENT=dev
+BASIS_DEPLOYMENT_MODE=local  # or docker
+BASIS_DATA_DIR=./data  # or /app/data for docker
+BASIS_DATA_MODE=csv
+BASIS_REDIS_URL=redis://localhost:6379/0  # or redis://redis:6379/0 for docker
+BASIS_DEBUG=true
+BASIS_LOG_LEVEL=DEBUG
+BASIS_EXECUTION_MODE=backtest
 ```
 
-**Unified Environment File**:
-- **Single File**: `backend/env.unified` handles all configurations
-- **Configuration Dimensions**: Execution mode, environment, deployment
-- **Easy Switching**: Change settings and restart containers
+**Production** (`.env.production` or `docker/.env.prod`):
+```bash
+BASIS_ENVIRONMENT=prod
+BASIS_DEPLOYMENT_MODE=docker
+BASIS_DATA_DIR=/app/data
+BASIS_DATA_MODE=db
+BASIS_REDIS_URL=redis://redis:6379/0
+BASIS_DEBUG=false
+BASIS_LOG_LEVEL=INFO
+BASIS_EXECUTION_MODE=live  # When ready for live trading
+```
+
+---
+
+## 🏦 **Wallet & API Setup**
+
+### **Environment Overview**
+
+| Environment | Network | CEX APIs | ERC-20 Wallet | Purpose |
+|-------------|---------|----------|---------------|---------|
+| **dev** | Sepolia Testnet | Testnet APIs | Testnet Wallet | Free testing, full E2E |
+| **staging** | Mainnet | Mainnet APIs | Mainnet Wallet (Small) | Real money, small amounts |
+| **production** | Mainnet | Mainnet APIs | Mainnet Wallet (Full) | Live trading, full amounts |
+
+### **ERC-20 Wallet Setup**
+**What is an ERC-20 Wallet?**
+- Blockchain wallet (NOT a CEX wallet)
+- Holds ETH and ERC-20 tokens (USDT, weETH, aTokens)
+- Used for on-chain operations: AAVE, staking, flash loans, gas payments
+
+**Creating Wallets** (Use MetaMask):
+1. Install MetaMask browser extension
+2. Create NEW wallet (separate for this project!)
+3. Export private key (Account details → Export private key)
+4. **Remove 0x prefix** when adding to env files
+5. Copy wallet address (with 0x prefix)
+
+**Funding by Environment**:
+- **dev**: Get testnet ETH from https://sepoliafaucet.com/ (1-2 ETH, free)
+- **staging**: Real ETH (0.1-0.5 ETH for testing)
+- **production**: Real ETH (full amount for trading)
+
+### **CEX API Setup**
+**dev (Testnet APIs)**:
+- **Binance**: https://testnet.binance.vision/
+- **Bybit**: https://testnet.bybit.com/
+- **OKX**: https://www.okx.com/developers/testnet
+
+**Production (Mainnet APIs)**:
+- Use separate API keys from testnet
+- Set IP restrictions where possible
+- Enable only required permissions
+- Monitor API usage regularly
+
+### **API Credentials in Live Trading**
+The `api_credentials` field in `LiveTradingRequest` is a `Dict[str, str]` containing exchange-specific credentials:
+```python
+{
+    "api_key": "your_api_key",
+    "api_secret": "your_api_secret"
+}
+```
+
+This is different from environment-based credentials in `env.unified` - it's for per-request API access.
+
+---
+
+## 🚨 **Troubleshooting**
+
+### **Common Issues**
+
+**Redis Not Connected**:
+```bash
+# Check Redis running
+docker compose ps | grep redis
+
+# View Redis logs
+docker compose logs redis
+
+# Restart Redis
+docker compose restart redis
+```
+
+**Component Initialization Failed**:
+```bash
+# Check backend logs
+docker compose logs backend
+
+# Common issues:
+# - Redis not available → Check connection
+# - Data not loaded → Check /app/data volume mount
+# - Config missing → Check env variables
+```
+
+**Port Conflicts**:
+```bash
+# Check what's using ports
+lsof -i :8001
+lsof -i :5173
+
+# Kill processes on ports
+./platform.sh stop
+```
+
+---
+
+## ✅ **Deployment Checklist**
+
+**Before Deployment**:
+- [ ] Push to main
+- [ ] Configure environment files (`.env.dev`, `.env.prod`, etc.)
+- [ ] Verify Redis configuration
+- [ ] Test locally with Docker
+- [ ] Set proper permissions: `chmod 600 env.unified`
+
+**After Deployment**:
+- [ ] Check health endpoints (`/health` and `/health/detailed`)
+- [ ] Test mode selection via UI
+- [ ] Verify Redis connections
+- [ ] Verify environment file is loaded
+- [ ] Check logs for execution mode
+
+**Environment File Security**:
+- [ ] Never commit environment files to git
+- [ ] Use single file with different settings for different deployments
+- [ ] Rotate API keys regularly
+- [ ] Set proper file permissions
 
 ---
 
 ## 📊 **Data Management**
 
-### **GCS Upload Script** (NEW)
-
-**File**: `scripts/deployment/upload_data_to_gcs.sh`
-
+### **GCS Upload Script** (Future)
 ```bash
-#!/bin/bash
 # Upload data/ directory to GCS bucket
+./scripts/deployment/upload_data_to_gcs.sh
 
-BUCKET="gs://basis-strategy-v1-data"
-DATA_DIR="data"
-
-echo "🚀 Uploading data to GCS..."
-echo "Bucket: $BUCKET"
-echo "Source: $DATA_DIR/"
-
-# Upload with metadata
-gsutil -m rsync -r \
-  -x ".*\.pyc$|.*__pycache__.*" \
-  $DATA_DIR/ $BUCKET/
-
-echo "✅ Upload complete!"
-echo "📊 Bucket contents:"
-gsutil du -sh $BUCKET
+# Download on VM
+gsutil -m rsync -r gs://basis-strategy-v1-data/ data/
 ```
 
-**Run before deployment**:
-```bash
-chmod +x scripts/deployment/upload_data_to_gcs.sh
-./scripts/deployment/upload_data_to_gcs.sh
+---
+
+## 🎯 **Health Checks**
+
+### **Fast Health Check**
+**Endpoint**: `/health` (no authentication required)
+
+**Returns**:
+```json
+{
+  "status": "healthy",
+  "timestamp": "2025-01-06T12:00:00Z",
+  "service": "basis-strategy-v1",
+  "execution_mode": "backtest",
+  "uptime_seconds": 3600,
+  "system": {
+    "cpu_percent": 15.2,
+    "memory_percent": 45.8,
+    "memory_available_gb": 8.5
+  }
+}
+```
+
+### **Comprehensive Health Check**
+**Endpoint**: `/health/detailed` (no authentication required)
+
+**Returns**:
+```json
+{
+  "status": "healthy",
+  "timestamp": "2025-01-06T12:00:00Z",
+  "service": "basis-strategy-v1",
+  "execution_mode": "backtest",
+  "components": {
+    "position_monitor": {
+      "status": "healthy",
+      "error_code": null,
+      "readiness_checks": {
+        "initialized": true,
+        "redis_connected": true
+      }
+    },
+    "data_provider": {
+      "status": "healthy",
+      "error_code": null,
+      "readiness_checks": {
+        "initialized": true,
+        "data_loaded": true
+      }
+    }
+  },
+  "summary": {
+    "total_components": 9,
+    "healthy_components": 9,
+    "unhealthy_components": 0
+  }
+}
 ```
 
 ---
 
 ## 🔧 **Component Architecture Notes**
 
-### **Redis Requirement** (NEW)
-
-**dev**:
-- Redis optional (can run in-memory)
-- But recommended for testing pub/sub
-
-**Production**:
-- Redis required
-- Used for component communication
-- Channels: `position:updated`, `exposure:calculated`, etc.
+### **Redis Requirement**
+**Backtest Mode**: Redis optional (not_configured if not available)  
+**Live Mode**: Redis required for component communication and health checks
 
 **Monitoring Redis**:
 ```bash
@@ -920,186 +718,69 @@ GET risk:current
 
 ---
 
-## 🎯 **Health Checks**
+## 🔄 **Automatic Health Monitoring and Restart**
 
-### **Extended Health Check** (NEW)
+### **Overview**
+Both Docker and non-Docker deployments automatically monitor backend health and restart services on failure.
 
-**Endpoint**: `/health/detailed`
-
-**Returns**:
-```json
-{
-  "status": "healthy",
-  "components": {
-    "position_monitor": "ready",
-    "exposure_monitor": "ready",
-    "risk_monitor": "ready",
-    "pnl_calculator": "ready",
-    "strategy_manager": "ready",
-    "redis": "connected",
-    "data_provider": "loaded"
-  },
-  "data_loaded": {
-    "modes_supported": ["pure_lending", "btc_basis", "eth_leveraged", "usdt_market_neutral"],
-    "data_period": "2024-01-01 to 2025-09-18"
-  }
-}
-```
-
----
-
-## 🚨 **Troubleshooting**
-
-### **Redis Not Connected**
-
+### **Configuration**
 ```bash
-# Check Redis running
-docker ps | grep redis
-
-# View Redis logs
-docker logs deploy-redis-1
-
-# Restart Redis
-docker compose restart redis
+# In env.unified or override files
+HEALTH_CHECK_INTERVAL=30s          # How often to check (30s recommended)
+HEALTH_CHECK_ENDPOINT=/health      # Fast check (< 50ms)
+# HEALTH_CHECK_ENDPOINT=/health/detailed  # Comprehensive check (slower)
 ```
 
-### **Component Initialization Failed**
+### **How It Works**
 
+**Docker Deployments**:
+- Docker's native healthcheck pings `HEALTH_CHECK_ENDPOINT` every `HEALTH_CHECK_INTERVAL`
+- On failure (10 consecutive failures with 3s timeout): Docker restarts backend container
+- Redis data preserved during restart
+- Logs visible via `docker compose logs backend`
+
+**Non-Docker Deployments**:
+- Background monitor script (`scripts/health_monitor.sh`) runs automatically when you start services
+- Pings `HEALTH_CHECK_ENDPOINT` every `HEALTH_CHECK_INTERVAL`
+- On failure: Restarts all services via `platform.sh restart` (backend + frontend + Redis)
+- Retry logic: Up to 3 attempts with exponential backoff (5s, 10s, 20s)
+- After 3 failures: Gives up and logs error
+- Logs to `logs/health_monitor.log`
+
+### **Starting/Stopping Monitor**
+
+**Automatic** (recommended):
 ```bash
-# Check backend logs
-docker logs deploy-backend-1
-
-# Common issues:
-# - Redis not available → Check connection
-# - Data not loaded → Check /app/data volume mount
-# - Config missing → Check env variables
+./platform.sh start      # Starts backend + frontend + health monitor
+./platform.sh backtest   # Starts backend + health monitor
+./platform.sh stop       # Stops all services including monitor
 ```
 
----
+**Manual** (for debugging):
+```bash
+# Check if monitor is running
+ps aux | grep health_monitor
 
-## ✅ **Deployment Checklist**
+# View monitor logs
+tail -f logs/health_monitor.log
 
-**Before Deployment**:
-- [ ] Push to main
-- [ ] Upload data to GCS
-- [ ] Update .env with domain
-- [ ] Configure backend/env.unified with appropriate settings
-- [ ] Verify Redis in docker-compose
-- [ ] Test locally with Docker
+# Manually stop monitor
+kill $(cat logs/health_monitor.pid)
+```
 
-**After Deployment**:
-- [ ] Download data from GCS on VM
-- [ ] ./deploy.sh prod
-- [ ] Check health endpoint
-- [ ] Test mode selection via UI
-- [ ] Verify Redis connections (docker logs)
-- [ ] Verify environment file is loaded (check logs for execution mode)
+### **Troubleshooting**
 
-**Environment File Security**:
-- [ ] Set proper permissions: `chmod 600 backend/env.unified`
-- [ ] Never commit environment files to git
-- [ ] Use single file with different settings for different deployments
-- [ ] Rotate API keys regularly
+**Monitor not starting**:
+- Check `HEALTH_CHECK_INTERVAL` is set in environment
+- Verify `scripts/health_monitor.sh` is executable: `chmod +x scripts/health_monitor.sh`
 
----
+**Services restarting frequently**:
+- Check backend logs: `tail -f backend/logs/api.log`
+- Backend may be genuinely unhealthy (component initialization issues)
+- Consider increasing `HEALTH_CHECK_INTERVAL` or fixing root cause
 
-## 🏦 **Wallet & API Setup**
-
-### **Environment Overview**
-
-| Environment | Network | CEX APIs | ERC-20 Wallet | Purpose |
-|-------------|---------|----------|---------------|---------|
-| **dev** | Sepolia Testnet | Testnet APIs | Testnet Wallet | Free testing, full E2E |
-| **Staging** | Mainnet | Mainnet APIs | Mainnet Wallet (Small) | Real money, small amounts |
-| **Production** | Mainnet | Mainnet APIs | Mainnet Wallet (Full) | Live trading, full amounts |
-
----
-
-### **ERC-20 Wallet Setup**
-
-**What is an ERC-20 Wallet?**
-- Blockchain wallet (NOT a CEX wallet)
-- Holds ETH and ERC-20 tokens (USDT, weETH, aTokens)
-- Used for on-chain operations: AAVE, staking, flash loans, gas payments
-- **Private key** = access to wallet (keep secure!)
-
-**Creating Wallets** (Use MetaMask):
-1. Install MetaMask browser extension
-2. Create NEW wallet (separate for this project!)
-3. Export private key (Account details → Export private key)
-4. **Remove 0x prefix** when adding to env.unified
-5. Copy wallet address (with 0x prefix)
-
-**Funding by Environment**:
-- **dev**: Get testnet ETH from https://sepoliafaucet.com/ (1-2 ETH, free)
-- **Staging**: Real ETH (0.1-0.5 ETH for testing)
-- **Production**: Real ETH (full amount for trading)
-
----
-
-### **CEX API Setup**
-
-#### **dev (Testnet APIs)**:
-- **Binance**: https://testnet.binance.vision/
-- **Bybit**: https://testnet.bybit.com/
-- **OKX**: https://www.okx.com/developers/testnet
-
-**Permissions**: Enable spot trading + futures trading only
-
-#### **Production (Mainnet APIs)**:
-- Use separate API keys from testnet
-- Set IP restrictions where possible
-- Enable only required permissions
-- Monitor API usage regularly
-
----
-
-### **Hybrid Testnet Testing Reality**
-
-**Network Separation**: ❌ Cannot directly send Sepolia tokens to CEX testnets (different networks)
-
-**What Works** ✅:
-- Real CEX trading on testnet (spot, perps)
-- Real DeFi operations on Sepolia (AAVE, staking)
-- **System simulates** cross-network transfers
-- Complete strategy logic testing
-- Full E2E without real money
-
-**What to Test**:
-- ✅ Real CEX trading (spot, perps) on testnets
-- ✅ Real DeFi (staking, lending, flash loans) on Sepolia
-- ✅ Complete strategy logic with simulated transfers
-- ✅ All rebalancing and risk management
-- ✅ Error handling and API integrations
-
-**Cannot Test**:
-- ❌ Real cross-network transfers (system simulates)
-- ❌ Real gas costs (testnet is free)
-- ❌ Real slippage (testnet has perfect liquidity)
-
-**Control Variable**: `BASIS_CROSS_NETWORK__SIMULATE_TRANSFERS=true` in env.unified
-
----
-
-### **Security Best Practices**
-
-**Wallet Security**:
-- ✅ Use separate wallets for each environment
-- ✅ Never reuse wallets between environments
-- ✅ Keep private keys secure (hardware wallets for production)
-- ✅ Test with small amounts before going live
-
-**API Key Security**:
-- ✅ Use separate API keys per environment
-- ✅ Set IP restrictions where possible
-- ✅ Enable only required permissions
-- ✅ Monitor API usage regularly
-
-**Environment Separation**:
-- ✅ Never mix testnet/mainnet in same environment
-- ✅ Use different wallets for staging vs production
-- ✅ Test thoroughly in dev before staging
-
----
-
-
+**Monitor process stuck**:
+- Stop services: `./platform.sh stop`
+- Manually kill monitor: `kill $(cat logs/health_monitor.pid)` or `killall health_monitor.sh`
+- Remove PID file: `rm logs/health_monitor.pid`
+- Restart: `./platform.sh start`

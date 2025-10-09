@@ -1,24 +1,63 @@
-# Quality Gates - Complete System Validation 🚦
+# Quality Gates System 🚦
 
 **Purpose**: Comprehensive quality gates for all components and infrastructure  
-**Status**: 🔄 PARTIALLY IMPLEMENTED - 5/14 scripts passing  
-**Updated**: October 6, 2025
+**Status**: 🔧 PARTIALLY IMPLEMENTED - 8/24 scripts passing  
+**Updated**: October 8, 2025  
+**Last Reviewed**: October 8, 2025  
+**Status**: ✅ Aligned with canonical sources (.cursor/tasks/ + MODES.md)
 
 ---
 
 ## 🎯 **Overview**
 
-This document defines **complete quality gates** for the Basis Strategy system, including:
+The Quality Gates System provides **comprehensive validation** of the entire Basis Strategy system, ensuring all components meet production-ready standards with:
 
-## 📊 **Current Quality Gates Status (October 6, 2025)**
+- **Component Health Validation** - All components must pass health checks
+- **Event Chain Validation** - Complete event flow from data to execution
+- **Test Coverage Requirements** - 80% overall coverage target
+- **Performance Benchmarks** - Backtest and live execution performance
+- **Integration Validation** - End-to-end system functionality
+- **Expected Failures Documentation** - What should fail at current stage
+
+---
+
+## 🚀 **Usage**
+
+### **Run Complete Quality Gates Validation**
+```bash
+# Run all quality gates (single entry point)
+python3 scripts/run_quality_gates.py
+
+# Run specific categories
+python3 scripts/run_quality_gates.py --category strategy
+python3 scripts/run_quality_gates.py --category components
+python3 scripts/run_quality_gates.py --category performance
+
+# Run test coverage analysis
+python3 scripts/analyze_test_coverage.py
+
+# Expected output: Comprehensive quality gates report
+```
+
+### **Quality Gates Checklist**
+```bash
+# Check individual quality gates
+curl http://localhost:8000/health/components      # Component health
+curl http://localhost:8000/health/readiness       # System readiness
+curl http://localhost:8000/health/errors          # Component errors
+```
+
+---
+
+## 📊 **Current Quality Gates Status (October 8, 2025)**
 
 ### **Scripts Directory Quality Gates**
-- **Current Status**: 5/14 scripts passing (35.7%)
+- **Current Status**: 8/24 scripts passing (33.3%)
 - **Failing Scripts**: 
   - `test_btc_basis_quality_gates.py` (trade execution issues)
   - `monitor_quality_gates.py`
   - `performance_quality_gates.py`
-  - And 6 others
+  - And 13 others
 
 ### **Critical Issues**
 - 🔄 **Pure Lending Yield Calculation**: Unrealistic 1166% APY (should be 3-8%)
@@ -459,6 +498,24 @@ python scripts/performance_test.py
 
 ---
 
+## 📋 **Quality Gate Scripts**
+
+### **Active Scripts**
+- **`run_quality_gates.py`** - Main orchestrator (single entry point)
+- **`monitor_quality_gates.py`** - Component validation
+- **`risk_monitor_quality_gates.py`** - Risk validation
+- **`performance_quality_gates.py`** - Performance validation
+- **`test_pure_lending_quality_gates.py`** - Strategy validation
+- **`test_btc_basis_quality_gates.py`** - Strategy validation
+- **`validate_config_alignment.py`** - Config validation
+- **`test_e2e_backtest_flow.py`** - Integration validation
+- **`analyze_test_coverage.py`** - Coverage analysis
+
+### **Utility Scripts**
+- **`load_env.sh`** - Environment loading
+- **`API_KEY_SETUP.md`** - API key documentation
+---
+
 **Status**: Quality Gates specification complete! Ready for comprehensive system validation! 🚦
 
-*Last Updated: October 3, 2025*
+*Last Updated: October 8, 2025*

@@ -108,10 +108,12 @@ class BacktestService:
             if request.config_overrides:
                 config.update(request.config_overrides)
             
-            # Get data provider (already loaded with all data at startup)
+            # Get data provider (on-demand loading with date validation)
+            import os
             data_provider = create_data_provider(
                 data_dir=config_manager.get_data_directory(),
-                startup_mode=config_manager.get_startup_mode(),
+                execution_mode=os.getenv('BASIS_EXECUTION_MODE'),
+                data_mode=os.getenv('BASIS_DATA_MODE'),
                 config=config,
                 strategy_mode=request.strategy_name,
                 backtest_start_date=request.start_date.strftime('%Y-%m-%d'),
@@ -121,7 +123,7 @@ class BacktestService:
             # Phase 3: Initialize strategy engine with proper dependency injection
             strategy_engine = EventDrivenStrategyEngine(
                 config=config,
-                execution_mode=config_manager.get_startup_mode(),
+                execution_mode=os.getenv('BASIS_EXECUTION_MODE'),
                 data_provider=data_provider,
                 initial_capital=float(request.initial_capital),  # From API request
                 share_class=request.share_class,  # From API request

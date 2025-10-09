@@ -491,7 +491,7 @@
         "HTTPS_PORT": "443"
       }
     },
-    "deploy/.env.local": {
+    "deploy/.env.dev": {
       "status": "success",
       "file_exists": true,
       "total_vars": 6,
@@ -883,7 +883,7 @@
   "errors": [],
   "warnings": [
     "Missing critical vars in deploy/.env: ['BASIS_ENVIRONMENT', 'BASIS_EXECUTION_MODE', 'BASIS_API__PORT', 'BASIS_REDIS__URL']",
-    "Missing critical vars in deploy/.env.local: ['BASIS_ENVIRONMENT', 'BASIS_EXECUTION_MODE', 'BASIS_API__PORT', 'BASIS_REDIS__URL']",
+    "Missing critical vars in deploy/.env.dev: ['BASIS_ENVIRONMENT', 'BASIS_EXECUTION_MODE', 'BASIS_API__PORT', 'BASIS_REDIS__URL']",
     "Missing critical vars in deploy/.env.staging: ['BASIS_ENVIRONMENT', 'BASIS_EXECUTION_MODE', 'BASIS_API__PORT', 'BASIS_REDIS__URL']",
     "Identical values in base configs (potential duplication): ['execution', 'debug', 'environment']"
   ]

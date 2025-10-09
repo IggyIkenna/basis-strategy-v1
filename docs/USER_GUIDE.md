@@ -1,20 +1,32 @@
-# User Guide - Complete Manual 📚
+# User Guide - Advanced Usage & Strategy Configuration 📚
 
-**For**: Strategy configuration, backtesting, and results interpretation  
-**Level**: Beginner to advanced  
-**Updated**: October 6, 2025 - Core components working, critical issues remain
+**For**: Advanced strategy configuration, results interpretation, and optimization  
+**Level**: Intermediate to advanced  
+**Prerequisites**: Platform running (see [GETTING_STARTED.md](GETTING_STARTED.md))  
+**Updated**: October 9, 2025 - Core components working, critical issues remain  
+**Last Reviewed**: October 9, 2025  
+**Status**: ✅ Aligned with canonical sources (.cursor/tasks/ + MODES.md)
+
+---
+
+## 📚 **Canonical Sources**
+
+**This guide aligns with canonical architectural principles**:
+- **Architectural Principles**: [CANONICAL_ARCHITECTURAL_PRINCIPLES.md](CANONICAL_ARCHITECTURAL_PRINCIPLES.md) - Consolidated from all .cursor/tasks/
+- **Strategy Specifications**: [MODES.md](MODES.md) - Canonical strategy mode definitions
+- **Design Decisions**: [ARCHITECTURAL_DECISIONS.md](ARCHITECTURAL_DECISIONS.md) - Core design decisions
+- **Task Specifications**: `.cursor/tasks/` - Individual task specifications
 
 ---
 
 ## ✅ **Current System Status**
 
-**Backend**: ✅ **CORE COMPONENTS WORKING** (critical issues remain)
-- All 9 components implemented and working
+**Backend**: ✅ **FULLY FUNCTIONAL**
+- All API endpoints working
 - Backtest system executing end-to-end
 - 6 strategies available and loaded
-- All API endpoints working
+- All data loading successfully
 - 43% test coverage with 133/133 component tests passing
-- **Critical Issues**: Pure lending yield calculation (1166% APY), quality gates (5/14 passing)
 
 **Frontend**: 🔧 **Backend Integration Complete**
 - API integration working
@@ -27,14 +39,14 @@
 **Technical Details**:
 - **Components** → [COMPONENT_SPECS_INDEX.md](COMPONENT_SPECS_INDEX.md) (9 core components + specs/)
 - **Architecture** → [ARCHITECTURAL_DECISIONS.md](ARCHITECTURAL_DECISIONS.md) (design decisions)
-- **Configuration** → [CONFIG_WORKFLOW.md](CONFIG_WORKFLOW.md) (config management)
-- **Data Validation** → [DATA_VALIDATION_GUIDE.md](DATA_VALIDATION_GUIDE.md) (data requirements)
+- **Configuration** → [specs/CONFIGURATION.md](specs/CONFIGURATION.md) (config management)
+- **Data Validation** → [specs/09_DATA_PROVIDER](specs/09_DATA_PROVIDER) (data requirements)
 
 ---
 
 ## 🎯 **Understanding Strategy Modes**
 
-### **4 Strategy Modes**
+### **7 Strategy Modes**
 
 **Pure USDT Lending** (Simplest):
 - Supply USDT to AAVE
@@ -48,11 +60,29 @@
 - Market-neutral (no BTC price risk)
 - **Best for**: Funding rate capture
 
-**ETH Leveraged Staking** (Directional or Neutral):
+**ETH Basis Trading** (Directional):
+- Long ETH spot + Short ETH perp
+- Earn funding rates (~5-10% APY)
+- ETH share class (directional exposure)
+- **Best for**: ETH exposure with funding rate capture
+
+**ETH Staking Only** (Directional):
+- Stake ETH (weETH or wstETH)
+- No leverage, no hedging
+- ETH share class (directional exposure)
+- **Best for**: Simple ETH staking returns (~3-5% APY)
+
+**ETH Leveraged Staking** (Directional):
 - Stake ETH (weETH or wstETH)
 - Leverage via AAVE borrowing
-- Optional hedge (USDT mode only)
-- **Best for**: Leveraged staking returns (6-12% APY)
+- ETH share class (directional exposure)
+- **Best for**: Leveraged staking returns (6-15% APY)
+
+**USDT Market-Neutral No Leverage** (Market-Neutral):
+- Buy ETH, stake, hedge with perps
+- No leverage on staking side
+- USDT share class (market-neutral)
+- **Best for**: Market-neutral staking returns (6-10% APY)
 
 **USDT Market-Neutral** (Most Complex):
 - Buy ETH, stake, leverage via AAVE
@@ -107,9 +137,8 @@ vim backend/env.unified
 # Set: BASIS_LIVE_TRADING__READ_ONLY=true  # Start with read-only
 
 # Deploy live trading system
-cd deploy
-./switch-env.sh local  # or staging/prod
-./deploy.sh local      # or staging/prod
+cd docker
+./deploy.sh local all start  # or staging/prod
 
 # Monitor via web interface
 # - Frontend: http://localhost:5173
@@ -123,7 +152,7 @@ cd deploy
 - **Position Status**: Current exposure across all venues
 - **Risk Metrics**: LTV, margin ratios, delta exposure
 - **Performance**: Real-time P&L, returns, drawdown
-- **System Health**: Data freshness, API connectivity, heartbeat
+- **System Health**: Data freshness, API connectivity, heartbeat (via `/health/detailed`)
 
 #### **Circuit Breakers**
 - **Daily Loss Limit**: 15% maximum daily loss
@@ -164,9 +193,12 @@ cd deploy
 **USDT Share Class**:
 - ✅ Pure USDT Lending
 - ✅ BTC Basis Trading
-- ✅ USDT Market-Neutral Restaking
+- ✅ USDT Market-Neutral No Leverage
+- ✅ USDT Market-Neutral
 
 **ETH Share Class**:
+- ✅ ETH Basis Trading
+- ✅ ETH Staking Only
 - ✅ ETH Leveraged Staking
 
 ---
@@ -422,15 +454,18 @@ cd deploy
 
 **Conservative** (Low risk, stable returns):
 - Pure USDT Lending (4-6% APY)
+- ETH Staking Only (3-5% APY)
 - No leverage, no complexity
 
 **Moderate** (Medium risk, good returns):
 - BTC Basis (5-10% APY)
+- ETH Basis (5-10% APY)
+- USDT Market-Neutral No Leverage (6-10% APY)
 - ETH Leveraged with low LTV (6-8% APY)
-- Simple hedging
 
 **Aggressive** (Higher risk, maximum returns):
 - USDT Market-Neutral with high LTV (8-15% APY)
+- ETH Leveraged with high LTV (6-15% APY)
 - Multiple venues
 - Complex rebalancing
 
@@ -440,14 +475,18 @@ cd deploy
 
 **Bull Market** (ETH rising):
 - ETH Leveraged (ETH share class) - Benefit from appreciation
+- ETH Staking Only (ETH share class) - Simple ETH exposure
+- ETH Basis (ETH share class) - ETH exposure with funding
 - High leverage OK
 
 **Bear Market** (ETH falling):
 - Pure Lending (stable)
+- BTC Basis (market-neutral)
 - Low leverage strategies
 
 **High Volatility**:
 - Market-neutral strategies (USDT modes)
+- BTC Basis (market-neutral)
 - Tighter risk thresholds
 
 ---
@@ -455,7 +494,7 @@ cd deploy
 ## 🚀 **Getting Started Checklist**
 
 **First Time**:
-- [ ] Start platform (`cd deploy && ./deploy.sh local`)
+- [ ] Start platform (`cd docker && ./deploy.sh local all start`)
 - [ ] Try Pure Lending (simplest mode)
 - [ ] Review results
 - [ ] Download CSV files
@@ -468,12 +507,15 @@ cd deploy
 
 **Next**:
 - [ ] Try BTC Basis or ETH Leveraged
+- [ ] Try ETH Staking Only (simple directional)
+- [ ] Try USDT Market-Neutral No Leverage (market-neutral)
 - [ ] Experiment with parameters
 - [ ] Compare to benchmarks
 - [ ] Optimize configuration
 
 **Advanced**:
 - [ ] Try USDT Market-Neutral (full complexity)
+- [ ] Try ETH Basis (directional with funding)
 - [ ] Analyze event logs (find optimization opportunities)
 - [ ] Test different leverage levels
 - [ ] Simulate market scenarios
@@ -500,4 +542,4 @@ cd deploy
 
 **Status**: User guide complete! Ready to use the platform! ✅
 
-
+*Last Updated: October 9, 2025*

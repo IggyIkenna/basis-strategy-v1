@@ -1,8 +1,10 @@
-# Environment Variables - Complete Guide 🔧
+# Environment Variables - Complete Reference 🔧
 
-**Purpose**: Complete mapping, usage, analysis, and recommendations for all environment variables  
-**Status**: Comprehensive guide with redundancy analysis  
-**Updated**: October 3, 2025 - Consolidated from MAPPING and ANALYSIS docs
+**Purpose**: Complete mapping, usage, and validation for all environment variables  
+**Status**: Comprehensive environment variable reference  
+**Updated**: October 9, 2025 - Streamlined to focus on environment variables only  
+**Last Reviewed**: October 9, 2025  
+**Status**: ✅ Aligned with canonical sources (.cursor/tasks/ + MODES.md + VENUE_ARCHITECTURE.md)
 
 ---
 
@@ -23,31 +25,103 @@
 ### **Configuration Loading Priority**
 1. **Environment Variables** (BASIS_*) - Highest priority
 2. **YAML Configuration Files** (configs/modes/, venues/, share_classes/) - Strategy and venue configs
-3. **JSON Hierarchy** (configs/default.json, {environment}.json, local.json) - **DOCUMENTED BUT NOT IMPLEMENTED**
-4. **Deployment Config** (deploy/.env*) - Caddy-specific deployment variables only
+
+**Core Configuration**: Environment variables control system startup, execution mode, and environment-specific credential routing.
 
 ### **Fundamental Environment Variables**
 | Variable | Values | Component | Purpose |
 |----------|--------|-----------|---------|
-| `BASIS_ENVIRONMENT` | dev, staging, production | All components | Controls testnet vs mainnet for ALL services |
-| `BASIS_EXECUTION_MODE` | backtest, live | All components | Controls data source, timing, and execution behavior |
+| `BASIS_DEPLOYMENT_MODE` | local, docker | All components | Controls port/host forwarding and dependency injection |
+| `BASIS_ENVIRONMENT` | dev, staging, production | All components | Controls venue credential routing (dev/staging/prod) and data sources (CSV vs DB) |
+| `BASIS_EXECUTION_MODE` | backtest, live | All components | Controls venue execution behavior (simulated vs real) |
+| `BASIS_DATA_MODE` | csv, db | Data Provider | Controls data source for backtest mode (file-based vs database) |
 
 **Critical Distinction**:
-- **BASIS_ENVIRONMENT**: Controls which APIs to use (testnet vs mainnet)
-- **BASIS_EXECUTION_MODE**: Controls how system operates (simulated vs real)
+- **BASIS_DEPLOYMENT_MODE**: Controls port/host forwarding and dependency injection (local vs docker)
+- **BASIS_ENVIRONMENT**: Controls venue credential routing (dev/staging/prod) and data sources (CSV vs DB)
+- **BASIS_EXECUTION_MODE**: Controls venue execution behavior (simulated vs real)
+- **BASIS_DATA_MODE**: Controls data source for backtest mode (file-based vs database) - NOT related to data persistence or execution routing
 
 **Backtest Mode**:
-- Uses CSV data from `data/` directory
-- Simulated execution (no real trades)
+- Execution interfaces exist for CODE ALIGNMENT only
+- NO real API credentials needed - NO heartbeat tests - NO real API calls
+- Data source controlled by `BASIS_DATA_MODE` (csv for file-based, db for database - not implemented)
+- Venues are simulated based on data loaded by data provider
 - Hourly events (on the hour: 00:00, 01:00, etc.)
 - Position tracking via execution manager updates
 - All timestamps must be hourly-aligned
+- Data loaded on-demand during API calls, not at startup
+- **Reference**: `docs/MODES.md` - Execution Architecture section
 
 **Live Mode**:
+- Venues use real APIs (testnet for dev, mainnet for prod)
+- Real execution via CCXT/Web3 with heartbeat tests
 - Uses real-time WebSocket/API data via LiveDataProvider
-- Real execution via CCXT/Web3
+- **Reference**: `docs/MODES.md` - Execution Architecture section
 - Continuous events (any timestamp)
 - Position tracking via queries + updates
+
+### **Environment-Specific Credential Routing**
+
+**CRITICAL**: All venue credentials are environment-specific and stored in `env.unified`:
+
+**SEPARATION OF CONCERNS**:
+- **BASIS_DEPLOYMENT_MODE**: Controls port/host forwarding and dependency injection (local vs docker)
+- **BASIS_ENVIRONMENT**: Controls venue credential routing (dev/staging/prod) and data sources (CSV vs DB)
+- **BASIS_EXECUTION_MODE**: Controls venue execution behavior (backtest simulation vs live execution)
+
+**Environment-Specific Credential Pattern**:
+```bash
+# Development Environment - Testnet APIs
+BASIS_DEV__ALCHEMY__PRIVATE_KEY=
+BASIS_DEV__ALCHEMY__RPC_URL=
+BASIS_DEV__ALCHEMY__WALLET_ADDRESS=
+BASIS_DEV__ALCHEMY__NETWORK=sepolia
+BASIS_DEV__ALCHEMY__CHAIN_ID=11155111
+
+BASIS_DEV__CEX__BINANCE_SPOT_API_KEY=
+BASIS_DEV__CEX__BINANCE_SPOT_SECRET=
+BASIS_DEV__CEX__BINANCE_FUTURES_API_KEY=
+BASIS_DEV__CEX__BINANCE_FUTURES_SECRET=
+
+# Production Environment - Mainnet APIs
+BASIS_PROD__ALCHEMY__PRIVATE_KEY=
+BASIS_PROD__ALCHEMY__RPC_URL=
+BASIS_PROD__ALCHEMY__WALLET_ADDRESS=
+BASIS_PROD__ALCHEMY__NETWORK=mainnet
+BASIS_PROD__ALCHEMY__CHAIN_ID=1
+
+BASIS_PROD__CEX__BINANCE_SPOT_API_KEY=
+BASIS_PROD__CEX__BINANCE_SPOT_SECRET=
+BASIS_PROD__CEX__BINANCE_FUTURES_API_KEY=
+BASIS_PROD__CEX__BINANCE_FUTURES_SECRET=
+```
+
+**Reference**: `docs/DEPLOYMENT_GUIDE.md` - Unified Environment Configuration section
+**Reference**: `docs/VENUE_ARCHITECTURE.md` - Environment Variables section
+
+### **Venue Architecture Integration**
+
+**Environment variables integrate with the venue architecture through**:
+
+#### **Venue Client Initialization**
+- **Environment-Specific Credentials**: All venue credentials are environment-specific (dev/staging/prod)
+- **Venue Selection Logic**: Each strategy mode requires specific venues (CEX, DeFi, Infrastructure)
+- **Client Factory Pattern**: Venue clients are created via execution interface factory
+- **Reference**: `docs/VENUE_ARCHITECTURE.md` - Execution Interface Factory section
+
+#### **Strategy Mode Venue Requirements**
+Each strategy mode has specific venue requirements based on its configuration:
+- **Pure Lending**: AAVE V3 + Alchemy only
+- **BTC Basis**: Binance, Bybit, OKX + Alchemy
+- **ETH Basis**: Binance, Bybit, OKX + Alchemy  
+- **ETH Staking Only**: Lido/EtherFi + Alchemy
+- **ETH Leveraged**: Lido/EtherFi, AAVE V3, Morpho + Alchemy, Instadapp
+- **USDT Market Neutral No Leverage**: Binance, Bybit, OKX, Lido/EtherFi + Alchemy
+- **USDT Market Neutral**: Binance, Bybit, OKX, Lido/EtherFi, AAVE V3, Morpho + Alchemy, Instadapp
+
+**Reference**: `docs/MODES.md` - Strategy Mode Specifications section
+**Reference**: `docs/VENUE_ARCHITECTURE.md` - Strategy-Venue Mapping section
 
 ### **Configuration Separation of Concerns**
 
@@ -56,282 +130,161 @@
 - **Venues** (`configs/venues/*.yaml`): Venue-specific configurations  
 - **Share Classes** (`configs/share_classes/*.yaml`): Share class definitions
 
-**JSON Hierarchy** (DOCUMENTED BUT NOT IMPLEMENTED):
-- **Base Configuration** (`configs/default.json`): Infrastructure defaults
-- **Environment-Specific Configuration** (`configs/{dev,staging,production}.json`): Environment overrides
-- **Local Development Configuration** (`configs/local.json`): Local overrides
 
-**Deployment Configuration** (`deploy/.env*`):
-- Caddy-specific deployment variables only
-- Domain names, TLS settings, port mappings
-- Basic authentication, health check intervals
-- Timestamps are actual execution times
+
 
 ### **Naming Convention**
 - **Prefix**: `BASIS_` (all environment variables)
 - **Nesting**: Double underscore `__` for nested configuration
 - **Example**: `BASIS_API__PORT` → `config['api']['port']`
 
-### **Total Environment Variables**: 45 variables across 15 categories
+### **Total Environment Variables**: 68 variables across 7 categories
 
 ---
 
 ## 🔧 **Environment Variables by Category**
 
-### **1. API Configuration**
-| Variable | Usage | Component | Business Decision |
-|----------|-------|-----------|-------------------|
-| `BASIS_API__PORT` | Backend server port | FastAPI server | dev vs production ports |
-| `BASIS_API__RELOAD` | Auto-reload on changes | FastAPI server | dev convenience |
+### **1. Core Startup Configuration (REQUIRED)**
+| Variable | Usage | Component | Purpose |
+|----------|-------|-----------|---------|
+| `BASIS_ENVIRONMENT` | Environment type | All components | Controls credential routing (dev/staging/prod) and data sources |
+| `BASIS_DEPLOYMENT_MODE` | Deployment type | All components | Controls port/host forwarding and dependency injection |
+| `BASIS_DEPLOYMENT_MACHINE` | Deployment target | All components | Controls deployment target (local_mac vs gcloud_linux_vm) |
+| `BASIS_DATA_MODE` | Data mode | Data Provider | Controls data source (CSV vs DB) |
+| `BASIS_DATA_DIR` | Data directory | Data Provider | Local vs cloud data storage |
+| `BASIS_RESULTS_DIR` | Results directory | Results system | Where to store backtest results |
+| `BASIS_REDIS_URL` | Redis connection | All components | Inter-component communication (both backtest and live modes) |
+| `BASIS_DEBUG` | Debug mode | All components | Development vs production |
+| `BASIS_LOG_LEVEL` | Logging verbosity | All components | Debug vs production logging |
+| `BASIS_EXECUTION_MODE` | Execution mode | All components | Controls venue execution behavior (backtest vs live) |
+| `BASIS_DATA_START_DATE` | Data start date | Data Provider | Historical data range start |
+| `BASIS_DATA_END_DATE` | Data end date | Data Provider | Historical data range end |
 
-**Code Usage**:
-```python
-# backend/src/basis_strategy_v1/infrastructure/config/settings.py
-settings = get_settings()
-api_port = settings['api']['port']  # Default: 8001
-```
+**Critical**: These variables MUST be set in override files - no defaults in `env.unified`.
 
----
+**Execution Mode Behavior**:
+- **`./platform.sh start`** and **`./platform.sh backend`**: Use `BASIS_EXECUTION_MODE` from environment files
+- **`./platform.sh backtest`**: **Always forces backtest mode** regardless of env file setting
+- **Default env files**: `dev` and `staging` = backtest, `production` = live
 
-### **2. Database Configuration**
-| Variable | Usage | Component | Business Decision |
-|----------|-------|-----------|-------------------|
-| `BASIS_DATABASE__TYPE` | Database type (sqlite/postgres) | Database layer | dev vs production |
-| `BASIS_DATABASE__URL` | Database connection string | Database layer | Local vs cloud database |
+### **2. Frontend Deployment Configuration (OPTIONAL if running backend only)**
 
-**Code Usage**:
-```python
-# Used by database initialization
-db_type = settings['database']['type']  # Default: sqlite
-db_url = settings['database']['url']    # Default: sqlite:///./data/basis_strategy_v1.db
-```
+| Variable | Usage | Component | Purpose |
+|----------|-------|-----------|---------|
+| `VITE_API_BASE_URL` | Frontend API base URL | Frontend | API endpoint for frontend calls |
+| `APP_DOMAIN` | Domain for Caddy | Caddy | Domain configuration for reverse proxy |
+| `ACME_EMAIL` | Let's Encrypt email | Caddy | Email for SSL certificate generation |
+| `BASIC_AUTH_HASH` | Basic auth hash | Caddy | Authentication for protected endpoints |
+| `HTTP_PORT` | HTTP port | Caddy | HTTP port configuration |
+| `HTTPS_PORT` | HTTPS port | Caddy | HTTPS port configuration |
 
----
-
-### **3. Redis Configuration**
-| Variable | Usage | Component | Business Decision |
-|----------|-------|-----------|-------------------|
-| `BASIS_REDIS__ENABLED` | Enable Redis pub/sub | All components | Inter-component communication |
-| `BASIS_REDIS__URL` | Redis connection string | Redis client | Local vs cloud Redis |
-| `BASIS_REDIS__SESSION_TTL` | Session timeout | API layer | User session management |
-| `BASIS_REDIS__CACHE_TTL` | Cache timeout | Data provider | Data caching strategy |
-
-**Code Usage**:
-```python
-# backend/src/basis_strategy_v1/infrastructure/redis_client.py
-redis_enabled = settings['redis']['enabled']  # Default: true
-redis_url = settings['redis']['url']          # Default: redis://localhost:6379/0
-```
+**Optional**: These variables are required for full-stack deployment but optional for backend-only mode. Missing variables generate warnings, not errors.
 
 ---
 
-### **4. Cache Configuration**
-| Variable | Usage | Component | Business Decision |
-|----------|-------|-----------|-------------------|
-| `BASIS_CACHE__TYPE` | Cache type (redis/memory) | Cache layer | Performance vs simplicity |
-| `BASIS_CACHE__REDIS_URL` | Redis cache connection | Cache layer | Dedicated cache instance |
-
-**Code Usage**:
-```python
-# Used by cache layer
-cache_type = settings['cache']['type']  # Default: redis
-```
+### **3. API Configuration**
+| Variable | Usage | Component | Purpose |
+|----------|-------|-----------|---------|
+| `BASIS_API_PORT` | Backend server port | FastAPI server | API server port |
+| `BASIS_API_HOST` | Backend server host | FastAPI server | API server host |
+| `BASIS_API_CORS_ORIGINS` | CORS origins | FastAPI server | Frontend access control |
+| `HEALTH_CHECK_INTERVAL` | Health check frequency | Docker + Monitor Script | How often to check backend health (e.g., "30s") |
+| `HEALTH_CHECK_ENDPOINT` | Health check endpoint | Docker + Monitor Script | Which endpoint to ping: /health or /health/detailed |
 
 ---
 
-### **5. dev Settings**
-| Variable | Usage | Component | Business Decision |
-|----------|-------|-----------|-------------------|
-| `BASIS_DEBUG` | Enable debug mode | All components | dev vs production |
-| `BASIS_MONITORING__LOG_LEVEL` | Logging verbosity | All components | Debug vs production logging |
+### **4. Live Trading Configuration**
+| Variable | Usage | Component | Purpose |
+|----------|-------|-----------|---------|
+| `BASIS_LIVE_TRADING__ENABLED` | Enable live trading | All execution managers | Safety switch (default: false) |
+| `BASIS_LIVE_TRADING__READ_ONLY` | Read-only mode | All execution managers | Safe testing mode (default: true) |
+| `BASIS_LIVE_TRADING__MAX_TRADE_SIZE_USD` | Maximum trade size | Execution managers | Risk management (default: 100) |
+| `BASIS_LIVE_TRADING__EMERGENCY_STOP_LOSS_PCT` | Emergency stop loss | Risk management | Circuit breaker threshold (default: 0.15) |
+| `BASIS_LIVE_TRADING__HEARTBEAT_TIMEOUT_SECONDS` | Heartbeat timeout | Monitoring | API connectivity timeout (default: 300) |
+| `BASIS_LIVE_TRADING__CIRCUIT_BREAKER_ENABLED` | Circuit breaker | Risk management | Emergency stop system (default: true) |
 
-**Code Usage**:
-```python
-# Used throughout codebase
-debug_mode = settings['debug']  # Default: true
-log_level = settings['monitoring']['log_level']  # Default: DEBUG
-```
-
----
-
-### **6. Data Provider Settings**
-| Variable | Usage | Component | Business Decision |
-|----------|-------|-----------|-------------------|
-| `BASIS_DATA__CACHE_ENABLED` | Enable data caching | Data Provider | Performance optimization |
-| `BASIS_DATA__DATA_DIR` | Data file directory | Data Provider | Local vs cloud data storage |
-
-**Code Usage**:
-```python
-# backend/src/basis_strategy_v1/infrastructure/data/historical_data_provider.py
-cache_enabled = settings['data']['cache_enabled']  # Default: true
-data_dir = settings['data']['data_dir']            # Default: ./data
-```
+**Note**: Only used when `BASIS_EXECUTION_MODE=live`.
 
 ---
 
-### **7. Rate Configuration**
-| Variable | Usage | Component | Business Decision |
-|----------|-------|-----------|-------------------|
-| `BASIS_RATES__USE_FIXED_RATES` | Use fixed rates for testing | All components | Testing vs live data |
-| `BASIS_RATES__FIXED__BYBIT_FUNDING_APR` | Override funding rate | CEX Execution Manager | Testing specific scenarios |
+### **5. Development Environment Credentials**
+| Variable | Usage | Component | Purpose |
+|----------|-------|-----------|---------|
+| `BASIS_DEV__ALCHEMY__PRIVATE_KEY` | Wallet private key | OnChain Execution Manager | Testnet transaction signing |
+| `BASIS_DEV__ALCHEMY__RPC_URL` | Testnet RPC endpoint | Web3 operations | Sepolia testnet access |
+| `BASIS_DEV__ALCHEMY__WALLET_ADDRESS` | Wallet address | OnChain Execution Manager | Testnet transaction from address |
+| `BASIS_DEV__ALCHEMY__NETWORK` | Testnet network | Web3 operations | Sepolia testnet (default: sepolia) |
+| `BASIS_DEV__ALCHEMY__CHAIN_ID` | Testnet Chain ID | Web3 operations | Sepolia network validation (default: 11155111) |
+| `BASIS_DEV__CEX__BINANCE_SPOT_API_KEY` | Binance spot API key | CEX Execution Manager | Testnet spot trading access |
+| `BASIS_DEV__CEX__BINANCE_SPOT_SECRET` | Binance spot secret | CEX Execution Manager | Testnet spot trading authentication |
+| `BASIS_DEV__CEX__BINANCE_FUTURES_API_KEY` | Binance futures API key | CEX Execution Manager | Testnet perpetual futures access |
+| `BASIS_DEV__CEX__BINANCE_FUTURES_SECRET` | Binance futures secret | CEX Execution Manager | Testnet futures authentication |
+| `BASIS_DEV__CEX__BYBIT_API_KEY` | Bybit API key | CEX Execution Manager | Testnet multi-exchange hedging |
+| `BASIS_DEV__CEX__BYBIT_SECRET` | Bybit secret | CEX Execution Manager | Testnet Bybit authentication |
+| `BASIS_DEV__CEX__OKX_API_KEY` | OKX API key | CEX Execution Manager | Testnet multi-exchange hedging |
+| `BASIS_DEV__CEX__OKX_SECRET` | OKX secret | CEX Execution Manager | Testnet OKX authentication |
+| `BASIS_DEV__CEX__OKX_PASSPHRASE` | OKX passphrase | CEX Execution Manager | Testnet OKX authentication |
 
-**Code Usage**:
-```python
-# Used by rate calculations
-use_fixed_rates = settings['rates']['use_fixed_rates']  # Default: false
-if use_fixed_rates:
-    bybit_funding = settings['rates']['fixed']['bybit_funding_apr']
-```
-
----
-
-### **8. Data Downloader API Keys**
-| Variable | Usage | Component | Business Decision |
-|----------|-------|-----------|-------------------|
-| `BASIS_DOWNLOADERS__COINGECKO_API_KEY` | CoinGecko API access | Data downloaders | Market data access |
-| `BASIS_DOWNLOADERS__TARDIS_API_KEY` | Tardis API access | Data downloaders | Historical data access |
-| `BASIS_DOWNLOADERS__ALCHEMY_API_KEY` | Alchemy mainnet RPC | Web3 operations | Ethereum mainnet access |
-| `BASIS_DOWNLOADERS__ALCHEMY_API_KEY_2` | Alchemy testnet RPC | Web3 operations | Ethereum testnet access |
-| `BASIS_DOWNLOADERS__AAVESCAN_API_KEY` | AaveScan Pro API | Data downloaders | AAVE protocol data |
-
-**Code Usage**:
-```python
-# scripts/downloaders/clients/coingecko_client.py
-api_key = settings['downloaders']['coingecko_api_key']
-# Used for rate-limited API calls
-```
+**Environment**: Used when `BASIS_ENVIRONMENT=dev`.
 
 ---
 
-### **9. CEX API Configuration**
-| Variable | Usage | Component | Business Decision |
-|----------|-------|-----------|-------------------|
-| `BASIS_CEX__BINANCE_SPOT_API_KEY` | Binance spot trading | CEX Execution Manager | Spot trading access |
-| `BASIS_CEX__BINANCE_SPOT_SECRET` | Binance spot secret | CEX Execution Manager | Spot trading authentication |
-| `BASIS_CEX__BINANCE_SPOT_TESTNET` | Use testnet | CEX Execution Manager | Testing vs production |
-| `BASIS_CEX__BINANCE_FUTURES_API_KEY` | Binance futures trading | CEX Execution Manager | Perpetual futures access |
-| `BASIS_CEX__BINANCE_FUTURES_SECRET` | Binance futures secret | CEX Execution Manager | Futures authentication |
-| `BASIS_CEX__BINANCE_FUTURES_TESTNET` | Use testnet | CEX Execution Manager | Testing vs production |
-| `BASIS_CEX__BYBIT_API_KEY` | Bybit trading | CEX Execution Manager | Multi-exchange hedging |
-| `BASIS_CEX__BYBIT_SECRET` | Bybit secret | CEX Execution Manager | Bybit authentication |
-| `BASIS_CEX__BYBIT_TESTNET` | Use testnet | CEX Execution Manager | Testing vs production |
-| `BASIS_CEX__OKX_API_KEY` | OKX trading | CEX Execution Manager | Multi-exchange hedging |
-| `BASIS_CEX__OKX_SECRET` | OKX secret | CEX Execution Manager | OKX authentication |
-| `BASIS_CEX__OKX_PASSPHRASE` | OKX passphrase | CEX Execution Manager | OKX authentication |
-| `BASIS_CEX__OKX_TESTNET` | Use testnet | CEX Execution Manager | Testing vs production |
+### **6. Staging Environment Credentials**
+| Variable | Usage | Component | Purpose |
+|----------|-------|-----------|---------|
+| `BASIS_STAGING__ALCHEMY__PRIVATE_KEY` | Wallet private key | OnChain Execution Manager | Mainnet transaction signing |
+| `BASIS_STAGING__ALCHEMY__RPC_URL` | Mainnet RPC endpoint | Web3 operations | Ethereum mainnet access |
+| `BASIS_STAGING__ALCHEMY__WALLET_ADDRESS` | Wallet address | OnChain Execution Manager | Mainnet transaction from address |
+| `BASIS_STAGING__ALCHEMY__NETWORK` | Mainnet network | Web3 operations | Ethereum mainnet (default: mainnet) |
+| `BASIS_STAGING__ALCHEMY__CHAIN_ID` | Mainnet Chain ID | Web3 operations | Ethereum network validation |
+| `BASIS_STAGING__CEX__BINANCE_SPOT_API_KEY` | Binance spot API key | CEX Execution Manager | Mainnet spot trading access |
+| `BASIS_STAGING__CEX__BINANCE_SPOT_SECRET` | Binance spot secret | CEX Execution Manager | Mainnet spot trading authentication |
+| `BASIS_STAGING__CEX__BINANCE_FUTURES_API_KEY` | Binance futures API key | CEX Execution Manager | Mainnet perpetual futures access |
+| `BASIS_STAGING__CEX__BINANCE_FUTURES_SECRET` | Binance futures secret | CEX Execution Manager | Mainnet futures authentication |
+| `BASIS_STAGING__CEX__BYBIT_API_KEY` | Bybit API key | CEX Execution Manager | Mainnet multi-exchange hedging |
+| `BASIS_STAGING__CEX__BYBIT_SECRET` | Bybit secret | CEX Execution Manager | Mainnet Bybit authentication |
+| `BASIS_STAGING__CEX__OKX_API_KEY` | OKX API key | CEX Execution Manager | Mainnet multi-exchange hedging |
+| `BASIS_STAGING__CEX__OKX_SECRET` | OKX secret | CEX Execution Manager | Mainnet OKX authentication |
+| `BASIS_STAGING__CEX__OKX_PASSPHRASE` | OKX passphrase | CEX Execution Manager | Mainnet OKX authentication |
 
-**Code Usage**:
-```python
-# backend/src/basis_strategy_v1/core/strategies/components/cex_execution_manager.py
-binance_spot = ccxt.binance({
-    'apiKey': settings['cex']['binance_spot_api_key'],
-    'secret': settings['cex']['binance_spot_secret'],
-    'sandbox': settings['cex']['binance_spot_testnet']
-})
-```
+**Environment**: Used when `BASIS_ENVIRONMENT=staging`.
 
 ---
 
-### **10. Web3 Wallet Configuration**
-| Variable | Usage | Component | Business Decision |
-|----------|-------|-----------|-------------------|
-| `BASIS_WEB3__PRIVATE_KEY` | Wallet private key | OnChain Execution Manager | On-chain transaction signing |
-| `BASIS_WEB3__WALLET_ADDRESS` | Wallet address | OnChain Execution Manager | Transaction from address |
-| `BASIS_WEB3__MAINNET_RPC_URL` | Mainnet RPC endpoint | Web3 operations | Ethereum mainnet access |
-| `BASIS_WEB3__SEPOLIA_RPC_URL` | Sepolia RPC endpoint | Web3 operations | Ethereum testnet access |
-| `BASIS_WEB3__NETWORK` | Active network | Web3 operations | Testnet vs mainnet |
-| `BASIS_WEB3__CHAIN_ID` | Chain ID | Web3 operations | Network validation |
+### **7. Production Environment Credentials**
+| Variable | Usage | Component | Purpose |
+|----------|-------|-----------|---------|
+| `BASIS_PROD__ALCHEMY__PRIVATE_KEY` | Wallet private key | OnChain Execution Manager | Mainnet transaction signing |
+| `BASIS_PROD__ALCHEMY__RPC_URL` | Mainnet RPC endpoint | Web3 operations | Ethereum mainnet access |
+| `BASIS_PROD__ALCHEMY__WALLET_ADDRESS` | Wallet address | OnChain Execution Manager | Mainnet transaction from address |
+| `BASIS_PROD__ALCHEMY__NETWORK` | Mainnet network | Web3 operations | Ethereum mainnet (default: mainnet) |
+| `BASIS_PROD__ALCHEMY__CHAIN_ID` | Mainnet Chain ID | Web3 operations | Ethereum network validation (default: 1) |
+| `BASIS_PROD__CEX__BINANCE_SPOT_API_KEY` | Binance spot API key | CEX Execution Manager | Mainnet spot trading access |
+| `BASIS_PROD__CEX__BINANCE_SPOT_SECRET` | Binance spot secret | CEX Execution Manager | Mainnet spot trading authentication |
+| `BASIS_PROD__CEX__BINANCE_FUTURES_API_KEY` | Binance futures API key | CEX Execution Manager | Mainnet perpetual futures access |
+| `BASIS_PROD__CEX__BINANCE_FUTURES_SECRET` | Binance futures secret | CEX Execution Manager | Mainnet futures authentication |
+| `BASIS_PROD__CEX__BYBIT_API_KEY` | Bybit API key | CEX Execution Manager | Mainnet multi-exchange hedging |
+| `BASIS_PROD__CEX__BYBIT_SECRET` | Bybit secret | CEX Execution Manager | Mainnet Bybit authentication |
+| `BASIS_PROD__CEX__OKX_API_KEY` | OKX API key | CEX Execution Manager | Mainnet multi-exchange hedging |
+| `BASIS_PROD__CEX__OKX_SECRET` | OKX secret | CEX Execution Manager | Mainnet OKX authentication |
+| `BASIS_PROD__CEX__OKX_PASSPHRASE` | OKX passphrase | CEX Execution Manager | Mainnet OKX authentication |
 
-**Code Usage**:
-```python
-# backend/src/basis_strategy_v1/core/strategies/components/onchain_execution_manager.py
-private_key = settings['web3']['private_key']
-wallet_address = settings['web3']['wallet_address']
-network = settings['web3']['network']  # 'sepolia' or 'mainnet'
-```
-
----
-
-### **11. Instadapp Configuration**
-| Variable | Usage | Component | Business Decision |
-|----------|-------|-----------|-------------------|
-| `BASIS_INSTADAPP__API_KEY` | Instadapp API key | OnChain Execution Manager | Flash loan aggregation |
-| `BASIS_INSTADAPP__API_SECRET` | Instadapp secret | OnChain Execution Manager | Flash loan authentication |
-| `BASIS_INSTADAPP__TESTNET` | Use testnet | OnChain Execution Manager | Testing vs production |
-
-**Code Usage**:
-```python
-# Used for atomic flash loan operations
-instadapp_key = settings['instadapp']['api_key']
-# Only used if atomic flash loans are enabled
-```
+**Environment**: Used when `BASIS_ENVIRONMENT=prod`.
 
 ---
 
-### **12. Live Testing Configuration**
-| Variable | Usage | Component | Business Decision |
-|----------|-------|-----------|-------------------|
-| `BASIS_LIVE_TESTING__ENABLED` | Enable live trading | All execution managers | Safety switch |
-| `BASIS_LIVE_TESTING__READ_ONLY` | Read-only mode | All execution managers | Safe testing mode |
-| `BASIS_LIVE_TESTING__MAX_TRADE_SIZE_USD` | Maximum trade size | Execution managers | Risk management |
+### **8. Health Monitoring Configuration**
+| Variable | Usage | Component | Purpose |
+|----------|-------|-----------|---------|
+| `HEALTH_CHECK_INTERVAL` | Health check frequency | Docker healthcheck + health monitor script | How often to check backend health (format: "30s", "1m", etc.) |
+| `HEALTH_CHECK_ENDPOINT` | Health check endpoint | Docker healthcheck + health monitor script | Which endpoint to ping: /health (fast) or /health/detailed (comprehensive) |
 
-**Code Usage**:
-```python
-# Used by all execution managers
-live_enabled = settings['live_testing']['enabled']  # Default: false
-read_only = settings['live_testing']['read_only']   # Default: true
-max_trade_size = settings['live_testing']['max_trade_size_usd']  # Default: 100
-```
-
----
-
-### **13. Testnet Configuration**
-| Variable | Usage | Component | Business Decision |
-|----------|-------|-----------|-------------------|
-| `BASIS_TESTNET__ENABLED` | Enable testnet mode | All components | Testing vs production |
-| `BASIS_TESTNET__NETWORK` | Testnet network | Web3 operations | Sepolia vs Goerli |
-| `BASIS_TESTNET__FAUCET_URL` | Testnet faucet URL | Testing utilities | Test ETH acquisition |
-| `BASIS_TESTNET__MAX_GAS_PRICE_GWEI` | Maximum gas price | Web3 operations | Gas cost control |
-| `BASIS_TESTNET__CONFIRMATION_BLOCKS` | Confirmation blocks | Web3 operations | Transaction finality |
-
-**Code Usage**:
-```python
-# Used by Web3 operations
-testnet_enabled = settings['testnet']['enabled']  # Default: true
-max_gas_price = settings['testnet']['max_gas_price_gwei']  # Default: 20
-```
-
----
-
-### **14. Rate Limiting Configuration**
-| Variable | Usage | Component | Business Decision |
-|----------|-------|-----------|-------------------|
-| `BASIS_DOWNLOADERS__COINGECKO_RATE_LIMIT` | CoinGecko rate limit | Data downloaders | API rate management |
-| `BASIS_DOWNLOADERS__BYBIT_RATE_LIMIT` | Bybit rate limit | Data downloaders | API rate management |
-
-**Code Usage**:
-```python
-# Used by rate limiting logic
-coingecko_limit = settings['downloaders']['coingecko_rate_limit']  # Default: 500
-```
-
----
-
-### **15. Download Configuration**
-| Variable | Usage | Component | Business Decision |
-|----------|-------|-----------|-------------------|
-| `BASIS_DOWNLOADERS__START_DATE` | Data download start date | Data downloaders | Historical data range |
-| `BASIS_DOWNLOADERS__END_DATE` | Data download end date | Data downloaders | Historical data range |
-| `BASIS_DOWNLOADERS__CHUNK_SIZE_DAYS` | Download chunk size | Data downloaders | Memory management |
-| `BASIS_DOWNLOADERS__RETRY_ATTEMPTS` | Retry attempts | Data downloaders | Error handling |
-| `BASIS_DOWNLOADERS__RETRY_DELAY` | Retry delay | Data downloaders | Error handling |
-
-**Code Usage**:
-```python
-# Used by data download scripts
-start_date = settings['downloaders']['start_date']  # Default: 2024-01-01
-chunk_size = settings['downloaders']['chunk_size_days']  # Default: 90
-```
+**Health Monitoring Behavior**:
+- **Docker Deployments**: Native Docker healthcheck pings endpoint at interval, restarts container on failure
+- **Non-Docker Deployments**: Background monitor script pings endpoint at interval, runs `platform.sh restart` on failure
+- **Restart Behavior**: Restarts all services (backend + frontend + Redis) but preserves Redis data for both backtest and live modes
+- **Retry Logic**: Up to 3 restart attempts with exponential backoff before giving up
+- **Default Values**: `HEALTH_CHECK_INTERVAL=30s`, `HEALTH_CHECK_ENDPOINT=/health`
 
 ---
 
@@ -339,195 +292,110 @@ chunk_size = settings['downloaders']['chunk_size_days']  # Default: 90
 
 ### **Usage Mapping by Component**
 
-#### **1. CEX Execution Manager** (12 variables)
-- **Purpose**: Centralized exchange trading (Binance, Bybit, OKX)
-- **Usage**: API authentication, testnet configuration
-- **Critical**: All API keys and secrets for live trading
-- **Code Location**: `backend/src/basis_strategy_v1/core/strategies/components/cex_execution_manager.py`
+#### **1. Core System** (11 variables)
+- **Purpose**: System startup and basic configuration
+- **Usage**: Environment detection, data paths, execution mode
+- **Critical**: All required for system startup
+- **Variables**: `BASIS_ENVIRONMENT`, `BASIS_DEPLOYMENT_MODE`, `BASIS_DATA_DIR`, etc.
 
-#### **2. OnChain Execution Manager** (6 variables)
-- **Purpose**: On-chain operations (AAVE, staking, flash loans)
-- **Usage**: Web3 wallet, RPC endpoints, Instadapp integration
-- **Critical**: Private key and wallet address for transaction signing
-- **Code Location**: `backend/src/basis_strategy_v1/core/strategies/components/onchain_execution_manager.py`
+#### **2. Frontend Deployment** (6 variables)
+- **Purpose**: Frontend and Caddy configuration
+- **Usage**: API endpoints, domain configuration, SSL certificates
+- **Optional**: Required for full-stack deployment only
+- **Variables**: `VITE_API_BASE_URL`, `APP_DOMAIN`, `ACME_EMAIL`, etc.
 
-#### **3. Data Provider** (8 variables)
-- **Purpose**: Market data access and caching
-- **Usage**: API keys for data sources, cache configuration
-- **Critical**: CoinGecko, Tardis, Alchemy API keys
-- **Code Location**: `backend/src/basis_strategy_v1/infrastructure/data/historical_data_provider.py`
+#### **3. API Configuration** (3 variables)
+- **Purpose**: FastAPI server configuration
+- **Usage**: Server ports, hosts, CORS settings
+- **Critical**: Required for API server startup
+- **Variables**: `BASIS_API_PORT`, `BASIS_API_HOST`, `BASIS_API_CORS_ORIGINS`
 
-#### **4. Infrastructure** (19 variables)
-- **Purpose**: System configuration (API, database, Redis, cache)
-- **Usage**: Server ports, database connections, Redis configuration
-- **Critical**: Redis for inter-component communication
-- **Code Location**: `backend/src/basis_strategy_v1/infrastructure/config/settings.py`
+#### **4. Live Trading** (6 variables)
+- **Purpose**: Live trading safety and risk management
+- **Usage**: Circuit breakers, trade limits, monitoring
+- **Critical**: Required for live trading mode
+- **Variables**: `BASIS_LIVE_TRADING__*` variables
 
----
-
-## 🔍 **Redundancy Analysis**
-
-### **Identified Redundancies**
-
-#### **1. Redis Configuration Duplication**
-```bash
-# Current (redundant)
-BASIS_REDIS__URL=redis://localhost:6379/0
-BASIS_CACHE__REDIS_URL=redis://localhost:6379/0
-
-# Recommended (consolidated)
-BASIS_REDIS__URL=redis://localhost:6379/0
-# Remove BASIS_CACHE__REDIS_URL, use BASIS_REDIS__URL
-```
-
-#### **2. Alchemy API Key Duplication**
-```bash
-# Current (redundant)
-BASIS_DOWNLOADERS__ALCHEMY_API_KEY=vV3z-UCRtQvWb26MH9v7A
-BASIS_WEB3__MAINNET_RPC_URL=https://eth-mainnet.g.alchemy.com/v2/vV3z-UCRtQvWb26MH9v7A
-
-# Recommended (consolidated)
-BASIS_ALCHEMY__API_KEY=vV3z-UCRtQvWb26MH9v7A
-# Construct RPC URLs in code using the single API key
-```
-
-#### **3. Testnet Configuration Duplication**
-```bash
-# Current (redundant)
-BASIS_CEX__BINANCE_SPOT_TESTNET=true
-BASIS_CEX__BINANCE_FUTURES_TESTNET=true
-BASIS_CEX__BYBIT_TESTNET=true
-BASIS_CEX__OKX_TESTNET=true
-BASIS_WEB3__NETWORK=sepolia
-BASIS_TESTNET__ENABLED=true
-
-# Recommended (consolidated)
-BASIS_TESTNET__ENABLED=true
-BASIS_TESTNET__NETWORK=sepolia
-# Use single testnet flag to control all services
-```
-
-### **Missing Environment Variables**
-
-#### **1. GCS Configuration** (for deployment)
-```bash
-# Missing variables needed for production deployment
-BASIS_GCS__BUCKET_NAME=your-gcs-bucket
-BASIS_GCS__CREDENTIALS_PATH=/path/to/service-account.json
-BASIS_GCS__DATA_SYNC_ENABLED=true
-```
-
-#### **2. Monitoring Configuration**
-```bash
-# Missing variables for production monitoring
-BASIS_MONITORING__METRICS_ENABLED=true
-BASIS_MONITORING__ALERT_WEBHOOK=https://hooks.slack.com/...
-BASIS_MONITORING__LOG_AGGREGATION_ENABLED=true
-```
-
-#### **3. Security Configuration**
-```bash
-# Missing variables for security
-BASIS_SECURITY__ENCRYPTION_KEY=your-encryption-key
-BASIS_SECURITY__JWT_SECRET=your-jwt-secret
-BASIS_SECURITY__CORS_ORIGINS=["http://localhost:3000"]
-```
+#### **5. Environment-Specific Credentials** (42 variables)
+- **Purpose**: API keys and credentials for different environments
+- **Usage**: CEX trading, Web3 operations, wallet management
+- **Critical**: Required for live trading execution
+- **Variables**: `BASIS_DEV__*`, `BASIS_STAGING__*`, `BASIS_PROD__*` credentials
 
 ---
 
-## 📋 **Recommendations**
+## 🔍 **Environment Variable Validation**
 
-### **Consolidated Configuration Structure**
+### **Required Variables by Mode**
 
-#### **1. Core Infrastructure**
-```bash
-# API Configuration
-BASIS_API__PORT=8001
-BASIS_API__RELOAD=true
-BASIS_API__CORS_ORIGINS=["http://localhost:3000"]
-
-# Database Configuration
-BASIS_DATABASE__TYPE=sqlite
-BASIS_DATABASE__URL=sqlite:///./data/basis_strategy_v1.db
-
-# Redis Configuration (consolidated)
-BASIS_REDIS__ENABLED=true
-BASIS_REDIS__URL=redis://localhost:6379/0
-BASIS_REDIS__SESSION_TTL=3600
-BASIS_REDIS__CACHE_TTL=300
-
-# dev Settings
-BASIS_DEBUG=true
-BASIS_MONITORING__LOG_LEVEL=DEBUG
+#### **Required for Backtest Mode**
+```python
+REQUIRED_BACKTEST_VARS = [
+    'BASIS_EXECUTION_MODE',  # Must be 'backtest'
+    'BASIS_ENVIRONMENT',     # Controls data source (CSV vs DB)
+    'BASIS_DEPLOYMENT_MODE', # Controls deployment mode (local vs docker)
+    'BASIS_DATA_MODE', # Controls data source (CSV vs DB)
+    'BASIS_DATA_DIR',
+    'BASIS_RESULTS_DIR',
+    'BASIS_REDIS_URL',
+    'BASIS_DEBUG',
+    'BASIS_LOG_LEVEL',
+    'BASIS_DATA_START_DATE',
+    'BASIS_DATA_END_DATE'
+]
 ```
 
-#### **2. Testnet Configuration (consolidated)**
-```bash
-# Single testnet control
-BASIS_TESTNET__ENABLED=true
-BASIS_TESTNET__NETWORK=sepolia
-BASIS_TESTNET__FAUCET_URL=https://sepoliafaucet.com/
-BASIS_TESTNET__MAX_GAS_PRICE_GWEI=20
-BASIS_TESTNET__CONFIRMATION_BLOCKS=2
+**CRITICAL**: Backtest mode requires NO venue credentials - execution interfaces exist for CODE ALIGNMENT only.
 
-# All services inherit testnet setting
-BASIS_CEX__TESTNET=true  # Controls all CEX APIs
-BASIS_WEB3__NETWORK=sepolia
-BASIS_INSTADAPP__TESTNET=true
+#### **Required for Live Testing**
+```python
+REQUIRED_LIVE_VARS = [
+    'BASIS_EXECUTION_MODE',  # Must be 'live'
+    'BASIS_ENVIRONMENT',     # Controls credential routing (dev/staging/prod)
+    'BASIS_DEPLOYMENT_MODE', # Controls deployment mode (local vs docker)
+    # Environment-specific credentials based on BASIS_ENVIRONMENT
+    'BASIS_DEV__CEX__BINANCE_SPOT_API_KEY',    # If BASIS_ENVIRONMENT=dev
+    'BASIS_DEV__CEX__BINANCE_SPOT_SECRET',     # If BASIS_ENVIRONMENT=dev
+    'BASIS_DEV__ALCHEMY__PRIVATE_KEY',         # If BASIS_ENVIRONMENT=dev
+    'BASIS_DEV__ALCHEMY__WALLET_ADDRESS',      # If BASIS_ENVIRONMENT=dev
+    # ... (similar for staging and prod environments)
+]
 ```
 
-#### **3. API Keys (consolidated)**
-```bash
-# Data Provider APIs
-BASIS_APIS__COINGECKO_KEY=CG-3qHwRgju7B2y43a1CxwYpY4q
-BASIS_APIS__TARDIS_KEY=TD.l6pTDHIcc9fwJZEz.Y7cp7lBSu-pkPEv...
-BASIS_APIS__ALCHEMY_KEY=vV3z-UCRtQvWb26MH9v7A
-BASIS_APIS__AAVESCAN_KEY=c2b49a72-9c73-48f9-aea2-5f6d8ec793b9
+### **Environment-Specific Credential Requirements**
 
-# CEX APIs
-BASIS_CEX__BINANCE_SPOT_KEY=...
-BASIS_CEX__BINANCE_SPOT_SECRET=...
-BASIS_CEX__BINANCE_FUTURES_KEY=...
-BASIS_CEX__BINANCE_FUTURES_SECRET=...
-BASIS_CEX__BYBIT_KEY=...
-BASIS_CEX__BYBIT_SECRET=...
-BASIS_CEX__OKX_KEY=...
-BASIS_CEX__OKX_SECRET=...
-BASIS_CEX__OKX_PASSPHRASE=...
+#### **Development Environment** (`BASIS_ENVIRONMENT=dev`)
+- All `BASIS_DEV__*` credentials must be set
+- Uses testnet APIs and Sepolia network
+- Default values: `BASIS_DEV__ALCHEMY__NETWORK=sepolia`, `BASIS_DEV__ALCHEMY__CHAIN_ID=11155111`
 
-# Web3 Configuration
-BASIS_WEB3__PRIVATE_KEY=your_wallet_private_key
-BASIS_WEB3__WALLET_ADDRESS=0x...
-BASIS_WEB3__MAINNET_RPC_URL=https://eth-mainnet.g.alchemy.com/v2/...
-BASIS_WEB3__SEPOLIA_RPC_URL=https://eth-sepolia.g.alchemy.com/v2/...
+#### **Staging Environment** (`BASIS_ENVIRONMENT=staging`)
+- All `BASIS_STAGING__*` credentials must be set
+- Uses mainnet APIs with staging wallet
+- Default values: `BASIS_STAGING__ALCHEMY__NETWORK=mainnet`
 
-# Instadapp (optional)
-BASIS_INSTADAPP__API_KEY=...
-BASIS_INSTADAPP__API_SECRET=...
-```
+#### **Production Environment** (`BASIS_ENVIRONMENT=prod`)
+- All `BASIS_PROD__*` credentials must be set
+- Uses mainnet APIs with production wallet
+- Default values: `BASIS_PROD__ALCHEMY__NETWORK=mainnet`, `BASIS_PROD__ALCHEMY__CHAIN_ID=1`
 
-#### **4. Live Testing Configuration**
-```bash
-# Safety controls
-BASIS_LIVE_TESTING__ENABLED=false
-BASIS_LIVE_TESTING__READ_ONLY=true
-BASIS_LIVE_TESTING__MAX_TRADE_SIZE_USD=100
-BASIS_LIVE_TESTING__REQUIRE_CONFIRMATION=true
-```
+### **Live Trading Safety Configuration**
 
-### **Implementation Actions**
+#### **Safety Checklist for Live Trading**:
+- [ ] `BASIS_LIVE_TRADING__ENABLED=true` (explicitly set)
+- [ ] `BASIS_LIVE_TRADING__READ_ONLY=false` (for real trading)
+- [ ] `BASIS_LIVE_TRADING__MAX_TRADE_SIZE_USD` set to appropriate limit
+- [ ] `BASIS_LIVE_TRADING__EMERGENCY_STOP_LOSS_PCT` configured
+- [ ] `BASIS_LIVE_TRADING__CIRCUIT_BREAKER_ENABLED=true`
+- [ ] All environment-specific credentials configured
+- [ ] Live testing disabled initially
+- [ ] Read-only mode enabled initially
+- [ ] Maximum trade size set to small amount
 
-#### **Immediate**:
-1. **Consolidate Redis configuration** - Remove `BASIS_CACHE__REDIS_URL`
-2. **Consolidate Alchemy configuration** - Use single API key
-3. **Add missing GCS variables** for deployment
-4. **Add security validation** for sensitive variables
-
-#### **Code Changes Required**:
-1. **Update settings.py** to handle consolidated configuration
-2. **Update CEX Execution Manager** to use consolidated testnet flag
-3. **Update OnChain Execution Manager** to construct RPC URLs
-4. **Add environment validation** to all components
+#### **Before Production Environment**:
+- [ ] All sensitive variables secured
+- [ ] Environment variable documentation updated
+- [ ] Centralized utility manager configuration validated
 
 ---
 
@@ -574,24 +442,30 @@ def validate_environment_security():
 REQUIRED_BACKTEST_VARS = [
     'BASIS_DATA__DATA_DIR',
     'BASIS_REDIS__ENABLED',
-    'BASIS_DEBUG'
+    'BASIS_DEBUG',
+    'BASIS_EXECUTION_MODE',  # Must be 'backtest'
+    'BASIS_ENVIRONMENT',     # Controls data source (CSV vs DB)
+    'BASIS_DEPLOYMENT_MODE'  # Controls deployment mode (local vs docker)
 ]
 ```
+
+**CRITICAL**: Backtest mode requires NO venue credentials - execution interfaces exist for CODE ALIGNMENT only.
 
 ### **Required for Live Testing**
 ```python
 REQUIRED_LIVE_VARS = [
-    'BASIS_CEX__BINANCE_SPOT_API_KEY',
-    'BASIS_CEX__BINANCE_SPOT_SECRET',
-    'BASIS_CEX__BINANCE_FUTURES_API_KEY', 
-    'BASIS_CEX__BINANCE_FUTURES_SECRET',
-    'BASIS_CEX__BYBIT_API_KEY',
-    'BASIS_CEX__BYBIT_SECRET',
-    'BASIS_CEX__OKX_API_KEY',
-    'BASIS_CEX__OKX_SECRET',
-    'BASIS_CEX__OKX_PASSPHRASE',
-    'BASIS_WEB3__PRIVATE_KEY',
-    'BASIS_WEB3__WALLET_ADDRESS'
+    'BASIS_EXECUTION_MODE',  # Must be 'live'
+    'BASIS_ENVIRONMENT',     # Controls credential routing (dev/staging/prod)
+    'BASIS_DEPLOYMENT_MODE', # Controls deployment mode (local vs docker)
+    # Environment-specific credentials based on BASIS_ENVIRONMENT
+    'BASIS_DEV__CEX__BINANCE_SPOT_API_KEY',    # If BASIS_ENVIRONMENT=dev
+    'BASIS_DEV__CEX__BINANCE_SPOT_SECRET',     # If BASIS_ENVIRONMENT=dev
+    'BASIS_DEV__ALCHEMY__PRIVATE_KEY',         # If BASIS_ENVIRONMENT=dev
+    'BASIS_DEV__ALCHEMY__WALLET_ADDRESS',      # If BASIS_ENVIRONMENT=dev
+    'BASIS_PROD__CEX__BINANCE_SPOT_API_KEY',   # If BASIS_ENVIRONMENT=prod
+    'BASIS_PROD__CEX__BINANCE_SPOT_SECRET',    # If BASIS_ENVIRONMENT=prod
+    'BASIS_PROD__ALCHEMY__PRIVATE_KEY',        # If BASIS_ENVIRONMENT=prod
+    'BASIS_PROD__ALCHEMY__WALLET_ADDRESS'      # If BASIS_ENVIRONMENT=prod
 ]
 ```
 
@@ -618,22 +492,49 @@ def validate_environment_variables(mode='backtest'):
     return True
 ```
 
+### **Environment Variable Validation Requirements**
+
+**Quality Gate Integration**: Environment variables are critical for quality gate validation:
+
+#### **Backtest Mode Quality Gates**
+- **Data Provider Initialization**: Environment variables control data source routing (CSV vs DB)
+- **Configuration Loading**: Environment variables override YAML configuration
+- **Component Health**: Environment variables determine component initialization mode
+
+
+#### **Live Mode Quality Gates**
+- **Venue API Health Checks**: Environment variables provide venue credentials for connectivity tests
+- **Credential Validation**: Environment variables must contain valid, non-placeholder values
+- **Network Connectivity**: Environment variables determine testnet vs mainnet endpoints
+
+
+**Reference**: `.cursor/tasks/11_backtest_mode_quality_gates.md` - Backtest Mode Quality Gates
+**Reference**: `.cursor/tasks/12_live_trading_quality_gates.md` - Live Trading Quality Gates
+
 ### **Validation Checklist**
 
+#### **Before Backtest Mode**:
+- [ ] `BASIS_EXECUTION_MODE=backtest` set
+- [ ] `BASIS_ENVIRONMENT` set (dev/staging/prod)
+- [ ] `BASIS_DATA__DATA_DIR` points to valid data directory
+- [ ] NO venue credentials required (backtest mode only)
+
 #### **Before Live Testing**:
-- [ ] All CEX API keys configured (not placeholder values)
-- [ ] Web3 private key configured (not placeholder values)
-- [ ] Testnet configuration enabled
+- [ ] `BASIS_EXECUTION_MODE=live` set
+- [ ] `BASIS_ENVIRONMENT` set (dev/staging/prod)
+- [ ] Environment-specific CEX API keys configured (not placeholder values)
+- [ ] Environment-specific Web3 private key configured (not placeholder values)
+- [ ] Testnet configuration enabled for dev environment
 - [ ] Live testing disabled initially
 - [ ] Read-only mode enabled initially
 - [ ] Maximum trade size set to small amount
 
-#### **Before Production Deployment**:
+#### **Before Production Environment**:
 - [ ] All sensitive variables secured
-- [ ] GCS configuration added
 - [ ] Monitoring configuration added
 - [ ] Security validation implemented
 - [ ] Environment variable documentation updated
+- [ ] Centralized utility manager configuration validated
 
 ---
 
@@ -667,7 +568,7 @@ BASIS_TESTNET__ENABLED=false
 
 This consolidated guide provides complete visibility into environment variables usage, redundancy analysis, and best practices.
 
-**For configuration workflow**: See [CONFIG_WORKFLOW.md](CONFIG_WORKFLOW.md)  
+**For configuration workflow**: See [specs/CONFIGURATION.md](specs/CONFIGURATION.md)  
 **For deployment setup**: See [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md)
 
 *Last Updated: October 3, 2025*

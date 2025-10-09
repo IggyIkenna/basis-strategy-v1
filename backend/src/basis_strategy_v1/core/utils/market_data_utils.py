@@ -29,6 +29,12 @@ class MarketDataUtils:
     - Price data (ETH, BTC, USDT)
     - Rate data (funding rates, APYs)
     - Gas prices
+    
+    # TODO-REFACTOR: MISSING CENTRALIZED UTILITY MANAGER - 15_fix_mode_specific_pnl_calculator.md
+    # ISSUE: This class should be integrated into centralized UtilityManager pattern
+    # Canonical: .cursor/tasks/15_fix_mode_specific_pnl_calculator.md
+    # Fix: Create centralized UtilityManager and integrate this class into it
+    # Status: PENDING
     """
     
     def __init__(self, data_provider=None):
@@ -110,6 +116,11 @@ class MarketDataUtils:
         return self.get_asset_price('USDT', market_data)
     
     def get_gas_price(self, market_data: Dict[str, Any], default: float = 20.0) -> float:
+        # TODO-REFACTOR: HARDCODED VALUES - 06_architecture_compliance_rules.md
+        # ISSUE: Hardcoded default gas price value
+        # Canonical: .cursor/tasks/06_architecture_compliance_rules.md
+        # Fix: Load default gas price from config YAML instead of hardcoding
+        # Status: PENDING
         """
         Get gas price in Gwei from market data.
         

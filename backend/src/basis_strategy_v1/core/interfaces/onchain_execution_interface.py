@@ -1,8 +1,61 @@
 """
 OnChain Execution Interface
 
-Provides on-chain execution capabilities for both backtest and live modes.
-Implements the BaseExecutionInterface contract.
+TODO-REFACTOR: ENVIRONMENT VARIABLE INTEGRATION VIOLATION - 19_venue_based_execution_architecture.md
+ISSUE: This component violates canonical architecture requirements:
+
+1. ENVIRONMENT VARIABLE INTEGRATION VIOLATIONS:
+   - Uses hardcoded config keys instead of environment-specific routing
+   - Missing BASIS_ENVIRONMENT routing for venue credentials
+   - Missing BASIS_EXECUTION_MODE routing for backtest vs live execution
+
+TODO-REFACTOR: MISSING CENTRALIZED UTILITY MANAGER VIOLATION - 14_mode_agnostic_architecture_requirements.md
+ISSUE: This component has scattered utility methods that should be centralized:
+
+1. CENTRALIZED UTILITY MANAGER REQUIREMENTS:
+   - Utility methods should be centralized in a single manager
+   - Liquidity index calculations should be centralized
+   - Market price conversions should be centralized
+   - No scattered utility methods across components
+
+2. REQUIRED VERIFICATION:
+   - Check for scattered utility methods in this component
+   - Verify utility methods are properly centralized
+   - Ensure no duplicate utility logic across components
+
+3. CANONICAL SOURCE:
+   - .cursor/tasks/14_mode_agnostic_architecture_requirements.md
+   - Centralized utilities required
+   - No logic to route based on BASIS_ENVIRONMENT (dev/staging/prod) to select appropriate credentials
+
+2. REQUIRED ARCHITECTURE (per 19_venue_based_execution_architecture.md):
+   - Should route to appropriate environment-specific credentials based on BASIS_ENVIRONMENT
+   - Backtest mode: Execution interfaces exist for CODE ALIGNMENT only - NO credentials needed, NO heartbeat tests
+   - Backtest mode: Data source (CSV vs DB) is handled by DATA PROVIDER, not venue execution manager
+   - Backtest mode: Dummy venue calls - make dummy calls but don't wait for responses, mark complete immediately
+   - Live mode: Use real APIs with pattern: BASIS_DEV__ALCHEMY__RPC_URL, BASIS_PROD__ALCHEMY__RPC_URL
+   - Live mode: Should handle testnet vs production network routing (sepolia vs ethereum) and heartbeat tests
+   - Live mode: Should support environment-specific private keys and wallet addresses
+   - **Reference**: .cursor/tasks/19_venue_based_execution_architecture.md (canonical: docs/VENUE_ARCHITECTURE.md)
+
+3. SEPARATION OF CONCERNS:
+   - BASIS_DEPLOYMENT_MODE: Controls port/host forwarding and dependency injection (local vs docker)
+   - BASIS_ENVIRONMENT: Controls venue credential routing (dev/staging/prod) and data sources (CSV vs DB)
+   - BASIS_EXECUTION_MODE: Controls venue execution behavior (backtest simulation vs live execution)
+
+4. CURRENT VIOLATIONS:
+   - Hardcoded config keys instead of environment-specific variables
+   - No BASIS_ENVIRONMENT routing logic
+   - Missing testnet vs production network routing
+   - No environment-specific credential routing
+
+5. REQUIRED FIX:
+   - Implement _get_venue_credentials() method with BASIS_ENVIRONMENT routing
+   - Use environment-specific variables: BASIS_DEV__ALCHEMY__, BASIS_PROD__ALCHEMY__
+   - Add testnet vs production network routing (sepolia vs ethereum)
+   - Add environment-specific private key and wallet address routing
+
+CURRENT STATE: This component needs environment variable integration refactoring.
 """
 
 import asyncio
@@ -143,15 +196,23 @@ class OnChainExecutionInterface(BaseExecutionInterface):
             # In backtest mode, we need to use the correct liquidity index for the conversion
             if token_out == 'aUSDT':
                 # Get the correct liquidity index using centralized utility
+                # TODO-REFACTOR: MISSING CENTRALIZED UTILITY MANAGER - 15_fix_mode_specific_pnl_calculator.md
+                # ISSUE: Should use centralized UtilityManager instead of local utility methods
+                # Canonical: .cursor/tasks/15_fix_mode_specific_pnl_calculator.md
+                # Fix: Use centralized UtilityManager for all utility methods
+                # Status: PENDING
                 from ..utils.market_data_utils import get_market_data_utils
                 market_utils = get_market_data_utils(self.data_provider)
                 
                 if market_data and 'timestamp' in market_data:
                     liquidity_index = market_utils.get_liquidity_index('USDT', market_data.get('timestamp'))
                 else:
+                    # TODO-REFACTOR: This hardcodes liquidity_index instead of using data provider
+                    # Canonical: .cursor/tasks/06_architecture_compliance_rules.md
+                    # Fix: Use self.data_provider.get_liquidity_index(token, timestamp)
                     # Fallback: use a default liquidity index if market_data is not available
                     logger.warning("Market data not available for liquidity index lookup, using default value")
-                    liquidity_index = 1.070100  # Default value for backtest period
+                    liquidity_index = 1.070100  # WRONG - hardcoded value violates architecture principles
                 
                 amount_out = amount / liquidity_index
                 logger.info(f"Onchain Execution: AAVE_SUPPLY USDT->aUSDT: {amount} USDT / {liquidity_index:.6f} = {amount_out:.2f} aUSDT")

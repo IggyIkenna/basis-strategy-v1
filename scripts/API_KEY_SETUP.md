@@ -32,7 +32,7 @@ The following API keys are required for full functionality:
 
 ### 2. Add Keys to Environment File
 
-Edit `backend/env.unified` and add your API keys:
+Edit `scripts/env.downloaders` and add your API keys:
 
 ```bash
 # Data Downloader API Keys
@@ -155,7 +155,7 @@ echo "AaveScan: ${BASIS_DOWNLOADERS__AAVESCAN_API_KEY:0:10}..."
 ## 🎯 Quick Start
 
 1. **Get API keys** from the providers above
-2. **Add to `backend/env.unified`** following the format shown
+2. **Add to `scripts/env.downloaders`** following the format shown
 3. **Load environment**: `source scripts/load_env.sh`
 4. **Run downloaders**: `python scripts/orchestrators/fetch_pool_data.py --start-date 2020-01-01`
 

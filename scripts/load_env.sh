@@ -1,9 +1,9 @@
 #!/bin/bash
-# Load environment variables from backend/env.unified
+# Load environment variables from backend/env.downloaders
 # Usage: source scripts/load_env.sh
 
 # Simple approach - assume we're running from project root
-ENV_FILE="backend/env.unified"
+ENV_FILE="env.downloaders"
 
 if [ -f "$ENV_FILE" ]; then
     echo "Loading environment variables from $ENV_FILE"

@@ -907,7 +907,10 @@ class RiskMonitor:
                 if position and position.get('size', 0) != 0:
                     # Get current funding rate (would come from data provider)
                     # For now, assume positive funding rate
-                    funding_rate = 0.0001  # 0.01% per 8 hours
+                    # TODO-REFACTOR: This hardcodes funding rate instead of using config
+                    # Canonical: .cursor/tasks/06_architecture_compliance_rules.md
+                    # Fix: Add to config YAML and load from config
+                    funding_rate = 0.0001  # WRONG - hardcoded funding rate (0.01% per 8 hours)
                     
                     if funding_rate < -0.0005:  # Negative funding
                         funding_risks[venue] = 'warning'

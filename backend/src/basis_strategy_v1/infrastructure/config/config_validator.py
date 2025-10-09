@@ -125,26 +125,54 @@ class ConfigValidator:
         # Check core startup variables (including new infrastructure variables)
         core_vars = [
             'BASIS_ENVIRONMENT',
-            'BASIS_DEPLOYMENT_MODE', 
+            'BASIS_DEPLOYMENT_MODE',
+            'BASIS_DEPLOYMENT_MACHINE',
             'BASIS_DATA_DIR',
+            'BASIS_DATA_MODE',
             'BASIS_RESULTS_DIR',
             'BASIS_REDIS_URL',
             'BASIS_DEBUG',
             'BASIS_LOG_LEVEL',
-            'BASIS_STARTUP_MODE',
+            'BASIS_EXECUTION_MODE',
             'BASIS_DATA_START_DATE',
             'BASIS_DATA_END_DATE',
             'BASIS_API_PORT',
             'BASIS_API_HOST',
-            'BASIS_API_CORS_ORIGINS'
+            'BASIS_API_CORS_ORIGINS',
+            'HEALTH_CHECK_INTERVAL',
+            'HEALTH_CHECK_ENDPOINT'
         ]
+        
+        # Frontend/Caddy deployment variables (WARNING if missing, not ERROR)
+        frontend_deployment_vars = [
+            'APP_DOMAIN',
+            'ACME_EMAIL',
+            'BASIC_AUTH_HASH',
+            'HTTP_PORT',
+            'HTTPS_PORT'
+        ]
+        
+        
         
         for var in core_vars:
             if not os.getenv(var):
                 self.errors.append(f"Missing required environment variable: {var}")
         
+        # Frontend deployment vars are optional (warn only)
+        for var in frontend_deployment_vars:
+            if not os.getenv(var):
+                self.warnings.append(
+                    f"Missing frontend deployment variable: {var}. "
+                    f"This is required for full-stack deployment but OK for backend-only mode."
+                )
+        
+        # Validate BASIS_DATA_MODE (must be csv or db)
+        data_mode = os.getenv('BASIS_DATA_MODE')
+        if data_mode and data_mode not in ['csv', 'db']:
+            self.errors.append(f"BASIS_DATA_MODE must be 'csv' or 'db', got: {data_mode}")
+        
         # Check environment-specific API keys (only for live mode)
-        if os.getenv('BASIS_STARTUP_MODE') == 'live':
+        if os.getenv('BASIS_EXECUTION_MODE') == 'live':
             # Only check the current environment (dev or prod)
             if self.environment in ['dev', 'prod']:
                 env_prefix = f'BASIS_{self.environment.upper()}__'

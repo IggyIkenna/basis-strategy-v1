@@ -1,10 +1,15 @@
 """
-Component Health Check System
+Unified Health Check System
 
 Provides standardized health checking for all components with timestamps,
-error codes, and readiness status validation.
+error codes, and readiness status validation. Consolidates infrastructure,
+config, and component health into a single system.
 """
 
+from .unified_health_manager import (
+    UnifiedHealthManager,
+    unified_health_manager
+)
 from .component_health import (
     HealthStatus,
     ComponentHealthReport,
@@ -18,6 +23,8 @@ from .component_health import (
 )
 
 __all__ = [
+    "UnifiedHealthManager",
+    "unified_health_manager",
     "HealthStatus",
     "ComponentHealthReport", 
     "ComponentHealthChecker",

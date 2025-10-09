@@ -194,7 +194,6 @@ class DataProvider:
             self,
             data_dir: str,
             mode: str,
-            execution_mode: str = 'backtest',
             config: Optional[Dict] = None,
             backtest_start_date: Optional[str] = None,
             backtest_end_date: Optional[str] = None):
@@ -204,42 +203,68 @@ class DataProvider:
         Args:
             data_dir: Path to data directory (e.g., 'data/')
             mode: Strategy mode ('pure_lending', 'eth_leveraged', etc.)
-            execution_mode: 'backtest' or 'live'
             config: Configuration dictionary
             backtest_start_date: Start date for backtest validation (YYYY-MM-DD format)
             backtest_end_date: End date for backtest validation (YYYY-MM-DD format)
         """
         self.data_dir = Path(data_dir)
         self.mode = mode
-        self.execution_mode = execution_mode
         self.config = config or {}
         self.data = {}
         self.backtest_start_date = backtest_start_date
         self.backtest_end_date = backtest_end_date
+        self._data_loaded = False
 
-        # Historical data provider only handles backtest mode
-        # Live mode is handled by LiveDataProvider via data_provider_factory.py
-        if execution_mode != 'backtest':
-            raise ValueError(f"HistoricalDataProvider only supports execution_mode='backtest', got '{execution_mode}'. Use data_provider_factory.py for live mode.")
+        # Historical data provider is always for backtest mode
+        # No data loading at initialization - data loaded on-demand via load_data_for_backtest()
+        logger.info(f"DataProvider initialized for mode: {mode} (data will be loaded on-demand)")
 
-        # Validate backtest dates against available data range
-        if backtest_start_date and backtest_end_date:
-            self._validate_backtest_dates()
-
-        # Load data for backtest mode (always load all data)
-        # Phase 2: Historical data provider always loads ALL data at startup
-        # Mode-specific filtering is handled by live_data_provider.py for live mode
-        self._load_all_data_at_startup()
+    def load_data_for_backtest(self, mode: str, start_date: str, end_date: str):
+        """
+        Load data on-demand for backtest with date range validation.
+        
+        Args:
+            mode: Strategy mode ('pure_lending', 'eth_leveraged', etc.)
+            start_date: Start date for backtest (YYYY-MM-DD format)
+            end_date: End date for backtest (YYYY-MM-DD format)
+            
+        Raises:
+            DataProviderError: If date range validation fails or data loading fails
+        """
+        # Update instance attributes
+        self.mode = mode
+        self.backtest_start_date = start_date
+        self.backtest_end_date = end_date
+        
+        # Validate date range against available data range
+        self._validate_backtest_dates(start_date, end_date)
+        
+        # Load data for the specific mode
+        self._load_data_for_mode()
         
         # Validate hourly alignment
         self._validate_timestamps()
+        
+        # Mark data as loaded
+        self._data_loaded = True
+        
+        logger.info(f"Data loaded for backtest: mode={mode}, start={start_date}, end={end_date}, datasets={len(self.data)}")
 
-        logger.info(
-            f"DataProvider initialized for mode: {mode} (execution_mode: {execution_mode})")
-
-    def _validate_backtest_dates(self):
+    def _validate_backtest_dates(self, start_date: str = None, end_date: str = None):
         """Validate backtest dates against available data range from environment variables."""
         import os
+        
+        # Use provided dates or instance attributes
+        request_start = start_date or self.backtest_start_date
+        request_end = end_date or self.backtest_end_date
+        
+        if not request_start or not request_end:
+            raise DataProviderError(
+                'DATA-014',
+                message="Backtest start_date and end_date must be provided",
+                start_date=request_start,
+                end_date=request_end
+            )
         
         # Get available data range from environment variables
         data_start_date = os.getenv('BASIS_DATA_START_DATE')
@@ -248,8 +273,9 @@ class DataProvider:
         if not data_start_date or not data_end_date:
             raise DataProviderError(
                 'DATA-013',
-                backtest_start_date=self.backtest_start_date,
-                backtest_end_date=self.backtest_end_date,
+                message="BASIS_DATA_START_DATE and BASIS_DATA_END_DATE must be set",
+                backtest_start_date=request_start,
+                backtest_end_date=request_end,
                 missing_vars='BASIS_DATA_START_DATE' if not data_start_date else 'BASIS_DATA_END_DATE'
             )
         
@@ -257,8 +283,8 @@ class DataProvider:
             # Convert to pandas timestamps for comparison
             data_start = pd.Timestamp(data_start_date, tz='UTC')
             data_end = pd.Timestamp(data_end_date, tz='UTC')
-            backtest_start = pd.Timestamp(self.backtest_start_date, tz='UTC')
-            backtest_end = pd.Timestamp(self.backtest_end_date, tz='UTC')
+            backtest_start = pd.Timestamp(request_start, tz='UTC')
+            backtest_end = pd.Timestamp(request_end, tz='UTC')
             
             # Validate backtest dates are within available data range
             if backtest_start < data_start:
@@ -271,7 +297,7 @@ class DataProvider:
             
             if backtest_end > data_end:
                 raise DataProviderError(
-                    'DATA-012',
+                    'DATA-011',
                     backtest_end_date=backtest_end.date(),
                     data_end_date=data_end.date(),
                     available_range=f"{data_start.date()} to {data_end.date()}"
@@ -291,85 +317,124 @@ class DataProvider:
                 backtest_end_date=self.backtest_end_date
             )
 
-    def _load_all_data_at_startup(self):
+    def _load_data_for_mode(self):
         """
-        Phase 2: Load ALL data for ALL modes at startup.
+        Load only data needed for the specified mode.
         
-        This method loads all available data files for all strategy modes:
-        - Gas costs (Ethereum gas prices)
-        - Execution costs (trading costs simulation)
-        - AAVE rates (for all supported assets: USDT, WETH, weETH)
-        - AAVE risk parameters
-        - Spot prices (ETH, BTC on Binance, Bybit, OKX)
-        - Futures data (ETH, BTC on Binance, Bybit, OKX)
-        - Funding rates (all venues)
-        - LST-specific data (weETH, wstETH)
-        - Protocol token prices (EIGEN, ETHFI)
-        - Staking yields (Lido, EtherFi)
-        - Seasonal rewards data
-        - Venue-specific risk parameters
+        This method follows the canonical principle of mode-aware loading:
+        - Load only data required by the strategy mode
+        - Fail fast if required data files are missing
+        - Use data_requirements from config to determine what to load
         
-        Fails fast if any required data files are missing.
+        Mode-specific data loading:
+        - pure_lending: USDT rates, gas costs, execution costs
+        - btc_basis: BTC spot, BTC futures, BTC funding rates, gas costs, execution costs
+        - eth_leveraged: ETH spot, weETH rates, WETH rates, weETH oracle, staking yields, gas costs, execution costs
+        - usdt_market_neutral: All ETH leveraged data plus ETH futures, ETH funding rates
+        - all_data: Load all available data (for comprehensive backtesting)
         """
-        logger.info("🔄 Loading ALL data for ALL modes at startup...")
+        logger.info(f"🔄 Loading data for mode: {self.mode}")
         
         try:
-            # Load core data required by all modes
+            # Always load core data required by all modes
             self._load_gas_costs()
             self._load_execution_costs()
             self._load_execution_costs_lookup()
             
-            # Load AAVE data for all assets
-            self._load_aave_rates('USDT')
-            self._load_aave_rates('WETH') 
-            self._load_aave_rates('weETH')
-            self._load_aave_risk_parameters()
+            if self.mode == 'all_data':
+                # Load all data for comprehensive backtesting
+                self._load_all_available_data()
+            elif self.mode == 'pure_lending':
+                self._load_aave_rates('USDT')
+            elif self.mode == 'btc_basis':
+                self._load_spot_prices('BTC')
+                self._load_futures_data('BTC', ['binance', 'bybit', 'okx'])
+                self._load_funding_rates('BTC', ['binance', 'bybit', 'okx'])
+            elif self.mode in ['eth_leveraged', 'usdt_market_neutral']:
+                # AAVE data
+                lst_type = self.config.get('lst_type', 'weeth')
+                self._load_aave_rates(lst_type)  # weETH or wstETH
+                self._load_aave_rates('WETH')
+                self._load_oracle_prices(lst_type)
+                
+                # Staking data (weETH restaking only)
+                if self.config.get('rewards_mode') != 'base_only':
+                    self._load_seasonal_rewards()  # EIGEN + ETHFI distributions
+                
+                # Protocol token prices (for KING unwrapping)
+                self._load_protocol_token_prices('EIGEN')
+                self._load_protocol_token_prices('ETHFI')
+                
+                # If USDT mode, need CEX data
+                if self.mode == 'usdt_market_neutral':
+                    self._load_spot_prices('ETH')  # Binance spot = our ETH/USDT oracle
+                    self._load_futures_data('ETH', self.config.get('hedge_venues', ['binance', 'bybit', 'okx']))
+                    self._load_funding_rates('ETH', self.config.get('hedge_venues'))
+            else:
+                logger.warning(f"Unknown mode '{self.mode}', loading minimal data")
+                self._load_aave_rates('USDT')  # Minimal fallback
             
-            # Load spot prices for all assets and venues
-            self._load_spot_prices('ETH')  # ETH/USDT on Binance
-            self._load_spot_prices('BTC')  # BTC/USDT on Binance
-            self._load_spot_prices_bybit('ETH')    # ETH on Bybit
-            self._load_spot_prices_bybit('BTC')    # BTC on Bybit
-            self._load_spot_prices_okx('BTC')      # BTC on OKX (proxied from Binance)
-            
-            # Load futures data for all assets and venues
-            self._load_futures_data('ETH', ['binance', 'bybit', 'okx'])
-            self._load_futures_data('BTC', ['binance', 'bybit', 'okx'])
-            # Note: OKX futures data proxied from Binance due to API issues
-            
-            # Load funding rates for all venues and assets
-            self._load_funding_rates('ETH', ['binance', 'bybit', 'okx'])
-            self._load_funding_rates('BTC', ['binance', 'bybit', 'okx'])
-            
-            # Load LST-specific data
-            self._load_oracle_prices('weETH')
-            self._load_oracle_prices('wstETH')
-            self._load_lst_market_prices('weETH')
-            self._load_lst_market_prices('wstETH')
-            
-            # Load protocol token prices
-            self._load_protocol_token_prices('EIGEN')
-            self._load_protocol_token_prices('ETHFI')
-            
-            # Load staking yields
-            self._load_staking_yields()
-            
-            # Load seasonal rewards data
-            self._load_seasonal_rewards()
-            
-            # Load venue-specific risk parameters
-            self.get_bybit_margin_requirements()
-            self.get_binance_margin_requirements()
-            self.get_okx_margin_requirements()
-            
-            logger.info("✅ ALL data loaded successfully for all modes")
+            logger.info(f"✅ Data loaded successfully for mode: {self.mode}")
             
             # Validate data requirements
             self._validate_data_requirements()
             
         except Exception as e:
-            logger.error(f"❌ Failed to load data at startup: {e}")
-            raise ValueError(f"Data loading failed: {e}")
+            logger.error(f"❌ Failed to load data for mode '{self.mode}': {e}")
+            raise ValueError(f"Data loading failed for mode '{self.mode}': {e}")
+
+    def _load_all_available_data(self):
+        """
+        Load all available data for comprehensive backtesting.
+        
+        This method is used when mode='all_data' to load all available data files.
+        """
+        logger.info("🔄 Loading ALL available data for comprehensive backtesting...")
+        
+        # Load AAVE data for all assets
+        self._load_aave_rates('USDT')
+        self._load_aave_rates('WETH') 
+        self._load_aave_rates('weETH')
+        self._load_aave_risk_parameters()
+        
+        # Load spot prices for all assets and venues
+        self._load_spot_prices('ETH')  # ETH/USDT on Binance
+        self._load_spot_prices('BTC')  # BTC/USDT on Binance
+        self._load_spot_prices_bybit('ETH')    # ETH on Bybit
+        self._load_spot_prices_bybit('BTC')    # BTC on Bybit
+        self._load_spot_prices_okx('BTC')      # BTC on OKX (proxied from Binance)
+        
+        # Load futures data for all assets and venues
+        self._load_futures_data('ETH', ['binance', 'bybit', 'okx'])
+        self._load_futures_data('BTC', ['binance', 'bybit', 'okx'])
+        # Note: OKX futures data proxied from Binance due to API issues
+        
+        # Load funding rates for all venues and assets
+        self._load_funding_rates('ETH', ['binance', 'bybit', 'okx'])
+        self._load_funding_rates('BTC', ['binance', 'bybit', 'okx'])
+        
+        # Load LST-specific data
+        self._load_oracle_prices('weETH')
+        self._load_oracle_prices('wstETH')
+        self._load_lst_market_prices('weETH')
+        self._load_lst_market_prices('wstETH')
+        
+        # Load protocol token prices
+        self._load_protocol_token_prices('EIGEN')
+        self._load_protocol_token_prices('ETHFI')
+        
+        # Load staking yields
+        self._load_staking_yields()
+        
+        # Load seasonal rewards data
+        self._load_seasonal_rewards()
+        
+        # Load venue-specific risk parameters
+        self.get_bybit_margin_requirements()
+        self.get_binance_margin_requirements()
+        self.get_okx_margin_requirements()
+        
+        logger.info("✅ ALL available data loaded successfully")
 
     def _validate_data_at_startup(self):
         """
@@ -866,9 +931,15 @@ class DataProvider:
                     # For assets not in pairs (like USDT), use default values
                     if asset == 'USDT':
                         # Default liquidation threshold
-                        individual_params[asset] = 0.85
+                        # TODO-REFACTOR: This hardcodes LTV value instead of using config
+                        # Canonical: .cursor/tasks/06_architecture_compliance_rules.md
+                        # Fix: Add to config YAML and load from config
+                        individual_params[asset] = 0.85  # WRONG - hardcoded LTV value
                     else:
-                        individual_params[asset] = 0.80  # Default LTV
+                        # TODO-REFACTOR: This hardcodes LTV value instead of using config
+                        # Canonical: .cursor/tasks/06_architecture_compliance_rules.md
+                        # Fix: Add to config YAML and load from config
+                        individual_params[asset] = 0.80  # WRONG - hardcoded default LTV
             return individual_params
 
         # Map structure to expected format
@@ -1492,13 +1563,22 @@ class DataProvider:
                     snapshot['usdt_liquidity_index'] = data.loc[ts, 'liquidityIndex']
                     logger.debug(f"Data Provider: USDT liquidity index at {timestamp} = {snapshot['usdt_liquidity_index']}")
                 else:
-                    snapshot['usdt_liquidity_index'] = 1.0
+                    # TODO-REFACTOR: This hardcodes liquidity_index instead of using proper data provider
+                    # Canonical: .cursor/tasks/06_architecture_compliance_rules.md
+                    # Fix: Use proper data provider method or fail gracefully
+                    snapshot['usdt_liquidity_index'] = 1.0  # WRONG - hardcoded value
                     logger.debug(f"Data Provider: No USDT data for {timestamp}, using default 1.0")
             except Exception as e:
-                snapshot['usdt_liquidity_index'] = 1.0
+                # TODO-REFACTOR: This hardcodes liquidity_index instead of using proper data provider
+                # Canonical: .cursor/tasks/06_architecture_compliance_rules.md
+                # Fix: Use proper data provider method or fail gracefully
+                snapshot['usdt_liquidity_index'] = 1.0  # WRONG - hardcoded value
                 logger.warning(f"Data Provider: Error getting USDT liquidity index: {e}")
         else:
-            snapshot['usdt_liquidity_index'] = 1.0
+            # TODO-REFACTOR: This hardcodes liquidity_index instead of using proper data provider
+            # Canonical: .cursor/tasks/06_architecture_compliance_rules.md
+            # Fix: Use proper data provider method or fail gracefully
+            snapshot['usdt_liquidity_index'] = 1.0  # WRONG - hardcoded value
             logger.warning(f"Data Provider: No usdt_rates data loaded, using default 1.0")
         
         # Futures prices (per exchange)
@@ -1522,7 +1602,10 @@ class DataProvider:
                         snapshot[f'{venue}_funding_rate'] = data.loc[ts,
                                                                      'funding_rate']
                 except BaseException:
-                    snapshot[f'{venue}_funding_rate'] = 0.0
+                    # TODO-REFACTOR: Funding rate data missing - should fail fast with error code
+                    # Canonical: .cursor/tasks/06_architecture_compliance_rules.md
+                    # Fix: Fail fast with error code, don't use hardcoded values
+                    raise ValueError(f"Funding rate data not available for {venue} at timestamp {timestamp}")
 
         # Gas costs
         try:
@@ -1533,11 +1616,20 @@ class DataProvider:
                     snapshot['gas_price_gwei'] = data.loc[ts,
                                                           'gas_price_avg_gwei']
                 else:
-                    snapshot['gas_price_gwei'] = 20.0  # Default
+                    # TODO-REFACTOR: Gas price data missing - should fail fast with error code
+                    # Canonical: .cursor/tasks/06_architecture_compliance_rules.md
+                    # Fix: Fail fast with error code, don't use hardcoded values
+                    raise ValueError(f"Gas price data not available for timestamp {timestamp}")
             else:
-                snapshot['gas_price_gwei'] = 20.0  # Default
-        except BaseException:
-            snapshot['gas_price_gwei'] = 20.0  # Default
+                # TODO-REFACTOR: Gas costs data not loaded - should fail fast with error code
+                # Canonical: .cursor/tasks/06_architecture_compliance_rules.md
+                # Fix: Fail fast with error code, don't use hardcoded values
+                raise ValueError("Gas costs data not loaded in data provider")
+        except BaseException as e:
+            # TODO-REFACTOR: Gas price data access failed - should fail fast with error code
+            # Canonical: .cursor/tasks/06_architecture_compliance_rules.md
+            # Fix: Fail fast with error code, don't use hardcoded values
+            raise ValueError(f"Failed to access gas price data: {e}")
 
         return snapshot
 

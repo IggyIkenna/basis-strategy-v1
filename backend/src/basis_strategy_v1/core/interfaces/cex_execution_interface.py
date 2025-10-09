@@ -1,8 +1,61 @@
 """
 CEX Execution Interface
 
-Provides CEX execution capabilities for both backtest and live modes.
-Implements the BaseExecutionInterface contract.
+TODO-REFACTOR: ENVIRONMENT VARIABLE INTEGRATION VIOLATION - 19_venue_based_execution_architecture.md
+ISSUE: This component violates canonical architecture requirements:
+
+1. ENVIRONMENT VARIABLE INTEGRATION VIOLATIONS:
+   - Uses hardcoded config keys (binance_api_key, bybit_api_key) instead of environment-specific routing
+   - Missing BASIS_ENVIRONMENT routing for venue credentials
+   - Missing BASIS_EXECUTION_MODE routing for backtest vs live execution
+
+TODO-REFACTOR: MISSING CENTRALIZED UTILITY MANAGER VIOLATION - 14_mode_agnostic_architecture_requirements.md
+ISSUE: This component has scattered utility methods that should be centralized:
+
+1. CENTRALIZED UTILITY MANAGER REQUIREMENTS:
+   - Utility methods should be centralized in a single manager
+   - Liquidity index calculations should be centralized
+   - Market price conversions should be centralized
+   - No scattered utility methods across components
+
+2. REQUIRED VERIFICATION:
+   - Check for scattered utility methods in this component
+   - Verify utility methods are properly centralized
+   - Ensure no duplicate utility logic across components
+
+3. CANONICAL SOURCE:
+   - .cursor/tasks/14_mode_agnostic_architecture_requirements.md
+   - Centralized utilities required
+   - No logic to route based on BASIS_ENVIRONMENT (dev/staging/prod) to select appropriate credentials
+
+2. REQUIRED ARCHITECTURE (per 19_venue_based_execution_architecture.md):
+   - Should route to appropriate environment-specific credentials based on BASIS_ENVIRONMENT
+   - Backtest mode: Execution interfaces exist for CODE ALIGNMENT only - NO credentials needed, NO heartbeat tests
+   - Backtest mode: Data source (CSV vs DB) is handled by DATA PROVIDER, not venue execution manager
+   - Backtest mode: Dummy venue calls - make dummy calls but don't wait for responses, mark complete immediately
+   - Live mode: Use real APIs with pattern: BASIS_DEV__CEX__BINANCE_SPOT_API_KEY, BASIS_PROD__CEX__BINANCE_SPOT_API_KEY
+   - Live mode: Should handle testnet vs production endpoint routing and heartbeat tests
+   - Live mode: Should support separate spot/futures clients for Binance
+   - **Reference**: .cursor/tasks/19_venue_based_execution_architecture.md (canonical: docs/VENUE_ARCHITECTURE.md)
+
+3. SEPARATION OF CONCERNS:
+   - BASIS_DEPLOYMENT_MODE: Controls port/host forwarding and dependency injection (local vs docker)
+   - BASIS_ENVIRONMENT: Controls venue credential routing (dev/staging/prod) and data sources (CSV vs DB)
+   - BASIS_EXECUTION_MODE: Controls venue execution behavior (backtest simulation vs live execution)
+
+4. CURRENT VIOLATIONS:
+   - Hardcoded config keys instead of environment-specific variables
+   - No BASIS_ENVIRONMENT routing logic
+   - Missing testnet vs production endpoint routing
+   - No separate spot/futures client initialization
+
+5. REQUIRED FIX:
+   - Implement _get_venue_credentials() method with BASIS_ENVIRONMENT routing
+   - Use environment-specific variables: BASIS_DEV__CEX__, BASIS_PROD__CEX__
+   - Add testnet vs production endpoint routing
+   - Add separate spot/futures client initialization for Binance
+
+CURRENT STATE: This component needs environment variable integration refactoring.
 """
 
 import asyncio

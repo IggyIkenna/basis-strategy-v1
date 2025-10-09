@@ -34,6 +34,17 @@ async def run_backtest(
     Run a backtest for the specified strategy and parameters.
     
     The backtest runs asynchronously and returns a request ID for tracking.
+    
+    # TODO: [WORKFLOW_STRATEGY_SELECTION] - Strategy mode selection via API parameter
+    # Current Issue: Strategy mode is selected via strategy_name parameter in BacktestRequest
+    # Required Changes:
+    #   1. Validate strategy_name against available strategies in MODES.md
+    #   2. Route to appropriate venue clients based on strategy requirements
+    #   3. Initialize venue clients based on environment configuration (dev/staging/prod)
+    #   4. Implement time-triggered workflow for backtest execution
+    # Reference: docs/WORKFLOW_GUIDE.md - Strategy Mode Selection & Venue Architecture Integration section
+    # Reference: .cursor/tasks/19_venue_based_execution_architecture.md (canonical: docs/VENUE_ARCHITECTURE.md)
+    # Status: PENDING
     """
     correlation_id = getattr(http_request.state, "correlation_id", "unknown")
     

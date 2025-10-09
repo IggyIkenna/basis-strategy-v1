@@ -21,6 +21,7 @@ lst_type: "weeth"  # or "wsteth"
 rewards_mode: "base_eigen_seasonal"  # base + EIGEN + seasonal rewards
 stake_allocation_eth: 0.5 #how much of initial capital to stake in eth vs freed up for margin on perp shorting
 dust_delta: 0.002
+reserve_ratio: 0.1
 
 # Execution parameters
 use_flash_loan: true
@@ -59,6 +60,5 @@ data_requirements:
   - "aave_risk_params"  # AAVE v3 risk parameters JSON
   - "lst_market_prices"  # LST/ETH market prices (Curve/Uniswap)
 
-# Monitoring
-monitoring_position_check_interval: 300  # 5 minutes
-monitoring_risk_check_interval: 60  # 1 minute
+# Live time throttling 
+time_throttle_interval: 60

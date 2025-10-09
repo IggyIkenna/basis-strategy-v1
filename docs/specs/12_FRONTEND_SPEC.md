@@ -5,7 +5,18 @@
 **Priority**: ⭐⭐ HIGH  
 **Technology**: React + TypeScript + Tailwind CSS + shadcn/ui  
 **Location**: `frontend/src/`  
-**Status**: 🔧 **PARTIALLY IMPLEMENTED** - Wizard components complete, results components missing
+**Status**: 🔧 **PARTIALLY IMPLEMENTED** - Wizard components complete, results components missing  
+**Last Reviewed**: October 8, 2025  
+**Status**: ✅ Aligned with canonical sources (.cursor/tasks/ + MODES.md)
+
+---
+
+## 📚 **Canonical Sources**
+
+**This specification aligns with canonical architectural principles**:
+- **Architectural Principles**: [CANONICAL_ARCHITECTURAL_PRINCIPLES.md](../CANONICAL_ARCHITECTURAL_PRINCIPLES.md) - Consolidated from all .cursor/tasks/
+- **Strategy Specifications**: [MODES.md](MODES.md) - Canonical strategy mode definitions
+- **Task Specifications**: `.cursor/tasks/` - Individual task specifications
 
 ---
 
@@ -26,6 +37,63 @@ Provide intuitive wizard-based UI for:
 - **Embedded Plotly**: Backend-generated interactive charts
 - **Responsive**: Desktop + mobile
 - **Minimal**: Simple, focused, easy to use
+
+---
+
+## 🚀 **Deployment**
+
+### **Environment Configuration**
+
+The frontend uses the same unified environment structure as the backend:
+
+**Frontend Environment Files**:
+- `frontend/.env.dev`: Development configuration
+- `frontend/.env.staging`: Staging configuration  
+- `frontend/.env.production`: Production configuration
+
+**Key Environment Variables**:
+- `VITE_API_BASE_URL`: API base URL for frontend API calls (default: `/api/v1`)
+
+### **Deployment Modes**
+
+**Backend-Only Mode**:
+```bash
+# Platform.sh - backend only (uses env file BASIS_EXECUTION_MODE)
+./platform.sh backend
+
+# Platform.sh - force backtest mode (overrides env file)
+./platform.sh backtest
+
+# Docker - backend only
+cd docker && ./deploy.sh backend
+```
+
+**Full-Stack Mode**:
+```bash
+# Platform.sh - full stack (uses env file BASIS_EXECUTION_MODE)
+./platform.sh start
+
+# Docker - full stack
+cd docker && ./deploy.sh all
+```
+
+**Execution Mode Control**:
+- **Environment Files**: Set `BASIS_EXECUTION_MODE=backtest` or `BASIS_EXECUTION_MODE=live` in `.env.*` files
+- **Command Override**: `./platform.sh backtest` **always forces backtest mode** regardless of env file
+- **Default Behavior**: `dev`/`staging` = backtest, `production` = live
+
+### **Build Process**
+
+**Vite Build Configuration**:
+- Environment variables prefixed with `VITE_` are available at build time
+- `import.meta.env.VITE_API_BASE_URL` used for API calls
+- Build artifacts served by Caddy reverse proxy
+
+**Caddy Integration**:
+- Serves static frontend assets
+- Proxies API calls to backend
+- Handles TLS/SSL certificates
+- Basic authentication support
 
 ---
 
@@ -383,6 +451,47 @@ frontend/src/
 - Mobile responsive (Tailwind)
 - No bloat (minimal dependencies)
 - Fast development
+
+---
+
+## 🏥 **Health Monitoring Integration**
+
+### **Frontend Health Considerations**
+
+The automatic health monitoring system ensures backend availability for the frontend:
+
+**Health Check Configuration**:
+- **Interval**: Configurable via `HEALTH_CHECK_INTERVAL` (default: 30s)
+- **Endpoint**: `/health` (fast) or `/health/detailed` (comprehensive)
+- **Restart Behavior**: On unhealthy backend, all services restart (backend + frontend + Redis)
+
+**Frontend Impact**:
+- **During Restart**: Brief service interruption (~5-10 seconds)
+- **User Experience**: Frontend should show loading state or retry logic for API calls
+- **Recommendations**: 
+  - Implement API call retry logic (3 attempts with 2s delay)
+  - Show "Backend restarting..." message during 503 errors
+  - Auto-reconnect WebSocket connections after backend restart
+
+**Implementation Notes**:
+```typescript
+// API service with retry logic
+async function callAPI(endpoint: string, retries = 3) {
+  for (let i = 0; i < retries; i++) {
+    try {
+      const response = await fetch(endpoint);
+      if (response.ok) return response.json();
+      if (response.status === 503 && i < retries - 1) {
+        await new Promise(r => setTimeout(r, 2000)); // Wait 2s
+        continue;
+      }
+      throw new Error(`API error: ${response.status}`);
+    } catch (error) {
+      if (i === retries - 1) throw error;
+    }
+  }
+}
+```
 
 ---
 

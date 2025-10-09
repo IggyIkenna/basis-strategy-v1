@@ -1,16 +1,50 @@
 """
 Exposure Monitor Component
 
-Convert all balances to share class currency, calculate net delta.
-Aggregate exposure across all venues in share class currency.
+TODO-REFACTOR: GENERIC VS MODE-SPECIFIC ARCHITECTURE VIOLATION - 18_generic_vs_mode_specific_architecture.md
+ISSUE: This component violates canonical architecture requirements:
 
-Key Principles:
-- Converts: Token balances → ETH or USD (share class dependent)
-- AAVE conversion chain: aWeETH → underlying weETH → ETH → USD (via indices + oracle)
-- Net delta calculation: Sum all long ETH - sum all short ETH
-- Share class aware: ETH share class = ETH units, USDT share class = USD units
+1. GENERIC COMPONENT VIOLATIONS:
+   - Should be generic and mode-agnostic, but currently uses mode-specific logic
+   - Should care about config parameters (asset, share_class), not strategy mode
+   - Should NOT have hardcoded mode checks like "if mode == 'btc_basis'"
 
-Critical: This is where AAVE index mechanics happen!
+TODO-REFACTOR: MISSING CENTRALIZED UTILITY MANAGER VIOLATION - 14_mode_agnostic_architecture_requirements.md
+ISSUE: This component has scattered utility methods that should be centralized:
+
+1. CENTRALIZED UTILITY MANAGER REQUIREMENTS:
+   - Utility methods should be centralized in a single manager
+   - Liquidity index calculations should be centralized
+   - Market price conversions should be centralized
+   - No scattered utility methods across components
+
+2. REQUIRED VERIFICATION:
+   - Check for scattered utility methods in this component
+   - Verify utility methods are properly centralized
+   - Ensure no duplicate utility logic across components
+
+3. CANONICAL SOURCE:
+   - .cursor/tasks/14_mode_agnostic_architecture_requirements.md
+   - Centralized utilities required
+
+2. REQUIRED ARCHITECTURE (per 18_generic_vs_mode_specific_architecture.md):
+   - Should be generic exposure calculation
+   - Should care about: asset (which deltas to monitor), share_class (reporting currency)
+   - Should NOT care about: strategy mode specifics
+   - Should use config-driven parameters, not mode-specific logic
+
+3. CURRENT VIOLATIONS:
+   - Uses mode-specific logic instead of config-driven parameters
+   - Has hardcoded strategy mode checks
+   - Should be refactored to use: asset = config.get('asset'), share_class = config.get('share_class')
+
+4. REQUIRED FIX:
+   - Remove all mode-specific logic
+   - Use config parameters: asset, share_class, lst_type, hedge_allocation
+   - Make component truly mode-agnostic
+   - Generic exposure calculation using config parameters
+
+CURRENT STATE: This component needs refactoring to be truly generic and mode-agnostic.
 """
 
 from typing import Dict, List, Optional, Any

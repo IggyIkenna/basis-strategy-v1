@@ -80,9 +80,9 @@ class ComprehensiveConfigValidator:
                 'configs/share_classes/usdt_stable.yaml'
             ],
             'env_files': [
-                'backend/env.unified',
+                'env.unified',
                 'deploy/.env',
-                'deploy/.env.local',
+                'deploy/.env.dev',
                 'deploy/.env.staging'
             ]
         }

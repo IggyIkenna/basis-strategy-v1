@@ -1,24 +1,35 @@
 # Standard: Redis Messaging 📡
 
 **Purpose**: Define Redis pub/sub patterns for inter-component communication  
-**Priority**: ⭐⭐ MEDIUM (Optional for backtest, required for live)  
-**Applies To**: Event Logger only (other components use direct method calls)
+**Priority**: ⭐⭐⭐ CRITICAL (Required for both backtest and live modes)  
+**Applies To**: All components for infrastructure alignment  
+**Last Reviewed**: October 8, 2025  
+**Status**: ✅ Aligned with canonical sources (.cursor/tasks/ + MODES.md)
+
+---
+
+## 📚 **Canonical Sources**
+
+**This standard aligns with canonical architectural principles**:
+- **Architectural Principles**: [CANONICAL_ARCHITECTURAL_PRINCIPLES.md](../CANONICAL_ARCHITECTURAL_PRINCIPLES.md) - Consolidated from all .cursor/tasks/
+- **Strategy Specifications**: [MODES.md](MODES.md) - Canonical strategy mode definitions
+- **Task Specifications**: `.cursor/tasks/` - Individual task specifications
 
 ---
 
 ## 🎯 **Purpose**
 
-Standardize Redis usage for backtest-to-live compatibility.
+Standardize Redis usage for infrastructure alignment between backtest and live modes.
 
 **Key Principles**:
-- **Synchronous in backtest**: Direct method calls for simplicity and performance
-- **Redis in live**: Real-time event publishing via pub/sub (Event Logger only)
-- **Fallback support**: Event Logger works with or without Redis
-- **Pub/Sub for events**: Event Logger publishes events to Redis (live only)
-- **Keys for state**: Latest event data cached for queries (live only)
-- **TTL policies**: Hourly data expires after 1 hour (live only)
+- **Infrastructure Alignment**: Redis used in both backtest and live modes for realistic backtesting
+- **Inter-component Communication**: All components use Redis for pub/sub messaging
+- **Fallback support**: Components work with or without Redis (graceful degradation)
+- **Pub/Sub for events**: All components publish events to Redis channels
+- **Keys for state**: Latest event data cached for queries across all components
+- **TTL policies**: Hourly data expires after 1 hour for both modes
 
-**Implementation Note**: Redis is currently only implemented in the Event Logger component. Other components communicate via direct method calls, not Redis pub/sub as originally planned.
+**Implementation Note**: Redis is used consistently across all components in both backtest and live modes to ensure infrastructure alignment and realistic backtesting.
 
 ---
 

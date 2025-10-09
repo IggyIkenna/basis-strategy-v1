@@ -47,7 +47,7 @@ dist/
 node_modules/
 
 # Configuration directories (runtime configs, not source code)
-configs/
+# configs/
 
 # Scripts subdirectories (utility scripts, not core application code)
 scripts/analyzers/
@@ -58,7 +58,7 @@ scripts/utilities/
 
 # Environment files (sensitive will remove later)
 #.env
-#.env.local
+#.env.dev
 #.env.production
 #.env.staging
 

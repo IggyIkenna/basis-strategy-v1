@@ -3,7 +3,18 @@
 **Component**: CEX Execution Interface  
 **Responsibility**: Execute spot and perpetual trades on centralized exchanges  
 **Priority**: ⭐⭐ HIGH (Executes off-chain operations)  
-**Backend File**: `backend/src/basis_strategy_v1/core/interfaces/cex_execution_interface.py` ✅ **CORRECT**
+**Backend File**: `backend/src/basis_strategy_v1/core/interfaces/cex_execution_interface.py` ✅ **CORRECT**  
+**Last Reviewed**: October 8, 2025  
+**Status**: ✅ Aligned with canonical sources (.cursor/tasks/ + MODES.md)
+
+---
+
+## 📚 **Canonical Sources**
+
+**This component spec aligns with canonical architectural principles**:
+- **Architectural Principles**: [CANONICAL_ARCHITECTURAL_PRINCIPLES.md](../CANONICAL_ARCHITECTURAL_PRINCIPLES.md) - Consolidated from all .cursor/tasks/
+- **Strategy Specifications**: [MODES.md](MODES.md) - Canonical strategy mode definitions
+- **Task Specifications**: `.cursor/tasks/` - Individual task specifications
 
 ---
 
@@ -106,8 +117,10 @@ class CEXExecutionManager:
         self.event_logger = event_logger
         self.data_provider = data_provider
         
-        # Live mode: Initialize CCXT clients
+        # Initialize CCXT clients based on execution mode
+        self.exchanges = {}
         if execution_mode == 'live':
+            # Live mode: Initialize real CCXT clients with environment-specific credentials
             self.exchanges = {
                 # Binance Spot (for spot trading)
                 'binance_spot': ccxt.binance({
@@ -134,6 +147,14 @@ class CEXExecutionManager:
                     'sandbox': config['cex']['okx_testnet']
                 })
             }
+        else:
+            # Backtest mode: Initialize mock clients for simulation
+            self.exchanges = {
+                'binance_spot': MockExchange('binance_spot'),
+                'binance_futures': MockExchange('binance_futures'),
+                'bybit': MockExchange('bybit'),
+                'okx': MockExchange('okx')
+            }
     
     async def trade_spot(
         self,
@@ -150,6 +171,7 @@ class CEXExecutionManager:
         Backtest: Simulate using historical prices
         Live: Execute real order via CCXT with market data
         """
+        # Execute trade based on execution mode (both modes use same interface)
         if self.execution_mode == 'backtest':
             result = await self._simulate_spot_trade(venue, pair, side, amount, timestamp, market_data)
         else:  # live
@@ -254,6 +276,7 @@ class CEXExecutionManager:
         Backtest: Simulate using futures prices
         Live: Execute real order via CCXT with market data
         """
+        # Execute trade based on execution mode (both modes use same interface)
         if self.execution_mode == 'backtest':
             result = await self._simulate_perp_trade(venue, instrument, side, size_eth, timestamp, market_data)
         else:  # live

@@ -1,0 +1,295 @@
+#!/usr/bin/env python3
+"""
+Quality Gate: Documentation Structure Validation
+Validates that all docs/ files (except docs/specs/) have proper structure
+and that all docs/specs/ files have implementation status sections.
+"""
+
+import os
+import re
+import subprocess
+import sys
+from pathlib import Path
+from typing import List, Tuple, Dict, Set
+
+def find_docs_files(docs_dir: str = "docs/") -> Tuple[List[str], List[str]]:
+    """Find all markdown files in docs/ and docs/specs/ directories."""
+    all_docs = []
+    specs_docs = []
+    
+    for root, dirs, files in os.walk(docs_dir):
+        for file in files:
+            if file.endswith('.md'):
+                file_path = os.path.join(root, file)
+                if 'specs' in file_path:
+                    specs_docs.append(file_path)
+                else:
+                    all_docs.append(file_path)
+    
+    return all_docs, specs_docs
+
+def validate_docs_structure(file_path: str) -> Dict:
+    """Validate that a docs/ file (not in specs/) has proper structure."""
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+        
+        # Check for basic structure elements
+        has_title = bool(re.search(r'^#\s+.+', content, re.MULTILINE))
+        has_purpose = bool(re.search(r'(purpose|overview|introduction)', content, re.IGNORECASE))
+        has_sections = len(re.findall(r'^##\s+', content, re.MULTILINE)) >= 2
+        
+        # Check for canonical sources reference
+        has_canonical_sources = bool(re.search(r'canonical.*source', content, re.IGNORECASE))
+        
+        return {
+            'file': file_path,
+            'has_title': has_title,
+            'has_purpose': has_purpose,
+            'has_sections': has_sections,
+            'has_canonical_sources': has_canonical_sources,
+            'structure_score': sum([has_title, has_purpose, has_sections, has_canonical_sources])
+        }
+    
+    except Exception as e:
+        return {
+            'file': file_path,
+            'error': str(e),
+            'structure_score': 0
+        }
+
+def validate_specs_implementation_status(file_path: str) -> Dict:
+    """Validate that a docs/specs/ file has complete structure including implementation status section."""
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+        
+        # Check for implementation status section
+        has_implementation_status = bool(re.search(
+            r'##\s+.*[Ii]mplementation\s+[Ss]tatus', content, re.MULTILINE
+        ))
+        
+        # Check for specific implementation status elements
+        has_current_status = bool(re.search(r'[Cc]urrent\s+[Ii]mplementation', content))
+        has_architecture_compliance = bool(re.search(r'[Aa]rchitecture\s+[Cc]ompliance', content))
+        has_todo_items = bool(re.search(r'[Tt][Oo][Dd][Oo]', content))
+        has_quality_gate_status = bool(re.search(r'[Qq]uality\s+[Gg]ate', content))
+        has_task_completion = bool(re.search(r'[Tt]ask\s+[Cc]ompletion', content))
+        
+        # Check for canonical sources reference
+        has_canonical_sources = bool(re.search(r'canonical.*source', content, re.IGNORECASE))
+        
+        # Check for last reviewed date
+        has_last_reviewed = bool(re.search(r'[Ll]ast\s+[Rr]eviewed', content))
+        
+        # Check for required spec structure sections
+        has_title_with_emoji = bool(re.search(r'^#\s+.*📊|🎯|🔧|📦|🔄|💻|🧪|⚡|🎯', content, re.MULTILINE))
+        has_component_metadata = bool(re.search(r'\*\*Component\*\*:', content))
+        has_purpose_section = bool(re.search(r'##\s+.*[Pp]urpose', content, re.MULTILINE))
+        has_component_structure = bool(re.search(r'##\s+.*[Cc]omponent\s+[Ss]tructure', content, re.MULTILINE))
+        has_data_structures = bool(re.search(r'##\s+.*[Dd]ata\s+[Ss]tructures', content, re.MULTILINE))
+        has_integration_section = bool(re.search(r'##\s+.*[Ii]ntegration', content, re.MULTILINE))
+        has_implementation_section = bool(re.search(r'##\s+.*[Ii]mplementation', content, re.MULTILINE))
+        has_testing_section = bool(re.search(r'##\s+.*[Tt]esting', content, re.MULTILINE))
+        has_success_criteria = bool(re.search(r'##\s+.*[Ss]uccess\s+[Cc]riteria', content, re.MULTILINE))
+        
+        implementation_elements = [
+            has_implementation_status,
+            has_current_status,
+            has_architecture_compliance,
+            has_todo_items,
+            has_quality_gate_status,
+            has_task_completion
+        ]
+        
+        structure_elements = [
+            has_title_with_emoji,
+            has_component_metadata,
+            has_canonical_sources,
+            has_purpose_section,
+            has_component_structure,
+            has_data_structures,
+            has_integration_section,
+            has_implementation_section,
+            has_testing_section,
+            has_success_criteria,
+            has_last_reviewed
+        ]
+        
+        return {
+            'file': file_path,
+            'has_implementation_status': has_implementation_status,
+            'has_current_status': has_current_status,
+            'has_architecture_compliance': has_architecture_compliance,
+            'has_todo_items': has_todo_items,
+            'has_quality_gate_status': has_quality_gate_status,
+            'has_task_completion': has_task_completion,
+            'has_canonical_sources': has_canonical_sources,
+            'has_last_reviewed': has_last_reviewed,
+            'has_title_with_emoji': has_title_with_emoji,
+            'has_component_metadata': has_component_metadata,
+            'has_purpose_section': has_purpose_section,
+            'has_component_structure': has_component_structure,
+            'has_data_structures': has_data_structures,
+            'has_integration_section': has_integration_section,
+            'has_implementation_section': has_implementation_section,
+            'has_testing_section': has_testing_section,
+            'has_success_criteria': has_success_criteria,
+            'implementation_score': sum(implementation_elements),
+            'structure_score': sum(structure_elements),
+            'total_implementation_elements': len(implementation_elements),
+            'total_structure_elements': len(structure_elements)
+        }
+    
+    except Exception as e:
+        return {
+            'file': file_path,
+            'error': str(e),
+            'implementation_score': 0,
+            'structure_score': 0,
+            'total_implementation_elements': 6,
+            'total_structure_elements': 11
+        }
+
+def run_quality_gate() -> Dict:
+    """Run the documentation structure validation quality gate."""
+    print("=== Documentation Structure Validation Quality Gate ===")
+    print(f"Timestamp: {subprocess.check_output(['date']).decode().strip()}")
+    print()
+    
+    # Find all docs files
+    print("1. Scanning documentation files:")
+    all_docs, specs_docs = find_docs_files()
+    print(f"Found {len(all_docs)} docs/ files (excluding specs/)")
+    print(f"Found {len(specs_docs)} docs/specs/ files")
+    print()
+    
+    # Validate docs/ structure (excluding specs/)
+    print("2. Validating docs/ structure (excluding specs/):")
+    docs_results = []
+    docs_passed = 0
+    
+    for file_path in all_docs:
+        result = validate_docs_structure(file_path)
+        docs_results.append(result)
+        
+        if result.get('structure_score', 0) >= 3:  # At least 3/4 elements
+            docs_passed += 1
+    
+    print(f"Docs structure validation complete: {docs_passed}/{len(all_docs)} passed")
+    print()
+    
+    # Validate docs/specs/ implementation status and structure
+    print("3. Validating docs/specs/ implementation status and structure:")
+    specs_results = []
+    specs_implementation_passed = 0
+    specs_structure_passed = 0
+    
+    for file_path in specs_docs:
+        result = validate_specs_implementation_status(file_path)
+        specs_results.append(result)
+        
+        if result.get('implementation_score', 0) >= 4:  # At least 4/6 elements
+            specs_implementation_passed += 1
+            
+        if result.get('structure_score', 0) >= 8:  # At least 8/11 elements
+            specs_structure_passed += 1
+    
+    print(f"Specs implementation status validation complete: {specs_implementation_passed}/{len(specs_docs)} passed")
+    print(f"Specs structure validation complete: {specs_structure_passed}/{len(specs_docs)} passed")
+    print()
+    
+    # Calculate overall pass rates
+    total_docs = len(all_docs) + len(specs_docs)
+    total_specs_passed = specs_implementation_passed + specs_structure_passed
+    total_passed = docs_passed + specs_implementation_passed
+    
+    if total_docs == 0:
+        overall_pass_rate = 100
+    else:
+        overall_pass_rate = (total_passed * 100) // total_docs
+    
+    # Quality Gate Results
+    print("=== Quality Gate Results ===")
+    print(f"Total documentation files: {total_docs}")
+    print(f"Docs/ files (excluding specs/): {len(all_docs)}")
+    print(f"Docs/specs/ files: {len(specs_docs)}")
+    print(f"Docs structure passed: {docs_passed}/{len(all_docs)}")
+    print(f"Specs implementation status passed: {specs_implementation_passed}/{len(specs_docs)}")
+    print(f"Specs structure passed: {specs_structure_passed}/{len(specs_docs)}")
+    print(f"Overall pass rate: {overall_pass_rate}%")
+    print()
+    
+    # Quality Gate Decision
+    if (docs_passed == len(all_docs) and 
+        specs_implementation_passed == len(specs_docs) and 
+        specs_structure_passed == len(specs_docs)):
+        print("✅ QUALITY GATE PASSED: All documentation structure requirements met")
+        print("All documentation files have proper structure and implementation status")
+        return {
+            "status": "PASSED",
+            "total_docs": total_docs,
+            "docs_passed": docs_passed,
+            "docs_total": len(all_docs),
+            "specs_implementation_passed": specs_implementation_passed,
+            "specs_structure_passed": specs_structure_passed,
+            "specs_total": len(specs_docs),
+            "overall_pass_rate": overall_pass_rate,
+            "docs_results": docs_results,
+            "specs_results": specs_results
+        }
+    else:
+        print("❌ QUALITY GATE FAILED: Documentation structure requirements not met")
+        print()
+        
+        # Show failing docs/ files
+        if docs_passed < len(all_docs):
+            print("Docs/ files with structure issues:")
+            for result in docs_results:
+                if result.get('structure_score', 0) < 3:
+                    print(f"  {result['file']}: {result.get('structure_score', 0)}/4 elements")
+            print()
+        
+        # Show failing specs/ files - implementation status
+        if specs_implementation_passed < len(specs_docs):
+            print("Docs/specs/ files missing implementation status:")
+            for result in specs_results:
+                if result.get('implementation_score', 0) < 4:
+                    print(f"  {result['file']}: {result.get('implementation_score', 0)}/6 elements")
+            print()
+        
+        # Show failing specs/ files - structure
+        if specs_structure_passed < len(specs_docs):
+            print("Docs/specs/ files missing required structure sections:")
+            for result in specs_results:
+                if result.get('structure_score', 0) < 8:
+                    print(f"  {result['file']}: {result.get('structure_score', 0)}/11 elements")
+            print()
+        
+        print("Required action: Fix documentation structure issues")
+        print("Target: 100% documentation structure compliance")
+        print(f"Current: {overall_pass_rate}% documentation structure compliance")
+        
+        return {
+            "status": "FAILED",
+            "total_docs": total_docs,
+            "docs_passed": docs_passed,
+            "docs_total": len(all_docs),
+            "specs_implementation_passed": specs_implementation_passed,
+            "specs_structure_passed": specs_structure_passed,
+            "specs_total": len(specs_docs),
+            "overall_pass_rate": overall_pass_rate,
+            "docs_results": docs_results,
+            "specs_results": specs_results
+        }
+
+if __name__ == "__main__":
+    try:
+        result = run_quality_gate()
+        if result["status"] == "FAILED":
+            sys.exit(1)
+        else:
+            sys.exit(0)
+    except Exception as e:
+        print(f"Error running quality gate: {e}")
+        sys.exit(1)

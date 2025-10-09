@@ -13,7 +13,7 @@ import uvicorn
 from contextlib import asynccontextmanager
 from typing import Optional
 
-from .routes import backtest, strategies, health, results, charts, live_trading, component_health
+from .routes import backtest, strategies, health, results, charts, live_trading
 from .middleware.correlation import CorrelationMiddleware
 from ..infrastructure.config.config_manager import get_settings
 from ..infrastructure.config.config_validator import validate_configuration
@@ -25,6 +25,18 @@ import sys
 # Early core startup configuration validation - MUST happen before anything else
 def validate_core_startup_config():
     """Validate core startup configuration before application starts."""
+    # TODO: [ENV_VAR_VALIDATION] - Environment variable validation for quality gates
+    # Current Issue: Missing environment-specific credential validation for live mode
+    # Required Changes:
+    #   1. Add validation for environment-specific venue credentials based on BASIS_ENVIRONMENT
+    #   2. Add BASIS_EXECUTION_MODE validation (backtest requires NO credentials, live requires environment-specific credentials)
+    #   3. Add quality gate validation for backtest mode (data provider initialization)
+    #   4. Add quality gate validation for live mode (venue API health checks)
+    # Reference: docs/ENVIRONMENT_VARIABLES.md - Environment Variable Validation Requirements section
+    # Reference: .cursor/tasks/11_backtest_mode_quality_gates.md - Backtest Mode Quality Gates
+    # Reference: .cursor/tasks/12_live_trading_quality_gates.md - Live Trading Quality Gates
+    # Status: PENDING
+    
     core_vars = [
         'BASIS_ENVIRONMENT',
         'BASIS_DEPLOYMENT_MODE', 
@@ -33,7 +45,8 @@ def validate_core_startup_config():
         'BASIS_REDIS_URL',
         'BASIS_DEBUG',
         'BASIS_LOG_LEVEL',
-        'BASIS_STARTUP_MODE',
+        'BASIS_EXECUTION_MODE',
+        'BASIS_DATA_MODE',
         'BASIS_DATA_START_DATE',
         'BASIS_DATA_END_DATE',
         'BASIS_API_PORT',
@@ -47,8 +60,8 @@ def validate_core_startup_config():
     
     if missing_vars:
         print(f"❌ CRITICAL: Missing required environment variables: {', '.join(missing_vars)}")
-        print("💡 Make sure to load environment variables from .env.local or .env.prod")
-        print("💡 Use: source .env.local or platform.sh start")
+        print("💡 Make sure to load environment variables from .env.dev or .env.prod")
+        print("💡 Use: source .env.dev or platform.sh start")
         sys.exit(1)
     
     print(f"✅ Core startup configuration validated for {os.getenv('BASIS_ENVIRONMENT')} environment")
@@ -68,7 +81,12 @@ logger = structlog.get_logger()
 async def lifespan(app: FastAPI):
     """Application lifespan events."""
     # Startup
-    environment = os.getenv('BASIS_ENVIRONMENT', 'dev')
+    try: 
+        environment = os.getenv('BASIS_ENVIRONMENT')
+    except Exception as e:
+        logger.error(f"❌ Failed to get environment check there is a valid env file being loaded during deployment: {e}")
+        raise RuntimeError(f"Failed to get environment check there is a valid env file being loaded during deployment: {e}")
+    
     logger.info(
         "Starting Basis Strategy API", 
         environment=environment,
@@ -91,17 +109,13 @@ async def lifespan(app: FastAPI):
         
         # Initialize config manager (already cached)
         config_manager = get_config_manager()
-        startup_mode = config_manager.get_startup_mode()
-        logger.info(f"✅ Config manager initialized - startup mode: {startup_mode}")
+        execution_mode = os.getenv('BASIS_EXECUTION_MODE', 'unknown')
+        data_mode = os.getenv('BASIS_DATA_MODE', 'unknown')
+        logger.info(f"✅ Config manager initialized - execution mode: {execution_mode}, data mode: {data_mode}")
         
-        # Load data provider with all data (Phase 2 architecture)
-        data_provider = get_data_provider()
-        logger.info(f"✅ Data provider initialized - {len(data_provider.data)} datasets loaded")
-        
-        # Validate data if in backtest mode
-        if startup_mode == 'backtest' and hasattr(data_provider, '_validate_data_at_startup'):
-            data_provider._validate_data_at_startup()
-            logger.info("✅ Data validation completed")
+        # Data provider will be created on-demand during API calls
+        # No data loading at startup - follows new architecture
+        logger.info("✅ Data provider architecture ready (on-demand loading)")
         
         logger.info("🚀 API startup completed successfully with new architecture")
         
@@ -130,10 +144,10 @@ def create_application() -> FastAPI:
     - Type safety with Pydantic
     """
     # Use environment variables directly for core startup config
-    debug_mode = os.getenv('BASIS_DEBUG', 'false').lower() == 'true'
-    api_host = os.getenv('BASIS_API_HOST', '0.0.0.0')
-    api_port = int(os.getenv('BASIS_API_PORT', '8001'))
-    log_level = os.getenv('BASIS_LOG_LEVEL', 'INFO')
+    debug_mode = os.getenv('BASIS_DEBUG')
+    api_host = os.getenv('BASIS_API_HOST')
+    api_port = int(os.getenv('BASIS_API_PORT'))
+    log_level = os.getenv('BASIS_LOG_LEVEL')
     
     app = FastAPI(
         title="Basis Strategy API",
@@ -183,11 +197,6 @@ def create_application() -> FastAPI:
         health.router,
         prefix="/health",
         tags=["health"]
-    )
-    app.include_router(
-        component_health.router,
-        prefix="/health",
-        tags=["component-health"]
     )
     app.include_router(
         backtest.router,
@@ -260,7 +269,7 @@ def create_application() -> FastAPI:
             "status": "operational",
             "documentation": "/docs" if debug_mode else "Disabled in production",
             "health": "/health",
-            "component_health": "/health/components",
+            "detailed_health": "/health/detailed",
             "metrics": "/metrics"
         }
     
@@ -274,10 +283,10 @@ app = create_application()
 def run(host: Optional[str] = None, port: Optional[int] = None):
     """Run the application with uvicorn."""
     # Use environment variables directly
-    debug_mode = os.getenv('BASIS_DEBUG', 'false').lower() == 'true'
-    api_host = os.getenv('BASIS_API_HOST', '0.0.0.0')
-    api_port = int(os.getenv('BASIS_API_PORT', '8001'))
-    log_level = os.getenv('BASIS_LOG_LEVEL', 'INFO')
+    debug_mode = os.getenv('BASIS_DEBUG') == 'true'
+    api_host = os.getenv('BASIS_API_HOST')
+    api_port = int(os.getenv('BASIS_API_PORT'))
+    log_level = os.getenv('BASIS_LOG_LEVEL')
     
     uvicorn.run(
         "basis_strategy_v1_v1.api.main:app",

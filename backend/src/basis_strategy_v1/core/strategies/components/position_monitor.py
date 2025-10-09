@@ -1,6 +1,25 @@
 """
 Position Monitor Component
 
+TODO-REFACTOR: TIGHT LOOP ARCHITECTURE VIOLATION - 10_tight_loop_architecture_requirements.md
+ISSUE: This component may violate tight loop architecture requirements:
+
+1. TIGHT LOOP ARCHITECTURE REQUIREMENTS:
+   - Components must follow strict tight loop sequence
+   - Proper event processing order
+   - No state clearing between iterations
+   - Consistent processing flow
+
+2. REQUIRED VERIFICATION:
+   - Verify tight loop sequence is enforced
+   - Check for proper event processing order
+   - Ensure no state clearing violations
+   - Validate consistent processing flow
+
+3. CANONICAL SOURCE:
+   - .cursor/tasks/10_tight_loop_architecture_requirements.md
+   - Tight loop sequence must be enforced
+
 Tracks raw ERC-20/token balances and derivative positions with NO conversions.
 This component knows about balances in NATIVE token units only.
 

@@ -1,7 +1,32 @@
 """Cross-Venue Transfer Manager - Execute intelligent transfers between venues.
 
-Handles the complex logic of moving collateral between EtherFi, AAVE, and Bybit
-to maintain optimal health across all venues while preserving yield efficiency.
+TODO-REMOVE: MAJOR ARCHITECTURE VIOLATION - strategy_manager_refactor.md
+ISSUE: This component violates canonical architecture requirements and should be REMOVED:
+
+1. STRATEGY MANAGER REFACTOR VIOLATIONS:
+   - This 1068-line complex transfer manager should be completely removed
+   - Too complex and strategy-agnostic generalization is not feasible
+   - Should be replaced with inheritance-based strategy-specific implementations
+
+2. REQUIRED REMOVAL (per strategy_manager_refactor.md + docs/MODES.md):
+   - DELETE this entire file (1068 lines)
+   - Remove all references to transfer_manager.py in strategy manager
+   - Replace with inheritance-based strategy-specific implementations
+   - Move venue routing logic to execution manager
+
+3. REPLACEMENT ARCHITECTURE:
+   - Create BaseStrategyManager with standardized wrapper actions
+   - Create strategy-specific implementations: BTCBasisStrategyManager, ETHLeveragedStrategyManager, etc.
+   - Create StrategyFactory for mode-based instantiation
+   - Move venue routing to ExecutionManager
+   - **Reference**: docs/MODES.md - Standardized Strategy Manager Architecture section
+
+4. CURRENT VIOLATIONS:
+   - Overly complex architecture that doesn't align with canonical principles
+   - Strategy-agnostic generalization that is not feasible
+   - Should be replaced with inheritance-based strategy modes
+
+CURRENT STATE: This file should be DELETED and replaced with inheritance-based strategy architecture.
 """
 
 from decimal import Decimal

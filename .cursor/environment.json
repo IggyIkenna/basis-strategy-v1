@@ -60,18 +60,6 @@
       "command": "cd frontend && npm test -- --watchAll=false"
     },
     {
-      "name": "BTC Exposure Debug",
-      "command": "python test_exposure_monitor_btc.py"
-    },
-    {
-      "name": "Pure Lending Backtest",
-      "command": "python run_pure_lending_backtest.py"
-    },
-    {
-      "name": "Backtest Results Analysis",
-      "command": "python analyze_backtest_results.py"
-    },
-    {
       "name": "Config Validation",
       "command": "python validate_config.py"
     },
@@ -82,6 +70,10 @@
     {
       "name": "Completion Validation",
       "command": "python validate_completion.py"
+    },
+    {
+      "name": "Documentation Link Validation",
+      "command": "python scripts/test_docs_link_validation_quality_gates.py"
     }
   ]
 }

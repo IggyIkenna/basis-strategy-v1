@@ -113,12 +113,6 @@ class LiveTradingRequest(BaseModel):
         description="Strategy to run live"
     )
     
-    initial_capital: Decimal = Field(
-        ...,
-        gt=0,
-        description="Initial capital to allocate"
-    )
-    
     share_class: ShareClass = Field(
         default=ShareClass.USDT,
         description="Share class for the strategy"

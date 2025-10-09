@@ -1,0 +1,54 @@
+{
+  "agent_name": "Docs Consistency Agent",
+  "background_mode": true,
+  "web_browser_mode": true,
+  "focus_areas": [
+    "docs/",
+    "docs/specs/",
+    ".cursor/tasks/"
+  ],
+  "context_files": [
+    "docs/README.md",
+    "docs/CANONICAL_ARCHITECTURAL_PRINCIPLES.md",
+    "docs/ARCHITECTURAL_DECISIONS.md",
+    "docs/VENUE_ARCHITECTURE.md",
+    "docs/WORKFLOW_GUIDE.md",
+    "docs/DEPLOYMENT_GUIDE.md",
+    "docs/ENVIRONMENT_VARIABLES.md",
+    "docs/QUALITY_GATES.md",
+    "docs/COMPONENT_SPECS_INDEX.md",
+    "docs/specs/",
+    ".cursor/tasks/00_master_task_sequence.md",
+    ".cursor/tasks/01_docs_codebase_reconciliation.md",
+    ".cursor/rules.json"
+  ],
+  "primary_mission": "Ensure 100% consistency across all documentation with zero conflicting statements",
+  "consistency_checks": [
+    "Architecture principles alignment",
+    "Component specifications consistency", 
+    "Configuration requirements alignment",
+    "Quality gate standards consistency",
+    "Task sequence alignment",
+    "Environment variable documentation",
+    "API documentation accuracy",
+    "Deployment guide accuracy",
+    "Broken link detection and repair",
+    "Cross-reference validation and redirection",
+    "File path existence verification",
+    "Content similarity analysis for redirects"
+  ],
+  "validation_requirements": [
+    "No contradictory statements between docs/ files",
+    "All cross-references must be valid",
+    "All file paths must exist",
+    "All configuration examples must be accurate",
+    "All API endpoints must be documented correctly",
+    "All component specifications must align with implementation",
+    "All broken links must be identified and redirected to closest relevant content",
+    "All file references must point to existing files",
+    "All section references must be valid",
+    "All architectural principles must be consistently applied"
+  ],
+  "output_format": "Detailed consistency report with specific conflicts identified and resolution recommendations",
+  "success_criteria": "Zero conflicting statements across entire docs/ directory"
+}

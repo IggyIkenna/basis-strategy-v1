@@ -17,6 +17,7 @@ share_class: "ETH"
 asset: "USDT"
 lst_type: "weeth"  # or "wsteth"
 rewards_mode: "base_eigen"  # base + EIGEN rewards
+reserve_ratio: 0.1
 
 # Execution parameters
 use_flash_loan: false
@@ -44,9 +45,7 @@ data_requirements:
   - "execution_costs"  # Execution cost model
   - "aave_risk_params"  # AAVE v3 risk parameters JSON
 
-# Monitoring
-monitoring_position_check_interval: 300
-monitoring_risk_check_interval: 60
+# Live time throttling 
+time_throttle_interval: 60
 
-# REMOVED: capital_allocation - not needed in config, calculated at runtime
 

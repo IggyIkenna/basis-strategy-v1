@@ -1,7 +1,7 @@
 # Strategy Manager Refactor
 
 ## Overview
-Refactor the strategy manager architecture to use inheritance-based strategy modes with standardized wrapper actions, replacing the current complex and disorganized rebalancing system.
+Refactor the strategy manager architecture to use inheritance-based strategy modes with standardized wrapper actions, replacing the current complex and disorganized rebalancing system. This refactor aligns with the tight loop architecture and EventDrivenStrategyEngine integration requirements from the WORKFLOW_GUIDE.md.
 
 ## Key Changes
 
@@ -29,10 +29,11 @@ class StrategyAction(BaseModel):
 class BaseStrategyManager(ABC):
     """Base strategy manager with standardized interface"""
     
-    def __init__(self, config: Dict[str, Any], risk_monitor, position_monitor):
+    def __init__(self, config: Dict[str, Any], risk_monitor, position_monitor, event_engine):
         self.config = config
         self.risk_monitor = risk_monitor
         self.position_monitor = position_monitor
+        self.event_engine = event_engine
         self.share_class = config['share_class']
         self.asset = config['asset']
     
@@ -77,6 +78,12 @@ class BaseStrategyManager(ABC):
         dust_value = sum(self.get_token_value(token, amount) for token, amount in dust_tokens.items())
         equity = self.get_equity()
         return dust_value > (equity * self.config.get('dust_delta', 0.002))
+    
+    def trigger_tight_loop(self):
+        """Trigger tight loop component chain after position updates"""
+        # Position updates trigger sequential component chain:
+        # position_monitor → exposure_monitor → risk_monitor → pnl_monitor
+        self.event_engine.trigger_tight_loop()
 ```
 
 ### 3. Strategy-Specific Implementations
@@ -114,12 +121,12 @@ class StrategyFactory:
     }
     
     @classmethod
-    def create_strategy(cls, mode: str, config: Dict[str, Any], risk_monitor, position_monitor) -> BaseStrategyManager:
+    def create_strategy(cls, mode: str, config: Dict[str, Any], risk_monitor, position_monitor, event_engine) -> BaseStrategyManager:
         """Create strategy instance based on mode"""
         strategy_class = cls.STRATEGY_MAP.get(mode)
         if not strategy_class:
             raise ValueError(f"Unknown strategy mode: {mode}")
-        return strategy_class(config, risk_monitor, position_monitor)
+        return strategy_class(config, risk_monitor, position_monitor, event_engine)
 ```
 
 ### 5. API Integration
@@ -128,11 +135,15 @@ Update API endpoints to pass strategy mode:
 - **Backtest API**: Add `strategy_mode` parameter
 - **Live API**: Add `strategy_mode` parameter  
 - **Event Engine**: Pass strategy mode through to strategy manager
+- **Tight Loop Integration**: Strategy manager triggers tight loop after position updates
+- **Event Engine Integration**: Proper integration with EventDrivenStrategyEngine
 
 ### 6. Risk Integration
 - **Risk Monitor**: Manages venue-specific risks (strategy agnostic)
 - **Circuit Breaker**: Risk assessment triggers override actions (bypasses normal rebalancing)
 - **Risk Override**: Only tells strategy to reduce position, never to enter desired position
+- **Tight Loop Integration**: Risk monitor part of mandatory sequential component chain
+- **Event Engine Integration**: Risk events properly integrated with EventDrivenStrategyEngine
 
 ## Implementation Requirements
 
@@ -160,15 +171,32 @@ All strategies must implement the 5 wrapper actions:
 - Strategies monitor reserves and send fast execution requests when low
 - Reserve low events published for downstream consumers
 
+### Tight Loop Architecture Integration
+- Strategy manager triggers tight loop after position updates
+- Sequential component chain: position_monitor → exposure_monitor → risk_monitor → pnl_monitor
+- Event engine integration for consistent event handling
+- Centralized utility manager for all utility methods
+
+### Event Engine Integration
+- Proper integration with EventDrivenStrategyEngine
+- Component registration with event engine
+- Event-driven architecture for all strategy operations
+
 ## Testing Requirements
 - **MANDATORY**: 80% unit test coverage for all strategy classes
 - Test each wrapper action for all strategy modes
 - Test equity calculation accuracy
 - Test risk override integration
 - Test dust detection and selling logic
+- Test tight loop architecture integration
+- Test event engine integration
+- Test centralized utility manager usage
 
 ## Migration Notes
 - Remove `transfer_manager.py` completely
 - Update all references to use new strategy factory
 - Update event engine to use new strategy architecture
+- Implement tight loop architecture integration
+- Implement event engine integration
+- Implement centralized utility manager
 - Ensure backward compatibility during transition (if needed)

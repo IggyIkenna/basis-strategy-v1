@@ -2,7 +2,34 @@
 
 **Status**: ⭐ **CANONICAL SOURCE** - Single source of truth for all design decisions  
 **Usage**: All other docs REFERENCE this file, do not duplicate content  
-**Updated**: Ocober 6, 2025 - Updated to reflect 100% implementation completion
+**Updated**: October 6, 2025 - Updated to reflect 100% implementation completion  
+**Last Reviewed**: October 8, 2025  
+**Status**: ✅ Aligned with canonical sources (.cursor/tasks/ + MODES.md)
+
+---
+
+## ADR-001: Separate Data Source from Execution Mode
+
+**Date**: 2025-01-09  
+**Status**: Accepted  
+**Context**: The original architecture conflated data source (csv vs db) with execution mode (backtest vs live), leading to confusion and inflexibility.
+
+**Decision**: Separate `BASIS_DATA_MODE` (csv/db) from `BASIS_EXECUTION_MODE` (backtest/live) to create clear separation of concerns.
+
+**Consequences**:
+- **Positive**: Clear separation between data source and execution behavior
+- **Positive**: On-demand data loading eliminates startup bottlenecks
+- **Positive**: Environment-driven validation using `BASIS_DATA_START_DATE`/`BASIS_DATA_END_DATE`
+- **Positive**: `BASIS_DATA_MODE` only controls data source, NOT persistence or execution routing
+- **Negative**: Requires refactoring of data provider factory and initialization logic
+- **Negative**: More complex environment variable validation
+
+**Implementation**:
+- `BASIS_DATA_MODE=csv|db` controls data source for backtest mode only
+- `BASIS_EXECUTION_MODE=backtest|live` controls venue execution behavior
+- Data loaded on-demand during API calls, not at startup
+- Date range validation against environment variables
+- Health checks handle uninitialized data provider state
 
 ---
 
@@ -13,7 +40,7 @@
 - **Component overview** → [COMPONENT_SPECS_INDEX.md](COMPONENT_SPECS_INDEX.md)
 - **Implementation tasks** → [REQUIREMENTS.md](REQUIREMENTS.md)
 - **Timeline** → [IMPLEMENTATION_ROADMAP.md](IMPLEMENTATION_ROADMAP.md)
-- **Configuration** → [CONFIG_WORKFLOW.md](CONFIG_WORKFLOW.md)
+- **Configuration** → [specs/CONFIGURATION.md](specs/CONFIGURATION.md)
 
 ---
 
@@ -31,7 +58,7 @@ configs/
 └── scenarios/            # Scenario configurations (YAML) - NOT YET IMPLEMENTED
 
 deploy/
-├── .env.local           # Caddy deployment variables (local)
+├── .env.dev           # Caddy deployment variables (local)
 ├── .env.staging         # Caddy deployment variables (staging)
 └── .env                 # Caddy deployment variables (production)
 ```
@@ -49,10 +76,10 @@ deploy/
    - `share_classes/*.yaml` - Share class configurations
    - `scenarios/` - Scenario configurations (NOT YET IMPLEMENTED)
 
-2. **JSON-based hierarchy** (DOCUMENTED BUT NOT IMPLEMENTED)
-   - `default.json` (base configuration) - MISSING
-   - `{environment}.json` (environment-specific overrides) - MISSING
-   - `local.json` (local development overrides - dev only) - MISSING
+2. **YAML-based configuration** (IMPLEMENTED)
+   - `configs/modes/*.yaml` (strategy configurations) - ✅ IMPLEMENTED
+   - `configs/venues/*.yaml` (venue configurations) - ✅ IMPLEMENTED
+   - `configs/share_classes/*.yaml` (share class definitions) - ✅ IMPLEMENTED
 
 ### **2. Live Data Provider Architecture** ✅
 **Decision**: Implement LiveDataProvider with same interface as HistoricalDataProvider
@@ -536,14 +563,15 @@ if timestamp == payout_date:
 
 ### **19. Data File Naming** ✅
 
-**Hardcoded Mappings for Now**:
+**Dynamic Data File Loading**:
 ```python
-# Use hardcoded date ranges in file names
+# Data files loaded dynamically based on configuration and date ranges
+# No hardcoded file paths - all loaded through DataProvider configuration
 DATA_FILES = {
-    'eth_spot_binance': 'data/market_data/spot_prices/eth_usd/binance_ETHUSDT_spot_1h_2024-01-01_2025-09-27.csv',
-    'weeth_rates': 'data/protocol_data/aave/rates/aave_v3_aave-v3-ethereum_weETH_rates_2024-05-12_2025-09-18_hourly.csv',
-    'binance_futures': 'data/market_data/derivatives/futures_ohlcv/binance_ETHUSDT_perp_1h_2024-01-01_2025-09-26.csv',
-    # etc.
+    'eth_spot_binance': config.get_data_file_path('eth_spot_binance', start_date, end_date),
+    'weeth_rates': config.get_data_file_path('weeth_rates', start_date, end_date),
+    'binance_futures': config.get_data_file_path('binance_futures', start_date, end_date),
+    # All file paths loaded from configuration, not hardcoded
 }
 ```
 
@@ -865,19 +893,21 @@ class StakingCalculator:
 
 ### **32. Data File Naming Strategy** ✅
 
-**Hardcoded Mappings**:
+**Dynamic Data File Mapping**:
 ```python
 # scripts/analyzers/components/data_loader.py
 
+# Data files loaded dynamically through DataProvider configuration
+# No hardcoded file paths or dates - all loaded from config
 DATA_FILE_MAP = {
-    'eth_spot_binance': 'data/market_data/spot_prices/eth_usd/binance_ETHUSDT_spot_1h_2024-01-01_2025-09-27.csv',
-    'eth_spot_uniswap': 'data/market_data/spot_prices/eth_usd/uniswapv3_WETHUSDT_1h_2024-01-01_2025-09-27.csv',
-    'weeth_rates': 'data/protocol_data/aave/rates/aave_v3_aave-v3-ethereum_weETH_rates_2024-05-12_2025-09-18_hourly.csv',
-    'weth_rates': 'data/protocol_data/aave/rates/aave_v3_aave-v3-ethereum_WETH_rates_2024-01-01_2025-09-18_hourly.csv',
-    'binance_futures': 'data/market_data/derivatives/futures_ohlcv/binance_ETHUSDT_perp_1h_2024-01-01_2025-09-26.csv',
-    'bybit_futures': 'data/market_data/derivatives/futures_ohlcv/bybit_ETHUSDT_perp_1h_2024-01-01_2025-09-26.csv',
-    'okx_futures': 'data/market_data/derivatives/futures_ohlcv/okx_ETHUSDT_perp_1h_2024-08-01_2025-09-18.csv',
-    # ... all files with hardcoded dates
+    'eth_spot_binance': config.get_data_file_path('eth_spot_binance'),
+    'eth_spot_uniswap': config.get_data_file_path('eth_spot_uniswap'),
+    'weeth_rates': config.get_data_file_path('weeth_rates'),
+    'weth_rates': config.get_data_file_path('weth_rates'),
+    'binance_futures': config.get_data_file_path('binance_futures'),
+    'bybit_futures': config.get_data_file_path('bybit_futures'),
+    'okx_futures': config.get_data_file_path('okx_futures'),
+    # All file paths loaded from configuration, not hardcoded
 }
 ```
 
@@ -1134,7 +1164,7 @@ configs/
 
 **Configuration Loading Architecture**:
 - **Centralized Loading**: All config loaded from `backend/src/basis_strategy_v1/infrastructure/config/`
-- **BacktestService Integration**: Uses `config_loader.py` instead of hardcoded config creation
+- **BacktestService Integration**: Uses `config_loader.py` for dynamic configuration loading
 - **Component Access**: Components receive validated config dicts from infrastructure layer
 - **Fail-Fast Validation**: Components use direct config access (no .get() patterns)
 - **Environment Overrides**: Environment variables override YAML values
@@ -1165,7 +1195,7 @@ configs/
 
 ### **40. BacktestService Configuration Integration** ✅
 
-**Decision**: BacktestService must use existing config infrastructure instead of hardcoded config creation
+**Decision**: BacktestService must use existing config infrastructure for dynamic configuration loading
 
 **Implementation**: BacktestService._create_config() now uses config_loader.py infrastructure
 
@@ -1205,7 +1235,7 @@ def _create_config(self, request: BacktestRequest) -> Dict[str, Any]:
 - Validates config via config_validator.py
 - Supports environment variable overrides
 - Consistent with rest of system
-- Eliminates hardcoded config creation
+- Uses dynamic configuration loading from YAML files
 
 **Status**: ✅ Implemented and documented
 
@@ -1580,7 +1610,7 @@ while self.is_running:
 | 10 | LST Oracle | AAVE oracle | Exposure Monitor |
 | 11 | Seasonal Rewards | Discrete events | Staking Yields |
 | 12 | Output Format | Organized + Plotly HTML | All specs |
-| 13 | Data Files | Hardcoded mappings | Data Provider |
+| 13 | Data Files | Dynamic configuration loading | Data Provider |
 | 14 | Share Class P&L | ETH vs USDT reporting | P&L Calculator |
 | 15 | Reward Modes | base_only, base_eigen, base_eigen_seasonal | Staking Yields |
 | 16 | Leverage Iterations | None/0/1/N meanings | Leverage Loop |
@@ -1625,7 +1655,7 @@ while self.is_running:
 
 **See**: [REQUIREMENTS.md](REQUIREMENTS.md) for task breakdown  
 **See**: [REPO_INTEGRATION_PLAN.md](REPO_INTEGRATION_PLAN.md) for file mapping  
-**See**: [CONFIG_WORKFLOW.md](CONFIG_WORKFLOW.md) for configuration management
+**See**: [specs/CONFIGURATION.md](specs/CONFIGURATION.md) for configuration management
 
 
 

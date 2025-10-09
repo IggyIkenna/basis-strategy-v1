@@ -494,46 +494,7 @@ class LiveTradingPerformanceResponse(BaseModel):
         }
 
 
-class LiveTradingHealthResponse(BaseModel):
-    """Live trading health check response."""
-    
-    total_strategies: int = Field(
-        ...,
-        description="Total number of running strategies"
-    )
-    
-    healthy_strategies: int = Field(
-        ...,
-        description="Number of healthy strategies"
-    )
-    
-    unhealthy_strategies: int = Field(
-        ...,
-        description="Number of unhealthy strategies"
-    )
-    
-    strategies: List[Dict[str, Any]] = Field(
-        ...,
-        description="List of strategy health details"
-    )
-    
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "total_strategies": 3,
-                "healthy_strategies": 2,
-                "unhealthy_strategies": 1,
-                "strategies": [
-                    {
-                        "request_id": "123e4567-e89b-12d3-a456-426614174000",
-                        "strategy_name": "usdt_market_neutral",
-                        "is_healthy": True,
-                        "last_heartbeat": "2024-01-01T00:05:00Z",
-                        "time_since_heartbeat_seconds": 300
-                    }
-                ]
-            }
-        }
+# LiveTradingHealthResponse removed - now included in HealthResponse
 
 
 class LiveTradingStrategiesResponse(BaseModel):
@@ -568,27 +529,46 @@ class LiveTradingStrategiesResponse(BaseModel):
 
 
 class HealthResponse(BaseModel):
-    """Health check response."""
+    """Unified health check response."""
     
-    status: str
-    timestamp: datetime
-    components: Optional[Dict[str, str]] = None
-    metrics: Optional[Dict[str, Any]] = None
+    status: str = Field(..., description="Overall health status: healthy, degraded, unhealthy")
+    timestamp: datetime = Field(..., description="Health check timestamp")
+    service: Optional[str] = Field(default="basis-strategy-v1", description="Service name")
+    execution_mode: Optional[str] = Field(default=None, description="Current execution mode: backtest or live")
+    uptime_seconds: Optional[float] = Field(default=None, description="Service uptime in seconds")
+    system: Optional[Dict[str, Any]] = Field(default=None, description="System metrics (CPU, memory, disk)")
+    components: Optional[Dict[str, Any]] = Field(default=None, description="Component health status (mode-filtered)")
+    summary: Optional[Dict[str, Any]] = Field(default=None, description="Health summary statistics")
+    error: Optional[str] = Field(default=None, description="Error message if health check failed")
     
     class Config:
         json_schema_extra = {
             "example": {
                 "status": "healthy",
                 "timestamp": "2024-01-01T00:00:00Z",
-                "components": {
-                    "database": "connected",
-                    "cache": "connected",
-                    "data_provider": "connected"
+                "service": "basis-strategy-v1",
+                "execution_mode": "backtest",
+                "uptime_seconds": 3600,
+                "system": {
+                    "cpu_percent": 15.2,
+                    "memory_percent": 45.8,
+                    "memory_available_gb": 8.5
                 },
-                "metrics": {
-                    "uptime_seconds": 3600,
-                    "requests_per_second": 10.5,
-                    "active_backtests": 3
+                "components": {
+                    "position_monitor": {
+                        "status": "healthy",
+                        "error_code": None,
+                        "readiness_checks": {
+                            "initialized": True,
+                            "redis_connected": True,
+                            "snapshot_available": True
+                        }
+                    }
+                },
+                "summary": {
+                    "total_components": 9,
+                    "healthy_components": 9,
+                    "unhealthy_components": 0
                 }
             }
         }

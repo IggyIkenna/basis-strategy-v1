@@ -78,17 +78,19 @@ def get_live_trading_service():
         return StubLiveTradingService()
 
 
-@lru_cache()
-def get_data_provider(strategy_mode: str = None):
+def get_data_provider(strategy_mode: str = None, start_date: str = None, end_date: str = None):
     """
-    Get data provider instance using factory pattern.
+    Get data provider instance using factory pattern with on-demand data loading.
     
     Args:
-        strategy_mode: Optional strategy mode for live data provider
+        strategy_mode: Strategy mode for data provider
+        start_date: Start date for backtest (YYYY-MM-DD format)
+        end_date: End date for backtest (YYYY-MM-DD format)
         
     Returns:
-        Appropriate data provider based on startup_mode:
-        - backtest: HistoricalDataProvider (loads ALL data at startup)
+        Appropriate data provider based on execution_mode and data_mode:
+        - backtest + csv: HistoricalDataProvider (loads data on-demand)
+        - backtest + db: DatabaseDataProvider (future implementation)
         - live: LiveDataProvider (validates connections for mode-specific data requirements)
     """
     import os
@@ -97,13 +99,24 @@ def get_data_provider(strategy_mode: str = None):
     try:
         cm = get_config_manager()
         data_dir = cm.get_data_directory()
-        startup_mode = cm.get_startup_mode()
+        execution_mode = os.getenv('BASIS_EXECUTION_MODE')
+        data_mode = os.getenv('BASIS_DATA_MODE')
         
-        # Get appropriate config based on startup mode
-        if startup_mode == 'backtest':
-            # For backtest: use base config (loads all data regardless of mode)
-            config = cm.get_complete_config()
-        elif startup_mode == 'live':
+        if not execution_mode:
+            raise ValueError("BASIS_EXECUTION_MODE environment variable must be set")
+        if not data_mode:
+            raise ValueError("BASIS_DATA_MODE environment variable must be set")
+        
+        # Get appropriate config based on execution mode
+        if execution_mode == 'backtest':
+            # For backtest: use mode-specific config (includes data_requirements)
+            if strategy_mode:
+                config = cm.get_complete_config(mode=strategy_mode)
+            else:
+                # Default to base config if no mode specified
+                config = cm.get_complete_config()
+                logger.warning("No strategy_mode specified for backtest mode, using base config")
+        elif execution_mode == 'live':
             # For live: use mode-specific config (includes data_requirements)
             if strategy_mode:
                 config = cm.get_complete_config(mode=strategy_mode)
@@ -112,15 +125,24 @@ def get_data_provider(strategy_mode: str = None):
                 config = cm.get_complete_config()
                 logger.warning("No strategy_mode specified for live mode, using base config")
         else:
-            raise ValueError(f"Unknown startup_mode: {startup_mode}")
+            raise ValueError(f"Unknown execution_mode: {execution_mode}")
         
         # Use factory to create appropriate provider
-        return create_data_provider(
+        provider = create_data_provider(
             data_dir=data_dir,
-            startup_mode=startup_mode,
+            execution_mode=execution_mode,
+            data_mode=data_mode,
             config=config,
-            strategy_mode=strategy_mode
+            strategy_mode=strategy_mode,
+            backtest_start_date=start_date,
+            backtest_end_date=end_date
         )
+        
+        # For backtest mode, load data on-demand
+        if execution_mode == 'backtest' and data_mode == 'csv' and strategy_mode and start_date and end_date:
+            provider.load_data_for_backtest(strategy_mode, start_date, end_date)
+        
+        return provider
 
     except Exception as e:
         logger.error("DataProvider failed, using stub", error=str(e))
@@ -236,58 +258,69 @@ def get_health_checker():
         return StubHealthChecker()
 
 
-async def get_health_checker_async():
+async def get_unified_health_manager():
     """
-    Async version of health checker dependency injection.
-    Properly injects database, cache, and data_provider dependencies.
+    Get the unified health manager with infrastructure dependencies injected.
     """
     try:
-        from ..infrastructure.monitoring.health import HealthChecker
+        from ..core.health import unified_health_manager
 
         database = None
         cache = None
         data_provider = None
+        live_trading_service = None
 
         try:
-            # Only inject database when explicitly configured for database
-            # storage
+            # Only inject database when explicitly configured for database storage
             import os
             storage_type = os.getenv('BASIS_STORAGE_TYPE', 'filesystem')
             if storage_type == 'database':
                 from ..infrastructure.persistence.database import get_database_client
                 database = await get_database_client()
-                logger.info("Database client injected into HealthChecker")
+                logger.info("Database client injected into UnifiedHealthManager")
             else:
                 logger.info("Database disabled (filesystem-only mode)")
         except Exception as e:
-            logger.warning(
-                f"Database client unavailable for health checks: {e}")
+            logger.warning(f"Database client unavailable for health checks: {e}")
 
         try:
             # Get Redis cache client
             from ..infrastructure.cache.redis_client import get_redis_client
             cache = await get_redis_client()
-            logger.info("Redis client injected into HealthChecker")
+            logger.info("Redis client injected into UnifiedHealthManager")
         except Exception as e:
             logger.warning(f"Redis client unavailable for health checks: {e}")
 
         try:
             # Get data provider
             data_provider = get_data_provider()
-            logger.info("Data provider injected into HealthChecker")
+            logger.info("Data provider injected into UnifiedHealthManager")
         except Exception as e:
             logger.warning(f"Data provider unavailable for health checks: {e}")
 
-        return HealthChecker(
+        try:
+            # Inject live trading service if available
+            from ..core.services.live_service import live_trading_service
+            live_trading_service = live_trading_service
+            logger.info("Live trading service injected into UnifiedHealthManager")
+        except Exception as e:
+            logger.debug(f"Live trading service not available: {e}")
+
+        # Set infrastructure dependencies
+        unified_health_manager.set_infrastructure_dependencies(
             database=database,
             cache=cache,
-            data_provider=data_provider)
+            data_provider=data_provider,
+            live_trading_service=live_trading_service
+        )
+
+        return unified_health_manager
 
     except (ImportError, TypeError) as e:
         logger.warning(
-            "HealthChecker not available, returning stub",
+            "UnifiedHealthManager not available, returning stub",
             error=str(e))
-        return StubHealthChecker()
+        return StubUnifiedHealthManager()
 
 
 # Strategy registry removed - using config-driven approach in
@@ -556,50 +589,62 @@ class StubLiveTradingService:
         ]
 
 
-class StubHealthChecker:
-    """Stub health checker for development."""
+class StubUnifiedHealthManager:
+    """Stub unified health manager for development."""
 
-    def __init__(self, database=None, cache=None, data_provider=None):
-        self.database = database
-        self.cache = cache
-        self.data_provider = data_provider
+    def __init__(self):
         self.start_time = datetime.now()
-        logger.info("StubHealthChecker initialized")
+        self.execution_mode = "backtest"
+        logger.info("StubUnifiedHealthManager initialized")
 
-    async def check_critical_components(self) -> bool:
-        """Always return healthy for stub."""
-        return True
+    def set_infrastructure_dependencies(self, database=None, cache=None, data_provider=None, live_trading_service=None):
+        """Set infrastructure dependencies (stub implementation)."""
+        pass
 
-    async def get_component_status(self):
-        """Return stub component status with proper health states."""
+    async def check_basic_health(self):
+        """Return stub basic health."""
         return {
-            "database": "not_configured",
-            "cache": "not_configured",
-            "data_provider": "not_configured",
-            "api": "healthy",
-            "service": "healthy",
-            "health_checker": "healthy"  # Stub mode but functional
+            "status": "healthy",
+            "timestamp": datetime.utcnow().isoformat(),
+            "service": "basis-strategy-v1",
+            "execution_mode": self.execution_mode,
+            "uptime_seconds": (datetime.utcnow() - self.start_time).total_seconds(),
+            "system": {
+                "cpu_percent": 10.0,
+                "memory_percent": 50.0,
+                "memory_available_gb": 4.0
+            }
         }
 
-    async def get_detailed_health(self):
+    async def check_detailed_health(self):
         """Return stub detailed health."""
         return {
             "status": "healthy",
-            "components": await self.get_component_status(),
-            "uptime_seconds": (datetime.now() - self.start_time).total_seconds(),
+            "timestamp": datetime.utcnow().isoformat(),
+            "execution_mode": self.execution_mode,
+            "components": {
+                "position_monitor": {
+                    "status": "healthy",
+                    "timestamp": datetime.utcnow().isoformat(),
+                    "error_code": None,
+                    "error_message": None,
+                    "readiness_checks": {"initialized": True},
+                    "metrics": {},
+                    "dependencies": []
+                }
+            },
             "system": {
-                "cpu": {"percent": 10.0, "count": 4},
-                "memory": {"total_gb": 8, "available_gb": 4, "percent": 50}
+                "cpu_percent": 10.0,
+                "memory_percent": 50.0,
+                "memory_available_gb": 4.0,
+                "disk_percent": 25.0,
+                "uptime_seconds": (datetime.utcnow() - self.start_time).total_seconds()
             },
-            "process": {
-                "memory_mb": 100,
-                "threads": 5,
-                "connections": 1
-            },
-            "performance": {
-                "requests_per_second": 0,
-                "average_latency_ms": 0,
-                "active_backtests": 0,
-                "cache_hit_rate": 0
+            "summary": {
+                "total_components": 1,
+                "healthy_components": 1,
+                "unhealthy_components": 0,
+                "not_ready_components": 0,
+                "unknown_components": 0
             }
         }

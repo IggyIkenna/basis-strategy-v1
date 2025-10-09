@@ -10,7 +10,6 @@ from ..models.responses import (
     LiveTradingResponse,
     LiveTradingStatusResponse,
     LiveTradingPerformanceResponse,
-    LiveTradingHealthResponse,
     LiveTradingStrategiesResponse,
     BacktestResponse
 )
@@ -37,6 +36,18 @@ async def start_live_trading(
     Start live trading for the specified strategy and parameters.
     
     The strategy runs asynchronously and returns a request ID for tracking.
+    
+    # TODO: [WORKFLOW_STRATEGY_SELECTION] - Strategy mode selection via API parameter
+    # Current Issue: Strategy mode is selected via strategy_name parameter in LiveTradingRequest
+    # Required Changes:
+    #   1. Validate strategy_name against available strategies in MODES.md
+    #   2. Route to appropriate venue clients based on strategy requirements
+    #   3. Initialize venue clients based on environment configuration (dev/staging/prod)
+    #   4. Validate venue credentials for live trading mode
+    #   5. Implement time-triggered workflow for live trading execution
+    # Reference: docs/WORKFLOW_GUIDE.md - Strategy Mode Selection & Venue Architecture Integration section
+    # Reference: .cursor/tasks/19_venue_based_execution_architecture.md (canonical: docs/VENUE_ARCHITECTURE.md)
+    # Status: PENDING
     """
     correlation_id = getattr(http_request.state, "correlation_id", "unknown")
     
@@ -46,13 +57,11 @@ async def start_live_trading(
             correlation_id=correlation_id,
             strategy_name=request.strategy_name,
             share_class=request.share_class,
-            initial_capital=float(request.initial_capital)
         )
         
         # Convert API request to service request
         service_request = service.create_request(
             strategy_name=request.strategy_name,
-            initial_capital=request.initial_capital,
             share_class=request.share_class,
             config_overrides={
                 'exchange': request.exchange,
@@ -290,40 +299,7 @@ async def emergency_stop_live_trading(
         raise HTTPException(status_code=500, detail=f"Failed to emergency stop: {str(e)}")
 
 
-@router.get(
-    "/health",
-    response_model=StandardResponse[LiveTradingHealthResponse],
-    summary="Get live trading health",
-    description="Get health status of all running live trading strategies"
-)
-async def get_live_trading_health(
-    http_request: Request,
-    service: LiveTradingService = Depends(get_live_trading_service)
-) -> StandardResponse[LiveTradingHealthResponse]:
-    """Get health status of all running live trading strategies."""
-    correlation_id = getattr(http_request.state, "correlation_id", "unknown")
-    
-    try:
-        health = await service.health_check()
-        
-        return StandardResponse(
-            success=True,
-            data=LiveTradingHealthResponse(
-                total_strategies=health.get('total_strategies', 0),
-                healthy_strategies=health.get('healthy_strategies', 0),
-                unhealthy_strategies=health.get('unhealthy_strategies', 0),
-                strategies=health.get('strategies', [])
-            ),
-            correlation_id=correlation_id
-        )
-        
-    except Exception as e:
-        logger.error(
-            "Failed to get live trading health",
-            correlation_id=correlation_id,
-            error=str(e)
-        )
-        raise HTTPException(status_code=500, detail=f"Failed to get health: {str(e)}")
+# Live trading health now included in /health/detailed endpoint
 
 
 @router.get(

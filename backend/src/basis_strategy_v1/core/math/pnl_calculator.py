@@ -1,14 +1,39 @@
 """
 P&L Calculator Component
 
-Calculate balance-based & attribution P&L with reconciliation.
-Calculate P&L using two methods and reconcile them.
+TODO-REFACTOR: GENERIC VS MODE-SPECIFIC ARCHITECTURE VIOLATION - 18_generic_vs_mode_specific_architecture.md
+ISSUE: This component violates canonical architecture requirements:
 
-Key Principles:
-- Balance-Based P&L = Source of truth (actual portfolio value change)
-- Attribution P&L = Breakdown by component (where P&L comes from)
-- Reconciliation = Validate balance vs attribution (should match within tolerance)
-- Share class aware = ETH vs USDT reporting
+1. GENERIC COMPONENT VIOLATIONS:
+   - Should be generic attribution logic across all modes
+   - Should only care about share_class for reporting currency
+   - Should NOT have mode-specific P&L calculation logic
+
+2. REQUIRED ARCHITECTURE (per 18_generic_vs_mode_specific_architecture.md):
+   - Should be generic P&L monitoring and attribution
+   - Should only care about: share_class (reporting currency)
+   - Should NOT care about: strategy mode specifics
+   - Should use generic attribution logic across all modes
+
+3. CURRENT VIOLATIONS:
+   - Missing share_class awareness for reporting
+   - May have mode-specific P&L calculation logic
+   - Should be refactored to use: share_class = config.get('share_class')
+
+4. REQUIRED FIX:
+   - Ensure generic attribution logic across all modes
+   - Add share_class awareness for reporting currency
+   - Remove any mode-specific P&L calculation logic
+   - Make component truly mode-agnostic
+   - Implement generic P&L attribution system (basis, funding, delta, lending, staking)
+   - Create centralized UtilityManager for shared utility methods
+
+5. MISSING IMPLEMENTATIONS (per 15_fix_mode_specific_pnl_calculator.md):
+   - Generic P&L attribution system not yet implemented
+   - Centralized UtilityManager not yet created
+   - Mode-agnostic balance calculation across all venues not implemented
+
+CURRENT STATE: This component needs refactoring to be truly generic with share_class awareness and generic attribution system.
 """
 
 from typing import Dict, List, Optional, Any
@@ -598,7 +623,10 @@ class PnLCalculator:
                 position_size = abs(exp.get('size', 0))
                 if position_size > 0:
                     # Estimate funding rate (this would come from market data)
-                    estimated_funding_rate = 0.0001  # 0.01% per 8 hours
+                    # TODO-REFACTOR: This hardcodes funding rate instead of using config
+                    # Canonical: .cursor/tasks/06_architecture_compliance_rules.md
+                    # Fix: Add to config YAML and load from config
+                    estimated_funding_rate = 0.0001  # WRONG - hardcoded funding rate (0.01% per 8 hours)
                     funding_pnl = position_size * estimated_funding_rate * exp.get('mark_price', 3000)
                     total_funding_pnl += funding_pnl
         

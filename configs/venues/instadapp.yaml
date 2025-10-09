@@ -1,0 +1,30 @@
+# Instadapp Infrastructure Configuration
+venue: "instadapp"
+type: "infrastructure"
+
+# Service type
+service: "atomic_transaction_middleware"
+
+# Atomic transaction parameters
+max_gas_limit: 5000000
+max_slippage_bps: 50
+max_deadline_seconds: 1800
+
+# Supported operations
+supported_operations:
+  - "atomic_leverage_entry"
+  - "atomic_leverage_exit"
+  - "flash_loan_operations"
+  - "multi_step_swaps"
+  - "complex_rebalancing"
+
+# Protocol integration
+protocols:
+  - "aave_v3"
+  - "morpho"
+  - "uniswap_v3"
+  - "lido"
+  - "etherfi"
+
+# Description
+description: "Atomic transaction middleware for complex multi-step operations. Orchestrates chains of events in single transaction blocks for leverage operations, flash loans, and complex rebalancing."

@@ -57,7 +57,6 @@ class ComponentHealthChecker:
     def __init__(self, component_name: str):
         self.component_name = component_name
         self.last_health_check = None
-        self.health_history = []
     
     async def check_health(self) -> ComponentHealthReport:
         """Check component health and return report."""
@@ -89,13 +88,8 @@ class ComponentHealthChecker:
                 dependencies=await self._get_dependencies()
             )
             
-            # Store health history
+            # Store last health check (no history)
             self.last_health_check = report
-            self.health_history.append(report)
-            
-            # Keep only last 100 health checks
-            if len(self.health_history) > 100:
-                self.health_history = self.health_history[-100:]
             
             return report
             
@@ -250,20 +244,32 @@ class DataProviderHealthChecker(ComponentHealthChecker):
             # Check if data provider is initialized
             checks["initialized"] = hasattr(self.data_provider, 'data')
             
-            # Check data availability
-            checks["data_loaded"] = len(self.data_provider.data) > 0
+            # Check if data is loaded (new architecture: data loaded on-demand)
+            if hasattr(self.data_provider, '_data_loaded'):
+                checks["data_loaded"] = self.data_provider._data_loaded
+            else:
+                # Legacy check for backward compatibility
+                checks["data_loaded"] = hasattr(self.data_provider, 'data') and len(self.data_provider.data) > 0
             
-            # Check if can get market data snapshot
-            try:
-                test_timestamp = pd.Timestamp('2024-06-01', tz='UTC')
-                market_data = self.data_provider.get_market_data_snapshot(test_timestamp)
-                checks["market_data_available"] = isinstance(market_data, dict) and len(market_data) > 0
-            except:
-                checks["market_data_available"] = False
+            # Check environment variables
+            import os
+            checks["basis_data_mode_set"] = os.getenv('BASIS_DATA_MODE') is not None
+            checks["basis_execution_mode_set"] = os.getenv('BASIS_EXECUTION_MODE') is not None
+            
+            # Check if can get market data snapshot (only if data is loaded)
+            if checks["data_loaded"]:
+                try:
+                    test_timestamp = pd.Timestamp('2024-06-01', tz='UTC')
+                    market_data = self.data_provider.get_market_data_snapshot(test_timestamp)
+                    checks["market_data_available"] = isinstance(market_data, dict) and len(market_data) > 0
+                except:
+                    checks["market_data_available"] = False
+            else:
+                checks["market_data_available"] = True  # Not applicable if no data loaded
             
             # Check live data provider (if in live mode)
-            if self.data_provider.execution_mode == 'live':
-                checks["live_provider_available"] = self.data_provider.live_provider is not None
+            if hasattr(self.data_provider, 'execution_mode') and self.data_provider.execution_mode == 'live':
+                checks["live_provider_available"] = hasattr(self.data_provider, 'live_provider') and self.data_provider.live_provider is not None
             else:
                 checks["live_provider_available"] = True  # Not needed in backtest
             
@@ -276,13 +282,25 @@ class DataProviderHealthChecker(ComponentHealthChecker):
     async def _get_component_metrics(self) -> Dict[str, Any]:
         """Get Data Provider metrics."""
         try:
-            return {
-                "data_sources": len(self.data_provider.data),
-                "execution_mode": self.data_provider.execution_mode,
-                "mode": self.data_provider.mode,
-                "data_dir": str(self.data_provider.data_dir),
-                "live_provider_available": self.data_provider.live_provider is not None
+            import os
+            metrics = {
+                "data_sources": len(self.data_provider.data) if hasattr(self.data_provider, 'data') else 0,
+                "mode": getattr(self.data_provider, 'mode', 'unknown'),
+                "data_dir": str(getattr(self.data_provider, 'data_dir', 'unknown')),
+                "data_loaded": getattr(self.data_provider, '_data_loaded', False),
+                "basis_data_mode": os.getenv('BASIS_DATA_MODE', 'not_set'),
+                "basis_execution_mode": os.getenv('BASIS_EXECUTION_MODE', 'not_set')
             }
+            
+            # Add execution_mode if available (for backward compatibility)
+            if hasattr(self.data_provider, 'execution_mode'):
+                metrics["execution_mode"] = self.data_provider.execution_mode
+            
+            # Add live provider info if available
+            if hasattr(self.data_provider, 'live_provider'):
+                metrics["live_provider_available"] = self.data_provider.live_provider is not None
+            
+            return metrics
         except:
             return {"error": "Could not get metrics"}
     
@@ -502,25 +520,6 @@ class SystemHealthAggregator:
         self.last_aggregated_report = aggregated_report
         return aggregated_report
     
-    def get_component_health_history(self, component_name: str, limit: int = 10) -> List[Dict[str, Any]]:
-        """Get health history for a specific component."""
-        if component_name not in self.component_checkers:
-            return []
-        
-        checker = self.component_checkers[component_name]
-        history = checker.health_history[-limit:] if checker.health_history else []
-        
-        return [
-            {
-                "timestamp": report.timestamp.isoformat(),
-                "status": report.status.value,
-                "error_code": report.error_code,
-                "error_message": report.error_message,
-                "readiness_checks": report.readiness_checks,
-                "metrics": report.metrics
-            }
-            for report in history
-        ]
 
 
 # Global system health aggregator

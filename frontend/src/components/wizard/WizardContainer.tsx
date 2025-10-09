@@ -70,7 +70,8 @@ export function WizardContainer({ onComplete, onCancel }: WizardContainerProps) 
           strategy_params: config.strategyParams
         };
 
-        const response = await fetch('http://localhost:8001/api/v1/backtest/run', {
+        const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/v1';
+        const response = await fetch(`${API_BASE_URL}/backtest/run`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

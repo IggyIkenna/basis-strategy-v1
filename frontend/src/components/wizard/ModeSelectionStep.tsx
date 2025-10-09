@@ -31,7 +31,8 @@ export function ModeSelectionStep({ shareClass, selectedMode, onSelect }: ModeSe
     const fetchModes = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`http://localhost:8001/api/v1/strategies/modes/?share_class=${shareClass}`);
+        const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/v1';
+        const response = await fetch(`${API_BASE_URL}/strategies/modes/?share_class=${shareClass}`);
         if (!response.ok) {
           throw new Error(`Failed to fetch modes: ${response.statusText}`);
         }

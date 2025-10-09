@@ -1,0 +1,92 @@
+services:
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.backend
+      cache_from:
+        - deploy-backend:latest
+        - deploy-backend:dependencies
+        - deploy-backend:builder
+      args:
+        BUILDKIT_INLINE_CACHE: 1
+      target: ""  # Build all stages for caching
+    env_file:
+      - ../env.unified  # Backend base configuration
+      - .env            # Environment-specific overrides
+    environment:
+      - HEALTH_CHECK_ENDPOINT=${HEALTH_CHECK_ENDPOINT:-/health}
+    depends_on:
+      - redis
+    ports:
+      - "8001:8001"  # Expose backend API port
+    volumes:
+      - ../data:/app/data
+      - ../results:/app/results
+      - ../configs:/app/configs:ro
+      - ../env.unified:/app/env.unified:ro  # Mount env file as read-only
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001${HEALTH_CHECK_ENDPOINT:-/health}/"]
+      interval: ${HEALTH_CHECK_INTERVAL:-30s}
+      timeout: 3s
+      retries: 10
+      start_period: 40s
+    restart: unless-stopped
+
+  caddy:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.caddy-frontend
+      cache_from:
+        - deploy-caddy:latest
+      args:
+        BUILDKIT_INLINE_CACHE: 1
+        BUILD_ENV: ${BASIS_ENVIRONMENT:-local}
+        VITE_API_BASE_URL: /api/v1
+    env_file:
+      - ../env.unified
+      - .env
+    environment:
+      - APP_DOMAIN=${APP_DOMAIN:-localhost}
+      - ACME_EMAIL=${ACME_EMAIL:-you@example.com}
+      - BASIC_AUTH_HASH=${BASIC_AUTH_HASH:-}
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost/health"]
+      interval: ${HEALTH_CHECK_INTERVAL:-30s}
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+  # Frontend development service (optional - for testing)
+  frontend-dev:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.frontend-test
+    ports:
+      - "5173:5173"  # Vite dev server port
+    volumes:
+      - ../frontend:/app
+      - /app/node_modules  # Prevent host node_modules from overriding container
+    environment:
+      - NODE_ENV=dev
+    command: ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
+    stdin_open: true
+    tty: true
+    profiles:
+      - frontend-test  # Only start with --profile frontend-test
+
+volumes:
+  caddy_data:
+  caddy_config:

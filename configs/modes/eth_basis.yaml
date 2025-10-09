@@ -24,6 +24,7 @@ hedge_venues: ["binance", "bybit", "okx"]
 hedge_allocation_binance: 0.4
 hedge_allocation_bybit: 0.3
 hedge_allocation_okx: 0.3
+reserve_ratio: 0.1
 
 # Risk parameters
 margin_ratio_target: 0.8  # Target CEX margin ratio for futures (80% conservative)
@@ -40,9 +41,8 @@ data_requirements:
   - "gas_costs"  # Ethereum gas prices
   - "execution_costs"  # Execution cost model
 
-# Monitoring
-monitoring_position_check_interval: 300
-monitoring_risk_check_interval: 60
+# Live time throttling 
+time_throttle_interval: 60
 
 # Performance targets
 target_apy: 0.08  # 8% APY target (funding rate collection)
