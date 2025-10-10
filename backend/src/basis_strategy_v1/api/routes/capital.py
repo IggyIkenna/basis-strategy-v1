@@ -8,8 +8,8 @@ from typing import Dict, Any
 from fastapi import APIRouter, HTTPException, Depends, status
 from pydantic import BaseModel, Field
 
-from basis_strategy_v1.api.models import ApiResponse
-from basis_strategy_v1.api.routes.auth import verify_token
+from ..models import StandardResponse
+from .auth import verify_token
 
 router = APIRouter()
 
@@ -38,7 +38,7 @@ class CapitalResponse(BaseModel):
     timestamp: str
 
 
-@router.post("/deposit", response_model=ApiResponse[CapitalResponse])
+@router.post("/deposit", response_model=StandardResponse[CapitalResponse])
 async def deposit_capital(
     request: DepositRequest,
     token_payload: Dict[str, Any] = Depends(verify_token)
@@ -79,7 +79,7 @@ async def deposit_capital(
     # For MVP, simulate the response
     new_total_equity = 100000.0 + request.amount  # Mock current equity + deposit
     
-    return ApiResponse(
+    return StandardResponse(
         success=True,
         data=CapitalResponse(
             id=request_id,
@@ -94,7 +94,7 @@ async def deposit_capital(
     )
 
 
-@router.post("/withdraw", response_model=ApiResponse[CapitalResponse])
+@router.post("/withdraw", response_model=StandardResponse[CapitalResponse])
 async def withdraw_capital(
     request: WithdrawRequest,
     token_payload: Dict[str, Any] = Depends(verify_token)
@@ -145,7 +145,7 @@ async def withdraw_capital(
     # For MVP, simulate the response
     new_total_equity = 100000.0 - request.amount  # Mock current equity - withdrawal
     
-    return ApiResponse(
+    return StandardResponse(
         success=True,
         data=CapitalResponse(
             id=request_id,

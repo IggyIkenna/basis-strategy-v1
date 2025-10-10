@@ -11,7 +11,7 @@ from fastapi import APIRouter, HTTPException, Depends, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
 
-from basis_strategy_v1.api.models import ApiResponse
+from ..models import StandardResponse
 
 router = APIRouter()
 security = HTTPBearer()
@@ -80,7 +80,7 @@ def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)) 
         )
 
 
-@router.post("/login", response_model=ApiResponse[LoginResponse])
+@router.post("/login", response_model=StandardResponse[LoginResponse])
 async def login(request: LoginRequest):
     """
     Authenticate user and return JWT token.
@@ -104,7 +104,7 @@ async def login(request: LoginRequest):
         data={"sub": request.username}, expires_delta=access_token_expires
     )
     
-    return ApiResponse(
+    return StandardResponse(
         success=True,
         data=LoginResponse(
             access_token=access_token,
@@ -115,7 +115,7 @@ async def login(request: LoginRequest):
     )
 
 
-@router.post("/logout", response_model=ApiResponse[LogoutResponse])
+@router.post("/logout", response_model=StandardResponse[LogoutResponse])
 async def logout(token_payload: Dict[str, Any] = Depends(verify_token)):
     """
     Logout user and invalidate token.
@@ -123,14 +123,14 @@ async def logout(token_payload: Dict[str, Any] = Depends(verify_token)):
     Note: In a production system, you would maintain a blacklist of invalidated tokens.
     For MVP, we rely on token expiration.
     """
-    return ApiResponse(
+    return StandardResponse(
         success=True,
         data=LogoutResponse(message="Successfully logged out"),
         message="Logout successful"
     )
 
 
-@router.get("/me", response_model=ApiResponse[UserResponse])
+@router.get("/me", response_model=StandardResponse[UserResponse])
 async def get_current_user(token_payload: Dict[str, Any] = Depends(verify_token)):
     """
     Get current authenticated user information.
@@ -139,7 +139,7 @@ async def get_current_user(token_payload: Dict[str, Any] = Depends(verify_token)
     """
     username = token_payload.get("sub")
     
-    return ApiResponse(
+    return StandardResponse(
         success=True,
         data=UserResponse(
             username=username,

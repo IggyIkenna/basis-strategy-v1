@@ -2,7 +2,7 @@
 
 import { 
   ApiResponse, 
-  ApiError, 
+  // ApiError, 
   LoginRequest, 
   LoginResponse, 
   User,
@@ -27,6 +27,13 @@ import {
   PositionUpdate,
   ChartsResponse
 } from '../types';
+
+// Local ApiError interface
+interface ApiError {
+  message: string;
+  status: number;
+  correlation_id?: string;
+}
 
 class ApiClient {
   private baseUrl: string;
