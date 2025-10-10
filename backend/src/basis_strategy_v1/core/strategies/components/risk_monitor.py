@@ -31,14 +31,35 @@ class RiskMonitor:
         required_keys = ['target_ltv', 'max_drawdown', 'leverage_enabled', 'venues']
         for key in required_keys:
             if key not in config:
+                from ...infrastructure.monitoring.logging import log_structured_error
+                log_structured_error(
+                    error_code='CONFIG-003',
+                    message=f'Missing required configuration: {key}',
+                    component='risk_monitor',
+                    context={'missing_key': key, 'required_keys': required_keys}
+                )
                 raise KeyError(f"Missing required configuration: {key}")
         
         # Validate nested configuration
         if 'venues' in config:
             for venue_name, venue_config in config['venues'].items():
                 if not isinstance(venue_config, dict):
+                    from ...infrastructure.monitoring.logging import log_structured_error
+                    log_structured_error(
+                        error_code='CONFIG-007',
+                        message=f'Invalid venue configuration for {venue_name}: must be a dictionary',
+                        component='risk_monitor',
+                        context={'venue_name': venue_name, 'venue_config': venue_config}
+                    )
                     raise KeyError(f"Invalid venue configuration for {venue_name}: must be a dictionary")
                 if 'max_leverage' not in venue_config:
+                    from ...infrastructure.monitoring.logging import log_structured_error
+                    log_structured_error(
+                        error_code='CONFIG-003',
+                        message=f'Missing max_leverage in venue configuration for {venue_name}',
+                        component='risk_monitor',
+                        context={'venue_name': venue_name, 'venue_config': venue_config}
+                    )
                     raise KeyError(f"Missing max_leverage in venue configuration for {venue_name}")
         
         self.config = config

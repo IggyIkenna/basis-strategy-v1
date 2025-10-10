@@ -39,10 +39,16 @@ class ETHBasisStrategy(BaseStrategyManager):
         """
         super().__init__(config, risk_monitor, position_monitor, event_engine)
         
-        # ETH-specific configuration
-        self.eth_allocation = config.get('eth_allocation', 0.8)  # 80% to ETH
-        self.funding_threshold = config.get('funding_threshold', 0.01)  # 1% funding rate threshold
-        self.max_leverage = config.get('max_leverage', 1.0)  # No leverage for basis trading
+        # Validate required configuration at startup (fail-fast)
+        required_keys = ['eth_allocation', 'funding_threshold', 'max_leverage']
+        for key in required_keys:
+            if key not in config:
+                raise KeyError(f"Missing required configuration: {key}")
+        
+        # ETH-specific configuration (fail-fast access)
+        self.eth_allocation = config['eth_allocation']  # 80% to ETH
+        self.funding_threshold = config['funding_threshold']  # 1% funding rate threshold
+        self.max_leverage = config['max_leverage']  # No leverage for basis trading
         
         logger.info(f"ETHBasisStrategy initialized with {self.eth_allocation*100}% ETH allocation")
     

@@ -350,14 +350,20 @@ class DataProvider:
                 self._load_futures_data('BTC', ['binance', 'bybit', 'okx'])
                 self._load_funding_rates('BTC', ['binance', 'bybit', 'okx'])
             elif self.mode in ['eth_leveraged', 'usdt_market_neutral']:
+                # Validate required configuration at startup (fail-fast)
+                required_keys = ['lst_type', 'rewards_mode', 'hedge_venues']
+                for key in required_keys:
+                    if key not in self.config:
+                        raise KeyError(f"Missing required configuration: {key}")
+                
                 # AAVE data
-                lst_type = self.config.get('lst_type', 'weeth')
+                lst_type = self.config['lst_type']
                 self._load_aave_rates(lst_type)  # weETH or wstETH
                 self._load_aave_rates('WETH')
                 self._load_oracle_prices(lst_type)
                 
                 # Staking data (weETH restaking only)
-                if self.config.get('rewards_mode') != 'base_only':
+                if self.config['rewards_mode'] != 'base_only':
                     self._load_seasonal_rewards()  # EIGEN + ETHFI distributions
                 
                 # Protocol token prices (for KING unwrapping)
@@ -367,8 +373,8 @@ class DataProvider:
                 # If USDT mode, need CEX data
                 if self.mode == 'usdt_market_neutral':
                     self._load_spot_prices('ETH')  # Binance spot = our ETH/USDT oracle
-                    self._load_futures_data('ETH', self.config.get('hedge_venues', ['binance', 'bybit', 'okx']))
-                    self._load_funding_rates('ETH', self.config.get('hedge_venues'))
+                    self._load_futures_data('ETH', self.config['hedge_venues'])
+                    self._load_funding_rates('ETH', self.config['hedge_venues'])
             else:
                 logger.warning(f"Unknown mode '{self.mode}', loading minimal data")
                 self._load_aave_rates('USDT')  # Minimal fallback
@@ -906,7 +912,7 @@ class DataProvider:
             raw_data = json.load(f)
 
         # Extract individual assets from pairs and reserve factors
-        individual_assets = set(raw_data.get('reserve_factors', {}).keys())
+        individual_assets = set(raw_data['reserve_factors'].keys())
 
         # Add assets from pairs (extract from pair names like 'weETH_WETH' ->
         # 'weETH', 'WETH')
@@ -959,7 +965,7 @@ class DataProvider:
                 # Add eligible_pairs
                 'eligible_pairs': list(raw_data['standard']['ltv_limits'].keys())
             },
-            'reserve_factors': raw_data.get('reserve_factors', {}),
+            'reserve_factors': raw_data['reserve_factors'],
             'metadata': {  # Add metadata
                 'source': 'aave_v3_risk_parameters.json',
                 # Use 'created' instead of 'loaded_at'
@@ -991,8 +997,10 @@ class DataProvider:
         
         Uses data_requirements list from mode config with name mapping.
         """
-        # Get data requirements from config
-        required_data = self.config.get('data_requirements', [])
+        # Get data requirements from config (fail-fast)
+        if 'data_requirements' not in self.config:
+            raise KeyError("Missing required configuration: data_requirements")
+        required_data = self.config['data_requirements']
         
         if not required_data:
             logger.info("No data requirements specified in config, skipping validation")
@@ -1505,7 +1513,10 @@ class DataProvider:
             'WITHDRAW': 'WITHDRAW_eth'
         }
 
-        column = operation_map.get(operation, 'gas_price_avg_gwei')
+        try:
+            column = operation_map[operation]
+        except KeyError:
+            column = 'gas_price_avg_gwei'
         return data.loc[ts, column]
 
     def get_market_data_snapshot(self, timestamp: pd.Timestamp = None) -> Dict:

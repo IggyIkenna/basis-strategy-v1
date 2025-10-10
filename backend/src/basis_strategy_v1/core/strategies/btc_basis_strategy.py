@@ -39,10 +39,16 @@ class BTCBasisStrategy(BaseStrategyManager):
         """
         super().__init__(config, risk_monitor, position_monitor, event_engine)
         
-        # BTC-specific configuration
-        self.btc_allocation = config.get('btc_allocation', 0.8)  # 80% to BTC
-        self.funding_threshold = config.get('funding_threshold', 0.01)  # 1% funding rate threshold
-        self.max_leverage = config.get('max_leverage', 1.0)  # No leverage for basis trading
+        # Validate required configuration at startup (fail-fast)
+        required_keys = ['btc_allocation', 'funding_threshold', 'max_leverage']
+        for key in required_keys:
+            if key not in config:
+                raise KeyError(f"Missing required configuration: {key}")
+        
+        # BTC-specific configuration (fail-fast access)
+        self.btc_allocation = config['btc_allocation']  # 80% to BTC
+        self.funding_threshold = config['funding_threshold']  # 1% funding rate threshold
+        self.max_leverage = config['max_leverage']  # No leverage for basis trading
         
         logger.info(f"BTCBasisStrategy initialized with {self.btc_allocation*100}% BTC allocation")
     

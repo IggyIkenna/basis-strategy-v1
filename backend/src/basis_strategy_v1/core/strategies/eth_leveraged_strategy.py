@@ -39,12 +39,18 @@ class ETHLeveragedStrategy(BaseStrategyManager):
         """
         super().__init__(config, risk_monitor, position_monitor, event_engine)
         
-        # ETH leveraged-specific configuration
-        self.eth_allocation = config.get('eth_allocation', 0.8)  # 80% to ETH
-        self.leverage_multiplier = config.get('leverage_multiplier', 2.0)  # 2x leverage
-        self.lst_type = config.get('lst_type', 'wstETH')  # Default LST type
-        self.staking_protocol = config.get('staking_protocol', 'lido')  # Default protocol
-        self.hedge_allocation = config.get('hedge_allocation', 0.0)  # No hedging by default
+        # Validate required configuration at startup (fail-fast)
+        required_keys = ['eth_allocation', 'leverage_multiplier', 'lst_type', 'staking_protocol', 'hedge_allocation']
+        for key in required_keys:
+            if key not in config:
+                raise KeyError(f"Missing required configuration: {key}")
+        
+        # ETH leveraged-specific configuration (fail-fast access)
+        self.eth_allocation = config['eth_allocation']  # 80% to ETH
+        self.leverage_multiplier = config['leverage_multiplier']  # 2x leverage
+        self.lst_type = config['lst_type']  # Default LST type
+        self.staking_protocol = config['staking_protocol']  # Default protocol
+        self.hedge_allocation = config['hedge_allocation']  # No hedging by default
         
         logger.info(f"ETHLeveragedStrategy initialized with {self.eth_allocation*100}% ETH allocation, {self.leverage_multiplier}x leverage")
     
