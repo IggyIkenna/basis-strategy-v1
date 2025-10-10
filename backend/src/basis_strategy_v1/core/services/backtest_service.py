@@ -15,8 +15,8 @@ import pytz
 import pandas as pd
 
 from ..event_engine.event_driven_strategy_engine import EventDrivenStrategyEngine
-from ..config import load_and_validate_config
 from ...infrastructure.data.historical_data_provider import DataProvider
+from ..strategies.strategy_factory import StrategyFactory
 
 logger = logging.getLogger(__name__)
 

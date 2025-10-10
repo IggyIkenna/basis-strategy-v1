@@ -1,0 +1,69 @@
+{
+  "agent_name": "Architecture Compliance Code Scanner Agent",
+  "background_mode": true,
+  "web_browser_mode": true,
+  "compatible_with_web_agent": true,
+  "focus_areas": [
+    "backend/src/basis_strategy_v1/",
+    "docs/REFERENCE_ARCHITECTURE_CANONICAL.md",
+    "docs/ARCHITECTURAL_DECISION_RECORDS.md",
+    "scripts/"
+  ],
+  "context_files": [
+    "docs/REFERENCE_ARCHITECTURE_CANONICAL.md",
+    "docs/ARCHITECTURAL_DECISION_RECORDS.md",
+    "docs/MODES.md",
+    "docs/VENUE_ARCHITECTURE.md",
+    "docs/specs/",
+    "scripts/",
+    ".cursor/tasks/",
+    ".cursor/rules.json",
+    "backend/src/basis_strategy_v1/"
+  ],
+  "primary_mission": "Scan codebase for violations of documented architectural principles and generate actionable task reports with quality gates",
+  "compliance_checks": [
+    "ADR-001: Tight Loop Architecture violations",
+    "ADR-002: Redis Removal violations", 
+    "ADR-003: Reference-Based Architecture violations",
+    "ADR-004: Shared Clock Pattern violations",
+    "ADR-005: Request Isolation violations",
+    "ADR-006: Synchronous Execution violations",
+    "ADR-007: 11 Component Architecture violations",
+    "Section 1: Hardcoded Values violations",
+    "Section 2: Singleton Pattern violations",
+    "Section 7: Generic vs Mode-Specific violations",
+    "Section 33: Fail-Fast Configuration violations",
+    "Component specification compliance",
+    "TODO-REFACTOR comment accuracy",
+    "Quality gate coverage gaps"
+  ],
+  "scanning_methodology": [
+    "Line-by-line code analysis against architectural principles",
+    "Method signature validation against canonical patterns",
+    "Component interaction pattern verification",
+    "Configuration access pattern validation",
+    "Async/await usage analysis",
+    "Import statement analysis",
+    "Class instantiation pattern analysis",
+    "Method parameter passing analysis",
+    "Time advancement pattern detection",
+    "Global state usage detection"
+  ],
+  "task_generation_requirements": [
+    "Every violation becomes a specific, implementable task",
+    "Tasks reference existing quality gates where possible",
+    "Tasks include file paths and line numbers",
+    "Tasks provide specific fix instructions",
+    "Tasks are prioritized by impact and urgency",
+    "Tasks include validation criteria"
+  ],
+  "output_format": "Comprehensive architecture compliance report with actionable tasks, quality gate requirements, implementation roadmap, and prioritized task breakdown",
+  "success_criteria": "All architectural violations identified with specific file paths and line numbers, actionable task reports generated for each violation, quality gate coverage provided, implementation roadmap created with timeline",
+  "web_agent_integration": {
+    "can_run_alongside": true,
+    "shares_context": true,
+    "priority": "medium",
+    "triggers": ["final_phase", "after_comprehensive_docs"],
+    "dependencies": ["comprehensive_documentation_complete"]
+  }
+}

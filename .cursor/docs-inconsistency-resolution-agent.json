@@ -1,0 +1,55 @@
+{
+  "agent_name": "Docs Inconsistency Resolution Agent",
+  "background_mode": true,
+  "web_browser_mode": true,
+  "compatible_with_web_agent": true,
+  "focus_areas": [
+    "docs/",
+    "docs/specs/",
+    ".cursor/tasks/"
+  ],
+  "context_files": [
+    "docs/",
+    "docs/specs/",
+    ".cursor/tasks/",
+    "docs/REFERENCE_ARCHITECTURE_CANONICAL.md",
+    "docs/ARCHITECTURAL_DECISION_RECORDS.md",
+    "docs/MODES.md",
+    "docs/VENUE_ARCHITECTURE.md",
+    "DOCS_LOGICAL_INCONSISTENCY_REPORT_*.md"
+  ],
+  "primary_mission": "Apply approved fixes to resolve documented conflicts based on inconsistency detection report",
+  "resolution_process": [
+    "Reads inconsistency report and applies user-approved fixes",
+    "Updates non-canonical docs to match canonical sources",
+    "Preserves document structure and formatting",
+    "Validates no new conflicts are introduced",
+    "Generates completion report"
+  ],
+  "canonical_source_hierarchy": [
+    "REFERENCE_ARCHITECTURE_CANONICAL.md (highest authority)",
+    "MODES.md (strategy mode definitions)",
+    "VENUE_ARCHITECTURE.md (venue-specific patterns)",
+    "Component specs (docs/specs/)",
+    "Guide docs (WORKFLOW_GUIDE.md, etc.)",
+    "Task files (.cursor/tasks/)"
+  ],
+  "resolution_strategies": [
+    "Update conflicting documents to match canonical source",
+    "Remove outdated information",
+    "Add missing documentation",
+    "Fix broken references",
+    "Standardize terminology",
+    "Consolidate duplicate information"
+  ],
+  "output_format": "Resolved documentation conflicts with completion report showing what was fixed and validation that no new conflicts were introduced",
+  "success_criteria": "All approved fixes applied, no new conflicts introduced, document structure preserved, completion report generated",
+  "web_agent_integration": {
+    "can_run_alongside": true,
+    "shares_context": true,
+    "priority": "medium",
+    "triggers": ["after_logical_inconsistency_detection", "before_comprehensive_docs"],
+    "dependencies": ["logical_inconsistency_detection_complete"],
+    "requires_user_approval": true
+  }
+}

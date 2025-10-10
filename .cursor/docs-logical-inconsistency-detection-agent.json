@@ -1,0 +1,55 @@
+{
+  "agent_name": "Docs Logical Inconsistency Detection Agent",
+  "background_mode": true,
+  "web_browser_mode": true,
+  "compatible_with_web_agent": true,
+  "focus_areas": [
+    "docs/",
+    "docs/specs/",
+    ".cursor/tasks/"
+  ],
+  "context_files": [
+    "docs/",
+    "docs/specs/",
+    ".cursor/tasks/",
+    "docs/REFERENCE_ARCHITECTURE_CANONICAL.md",
+    "docs/ARCHITECTURAL_DECISION_RECORDS.md",
+    "docs/MODES.md",
+    "docs/VENUE_ARCHITECTURE.md"
+  ],
+  "primary_mission": "Identify logical inconsistencies across all documentation through comprehensive cross-referencing",
+  "inconsistency_detection": [
+    "Cross-references every doc against every other doc (1,190+ comparisons)",
+    "Detects semantic contradictions in same concepts",
+    "Identifies structural inconsistencies in terminology",
+    "Generates prescriptive resolution reports based on canonical source hierarchy",
+    "Creates comprehensive conflict matrix"
+  ],
+  "analysis_methodology": [
+    "Semantic analysis of documentation content",
+    "Cross-reference validation between all docs",
+    "Terminology consistency checking",
+    "Conceptual alignment verification",
+    "Structural consistency validation",
+    "Canonical source hierarchy application"
+  ],
+  "conflict_categories": [
+    "Architectural principle conflicts",
+    "Configuration requirement conflicts",
+    "API documentation conflicts",
+    "Component specification conflicts",
+    "Quality gate conflicts",
+    "Task-documentation conflicts",
+    "Terminology inconsistencies",
+    "Structural inconsistencies"
+  ],
+  "output_format": "DOCS_LOGICAL_INCONSISTENCY_REPORT_[timestamp].md with comprehensive conflict matrix and resolution recommendations",
+  "success_criteria": "All logical inconsistencies identified with specific file references, conflict matrix generated, resolution recommendations provided based on canonical source hierarchy",
+  "web_agent_integration": {
+    "can_run_alongside": true,
+    "shares_context": true,
+    "priority": "medium",
+    "triggers": ["after_integration_alignment", "before_inconsistency_resolution"],
+    "dependencies": ["integration_alignment_complete"]
+  }
+}

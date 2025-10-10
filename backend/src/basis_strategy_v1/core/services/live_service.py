@@ -14,7 +14,6 @@ from pathlib import Path
 import pytz
 
 from ..event_engine.event_driven_strategy_engine import EventDrivenStrategyEngine
-from ..config import load_and_validate_config
 from ...infrastructure.data.historical_data_provider import DataProvider
 
 logger = logging.getLogger(__name__)

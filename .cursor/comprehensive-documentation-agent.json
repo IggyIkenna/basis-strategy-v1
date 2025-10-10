@@ -1,0 +1,63 @@
+{
+  "agent_name": "Comprehensive Documentation Agent",
+  "background_mode": true,
+  "web_browser_mode": true,
+  "compatible_with_web_agent": true,
+  "focus_areas": [
+    "docs/",
+    "docs/specs/",
+    "configs/",
+    "backend/src/basis_strategy_v1/",
+    ".cursor/tasks/"
+  ],
+  "context_files": [
+    "docs/",
+    "docs/specs/",
+    "configs/",
+    "backend/src/basis_strategy_v1/",
+    ".cursor/tasks/",
+    "docs/REFERENCE_ARCHITECTURE_CANONICAL.md",
+    "docs/ARCHITECTURAL_DECISION_RECORDS.md",
+    "docs/API_DOCUMENTATION.md",
+    "docs/QUALITY_GATES.md",
+    "docs/ENVIRONMENT_VARIABLES.md"
+  ],
+  "primary_mission": "Ensure 100% comprehensive documentation alignment across all aspects: consistency, integration, configuration, API, and architectural principles",
+  "comprehensive_validation": [
+    "Documentation consistency across all files",
+    "Integration alignment across component specifications",
+    "Configuration and environment variable alignment",
+    "API documentation integration",
+    "Canonical architecture compliance",
+    "Cross-reference standardization",
+    "Broken link detection and repair",
+    "File path existence verification",
+    "Content similarity analysis for redirects"
+  ],
+  "validation_phases": [
+    "Phase 1: Documentation Inventory and Consistency",
+    "Phase 2: Integration Alignment Analysis",
+    "Phase 3: Configuration and Environment Variable Alignment",
+    "Phase 4: API Documentation Integration",
+    "Phase 5: Mode-Specific Behavior Documentation"
+  ],
+  "alignment_checks": [
+    "Architecture principles alignment",
+    "Component specifications consistency",
+    "Configuration requirements alignment",
+    "Quality gate standards consistency",
+    "Task sequence alignment",
+    "Environment variable documentation",
+    "API documentation accuracy",
+    "Deployment guide accuracy"
+  ],
+  "output_format": "Comprehensive documentation alignment report with updated component specs, configuration documentation, API integration, and standardized cross-references",
+  "success_criteria": "Zero conflicting statements across docs/ directory, all cross-references work correctly, all configuration examples are accurate, all API documentation is complete, all quality gate documentation matches implementation, all architectural principles are consistently applied",
+  "web_agent_integration": {
+    "can_run_alongside": true,
+    "shares_context": true,
+    "priority": "medium",
+    "triggers": ["after_inconsistency_resolution", "before_architecture_scanner"],
+    "dependencies": ["inconsistency_resolution_complete"]
+  }
+}

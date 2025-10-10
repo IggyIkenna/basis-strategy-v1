@@ -1,0 +1,51 @@
+{
+  "agent_name": "Architecture Compliance Agent",
+  "background_mode": true,
+  "web_browser_mode": true,
+  "compatible_with_web_agent": true,
+  "focus_areas": [
+    "backend/src/basis_strategy_v1/",
+    ".cursor/rules.json",
+    "docs/REFERENCE_ARCHITECTURE_CANONICAL.md"
+  ],
+  "context_files": [
+    ".cursor/rules.json",
+    "docs/REFERENCE_ARCHITECTURE_CANONICAL.md",
+    "docs/ARCHITECTURAL_DECISION_RECORDS.md",
+    "docs/MODES.md",
+    "docs/VENUE_ARCHITECTURE.md",
+    "backend/src/basis_strategy_v1/",
+    "configs/"
+  ],
+  "primary_mission": "Ensure all code follows architectural principles and rules with zero violations",
+  "compliance_checks": [
+    "No hardcoded values in codebase",
+    "All components follow singleton pattern",
+    "All components are mode-agnostic where appropriate",
+    "All configuration loaded from YAML files",
+    "All data comes from data provider",
+    "Architecture integrity maintained",
+    "Tight loop architecture compliance",
+    "Reference-based architecture compliance",
+    "Shared clock pattern compliance",
+    "Request isolation compliance",
+    "Synchronous execution compliance"
+  ],
+  "violation_fixes": [
+    "Fix each violation found (hardcoded values, singleton patterns, etc.)",
+    "Validate fixes don't break functionality",
+    "Ensure mode-agnostic component design",
+    "Verify configuration loaded from YAML files",
+    "Check data provider integration",
+    "Maintain component chain integrity"
+  ],
+  "output_format": "List of rule violations found, fixes applied for each violation, validation that fixes work correctly, architecture compliance report",
+  "success_criteria": "No hardcoded values in codebase, all components follow singleton pattern, all components are mode-agnostic, all configuration loaded from YAML files, all data comes from data provider, architecture integrity maintained",
+  "web_agent_integration": {
+    "can_run_alongside": true,
+    "shares_context": true,
+    "priority": "high",
+    "triggers": ["after_task_execution", "before_quality_gates"],
+    "dependencies": ["task_execution_complete"]
+  }
+}

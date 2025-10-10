@@ -1,0 +1,52 @@
+{
+  "agent_name": "Quality Gates Agent",
+  "background_mode": true,
+  "web_browser_mode": true,
+  "compatible_with_web_agent": true,
+  "focus_areas": [
+    "scripts/",
+    "docs/QUALITY_GATES.md",
+    "tests/",
+    "backend/src/basis_strategy_v1/"
+  ],
+  "context_files": [
+    "docs/QUALITY_GATES.md",
+    "scripts/run_quality_gates.py",
+    "scripts/test_*.py",
+    "tests/",
+    "backend/src/basis_strategy_v1/",
+    ".cursor/tasks/"
+  ],
+  "primary_mission": "Run and fix quality gates to achieve target pass rates",
+  "quality_gate_targets": [
+    "Pure Lending: 9/9 passing (100%)",
+    "BTC Basis: 10/10 passing (100%)",
+    "Scripts Directory: 10/14 passing (70%+)",
+    "Overall: 15/24 passing (60%+)"
+  ],
+  "execution_process": [
+    "Run python scripts/run_quality_gates.py to get current status",
+    "Identify failing quality gates",
+    "Fix each failing quality gate",
+    "Re-run quality gates after each fix",
+    "Continue until target pass rates achieved"
+  ],
+  "fix_categories": [
+    "Configuration issues",
+    "Missing implementations",
+    "Test failures",
+    "Documentation gaps",
+    "Architecture violations",
+    "Integration problems"
+  ],
+  "output_format": "Current quality gate status, list of failing gates, fixes applied for each failure, updated pass rates after fixes, final quality gate report",
+  "success_criteria": "Pure Lending: 9/9 passing (100%), BTC Basis: 10/10 passing (100%), Scripts Directory: 10/14 passing (70%+), Overall: 15/24 passing (60%+)",
+  "web_agent_integration": {
+    "can_run_alongside": true,
+    "shares_context": true,
+    "priority": "high",
+    "triggers": ["after_architecture_compliance", "before_integration_alignment"],
+    "dependencies": ["architecture_compliance_complete"],
+    "prerequisites": ["backend_running", "tests_available"]
+  }
+}

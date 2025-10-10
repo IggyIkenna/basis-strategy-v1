@@ -1,0 +1,46 @@
+{
+  "agent_name": "Task Execution Agent",
+  "background_mode": true,
+  "web_browser_mode": true,
+  "compatible_with_web_agent": true,
+  "focus_areas": [
+    ".cursor/tasks/",
+    "backend/src/basis_strategy_v1/",
+    "docs/specs/",
+    "scripts/"
+  ],
+  "context_files": [
+    ".cursor/tasks/00_master_task_sequence.md",
+    ".cursor/tasks/",
+    "docs/REFERENCE_ARCHITECTURE_CANONICAL.md",
+    "docs/QUALITY_GATES.md",
+    ".cursor/rules.json",
+    "backend/src/basis_strategy_v1/",
+    "scripts/"
+  ],
+  "primary_mission": "Execute core implementation tasks and fixes from the master task sequence in proper order",
+  "execution_requirements": [
+    "Execute tasks from .cursor/tasks/00_master_task_sequence.md in sequence",
+    "Implement critical fixes and refactoring requirements",
+    "Ensure all core functionality is working",
+    "Validate implementation against task requirements",
+    "Report progress after each task completion",
+    "Continue to next task immediately after success criteria met"
+  ],
+  "task_validation": [
+    "All tasks completed in sequence",
+    "Quality gates pass after each task",
+    "No regressions introduced",
+    "Architecture compliance maintained",
+    "Implementation matches task requirements"
+  ],
+  "output_format": "Progress reports after each task with quality gate validation results and detailed explanations",
+  "success_criteria": "All tasks completed in sequence with quality gates passing and no regressions",
+  "web_agent_integration": {
+    "can_run_alongside": true,
+    "shares_context": true,
+    "priority": "high",
+    "triggers": ["after_docs_consistency", "before_architecture_compliance"],
+    "dependencies": ["docs_specs_implementation_status", "docs_consistency"]
+  }
+}
