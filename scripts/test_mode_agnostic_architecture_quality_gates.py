@@ -20,7 +20,7 @@ backend_src = Path(__file__).parent.parent / "backend" / "src"
 sys.path.insert(0, str(backend_src))
 
 from basis_strategy_v1.core.utilities.utility_manager import UtilityManager
-from basis_strategy_v1.core.strategies.components.pnl_monitor import PnLMonitor
+from basis_strategy_v1.core.math.pnl_calculator import PnLCalculator
 from basis_strategy_v1.core.strategies.components.exposure_monitor import ExposureMonitor
 from basis_strategy_v1.core.strategies.components.risk_monitor import RiskMonitor
 from basis_strategy_v1.core.strategies.components.position_monitor import PositionMonitor
@@ -164,7 +164,7 @@ class ModeAgnosticArchitectureQualityGates:
             utility_manager = UtilityManager(config, data_provider)
             
             # Create P&L monitor
-            pnl_monitor = PnLMonitor(config, data_provider, utility_manager)
+            pnl_calculator = PnLCalculator(config, data_provider, utility_manager)
             
             # Test that P&L monitor is mode-agnostic
             timestamp = pd.Timestamp.now()
@@ -465,7 +465,7 @@ class ModeAgnosticArchitectureQualityGates:
             utility_manager = UtilityManager(config, data_provider)
             
             # Create all components
-            pnl_monitor = PnLMonitor(config, data_provider, utility_manager)
+            pnl_calculator = PnLCalculator(config, data_provider, utility_manager)
             exposure_monitor = ExposureMonitor(config, data_provider, utility_manager)
             risk_monitor = RiskMonitor(config, data_provider, utility_manager)
             position_monitor = PositionMonitor(config, data_provider, utility_manager)

@@ -224,11 +224,11 @@ def test_backend_startup():
     # This would test actual backend startup
     # For now, just check if the backend code exists
     backend_files = [
-        "backend/src/basis_strategy_v1/api/strategies.py",
-        "backend/src/basis_strategy_v1/api/backtest.py",
-        "backend/src/basis_strategy_v1/api/live.py",
-        "backend/src/basis_strategy_v1/api/results.py",
-        "backend/src/basis_strategy_v1/api/config.py",
+        "backend/src/basis_strategy_v1/api/routes/strategies.py",
+        "backend/src/basis_strategy_v1/api/routes/backtest.py",
+        "backend/src/basis_strategy_v1/api/routes/live_trading.py",
+        "backend/src/basis_strategy_v1/api/routes/results.py",
+        "backend/src/basis_strategy_v1/api/routes/health.py",
     ]
     
     missing_files = []

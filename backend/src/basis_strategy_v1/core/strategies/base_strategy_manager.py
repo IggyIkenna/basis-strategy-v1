@@ -1,20 +1,20 @@
 """
-Base Strategy Manager Architecture
+Base Strategy Manager
 
-Provides the base class and standardized interface for all strategy implementations.
-Uses inheritance-based strategy modes with standardized wrapper actions.
+Abstract base class for all strategy managers with standardized interface
+and inheritance-based architecture.
 
+Reference: docs/ARCHITECTURAL_DECISION_RECORDS.md - ADR-007 (11 Component Architecture)
 Reference: docs/MODES.md - Standardized Strategy Manager Architecture
 Reference: docs/specs/05_STRATEGY_MANAGER.md - Component specification
-Reference: docs/REFERENCE_ARCHITECTURE_CANONICAL.md - Section 7 (Generic vs Mode-Specific)
 """
 
 from abc import ABC, abstractmethod
 from typing import Dict, List, Any, Optional
 from pydantic import BaseModel
-import logging
 
-logger = logging.getLogger(__name__)
+from ...infrastructure.logging.structured_logger import get_strategy_manager_logger
+
 
 class StrategyAction(BaseModel):
     """Standardized strategy action wrapper"""
@@ -23,34 +23,43 @@ class StrategyAction(BaseModel):
     target_currency: str
     instructions: List[Dict[str, Any]]
     atomic: bool = False
-    metadata: Dict[str, Any] = {}
+    metadata: Optional[Dict[str, Any]] = None
+
 
 class BaseStrategyManager(ABC):
     """Base strategy manager with standardized interface"""
     
-    def __init__(self, config: Dict[str, Any], risk_monitor, position_monitor, event_engine):
-        """
-        Initialize base strategy manager.
-        
-        Args:
-            config: Strategy configuration
-            risk_monitor: Risk monitor instance
-            position_monitor: Position monitor instance
-            event_engine: Event engine instance
-        """
+    def __init__(
+        self,
+        config: Dict[str, Any],
+        risk_monitor,
+        position_monitor,
+        event_engine,
+        utility_manager=None
+    ):
         self.config = config
         self.risk_monitor = risk_monitor
         self.position_monitor = position_monitor
         self.event_engine = event_engine
-        self.share_class = config.get('share_class', 'USDT')
-        self.asset = config.get('asset', 'ETH')
-        self.mode = config.get('mode', 'unknown')
+        self.utility_manager = utility_manager
         
-        # Reserve management
-        self.reserve_ratio = config.get('reserve_ratio', 0.05)  # 5% default
-        self.dust_delta = config.get('dust_delta', 0.002)  # 0.2% default
+        # Strategy configuration
+        self.share_class = config.get('share_class')
+        self.asset = config.get('asset')
+        self.mode = config.get('mode')
+        self.reserve_ratio = config.get('reserve_ratio', 0.1)
+        self.dust_delta = config.get('dust_delta', 0.002)
         
-        logger.info(f"BaseStrategyManager initialized for {self.mode} mode, {self.share_class} share class")
+        # Logging
+        self.logger = get_strategy_manager_logger()
+        
+        self.logger.info(
+            f"Strategy manager initialized: {self.mode}",
+            event_type='initialization',
+            strategy_mode=self.mode,
+            share_class=self.share_class,
+            asset=self.asset
+        )
     
     @abstractmethod
     def calculate_target_position(self, current_equity: float) -> Dict[str, float]:
@@ -61,7 +70,7 @@ class BaseStrategyManager(ABC):
             current_equity: Current equity in share class currency
             
         Returns:
-            Dictionary of target positions by token/venue
+            Dictionary with target positions for each asset
         """
         pass
     
@@ -71,10 +80,10 @@ class BaseStrategyManager(ABC):
         Enter full position (initial setup or large deposits).
         
         Args:
-            equity: Available equity in share class currency
+            equity: Available equity to deploy
             
         Returns:
-            StrategyAction with instructions for full entry
+            StrategyAction with entry instructions
         """
         pass
     
@@ -87,7 +96,7 @@ class BaseStrategyManager(ABC):
             equity_delta: Additional equity to deploy
             
         Returns:
-            StrategyAction with instructions for partial entry
+            StrategyAction with partial entry instructions
         """
         pass
     
@@ -97,10 +106,10 @@ class BaseStrategyManager(ABC):
         Exit entire position (withdrawals or risk override).
         
         Args:
-            equity: Total equity to exit
+            equity: Current equity to exit
             
         Returns:
-            StrategyAction with instructions for full exit
+            StrategyAction with full exit instructions
         """
         pass
     
@@ -110,10 +119,10 @@ class BaseStrategyManager(ABC):
         Scale down position (small withdrawals or risk reduction).
         
         Args:
-            equity_delta: Equity to remove from position
+            equity_delta: Equity to reduce from position
             
         Returns:
-            StrategyAction with instructions for partial exit
+            StrategyAction with partial exit instructions
         """
         pass
     
@@ -126,7 +135,7 @@ class BaseStrategyManager(ABC):
             dust_tokens: Dictionary of dust tokens and amounts
             
         Returns:
-            StrategyAction with instructions for dust selling
+            StrategyAction with dust selling instructions
         """
         pass
     
@@ -136,72 +145,58 @@ class BaseStrategyManager(ABC):
         
         Returns:
             Current equity (assets net of debt, excluding futures positions)
-            Only includes tokens on actual wallets, not locked in smart contracts
         """
         try:
-            # Get current position from position monitor
-            current_position = self.position_monitor.get_current_position()
+            # Get current positions from position monitor
+            positions = self.position_monitor.get_all_positions()
             
             # Calculate equity in share class currency
             equity = 0.0
+            for asset, position in positions.items():
+                if asset == self.share_class:
+                    equity += position.get('balance', 0.0)
+                else:
+                    # Convert other assets to share class currency
+                    asset_value = self.get_token_value(asset, position.get('balance', 0.0))
+                    equity += asset_value
             
-            # Add share class currency balance
-            share_class_balance = current_position.get(f'{self.share_class.lower()}_balance', 0.0)
-            equity += share_class_balance
+            # Subtract any debt (if applicable)
+            debt = self.position_monitor.get_total_debt()
+            equity -= debt
             
-            # Add asset balance (converted to share class currency)
-            asset_balance = current_position.get(f'{self.asset.lower()}_balance', 0.0)
-            if asset_balance > 0:
-                # Get current asset price in share class currency
-                asset_price = self._get_asset_price()
-                equity += asset_balance * asset_price
-            
-            # Add LST balances (converted to share class currency)
-            lst_balances = current_position.get('lst_balances', {})
-            for lst_token, balance in lst_balances.items():
-                if balance > 0:
-                    lst_price = self._get_lst_price(lst_token)
-                    equity += balance * lst_price
-            
-            # Subtract debt (if any)
-            debt_balance = current_position.get('debt_balance', 0.0)
-            equity -= debt_balance
+            self.logger.debug(
+                f"Equity calculated: {equity} {self.share_class}",
+                event_type='equity_calculation',
+                equity=equity,
+                share_class=self.share_class
+            )
             
             return equity
             
         except Exception as e:
-            logger.error(f"Error calculating equity: {e}")
+            self.logger.error(
+                f"Failed to calculate equity: {e}",
+                event_type='equity_calculation_error',
+                error=str(e)
+            )
             return 0.0
     
-    def _get_asset_price(self) -> float:
-        """Get current asset price in share class currency."""
-        try:
-            # This would typically get price from data provider
-            # For now, return a placeholder
-            if self.asset == 'ETH' and self.share_class == 'USDT':
-                return 3000.0  # Placeholder ETH price
-            elif self.asset == 'BTC' and self.share_class == 'USDT':
-                return 60000.0  # Placeholder BTC price
-            else:
-                return 1.0  # Default
-        except Exception as e:
-            logger.error(f"Error getting asset price: {e}")
-            return 1.0
-    
-    def _get_lst_price(self, lst_token: str) -> float:
-        """Get current LST price in share class currency."""
-        try:
-            # This would typically get price from data provider
-            # For now, return a placeholder
-            if lst_token == 'weETH' and self.share_class == 'USDT':
-                return 3000.0  # Placeholder weETH price
-            elif lst_token == 'wstETH' and self.share_class == 'USDT':
-                return 3000.0  # Placeholder wstETH price
-            else:
-                return 1.0  # Default
-        except Exception as e:
-            logger.error(f"Error getting LST price: {e}")
-            return 1.0
+    def get_token_value(self, token: str, amount: float) -> float:
+        """
+        Get value of token in share class currency.
+        
+        Args:
+            token: Token symbol
+            amount: Token amount
+            
+        Returns:
+            Value in share class currency
+        """
+        if self.utility_manager:
+            return self.utility_manager.get_token_value(token, amount, self.share_class)
+        else:
+            # Fallback to simple 1:1 conversion (for testing)
+            return amount
     
     def should_sell_dust(self, dust_tokens: Dict[str, float]) -> bool:
         """
@@ -211,63 +206,30 @@ class BaseStrategyManager(ABC):
             dust_tokens: Dictionary of dust tokens and amounts
             
         Returns:
-            True if dust should be sold, False otherwise
+            True if dust should be sold
         """
-        try:
-            dust_value = 0.0
-            for token, amount in dust_tokens.items():
-                if amount > 0:
-                    if token == self.share_class:
-                        dust_value += amount
-                    elif token == self.asset:
-                        dust_value += amount * self._get_asset_price()
-                    else:
-                        # Assume LST token
-                        dust_value += amount * self._get_lst_price(token)
-            
-            equity = self.get_equity()
-            threshold = equity * self.dust_delta
-            
-            return dust_value > threshold
-            
-        except Exception as e:
-            logger.error(f"Error checking dust threshold: {e}")
+        if not dust_tokens:
             return False
-    
-    def check_reserves(self) -> Dict[str, Any]:
-        """
-        Check if reserves are low and need replenishment.
         
-        Returns:
-            Dictionary with reserve status and recommendations
-        """
-        try:
-            current_position = self.position_monitor.get_current_position()
-            share_class_balance = current_position.get(f'{self.share_class.lower()}_balance', 0.0)
-            equity = self.get_equity()
-            
-            reserve_ratio_actual = share_class_balance / equity if equity > 0 else 0.0
-            reserve_low = reserve_ratio_actual < self.reserve_ratio
-            
-            return {
-                'reserve_ratio_actual': reserve_ratio_actual,
-                'reserve_ratio_target': self.reserve_ratio,
-                'reserve_low': reserve_low,
-                'share_class_balance': share_class_balance,
-                'equity': equity,
-                'recommendation': 'replenish_reserves' if reserve_low else 'maintain_reserves'
-            }
-            
-        except Exception as e:
-            logger.error(f"Error checking reserves: {e}")
-            return {
-                'reserve_ratio_actual': 0.0,
-                'reserve_ratio_target': self.reserve_ratio,
-                'reserve_low': True,
-                'share_class_balance': 0.0,
-                'equity': 0.0,
-                'recommendation': 'error'
-            }
+        dust_value = sum(
+            self.get_token_value(token, amount) 
+            for token, amount in dust_tokens.items()
+        )
+        equity = self.get_equity()
+        threshold = equity * self.dust_delta
+        
+        should_sell = dust_value > threshold
+        
+        if should_sell:
+            self.logger.info(
+                f"Dust threshold exceeded: {dust_value} > {threshold}",
+                event_type='dust_threshold_exceeded',
+                dust_value=dust_value,
+                threshold=threshold,
+                dust_tokens=dust_tokens
+            )
+        
+        return should_sell
     
     def trigger_tight_loop(self):
         """
@@ -277,47 +239,92 @@ class BaseStrategyManager(ABC):
         position_monitor → exposure_monitor → risk_monitor → pnl_monitor
         """
         try:
-            if hasattr(self.event_engine, 'trigger_tight_loop'):
+            if self.event_engine:
                 self.event_engine.trigger_tight_loop()
+                self.logger.debug("Tight loop triggered", event_type='tight_loop_triggered')
             else:
-                logger.warning("Event engine does not have trigger_tight_loop method")
+                self.logger.warning("No event engine available for tight loop", event_type='tight_loop_error')
         except Exception as e:
-            logger.error(f"Error triggering tight loop: {e}")
+            self.logger.error(
+                f"Failed to trigger tight loop: {e}",
+                event_type='tight_loop_error',
+                error=str(e)
+            )
     
-    def get_strategy_info(self) -> Dict[str, Any]:
+    def check_reserve_ratio(self) -> bool:
         """
-        Get strategy information and status.
+        Check if reserves are below threshold.
         
         Returns:
-            Dictionary with strategy information
+            True if reserves are low
         """
         try:
             equity = self.get_equity()
-            reserves = self.check_reserves()
+            reserve_amount = equity * self.reserve_ratio
+            current_reserves = self.position_monitor.get_reserve_balance(self.share_class)
+            
+            is_low = current_reserves < reserve_amount
+            
+            if is_low:
+                self.logger.warning(
+                    f"Reserves low: {current_reserves} < {reserve_amount}",
+                    event_type='reserves_low',
+                    current_reserves=current_reserves,
+                    required_reserves=reserve_amount,
+                    reserve_ratio=self.reserve_ratio
+                )
+            
+            return is_low
+            
+        except Exception as e:
+            self.logger.error(
+                f"Failed to check reserve ratio: {e}",
+                event_type='reserve_check_error',
+                error=str(e)
+            )
+            return False
+    
+    def get_health_status(self) -> Dict[str, Any]:
+        """Get strategy manager health status."""
+        try:
+            equity = self.get_equity()
+            reserves_low = self.check_reserve_ratio()
             
             return {
-                'mode': self.mode,
+                'status': 'healthy',
+                'strategy_mode': self.mode,
                 'share_class': self.share_class,
                 'asset': self.asset,
                 'equity': equity,
-                'reserves': reserves,
-                'config': {
-                    'reserve_ratio': self.reserve_ratio,
-                    'dust_delta': self.dust_delta
+                'reserves_low': reserves_low,
+                'reserve_ratio': self.reserve_ratio,
+                'dust_delta': self.dust_delta,
+                'interfaces_connected': {
+                    'risk_monitor': self.risk_monitor is not None,
+                    'position_monitor': self.position_monitor is not None,
+                    'event_engine': self.event_engine is not None,
+                    'utility_manager': self.utility_manager is not None
                 }
             }
-            
         except Exception as e:
-            logger.error(f"Error getting strategy info: {e}")
             return {
-                'mode': self.mode,
-                'share_class': self.share_class,
-                'asset': self.asset,
-                'equity': 0.0,
-                'reserves': {'reserve_low': True},
-                'config': {
-                    'reserve_ratio': self.reserve_ratio,
-                    'dust_delta': self.dust_delta
-                }
+                'status': 'unhealthy',
+                'error': str(e),
+                'strategy_mode': self.mode
             }
-
+    
+    def log_strategy_event(
+        self,
+        event_type: str,
+        message: str,
+        level: str = 'INFO',
+        **kwargs
+    ):
+        """Log strategy-specific event."""
+        self.logger.log_strategy_event(
+            strategy_name=self.mode,
+            event_type=event_type,
+            message=message,
+            level=level,
+            **kwargs
+        )
