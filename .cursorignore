@@ -26,9 +26,6 @@ logs/
 backend/logs/
 
 # Data files (large datasets) - EXCLUDED FOR CURSOR AGENTS
-data/
-*.csv
-*.json
 *.zip
 
 # Large result files and package-lock files
@@ -36,9 +33,10 @@ pure_lending_backtest_results_*.json
 *package-lock.json
 tests/tmp/
 
-# Build artifacts
+# Build artifacts - EXCLUDED FOR CURSOR AGENTS
 build/
 dist/
+frontend/dist/
 *.egg-info/
 
 # Node modules (including nested ones) - EXCLUDED FOR CURSOR AGENTS

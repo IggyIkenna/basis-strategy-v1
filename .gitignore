@@ -30,8 +30,10 @@ __pycache__/
 .Python
 venv/
 
-# Node.js
+# Node.js - EXCLUDED FOR CURSOR AGENTS
 node_modules/
+**/node_modules/
+frontend/node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
