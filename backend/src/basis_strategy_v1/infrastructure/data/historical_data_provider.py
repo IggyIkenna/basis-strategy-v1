@@ -345,6 +345,8 @@ class DataProvider:
                 self._load_all_available_data()
             elif self.mode == 'pure_lending':
                 self._load_aave_rates('USDT')
+                self._load_gas_costs()
+                self._load_execution_costs()
             elif self.mode == 'btc_basis':
                 self._load_spot_prices('BTC')
                 self._load_futures_data('BTC', ['binance', 'bybit', 'okx'])

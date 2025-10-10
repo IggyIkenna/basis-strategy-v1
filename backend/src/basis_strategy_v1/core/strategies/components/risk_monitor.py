@@ -55,24 +55,28 @@ class RiskMonitor:
     def _load_aave_risk_parameters(self):
         """Load AAVE risk parameters from data provider (as per spec)."""
         try:
-            # Get AAVE risk parameters from data provider
-            # This should be loaded from protocol_data/aave/risk_params/aave_v3_risk_parameters.json
-            # For now, use hardcoded values as per spec
-            self.aave_risk_params = {
-                'emode': {
-                    'liquidation_bonus': {
-                        'weETH_WETH': 0.01  # 1% bonus for E-mode
-                    },
-                    'liquidation_thresholds': {
-                        'weETH_WETH': 0.95  # 95% LTV threshold for E-mode
-                    }
-                }
-            }
+            # Load AAVE risk parameters from the actual data file
+            import json
+            from pathlib import Path
             
-            self.aave_liquidation_bonus_emode = self.aave_risk_params['emode']['liquidation_bonus']['weETH_WETH']
-            self.aave_liquidation_threshold_emode = self.aave_risk_params['emode']['liquidation_thresholds']['weETH_WETH']
+            # Get data directory from config or use default
+            data_dir = self.config.get('data_dir', 'data')
+            risk_params_path = Path(data_dir) / 'protocol_data/aave/risk_params/aave_v3_risk_parameters.json'
             
-            logger.info("AAVE risk parameters loaded successfully")
+            if risk_params_path.exists():
+                with open(risk_params_path, 'r') as f:
+                    self.aave_risk_params = json.load(f)
+                
+                # Extract E-mode parameters (most permissive)
+                self.aave_liquidation_bonus_emode = self.aave_risk_params['emode']['liquidation_bonus']['weETH_WETH']
+                self.aave_liquidation_threshold_emode = self.aave_risk_params['emode']['liquidation_thresholds']['weETH_WETH']
+                
+                logger.info(f"AAVE risk parameters loaded from {risk_params_path}")
+            else:
+                # Fallback to hardcoded values if file not found
+                logger.warning(f"AAVE risk parameters file not found: {risk_params_path}, using fallback values")
+                self.aave_liquidation_bonus_emode = 0.01
+                self.aave_liquidation_threshold_emode = 0.95
             
         except Exception as e:
             logger.warning(f"Failed to load AAVE risk parameters: {e}")
