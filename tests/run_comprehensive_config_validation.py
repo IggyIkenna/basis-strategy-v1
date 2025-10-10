@@ -11,7 +11,7 @@ This script validates that ALL configuration sources are properly loaded and int
 6. Data availability and requirements
 7. Configuration consistency and separation of concerns
 
-Author: Agent B
+Author: Implementation Team
 Date: December 2024
 """
 
@@ -127,7 +127,7 @@ class ComprehensiveConfigValidator:
                     config = json.load(f)
                 
                 # Validate required sections
-                required_sections = ['environment', 'api', 'database', 'redis', 'data', 'execution']
+                required_sections = ['environment', 'api', 'database', 'data', 'execution']
                 missing_sections = [section for section in required_sections if section not in config]
                 
                 self.results['base_configs'][config_file] = {
@@ -351,7 +351,7 @@ class ComprehensiveConfigValidator:
                     'BASIS_ENVIRONMENT',
                     'BASIS_EXECUTION_MODE',
                     'BASIS_API__PORT',
-                    'BASIS_REDIS__URL'
+                    # Redis removed - using in-memory cache only
                 ]
                 
                 missing_critical = [var for var in critical_vars if var not in env_vars]

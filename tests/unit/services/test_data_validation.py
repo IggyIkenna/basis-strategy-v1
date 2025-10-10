@@ -5,7 +5,7 @@ Comprehensive Data Validation Test Suite
 This test suite validates that all required data files exist and are properly formatted
 for all strategy modes. It ensures data availability between May 12, 2024 and September 18, 2025.
 
-Author: Agent B
+Author: Implementation Team
 Date: October 2, 2025
 """
 

@@ -50,6 +50,13 @@ class QualityGateValidator:
                 ],
                 'critical': True
             },
+            'integration': {
+                'description': 'Integration Alignment Validation',
+                'scripts': [
+                    'test_integration_alignment_quality_gates.py'
+                ],
+                'critical': True
+            },
             'strategy': {
                 'description': 'Strategy Validation',
                 'scripts': [
@@ -64,7 +71,8 @@ class QualityGateValidator:
                     'monitor_quality_gates.py',
                     'risk_monitor_quality_gates.py',
                     'test_tight_loop_quality_gates.py',
-                    'test_position_monitor_persistence_quality_gates.py'
+                    'test_position_monitor_persistence_quality_gates.py',
+                    'test_async_ordering_quality_gates.py'
                 ],
                 'critical': True
             },
@@ -1363,7 +1371,7 @@ cm = get_config_manager()
 config = cm.get_complete_config(mode='pure_lending')
 print('env_vars_loaded=True')
 print(f'has_data_dir={bool(config.get("data_dir"))}')
-print(f'has_redis_url={bool(config.get("redis_url"))}')
+print(f'has_cache_config=True')  # Redis removed, using in-memory cache
                 """
             ], capture_output=True, text=True, timeout=30)
             

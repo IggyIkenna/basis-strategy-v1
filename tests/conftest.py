@@ -26,16 +26,7 @@ def event_loop():
     loop.close()
 
 
-@pytest.fixture
-def mock_redis():
-    """Create mock Redis client."""
-    redis_mock = Mock()
-    redis_mock.publish = Mock()
-    redis_mock.subscribe = Mock()
-    redis_mock.get = Mock(return_value=None)
-    redis_mock.set = Mock()
-    redis_mock.ping = Mock(return_value=True)
-    return redis_mock
+# Redis mock removed - using direct method calls for component communication
 
 
 @pytest.fixture
@@ -376,8 +367,7 @@ def test_config():
             'host': 'localhost'
         },
         'cache': {
-            'type': 'redis',
-            'redis_url': 'redis://localhost:6379/1',
+            'type': 'in_memory',
             'enabled': True,
             'cache_ttl': 300,
             'session_ttl': 3600

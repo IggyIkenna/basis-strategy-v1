@@ -294,7 +294,7 @@ class ConfigAlignmentValidator:
         # 4. InfrastructureConfig ↔ REMOVED (configs/*.json eliminated)
         print("  📁 InfrastructureConfig ↔ REMOVED (configs/*.json eliminated)")
         print("    ✅ JSON configs eliminated - infrastructure handled by environment variables and hardcoded defaults")
-        print("    📝 Design decision: Database/Redis/Storage → env vars, Cross-network/Rates → hardcoded")
+        print("    📝 Design decision: Database/Storage → env vars, Cross-network/Rates → hardcoded")
         
         # No infrastructure alignment to check since JSON configs are eliminated
         alignment_results['infrastructure'] = {

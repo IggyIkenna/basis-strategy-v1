@@ -27,12 +27,6 @@ This is a live and backtesting framework for multiple web3 and CEX trading strat
 2. **Phase 2**: Simulate full e2e workflows in staging env with small capital
 3. **Final Quality Gate**: Live trading on full capital deployment
 
-### **Testing Requirements** 
-- **MANDATORY**: Every completed task must include minimum 80% unit test coverage
-- Target: 80% unit and integration test coverage overall
-- Target: 100% e2e test coverage
-- No task is complete without comprehensive tests
-
 ### **Key Strategies**
 - Pure lending (AAVE, Morpho, etc.)
 - Basis trading (funding rate arbitrage)
@@ -40,11 +34,29 @@ This is a live and backtesting framework for multiple web3 and CEX trading strat
 - Market-neutral strategies
 - Cross-venue liquidity optimization
 
-## Refactoring Rules
-- **NEVER facilitate backward compatibility during refactors** - this introduces confusion and technical debt
-- When refactoring, break things cleanly and update all references
-- If something needs to be preserved, document it explicitly as a migration requirement
-- Prefer clean breaks over maintaining legacy support
+## Mandatory Actions (ALWAYS Required)
+- **Update docs/** when making breaking changes to config, data, codebase, backend, or frontend
+- **Check docs/ consistency** - ensure all docs reference the same logic and don't conflict
+- **Run test suite** after changes to ensure everything still works
+- **Use actual current date** when updating documentation - run `date` command to get the real current date, never use assumed or old dates
+- **Check downstream usage** when adjusting config (adding/removing fields)
+- **Update frontend/backend/tests** that use the config changes
+- **Check data/ usage** when changing data files or business logic
+- **Update filenames and business logic** when data is added/removed
+- **Update README files** when making changes to their respective directories
+- **Follow instructions** in README files (tests/README.md, docs/README.md, etc.)
+- **Update directory-specific READMEs** when changing structure, processes, or requirements
+- **Validate** that README instructions still work after changes
+- **Restart backend server** before running quality gates or long-running tests (see docs/QUALITY_GATES.md)
+
+## Testing Requirements
+- **MANDATORY**: Every completed task MUST include minimum 80% unit test coverage
+- **Target**: 80% unit/integration coverage, 100% e2e coverage
+- **Run test suite** in tests/ at the end of every set of changes
+- Follow the testing instructions in tests/README.md
+- Ensure all tests pass before considering changes complete
+- If tests fail, fix the issues before proceeding
+- No task is complete without comprehensive tests
 
 ## Code Quality Rules
 - Use Pydantic for all data validation
@@ -52,41 +64,53 @@ This is a live and backtesting framework for multiple web3 and CEX trading strat
 - All components must use the new config system
 - Tests must validate the new architecture, not legacy patterns
 
+## Refactoring Rules
+- **NEVER facilitate backward compatibility during refactors** - this introduces confusion and technical debt
+- When refactoring, break things cleanly and update all references
+- If something needs to be preserved, document it explicitly as a migration requirement
+- Prefer clean breaks over maintaining legacy support
+
 ## Documentation Rules
 - Keep docs/ as the single source of truth
 - Update docs/ first, then implement
 - If implementation differs from docs/, update docs/ to match reality
-- Never maintain multiple versions of the same information
-- **ALWAYS update docs/ when making breaking changes** to config, data, codebase, backend, or frontend
-- **ALWAYS check docs/ consistency** - ensure all docs reference the same logic and don't conflict
-- **ALWAYS run test suite** after changes to ensure everything still works
 - **NEVER create summary docs** - they waste context and become stale. Update existing docs instead
+- When adding timestamps, dates, or "last updated" fields to docs, **MANDATORY** to run `date` command first to get the accurate current date
 
-## Testing Rules
-- **MANDATORY**: Every completed task MUST include minimum 80% unit test coverage
-- **ALWAYS run the test suite** in tests/ at the end of every set of changes
-- Follow the testing instructions in tests/README.md
-- Ensure all tests pass before considering changes complete
-- If tests fail, fix the issues before proceeding
-- Target: 80% unit/integration coverage, 100% e2e coverage
-- No task is complete without comprehensive tests
+## Canonical Architecture Rules
+- **REFERENCE_ARCHITECTURE_CANONICAL.md** is the single source of truth for all architectural principles
+- When conflicts arise, consult canonical source hierarchy:
+  1. REFERENCE_ARCHITECTURE_CANONICAL.md (highest authority)
+  2. MODES.md (strategy mode definitions)
+  3. VENUE_ARCHITECTURE.md (venue-specific patterns)
+  4. Component specs (docs/specs/)
+  5. Guide docs (WORKFLOW_GUIDE.md, etc.)
+  6. Task files (.cursor/tasks/)
+- For detailed ADR history, reference ARCHITECTURAL_DECISION_RECORDS.md
+- All component implementations must follow patterns in REFERENCE_ARCHITECTURE_CANONICAL.md
+
+## DRY Principle Rules
+- **NEVER duplicate content** across multiple documentation files
+- **SINGLE SOURCE OF TRUTH** - Each piece of information should exist in exactly one place
+- **CROSS-REFERENCE, DON'T DUPLICATE** - Use references to other documents instead of copying content
+- **FOCUSED DOCUMENTS** - Each document should have a clear, specific scope and purpose
+- **WHEN IN DOUBT, REFERENCE** - If unsure whether to duplicate or reference, always choose to reference
+- **DOCUMENT SCOPE CLEARLY** - Each document should explicitly state what it covers and what it doesn't
+- **MAINTAIN REFERENCES** - Keep cross-references up-to-date when documents change
+- **VIOLATION DETECTION** - If you find duplicated content, consolidate it into a single source and add cross-references
 
 ## Configuration Rules
-- **ALWAYS check downstream usage** when adjusting config (adding/removing fields)
-- **ALWAYS update frontend/backend/tests** that use the config changes
-- **ALWAYS check data/ usage** when changing data files or business logic
-- **ALWAYS update filenames and business logic** when data is added/removed
 - **NO DUPLICATION** - Each config should have a single source of truth
 
-## README Compliance Rules
-- **ALWAYS update README files** when making changes to their respective directories
-- **ALWAYS follow instructions** in README files (tests/README.md, docs/README.md, etc.)
-- **ALWAYS update directory-specific READMEs** when changing structure, processes, or requirements
-- **ALWAYS validate** that README instructions still work after changes
-
 ## Server Management Rules
-- **ALWAYS restart backend server** before running quality gates or long-running tests
 - **Use `./platform.sh backtest`** to start backend in backtest mode
 - **Use `./platform.sh stop-local`** to stop running servers before restarting
 - **If commands hang or timeout**, restart the server and try again
 - **Check server status** with `ps aux | grep python` if needed
+
+## Quality Gate Integration Rules
+- **NO ORPHANED QUALITY GATE TESTS** - All quality gate scripts MUST be integrated into `run_quality_gates.py`
+- **Command Line Integration** - Every quality gate test must be runnable via command line arguments
+- **Category Organization** - All tests must be organized into logical categories (docs, strategy, components, etc.)
+- **Isolation Support** - Tests must support isolated execution via `--category` flags
+- **Validation**: Before creating any new quality gate script, verify it's integrated into `run_quality_gates.py`

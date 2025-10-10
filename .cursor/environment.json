@@ -1,7 +1,7 @@
 {
   "snapshot": "POPULATED_FROM_SETTINGS",
   "install": "pip install -r requirements.txt && cd frontend && npm install && cd ..",
-  "start": "sudo service redis-server start && sudo service docker start",
+  "start": "sudo service docker start",
   "terminals": [
     {
       "name": "Backend API Server",

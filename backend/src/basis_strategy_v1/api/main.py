@@ -33,8 +33,8 @@ def validate_core_startup_config():
     #   3. Add quality gate validation for backtest mode (data provider initialization)
     #   4. Add quality gate validation for live mode (venue API health checks)
     # Reference: docs/ENVIRONMENT_VARIABLES.md - Environment Variable Validation Requirements section
-    # Reference: .cursor/tasks/11_backtest_mode_quality_gates.md - Backtest Mode Quality Gates
-    # Reference: .cursor/tasks/12_live_trading_quality_gates.md - Live Trading Quality Gates
+    # Reference: docs/QUALITY_GATES.md - Backtest Mode Quality Gates
+    # Reference: docs/QUALITY_GATES.md - Live Trading Quality Gates
     # Status: PENDING
     
     core_vars = [
@@ -42,7 +42,6 @@ def validate_core_startup_config():
         'BASIS_DEPLOYMENT_MODE', 
         'BASIS_DATA_DIR',
         'BASIS_RESULTS_DIR',
-        'BASIS_REDIS_URL',
         'BASIS_DEBUG',
         'BASIS_LOG_LEVEL',
         'BASIS_EXECUTION_MODE',
@@ -99,7 +98,7 @@ async def lifespan(app: FastAPI):
     # Initialize components (database, cache, etc.)
     # This is where we would initialize:
     # - Database connections
-    # - Redis cache connections  
+    # - Cache connections (in-memory only)  
     # - Data provider connections
     # - Monitoring systems
     try:

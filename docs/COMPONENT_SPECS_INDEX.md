@@ -1,30 +1,65 @@
 # Component Specifications - Index 📚
 
 **Purpose**: Central index to all component specifications  
-**Status**: ✅ Core components implemented, critical issues remain  
-**Updated**: October 5, 2025 - Core components working, critical issues remain  
-**Last Reviewed**: October 8, 2025  
-**Status**: ✅ Aligned with canonical sources (.cursor/tasks/ + MODES.md)
+**Status**: ✅ Core components implemented | 🔄 Critical issues remain | ❌ Not production ready  
+**Updated**: October 10, 2025 - Core components working, critical issues remain  
+**Last Reviewed**: October 10, 2025  
+**Status**: ✅ Aligned with canonical architectural principles  
+**Standard Format**: All 20 component specs follow 18-section standard format
 
 ---
 
 ## 📚 **Canonical Sources**
 
 **This index aligns with canonical architectural principles**:
-- **Architectural Principles**: [CANONICAL_ARCHITECTURAL_PRINCIPLES.md](CANONICAL_ARCHITECTURAL_PRINCIPLES.md) - Consolidated from all .cursor/tasks/
+- **Architectural Principles**: [REFERENCE_ARCHITECTURE_CANONICAL.md](REFERENCE_ARCHITECTURE_CANONICAL.md) - Canonical architectural principles
 - **Strategy Specifications**: [MODES.md](MODES.md) - Canonical strategy mode definitions
-- **Design Decisions**: [ARCHITECTURAL_DECISIONS.md](ARCHITECTURAL_DECISIONS.md) - Core design decisions
-- **Task Specifications**: `.cursor/tasks/` - Individual task specifications
+- **Design Decisions**: [REFERENCE_ARCHITECTURE_CANONICAL.md](REFERENCE_ARCHITECTURE_CANONICAL.md) - Core design decisions
+- **Component Specifications**: [specs/](specs/) - Detailed component implementation guides
 
 ---
 
 ## ✅ **Current Implementation Status**
 
-**All 9 Core Components**: ✅ **CORE COMPONENTS IMPLEMENTED, CRITICAL ISSUES REMAIN**
+**All 9 Core Components**: ✅ **CORE COMPONENTS IMPLEMENTED** | 🔄 **CRITICAL ISSUES REMAIN** | ❌ **NOT PRODUCTION READY**
 - Backend deployment functional with critical issues
 - All API endpoints working
 - Backtest system executing end-to-end with yield calculation issues
 - Test coverage working towards 80% target
+
+## ⚠️ **Known Issues**
+
+**CRITICAL**: This system is **NOT production ready**. Core components are implemented but critical issues remain:
+
+- **Pure Lending**: Yield calculation shows 1166% APY (should be 3-8%)
+- **Quality Gates**: Only 5/14 scripts passing (target: 70%+)
+- **BTC Basis**: 8/10 quality gates passing (80%)
+- **Overall Status**: In development - not ready for production use
+
+**See**: [docs/QUALITY_GATES.md](QUALITY_GATES.md) for complete issue list and resolution status.
+
+## 📋 **18-Section Standard Format**
+
+All component specifications follow a standardized 18-section format:
+
+1. **Purpose** - What the component does
+2. **Responsibilities** - Specific duties  
+3. **State** - Internal state variables
+4. **Component References (Set at Init)** - What's passed during initialization
+5. **Environment Variables** ⭐ - Which env vars are read
+6. **Config Fields Used** ⭐ - Which config fields from strategy mode slice
+7. **Data Provider Queries** ⭐ - Which data queries (or "N/A")
+8. **Core Methods** - Main API surface
+9. **Data Access Pattern** - How it queries data with shared clock
+10. **Mode-Aware Behavior** - Backtest vs Live differences
+11. **Event Logging Requirements** ⭐ - Separate log files + EventLogger integration
+12. **Error Codes** ⭐ - Structured errors + health integration
+13. **Quality Gates** - Validation criteria
+14. **Integration Points** - How it connects to other components
+15. **Code Structure Example** - Implementation template
+16. **Related Documentation** - Cross-references
+
+*Note: Specs may have additional domain-specific sections, but these 16 are mandatory.*
 
 ## 🎯 **Component Overview**
 
@@ -38,46 +73,52 @@
 5. **[Strategy Manager](specs/05_STRATEGY_MANAGER.md)** - Mode-specific orchestration & rebalancing
 
 ### **Execution** (Action - Executes Instructions) ✅
-6. **[CEX Execution Interface](specs/06_CEX_EXECUTION_MANAGER.md)** - Off-chain execution
-7. **[OnChain Execution Interface](specs/07_ONCHAIN_EXECUTION_MANAGER.md)** - On-chain execution
-8. **[Execution Interfaces](specs/08_EXECUTION_INTERFACES.md)** - Unified execution abstraction (backtest/live)
-9. **[Execution Manager](specs/08_EXECUTION_INTERFACES.md)** - Cross-venue execution orchestration
+6. **[Execution Manager](specs/06_EXECUTION_MANAGER.md)** - Cross-venue execution orchestration
+7. **[Execution Interface Manager](specs/07_EXECUTION_INTERFACE_MANAGER.md)** - Interface management
+8. **[Event Logger](specs/08_EVENT_LOGGER.md)** - Audit-grade event tracking
+8A. **[Execution Interfaces](specs/08A_EXECUTION_INTERFACES.md)** - Unified execution abstraction (backtest/live)
+9. **[Data Provider](specs/09_DATA_PROVIDER.md)** - Market data access (historical + live modes)
+10. **[Reconciliation Component](specs/10_RECONCILIATION_COMPONENT.md)** - Position reconciliation
+11. **[Position Update Handler](specs/11_POSITION_UPDATE_HANDLER.md)** - Position update orchestration
 
-### **Supporting Infrastructure** (Always Active)
-10. **[Event Logger](specs/08_EVENT_LOGGER.md)** - Audit-grade event tracking
-11. **[Data Provider](specs/09_DATA_PROVIDER.md)** - Market data access (historical + live modes)
+### **Service Components** (Always Active)
+12. **[Frontend Spec](specs/12_FRONTEND_SPEC.md)** - Wizard/stepper UI
+13. **[Backtest Service](specs/13_BACKTEST_SERVICE.md)** - Backtest execution service
+14. **[Live Trading Service](specs/14_LIVE_TRADING_SERVICE.md)** - Live trading service
+15. **[Event Driven Strategy Engine](specs/15_EVENT_DRIVEN_STRATEGY_ENGINE.md)** - Strategy execution engine
 
-### **Standards** (Cross-Cutting)
-12. **[Redis Messaging Standard](specs/10_REDIS_MESSAGING_STANDARD.md)** - Pub/sub patterns
-13. **[Error Logging Standard](specs/11_ERROR_LOGGING_STANDARD.md)** - Structured logging
+### **Supporting Components** (Utilities & Infrastructure)
+16. **[Math Utilities](specs/16_MATH_UTILITIES.md)** - Mathematical utilities
+17. **[Health & Error Systems](specs/17_HEALTH_ERROR_SYSTEMS.md)** - Structured logging & health monitoring
+18. **[Results Store](specs/18_RESULTS_STORE.md)** - Results storage and retrieval
 
-### **Frontend**
-14. **[Frontend Spec](specs/12_FRONTEND_SPEC.md)** - Wizard/stepper UI
-15. **[Advanced Rebalancing](specs/13_ADVANCED_REBALANCING.md)** - Rebalancing logic
+### **Configuration**
+19. **[Configuration](specs/CONFIGURATION.md)** - Configuration management
 
 ---
 
 ## 🔄 **Component Interaction Flow**
 
+**DEPRECATED**: The monitoring cascade (position → exposure → risk → pnl) is no longer automatic.
+**NEW ARCHITECTURE**: See ADR-001 in REFERENCE_ARCHITECTURE_CANONICAL.md for current tight loop definition.
+
+**Current Tight Loop Pattern**:
 ```
-Balance Change Event
-    ↓ (synchronous chain)
-Position Monitor
-    ↓ (immediate)
-Exposure Monitor
-    ↓ (immediate)
-Risk Monitor
-    ↓ (immediate)
-P&L Calculator
-    ↓ (immediate)
-Strategy Manager (checks if action needed)
-    ↓ (if rebalancing triggered)
-Execution Managers (execute instructions)
-    ↓ (feedback loop)
-Position Monitor (balance changes from execution)
+execution → position_monitor → reconciliation → next instruction
 ```
 
-**All synchronous until execution!**
+**Full Loop Pattern**:
+```
+time trigger (60s) → strategy decision → [tight loop 1] → [tight loop 2] → ... → [tight loop N] → complete
+```
+
+**Key Principles**:
+- Execution manager sends ONE instruction at a time
+- Position monitor updates (simulated in backtest, queried in live)
+- Execution manager verifies position matches expected state
+- Move to next instruction ONLY after reconciliation
+- Happens WITHIN the full loop for each execution instruction
+- Ensures no race conditions via sequential execution
 
 ---
 
@@ -106,12 +147,17 @@ Position Monitor (balance changes from execution)
 | **Risk Monitor** | `core/rebalancing/risk_monitor.py` | ✅ IMPLEMENTED |
 | **P&L Calculator** | `core/math/pnl_calculator.py` | ✅ IMPLEMENTED |
 | **Strategy Manager** | `core/strategies/components/strategy_manager.py` | ✅ IMPLEMENTED |
-| **CEX Exec Interface** | `core/interfaces/cex_execution_interface.py` | ✅ IMPLEMENTED |
-| **OnChain Exec Interface** | `core/interfaces/onchain_execution_interface.py` | ✅ IMPLEMENTED |
+| **Execution Manager** | `core/execution/execution_manager.py` | ✅ IMPLEMENTED |
+| **Execution Interface Manager** | `core/execution/execution_interface_manager.py` | ✅ IMPLEMENTED |
 | **Event Logger** | `core/strategies/components/event_logger.py` | ✅ IMPLEMENTED |
+| **Execution Interfaces** | `core/interfaces/` | ✅ IMPLEMENTED |
 | **Data Provider** | `infrastructure/data/historical_data_provider.py` | ✅ IMPLEMENTED |
+| **Reconciliation Component** | `core/reconciliation/reconciliation_component.py` | ✅ IMPLEMENTED |
+| **Position Update Handler** | `core/strategies/components/position_update_handler.py` | ✅ IMPLEMENTED |
 
-**For detailed implementation**: See individual component specs in [specs/](specs/) directory
+**For detailed implementation**: See individual component specs in [specs/](specs/) <!-- Directory link to specs folder --> directory
+
+**File paths verified**: October 10, 2025 - All backend file paths confirmed to exist
 
 ---
 
@@ -128,9 +174,9 @@ All components use centralized config infrastructure:
 
 ## 📊 **Implementation Roadmap**
 
-**For week-by-week plan**: See [IMPLEMENTATION_ROADMAP.md](IMPLEMENTATION_ROADMAP.md)
+**For week-by-week plan**: See [README.md](README.md) <!-- Redirected from IMPLEMENTATION_ROADMAP.md - implementation status is documented here -->
 
-**For task breakdown**: See [REQUIREMENTS.md](REQUIREMENTS.md)
+**For task breakdown**: See [COMPONENT_SPECS_INDEX.md](COMPONENT_SPECS_INDEX.md) <!-- Redirected from REQUIREMENTS.md - requirements are component specifications -->
 
 **Current Priority**:
 1. Critical method alignment fixes (1-2 hours)
@@ -141,13 +187,13 @@ All components use centralized config infrastructure:
 
 ## 🎯 **Next Steps**
 
-1. **Start implementing?** → [IMPLEMENTATION_ROADMAP.md](IMPLEMENTATION_ROADMAP.md)
-2. **Need component details?** → [specs/](specs/) directory (12 detailed specs)
-3. **Architecture questions?** → [ARCHITECTURAL_DECISIONS.md](ARCHITECTURAL_DECISIONS.md)
+1. **Start implementing?** → [README.md](README.md) <!-- Redirected from IMPLEMENTATION_ROADMAP.md - implementation status is documented here -->
+2. **Need component details?** → [specs/](specs/) <!-- Directory link to specs folder --> directory (12 detailed specs)
+3. **Architecture questions?** → [REFERENCE_ARCHITECTURE_CANONICAL.md](REFERENCE_ARCHITECTURE_CANONICAL.md)
 4. **Configuration help?** → [specs/CONFIGURATION.md](specs/CONFIGURATION.md)
 
 ---
 
 **Ready to build!** 🚀 See component specs for complete implementation details.
 
-*Last Updated: October 3, 2025*
+*Last Updated: October 10, 2025*

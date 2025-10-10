@@ -1,14 +1,226 @@
-# Architectural Decisions - CANONICAL REFERENCE 🏛️
+# Architectural Decision Records (ADRs)
 
-**Status**: ⭐ **CANONICAL SOURCE** - Single source of truth for all design decisions  
-**Usage**: All other docs REFERENCE this file, do not duplicate content  
-**Updated**: October 6, 2025 - Updated to reflect 100% implementation completion  
-**Last Reviewed**: October 8, 2025  
-**Status**: ✅ Aligned with canonical sources (.cursor/tasks/ + MODES.md)
+**Status**: Historical Record - Referenced by REFERENCE_ARCHITECTURE_CANONICAL.md
+**Updated**: October 10, 2025
+**Purpose**: Complete historical record of all architectural decisions
+
+## Overview
+This document contains the full details of all architectural decisions made for the basis-strategy-v1 platform.
+
+**Canonical Source**: REFERENCE_ARCHITECTURE_CANONICAL.md contains principle summaries and references these detailed ADRs.
 
 ---
 
-## ADR-001: Separate Data Source from Execution Mode
+## ADR-001: Tight Loop Architecture Redefinition
+
+**Date**: 2025-01-06  
+**Status**: Accepted  
+**Context**: The original tight loop architecture defined a monitoring cascade (position → exposure → risk → pnl) that was not being triggered and created confusion about execution flow.
+
+**Decision**: Redefine tight loop as execution reconciliation pattern with proper full loop sequence: `execution_manager → execution_interface_manager → position_update_handler → position_monitor → reconciliation_component`
+
+**Consequences**:
+- **Positive**: Clear execution flow with position verification after each instruction
+- **Positive**: Eliminates race conditions through sequential execution
+- **Positive**: Proper component orchestration with Position Update Handler
+- **Positive**: P&L calculated on final positions after all trades complete
+- **Negative**: Major architectural change affecting all documentation
+- **Negative**: Requires updating all execution interfaces
+
+**Implementation**:
+- **Full Loop** (every timestep): `time trigger → position_monitor → exposure_monitor → risk_monitor → strategy_manager → [tight loop if execution needed] → pnl_calculator → results_store`
+- **Tight Loop** (only when execution happens): `execution_manager → execution_interface_manager → position_update_handler → position_monitor → reconciliation_component`
+- Position Update Handler orchestrates tight loop reconciliation handshake
+- Execution Manager orchestrates Execution Interface Manager which routes to venue-specific interfaces
+- Execution Manager awaits reconciliation success before proceeding to next instruction
+- P&L Calculator runs after tight loop to mark P&L on final positions
+- Results Store runs after P&L calculation to persist results (async I/O exception)
+- Loop-within-loop pattern prevents race conditions
+
+## ADR-002: Redis Removal
+
+**Date**: 2025-01-06  
+**Status**: Accepted  
+**Context**: Redis was used for pub/sub messaging between components but added complexity without clear benefits in a single-threaded system.
+
+**Decision**: Remove Redis entirely and use direct function calls for all component communication.
+
+**Consequences**:
+- **Positive**: Simplified architecture with direct function calls
+- **Positive**: No external dependencies for component communication
+- **Positive**: Single-threaded execution eliminates concurrency issues
+- **Positive**: Easier debugging and testing
+- **Negative**: No real-time pub/sub messaging capabilities
+- **Negative**: All communication must be synchronous
+
+**Implementation**:
+- Remove all Redis references from documentation
+- Update all components to use direct function calls
+- Remove Redis configuration and environment variables
+- Update health checks to not depend on Redis
+
+## ADR-003: Reference-Based Architecture
+
+**Date**: 2025-01-06  
+**Status**: Accepted  
+**Context**: Components were passing config, data_provider, and other components as runtime parameters, creating inconsistent data access patterns and potential state pollution.
+
+**Decision**: Implement reference-based architecture where components receive all shared resources as references during initialization and never pass them as runtime parameters.
+
+**Consequences**:
+- **Positive**: Consistent data access patterns across all components
+- **Positive**: No data/config passing between components
+- **Positive**: Clear ownership of shared resources
+- **Positive**: Easier debugging and testing
+- **Negative**: Components must be initialized with all required references
+- **Negative**: No dynamic component injection at runtime
+
+**Implementation**:
+- Components store references in `__init__`: `self.config`, `self.data_provider`, `self.position_monitor`, etc.
+- Components use references directly: `market_data = self.data_provider.get_data(timestamp)`
+- NEVER pass references as method parameters during runtime
+- NEVER create own instances of config or data_provider
+- All components share singleton instances via references
+
+## ADR-004: Shared Clock Pattern
+
+**Date**: 2025-01-06  
+**Status**: Accepted  
+**Context**: Components were advancing time independently and using different timestamps, leading to data inconsistency and potential forward-looking bias.
+
+**Decision**: EventDrivenStrategyEngine owns the authoritative timestamp and passes it to all component method calls. Components never advance time.
+
+**Consequences**:
+- **Positive**: All components use identical data snapshots
+- **Positive**: No forward-looking bias possible
+- **Positive**: Deterministic execution with same timestamp → same data
+- **Positive**: Easy debugging by timestamp
+- **Negative**: Components cannot advance time independently
+- **Negative**: All data queries must use passed timestamp
+
+**Implementation**:
+- EventDrivenStrategyEngine manages `self.current_timestamp`
+- All component methods receive `timestamp: pd.Timestamp` as first parameter
+- Components query data: `self.data_provider.get_data(timestamp)`
+- Data provider enforces `data <= timestamp` constraint
+- All components in same loop iteration use identical timestamp → identical data
+
+## ADR-005: Request Isolation Pattern
+
+**Date**: 2025-01-06  
+**Status**: Accepted  
+**Context**: Multiple backtest/live requests could interfere with each other through shared component state, and config overrides could pollute global configuration.
+
+**Decision**: Each backtest/live request creates completely fresh instances of DataProvider, config slice, and all components. No state pollution between requests.
+
+**Consequences**:
+- **Positive**: Multiple concurrent requests don't interfere
+- **Positive**: Config overrides isolated per request
+- **Positive**: Component state isolated per request
+- **Positive**: Global config stays pristine for re-slicing
+- **Negative**: Higher memory usage per request
+- **Negative**: Slower request initialization
+
+**Implementation**:
+- App startup: Load and validate full config once, store as immutable global
+- Per request: Slice config for strategy_name mode, apply overrides to slice
+- Per request: Create fresh DataProvider with mode-specific data
+- Per request: Create fresh component instances with references
+- Post request: Discard all instances, global config unchanged
+
+## ADR-006: Synchronous Component Execution
+
+**Date**: 2025-01-06  
+**Status**: Accepted  
+**Context**: Internal component methods were using async/await unnecessarily, adding complexity without benefits in a single-threaded system.
+
+**Decision**: Remove async/await from all internal component methods. Keep async only for external API entry points, request queuing, and I/O operations.
+
+**Consequences**:
+- **Positive**: Simplified component execution model
+- **Positive**: No async/await complexity in internal methods
+- **Positive**: Synchronous while/for loops for reconciliation polling
+- **Positive**: Easier debugging and testing
+- **Negative**: No concurrent execution within components
+- **Negative**: All internal execution must be synchronous
+
+**Implementation**:
+- Remove `async def` from all component `update_state()` and internal methods
+- Remove `await` from all inter-component calls
+- Use synchronous while/for loops for reconciliation polling
+- Keep `async def` ONLY for: BacktestService.run_backtest(), LiveTradingService.start_live_trading(), request queue management
+
+**Exceptions for I/O Operations**:
+
+1. **Event Logger** - Async for non-blocking I/O
+   - Uses `async def` for all logging methods
+   - Components await: `await self.event_logger.log_event(...)`
+   - Guarantees ordering through sequential awaits
+   - Rationale: File/DB writes shouldn't block trading operations
+
+2. **Results Storage** - Async with Queue Pattern
+   - Uses AsyncIO queue for FIFO ordering guarantees
+   - Background worker processes queue sequentially
+   - Prevents race conditions under heavy load
+   - Same implementation for backtest and live modes
+   - Rationale: Large result sets benefit from async I/O
+
+**Ordering Guarantees**:
+- AsyncIO's single-threaded event loop prevents race conditions
+- Queue ensures FIFO processing even with variable write times
+- Await semantics guarantee completion before next operation
+- No dropped data or out-of-order writes
+
+**Implementation**:
+- Event Logger: Direct async methods with await
+- Results Store: Queue-based async with background worker
+- Both follow same async pattern for consistency
+
+## ADR-007: 11 Component Architecture
+
+**Date**: 2025-01-06  
+**Status**: Accepted  
+**Context**: The system had 9 components but needed additional components for reconciliation and position update orchestration.
+
+**Decision**: Expand to 11 components by adding Reconciliation Component and elevating Position Update Handler to full component status.
+
+**Consequences**:
+- **Positive**: Clear separation of concerns for reconciliation
+- **Positive**: Position Update Handler abstracts tight loop complexity
+- **Positive**: Better component organization and responsibilities
+- **Negative**: Additional components to maintain
+- **Negative**: More complex initialization sequence
+
+**Implementation**:
+- Add Reconciliation Component for position state validation
+- Elevate Position Update Handler to full component with own specification
+- Update EventDrivenStrategyEngine to handle 11 components
+- Update all documentation to reflect 11 component architecture
+
+## ADR-008: Three-Way Venue Interaction
+
+**Date**: 2025-01-06  
+**Status**: Accepted  
+**Context**: Venues have different interaction types that were not clearly separated, leading to confusion about credential requirements and execution behavior.
+
+**Decision**: Define three distinct venue interaction types: Market Data Feed (public), Order Handling (private), Position Updates (private).
+
+**Consequences**:
+- **Positive**: Clear separation of venue interaction types
+- **Positive**: Different credential requirements per interaction type
+- **Positive**: Backtest vs live behavior clearly defined per interaction
+- **Positive**: Startup validation can test each interaction type separately
+- **Negative**: More complex venue initialization logic
+- **Negative**: Requires updating all venue-related documentation
+
+**Implementation**:
+- Market Data Feed: Public data, no credentials in backtest
+- Order Handling: Private operations, credentials in live only
+- Position Updates: Private queries, part of tight loop reconciliation
+- Backtest: Simulated for all three types
+- Live: Real APIs for all three types with heartbeat tests
+
+## ADR-009: Separate Data Source from Execution Mode
 
 **Date**: 2025-01-09  
 **Status**: Accepted  
@@ -38,8 +250,8 @@
 **For implementation details**, see:
 - **AAVE mechanics** → [specs/02_EXPOSURE_MONITOR.md](specs/02_EXPOSURE_MONITOR.md)
 - **Component overview** → [COMPONENT_SPECS_INDEX.md](COMPONENT_SPECS_INDEX.md)
-- **Implementation tasks** → [REQUIREMENTS.md](REQUIREMENTS.md)
-- **Timeline** → [IMPLEMENTATION_ROADMAP.md](IMPLEMENTATION_ROADMAP.md)
+- **Implementation tasks** → [COMPONENT_SPECS_INDEX.md](COMPONENT_SPECS_INDEX.md) <!-- Redirected from REQUIREMENTS.md - requirements are component specifications -->
+- **Timeline** → [README.md](README.md) <!-- Redirected from IMPLEMENTATION_ROADMAP.md - implementation status is documented here -->
 - **Configuration** → [specs/CONFIGURATION.md](specs/CONFIGURATION.md)
 
 ---
@@ -55,7 +267,6 @@ configs/
 ├── modes/                # Strategy mode configurations (YAML)
 ├── venues/               # Venue configurations (YAML)
 ├── share_classes/        # Share class configurations (YAML)
-└── scenarios/            # Scenario configurations (YAML) - NOT YET IMPLEMENTED
 
 deploy/
 ├── .env.dev           # Caddy deployment variables (local)
@@ -74,7 +285,6 @@ deploy/
    - `modes/*.yaml` - Strategy mode configurations
    - `venues/*.yaml` - Venue configurations  
    - `share_classes/*.yaml` - Share class configurations
-   - `scenarios/` - Scenario configurations (NOT YET IMPLEMENTED)
 
 2. **YAML-based configuration** (IMPLEMENTED)
    - `configs/modes/*.yaml` (strategy configurations) - ✅ IMPLEMENTED
@@ -99,7 +309,7 @@ class DataProvider:
 **Rationale**:
 - **Seamless Switching**: Same interface for backtest and live modes
 - **Real-time Data**: Live WebSocket/API feeds for live trading
-- **Caching Strategy**: In-memory and Redis support with configurable TTL
+- **Caching Strategy**: In-memory support with configurable TTL
 - **Error Handling**: Graceful degradation when live sources fail
 - **Environment Awareness**: Automatic API key loading from environment variables
 
@@ -257,83 +467,94 @@ cex_accounts = {
 
 ### **5. Backtest Timing Constraints** ⏰
 
-**Constraint 1: Hourly Price Updates Only**
+**Core Principle: Shared Clock Pattern**
+EventDrivenStrategyEngine owns the authoritative timestamp. All components receive timestamps as parameters and query data using those exact timestamps. Components NEVER advance time.
+
+**Constraint 1: Hourly Data Snapshots Only**
 ```python
+# EventDrivenStrategyEngine manages current_timestamp
 # All market data updates ON THE HOUR
 # Valid: '2024-05-12 14:00:00'
 # Invalid: '2024-05-12 14:30:00' (no data)
 
-# All prices from same hourly snapshot
-eth_spot = get_price('ETH/USDT', '2024-05-12 14:00:00')
-binance_perp = get_price('ETHUSDT-PERP', '2024-05-12 14:00:00')
-oracle_weeth = get_price('weETH/ETH', '2024-05-12 14:00:00')
+# All components use same timestamp → same data snapshot
+def _process_timestep(self, timestamp: pd.Timestamp):
+    # Pass timestamp to all components
+    self.position_monitor.update_state(timestamp, 'full_loop')
+    self.exposure_monitor.update_state(timestamp, 'full_loop')
+    self.risk_monitor.update_state(timestamp, 'full_loop')
+    
+    # All components query with identical timestamp
+    # market_data = self.data_provider.get_data(timestamp)
+    # Returns same snapshot for all components
 ```
 
-**Constraint 2: Atomic Event Execution**
+**Constraint 2: Data Provider Time Constraint**
 ```python
-# Sequential leverage loop (23 iterations)
+class DataProvider:
+    def get_data(self, timestamp: pd.Timestamp) -> Dict[str, Any]:
+        # Enforce data <= timestamp constraint
+        filtered_data = {}
+        for key, data_series in self.data.items():
+            # Get latest data point <= timestamp
+            filtered_data[key] = data_series[data_series.index <= timestamp].iloc[-1]
+        return filtered_data
+```
+
+**Constraint 3: Atomic Event Execution Within Timestamp**
+```python
+# Atomic leveraged staking execution
 # All 70+ events share same timestamp: '2024-05-12 00:00:00'
-# Differentiated by order: 1, 2, 3, ..., 70
+# Differentiated by tight loop order: 1, 2, 3, ..., 70
 
 # Atomic flash loan (1 transaction)
 # 6-7 events share same timestamp
-# Differentiated by order: 1, 2, 3, 4, 5, 6
+# Differentiated by tight loop order: 1, 2, 3, 4, 5, 6
 
 # ALL use same price snapshot (no timing risk)
+# Components receive timestamp, never generate/modify it
 ```
 
-**Event Timing Structure**:
+**Component Behavior Requirements**:
 ```python
-event = {
-    'timestamp': pd.Timestamp,  # Trigger time (on the hour)
-    'order': int,               # Global sequence (1, 2, 3...)
-    'status': 'completed',      # Always in backtest
-    
-    # Live trading extensions (all None in backtest)
-    'completion_timestamp': None,
-    'tx_hash': None,
-    'confirmation_blocks': None
-}
+class ExampleComponent:
+    def update_state(self, timestamp: pd.Timestamp, trigger_source: str):
+        # Receive timestamp, never generate/modify it
+        market_data = self.data_provider.get_data(timestamp)
+        
+        # All logic uses this exact timestamp
+        self.last_update_timestamp = timestamp
+        
+        # Process with timestamp-consistent data
+        self._process_with_data(market_data, timestamp)
+```
+
+**Anti-Patterns to Avoid**:
+```python
+# WRONG - Component advancing time
+def update_state(self, timestamp: pd.Timestamp):
+    next_timestamp = timestamp + pd.Timedelta(hours=1)  # Don't advance time
+    future_data = self.data_provider.get_data(next_timestamp)
+
+# WRONG - Caching data across timestamps
+def update_state(self, timestamp: pd.Timestamp):
+    if not hasattr(self, '_cached_data'):
+        self._cached_data = self.data_provider.get_data(timestamp)  # Don't cache
+    market_data = self._cached_data
+
+# WRONG - Using current time instead of passed timestamp
+def update_state(self, timestamp: pd.Timestamp):
+    current_time = pd.Timestamp.now()  # Don't use current time
+    market_data = self.data_provider.get_data(current_time)
 ```
 
 ---
 
-### **6. USDT Market-Neutral Entry Flow** ✅
-
-**Standardized Flow**:
-```python
-# Step 1: Fund ALL CEXs simultaneously
-wallet.USDT -= (binance + bybit + okx)
-cex['binance'].USDT += binance
-cex['bybit'].USDT += bybit
-cex['okx'].USDT += okx
-
-# Step 2: Execute ALL perp shorts simultaneously (same timestamp!)
-# Binance: Spot + Perp
-cex['binance'].ETH_spot += eth_bought
-cex['binance'].perp = short_binance
-
-# Bybit & OKX: Perp only (executed at same time as Binance!)
-cex['bybit'].perp = short_bybit
-cex['okx'].perp = short_okx
-
-# Step 3: Transfer ETH to wallet
-cex['binance'].ETH_spot -= eth_transfer
-wallet.ETH += eth_transfer
-
-# Step 4: Leverage loop on wallet
-# (All at same timestamp)
-```
-
-**Key**: ALL perp shorts at same time, not sequential!
-
----
-
-### **7. Obsolete Code Removal** ✅
+### **6. Obsolete Code Removal** ✅
 
 **Remove**:
 - ✅ USDT borrowing on AAVE for basis trade (not economical)
-- ✅ Multiple ETH entry paths (standardize to one, but keep atomic vs sequential toggle)
+- ✅ Multiple ETH entry paths (standardize to atomic flash loan only)
 - ✅ Fixed balance P&L mode (ETH analyzer is outdated)
 
 **Keep**:
@@ -341,12 +562,12 @@ wallet.ETH += eth_transfer
 - ✅ WETH/ETH auto-conversion (AAVE unwraps, EtherFi accepts both)
 
 **Clarifications**:
-- ETH share class: One path (stake → AAVE loop), but atomic vs sequential toggle remains
+- ETH share class: One path (stake → AAVE leveraged staking), atomic flash loan only
 - WETH/ETH: Assume protocols handle conversion, always talk in wrapped non-rebasing tokens
 
 ---
 
-### **8. Share Class P&L Currency** ✅
+### **7. Share Class P&L Currency** ✅
 
 **ETH Share Class**:
 - All P&L in ETH
@@ -388,21 +609,28 @@ wallet.ETH += eth_transfer
 **wstETH**:
 - Only supports `base_only` (no restaking rewards, just base Lido staking)
 
+**KING Token Handling**:
+- All weETH rewards (EIGEN, ETHFI) come as KING tokens (composite wrapper)
+- KING tokens count as dust and require unwrapping and selling
+- See docs/KING_TOKEN_HANDLING_GUIDE.md for unwrapping flow
+- No need to track KING price - it's a derivative structure mapping to ETHFI + EIGEN
+- When unwrapping, track equivalent ETHFI and EIGEN amounts for P&L attribution
+
 ---
 
-### **10. Leverage Loop Variations** ✅
+### **10. Leveraged Staking Execution** ✅
 
-**Iteration Limits**:
-- `None` = Unlimited (until remaining < $10k)
-- `0` = No leverage (stake once, no borrow)
-- `1` = One loop (stake → borrow → stake again, stop)
+**Atomic Flash Loan Only**:
+- Leveraged staking ALWAYS uses atomic flash loan (single transaction)
+- Formula: Target LTV determines leverage ratio
+- Entry: `borrow_flash → stake → supply_lst → borrow_aave → repay_flash`
+- Exit/Unwind: `borrow_flash → withdraw_lst → swap_to_eth → repay_aave → repay_flash`
+- Cost: ~$50 gas vs ~$200 for sequential
+- No sequential option - atomic is always superior
 
-**Execution Methods**:
-- **Sequential** (23 iterations): 70+ events, ~$200 gas, easier to debug
-- **Atomic Flash** (1 transaction): 6-7 events, ~$50 gas, gas efficient
-
-**Default**: Atomic flash for USDT modes (gas savings)  
-**Available**: Both methods in all leverage modes
+**No Parameters Needed**:
+- Atomic flash loan execution is deterministic based on target LTV
+- No iteration limits or position size thresholds required
 
 ---
 
@@ -410,12 +638,12 @@ wallet.ETH += eth_transfer
 
 **ETH Share Class**:
 - Never hedge (directional ETH exposure desired)
-- Auto-disable `basis_trade_enabled` if set
+- Throw error if `basis_trade_enabled: true` (invalid config)
 
 **USDT Share Class**:
 - Always hedge (market-neutral required)
 - Auto-enable `basis_trade_enabled` if staking enabled
-- Fail with error if disabled for staking strategies
+- Throw error if disabled for staking strategies
 
 ---
 
@@ -448,7 +676,7 @@ wallet.ETH -= gas_fee  # Reduces positive balance
 # Just normal balance deduction
 ```
 
-**Key**: Same process, just different starting balance!
+**Key**: Same process, just different starting balance! TODO: eventually we need to ensure that the starting balance is always positive and ETH exists on teh right vanues that consume gas from the start (not important, gas is low we may do this manually)
 
 ---
 
@@ -492,7 +720,7 @@ bybit_mtm = eth_short × (entry - bybit_mark)
 **Alternative**: Uniswap (configurable option)  
 **Impact**: If Uniswap, can't execute spot + perp simultaneously
 
-**In Backtest**: Simultaneous anyway (atomic execution assumption)
+**In Backtest**: Same process for alignment but in practice we will be simulating the execution so it will be simultaneous anyway (atomic execution assumption)
 
 ---
 
@@ -512,22 +740,21 @@ hedge_allocation:
 
 ### **17. Output File Structure** ✅
 
-**Organized Approach**:
+**By Request ID**:
 ```
-data/analysis/usdt_market_neutral/
-  summary_20241001_1430.json
-  hourly_pnl_20241001_1430.csv
-  event_log_20241001_1430.csv
-  balance_sheet_20241001_1430.csv
+results/{request_id}/
+  summary.json
+  hourly_pnl.csv
+  event_log.csv
+  balance_sheet.csv
   plots/
-    cumulative_pnl.html       # Plotly interactive
+    cumulative_pnl.html
     pnl_components.html
     delta_neutrality.html
     margin_ratios.html
-    # ... all plots as Plotly HTML
 ```
 
-**Plots**: Plotly HTML (interactive, browser-friendly), NOT PNG
+**Plots**: Plotly HTML (interactive), served by backend API
 
 ---
 
@@ -580,7 +807,7 @@ DATA_FILES = {
 
 ---
 
-### **20. Pricing Oracle Strategy** ✅
+### **20. Pricing Oracle Strategy** ✅ 
 
 **Spot Prices** (ETH/USD):
 - **Source**: Binance USDT spot (hourly OHLCV)
@@ -594,7 +821,7 @@ DATA_FILES = {
 - **File**: `weETH_ETH_oracle_*.csv`
 
 **Why Two Oracles**:
-- Binance spot for absolute USD pricing (perp neutrality)
+- Binance spot for absolute USD pricing (perp neutrality) and we hahve hourly pricing which we dont for aave oracle. we dont have USD pricing for uniswap
 - AAVE oracle for relative ETH pricing (staked spreads)
 - Different purposes, both needed
 
@@ -640,83 +867,33 @@ class DataLoader:
 
 ---
 
-### **22. Atomic vs Sequential Leverage Loops** ✅
 
-**Sequential (Traditional)**:
-```python
-# 23 separate transactions, 23 blocks
-for iteration in range(1, 24):
-    # Each iteration: 3 events (gas, stake, supply, gas, borrow)
-    # Total: 70+ events at same timestamp
-    # Order: 1, 2, 3, ..., 70
-    # Iteration field groups related events
-    
-events = [
-    {'order': 1, 'event': 'GAS_FEE_PAID', 'iteration': 1},
-    {'order': 2, 'event': 'STAKE_DEPOSIT', 'iteration': 1},
-    {'order': 3, 'event': 'COLLATERAL_SUPPLIED', 'iteration': 1},
-    {'order': 4, 'event': 'GAS_FEE_PAID', 'iteration': 1},
-    {'order': 5, 'event': 'LOAN_CREATED', 'iteration': 1},
-    # ... repeat for 23 iterations
-]
-```
+### **23. Rebalancing Implementation** ✅
 
-**Atomic Flash Loan (One Block)**:
-```python
-# Single transaction, 1 block
-# 6-7 events at same timestamp
-# Order: 1, 2, 3, 4, 5, 6
-# No iteration field (single atomic operation)
-
-events = [
-    {'order': 1, 'event': 'ATOMIC_TRANSACTION', 'bundle': 'LEVERAGE_ENTRY'},
-    {'order': 2, 'event': 'FLASH_BORROW', 'parent': 1},
-    {'order': 3, 'event': 'STAKE_DEPOSIT', 'parent': 1},
-    {'order': 4, 'event': 'COLLATERAL_SUPPLIED', 'parent': 1},
-    {'order': 5, 'event': 'LOAN_CREATED', 'parent': 1},
-    {'order': 6, 'event': 'FLASH_REPAID', 'parent': 1},
-    {'order': 7, 'event': 'GAS_FEE_PAID', 'parent': 1}
-]
-```
-
-**Distinction**:
-- Sequential: Many iterations, `iteration` field
-- Atomic: One bundle, `parent` field links to bundle event
-
----
-
-### **23. Rebalancing Implementation** 🔮
-
-**Status**: Future phase (after core modes working)
-
-**From FINAL_FIXES_SPECIFICATION.md**:
+**Strategy Manager Actions**:
+- Uses 5 standardized actions from docs/MODES.md
+- `entry_full`, `entry_partial`, `exit_full`, `exit_partial`, `sell_dust`
+- Each breaks down into instruction blocks for Execution Manager
 
 **Triggers**:
-1. Margin ratio < 20% (URGENT - add margin to CEX)
-2. Delta drift > 5% (WARNING - adjust hedge)
-3. Health factor < 1.10 (CRITICAL - reduce AAVE leverage)
+1. **Risk-triggered** (Priority 1): Risk Monitor detects warning/critical breach
+   - LTV warning/critical (AAVE)
+   - Maintenance margin warning/critical (CEX)
+   - Strategy Manager unwinds to safe levels FIRST
+   - Next loop iteration checks for optimal position
+2. **Position-triggered** (Priority 2): Deviation from target exceeds `position_deviation_threshold`
+   - Checked after risk is within safe levels
+   - Uses reserve balance vs `reserve_ratio` to decide if unwinding needed
 
-**Atomic Deleverage Flow**:
-```python
-# Extract capital from AAVE position
-1. Flash borrow WETH
-2. Repay partial AAVE debt
-3. Withdraw weETH collateral
-4. Swap weETH → ETH (one swap)
-5. Repay flash loan
-6. Send freed ETH to CEX
+**Fast vs Slow Withdrawals**:
+- Fast: Uses reserve balance (no unwinding needed)
+- Slow: Requires unwinding positions (flash loan for leveraged modes)
+- Decision based on: `reserve_balance / total_equity < reserve_ratio`
 
-# CEX execution
-7. Sell ETH for USDT (spot)
-8. Reduce perp short (buy to cover)
-9. Rebalance between exchanges if needed
-```
-
-**Target Margin Ratio**: 100% (full capital utilization)  
-**Exchange Split**: 50/50 target, allow ±1-2% drift
-
-**Priority**: Phase 4+ (after core modes validated)  
-**Estimate**: ~400-500 lines
+**No Complex Transfer Manager**:
+- Removed per strategy_manager_refactor.md
+- Strategy Manager calculates desired state
+- Execution Manager handles venue routing
 
 ---
 
@@ -744,51 +921,54 @@ total_value = (
 
 ---
 
-### **25. Config vs CLI Priority** ✅
-
-**CLI Overrides YAML**:
-```bash
-python unified_analyzer.py \
-  --config config.yaml \           # max_leverage_iterations: 10
-  --max-leverage-iterations 20     # Overrides to 20
-```
-
-**Rationale**: CLI is more immediate, user's last word
-
-**Required Parameters**:
-- Mode (or auto-detect from flags)
-- Share class
-- Initial capital
-- Start date, end date
-
-**Optional**: Everything else has smart defaults
-
----
 
 ### **26. Validation Philosophy** ✅
 
-**Fail-Fast for Impossible Configs**:
-```yaml
-# This fails immediately
-share_class: USDT
-staking_enabled: true
-basis_trade_enabled: false
-# Error: "USDT staking requires hedging!"
-```
+**Multi-Level Validation Strategy**:
 
-**Auto-Correct for Derivable**:
-```yaml
-# This auto-corrects
-share_class: ETH
-basis_trade_enabled: true
-# Auto-disables basis_trade, logs warning
-```
+**Level 1: Schema Validation** (Pydantic)
+- Field types, ranges, required fields
+- Enum validation (mode, asset, lst_type)
 
-**Rule**: If mode can be inferred, auto-correct. If contradiction, fail.
+**Level 2: Business Logic Validation**
+- Share class consistency: `market_neutral` flag matches hedging requirements
+- Asset consistency: BTC basis requires BTC asset, ETH modes require ETH asset
+- Hedge allocation sums to 1.0
+- LST type valid for strategy mode
+- Reward mode valid for LST type (wstETH only supports base_only)
+
+**Level 3: Mode-Specific Validation**
+- Required fields per mode (MODE_REQUIREMENTS)
+- Forbidden fields per mode
+- Parameter dependencies (lending+staking requires borrowing or basis_trade for USDT)
+
+**Level 4: Data Availability Validation**
+- Required data files exist for backtest date range
+- Risk parameters available (AAVE, CEX margin requirements)
+- Market data coverage complete
+
+**Level 5: Cross-Component Consistency**
+- Venue configs match strategy mode venue requirements
+- Warning thresholds < critical thresholds
+- Position deviation threshold < 1.0
+- Reserve ratio reasonable (0.05 - 0.2 range)
+
+**Implementation**: config_validator.py with comprehensive validation functions
 
 ---
 
 ### **27. Testing Granularity** ✅
+
+**Quality Gate Requirements**:
+- MANDATORY for all components in docs/specs/
+- Prevents breaking implementations during iteration
+- See docs/QUALITY_GATES.md for gate categories
+- Target: 80% unit/integration coverage, 100% e2e coverage
+
+**Component Quality Gates**:
+- Each spec in docs/specs/ has corresponding quality gate tests
+- Integration tests validate cross-component interactions
+- E2E tests validate full backtest flow per strategy mode
 
 **Calculator Tests**: Pure math only
 - Unit tests with known inputs/outputs
@@ -799,8 +979,6 @@ basis_trade_enabled: true
 **Mode Tests**: End-to-end per mode  
 **Backend Tests**: API integration  
 **Frontend Tests**: User flows
-
-**No Need**: Automated old vs new comparison scripts
 
 ---
 
@@ -829,37 +1007,35 @@ data/analysis/usdt_market_neutral/
 
 ---
 
-### **29. Documentation Structure** ✅
-
-**Interim Docs**: `claude-4.5-answers/docs/`  
-**Analyzer Docs**: `scripts/analyzers/README.md`  
-**Main README**: Update with link to analyzer docs
-
-**Later**: Merge to main `docs/` when ready for full migration
-
----
 
 ### **30. Margin Ratio Thresholds** ✅
 
-**Venue Constants** (Real exchange limits):
+**Data Sources**:
+- **Actual MMR & Liquidation Thresholds**: From `data/market_data/derivatives/risk_params/` (backtest) or queried from exchange APIs (live)
+- **Warning Thresholds**: From `configs/venues/*.yaml` with optional strategy mode overrides
+- Same pattern as AAVE: `data/protocol_data/aave/risk_params/aave_v3_risk_parameters.json`
+
+**Config Merge**:
 ```python
-VENUE_CONSTANTS = {
-    'binance': {'maintenance_margin': 0.10},  # 10% liquidation
-    'bybit': {'maintenance_margin': 0.10},
-    'okx': {'maintenance_margin': 0.10}
+# Venue default
+venue_config = {
+  'margin_warning_threshold': 0.20,
+  'margin_critical_threshold': 0.10
 }
+
+# Optional mode override
+mode_config = {
+  'margin_warning_threshold': 0.25  # More conservative
+}
+
+# Merged: mode overrides venue default
+final_threshold = 0.25
 ```
 
-**User Buffer** (Configurable):
-```python
-config = {
-    'margin_warning_threshold': 0.20,  # Warn at 20%
-    'margin_urgent_threshold': 0.15,   # Urgent at 15%
-    # Liquidation at 10% (venue constant)
-}
-```
-
-**Plot Annotations**: YES - Show warning periods on margin ratio plot
+**Files**:
+- `data/market_data/derivatives/risk_params/binance_margin_requirements.json`
+- `data/market_data/derivatives/risk_params/bybit_margin_requirements.json`
+- `data/market_data/derivatives/risk_params/okx_margin_requirements.json`
 
 ---
 
@@ -922,13 +1098,57 @@ DATA_FILE_MAP = {
 
 ## 🔮 **Live Trading Architecture Considerations**
 
+### **Component State Logging**
+
+**All Components** (Position Monitor, Exposure Monitor, Risk Monitor, Strategy Manager, Execution Interfaces):
+
+**Backtest Mode**:
+```python
+logger.info(f"{component_name}: State before operation", extra={
+    'timestamp': timestamp,  # Same as operation timestamp
+    'status': 'pending',
+    'state_snapshot': self._get_state()
+})
+
+# ... operation ...
+
+logger.info(f"{component_name}: State after operation", extra={
+    'timestamp': timestamp,  # Same timestamp (simulated)
+    'status': 'complete',
+    'state_snapshot': self._get_state()
+})
+```
+
+**Live Mode**:
+```python
+logger.info(f"{component_name}: State before operation", extra={
+    'timestamp': datetime.now(timezone.utc),
+    'status': 'pending',
+    'state_snapshot': self._get_state()
+})
+
+# ... operation ...
+
+logger.info(f"{component_name}: State after operation", extra={
+    'timestamp': datetime.now(timezone.utc),  # Different timestamp (real elapsed time)
+    'status': 'complete',
+    'duration_ms': elapsed_time,
+    'state_snapshot': self._get_state()
+})
+```
+
+**Benefits**:
+- Track operation duration in live mode
+- Runtime logs show component state changes
+- Identical structure in backtest (timestamps same) vs live (timestamps differ)
+
 ### **Transition from Backtest to Live**
 
 **What Stays Same** ✅:
 ```python
 # Pure calculators (NO CHANGES!)
 AAVECalculator.calculate_health_factor(...)
-LeverageCalculator.execute_recursive_loop(...)
+LeverageCalculator.execute_atomic_leverage(...)
 StakingCalculator.get_yield(...)
 # All pure math, works in backtest AND live
 ```
@@ -971,17 +1191,16 @@ class PositionTracker:
 
 ### **Storage Strategy**
 
-**Backtest** (Current):
-- Data: CSV files
-- Results: JSON + CSV files
-- Plots: Plotly HTML files
-- Events: CSV file
+**Phase 1 (MVP - Live Trading)**:
+- CSV files for simplicity
+- Same format as backtest
+- Easy debugging and inspection
+- Results written to `results/{request_id}/`
 
-**Live** (Future):
-- Data: PostgreSQL or TimescaleDB
-- Results: Database + Redis cache
-- Plots: Generated on-demand
-- Events: Database with indexed queries
+**Future (Phase 2+)**:
+- Database for scalability
+- Time-series optimization
+- Query performance for analytics
 
 **Migration Path**:
 ```python
@@ -1027,75 +1246,6 @@ hf = AAVECalculator.calculate_health_factor(
 
 ---
 
-## 📋 **Rebalancing Specification**
-
-**From FINAL_FIXES_SPECIFICATION.md** (Phase 4 - Future):
-
-### **Rebalancing Triggers**
-
-**Priority 1: Margin Ratio** (Most Critical)
-```python
-if margin_ratio < 0.20:  # Below 20%
-    trigger = 'MARGIN_URGENT'
-    action = 'Add significant margin from AAVE'
-    target_ratio = 1.0  # Restore to 100%
-```
-
-**Priority 2: Delta Drift**
-```python
-if abs(delta_pct) > 5.0:  # More than 5% drift
-    trigger = 'DELTA_REHEDGE'
-    action = 'Adjust perp size to match AAVE position'
-```
-
-**Priority 3: Health Factor**
-```python
-if health_factor < 1.10:  # Below safe threshold
-    trigger = 'HF_RISK'
-    action = 'Reduce AAVE leverage only'
-```
-
-### **Rebalancing Actions**
-
-**Margin Support** (Most Common):
-```python
-# When ETH rises, shorts lose money, need margin
-1. Atomic deleverage AAVE (flash loan)
-2. Free up ETH from position
-3. Transfer ETH to Binance
-4. Sell ETH for USDT (spot)
-5. Reduce perp short proportionally
-6. Transfer excess to other CEXs if needed
-```
-
-**Delta Adjustment** (Periodic):
-```python
-# When AAVE position grows from yields
-# Need to increase hedge proportionally
-1. Calculate additional hedge needed
-2. Open additional perp shorts (no AAVE change)
-3. Use margin already at CEX
-```
-
-**Emergency Deleverage** (Rare):
-```python
-# When health factor too low
-1. Reduce AAVE position significantly
-2. Don't touch perps (creates delta exposure)
-3. Accept delta risk to preserve AAVE safety
-```
-
-### **Costs & Frequency**
-
-**Per Rebalance**:
-- Atomic mode: ~$30-50 (gas + execution)
-- Sequential mode: ~$80-120
-
-**Frequency** (Historical Est.):
-- Low volatility: 1-2x/month
-- High volatility: 2-3x/week
-
-**Implementation**: Phase 4+ (~400-500 lines)
 
 ### **33. Config Validation: Fail-Fast, No Silent Defaults** ✅
 
@@ -1137,7 +1287,6 @@ configs/
 ├── modes/           # Strategy mode configurations (YAML) - 6 modes
 ├── venues/          # Venue configurations (YAML) - 8 venues  
 ├── share_classes/   # Share class configurations (YAML) - 2 classes
-└── scenarios/       # Scenario configurations (YAML) - NOT YET IMPLEMENTED
 ```
 
 **Mode Configuration Files**:
@@ -1243,76 +1392,45 @@ def _create_config(self, request: BacktestRequest) -> Dict[str, Any]:
 
 ### **41. Component Data Flow Architecture** ✅
 
-**Decision**: Standardized data passing patterns between components with config infrastructure integration
+**Aligned with Canonical Patterns**:
+- **Shared Clock Pattern** (docs/SHARED_CLOCK_PATTERN.md): EventDrivenStrategyEngine owns timestamp, passes to all components
+- **Reference-Based Architecture** (docs/REFERENCE_ARCHITECTURE_CANONICAL.md): Components store config, data_provider, other component references at init
+- **Request Isolation Pattern** (docs/REQUEST_ISOLATION_PATTERN.md): Fresh instances per backtest/live request
 
-**Data Flow Pattern**:
+**Data Flow**:
 ```python
-# BacktestService → EventDrivenStrategyEngine
-config = self._create_config(request)  # Uses config infrastructure
-strategy_engine = EventDrivenStrategyEngine(config)
-result = await strategy_engine.run_backtest(
-    start_date=request.start_date.isoformat(),
-    end_date=request.end_date.isoformat(),
-    initial_capital=request.initial_capital  # Pass initial capital
-)
-
-# EventDrivenStrategyEngine Data Loading
-data = await self.data_provider._load_data_for_mode()  # Correct method name
-
-# Component Data Access Pattern
-market_data = data_row.to_dict()  # Current market data for timestamp
-
-# Pass to components that need market data:
-exposure = await self.exposure_monitor.calculate_exposure(
-    timestamp=timestamp,
-    position_snapshot=positions,
-    market_data=market_data  # Pass market data
-)
-
-risk = await self.risk_monitor.assess_risk(
-    exposure=exposure,
-    market_data=market_data  # Pass market data for risk calculations
-)
-
-# Strategy decisions use exposure + risk + config (no direct market data needed)
-decision = await self.strategy_manager.make_strategy_decision(
-    exposure=exposure,
-    risk=risk,
-    config=self.config
-)
-
-# PnL calculation only needs exposure (saves own previous state)
-pnl = await self.pnl_calculator.calculate_pnl(
-    current_exposure=exposure,
-    previous_exposure=previous_exposure,
-    timestamp=timestamp
-)
+# EventDrivenStrategyEngine manages timestamp
+for timestamp in self.timestamps:
+    self.current_timestamp = timestamp
+    
+    # All components receive same timestamp
+    self.position_monitor.update_state(timestamp, 'full_loop')
+    self.exposure_monitor.update_state(timestamp, 'full_loop') 
+    self.risk_monitor.update_state(timestamp, 'full_loop')
+    self.pnl_calculator.update_state(timestamp, 'full_loop')
+    
+    # Components query data with timestamp
+    # market_data = self.data_provider.get_data(timestamp)
+    # Ensures all components see identical data snapshot
 ```
 
-**Component Data Requirements**:
+**Component References** (stored at init, never passed as runtime params):
 
-**DataProvider**: Loads all data in `_load_data_for_mode()`
-- Market prices, AAVE rates, LST prices, gas costs, etc.
+```python
+class ExampleComponent:
+    def __init__(self, config, data_provider, execution_mode, position_monitor=None):
+        self.config = config  # Reference, never modified
+        self.data_provider = data_provider  # Query with timestamps
+        self.execution_mode = execution_mode  # 'backtest' or 'live'
+        self.position_monitor = position_monitor  # Reference
+    
+    def update_state(self, timestamp: pd.Timestamp, trigger_source: str):
+        # Use stored references directly
+        market_data = self.data_provider.get_data(timestamp)
+        position = self.position_monitor.get_current_position()
+```
 
-**PositionMonitor**: Gets initial capital + share class
-- Sets USDT or ETH balance based on mode
-
-**ExposureMonitor**: Gets market data for current timestamp
-- Calculates current exposure using market prices
-
-**RiskMonitor**: Gets market data for risk calculations
-- AAVE risk params, oracle prices, margin calculations
-
-**StrategyManager**: Uses exposure + risk + config
-- No direct market data needed (decisions based on current state)
-
-**PnLCalculator**: Uses exposure only
-- Saves own previous P&L state, no external data needed
-
-**Execution Managers**: Get market data for pricing
-- Check execution against current market prices
-
-**Status**: ✅ Implemented and documented
+**See**: docs/WORKFLOW_GUIDE.md for complete flow, docs/SHARED_CLOCK_PATTERN.md for timestamp management
 
 ---
 
@@ -1470,18 +1588,18 @@ gsutil -m rsync -r gs://basis-strategy-v1-data/ data/
 
 ---
 
-### **36. Redis Messaging Standard** ✅
+### **36. Component Communication Standard** ✅
 
-**Decision**: Standardize Redis pub/sub for inter-component communication
+**Decision**: Use direct method calls for inter-component communication
 
 **Patterns**:
-- **Channel naming**: `{component}:{event}` (e.g., `position:updated`)
-- **Key naming**: `{component}:{data_type}` (e.g., `position:snapshot`)
-- **TTL**: Hourly data = 1 hour, historical = 24 hours
-- **Backtest**: Optional (can run in-memory)
-- **Live**: Required (real-time monitoring)
+- **Direct method calls**: Components call each other's methods directly
+- **Synchronous execution**: No network overhead, immediate response
+- **In-memory state**: All state maintained in component memory
+- **Backtest**: Single-threaded, synchronous execution
+- **Live**: Same pattern, no architectural changes needed
 
-**See**: [`specs/10_REDIS_MESSAGING_STANDARD.md`](specs/10_REDIS_MESSAGING_STANDARD.md) for complete spec
+**See**: Component specifications for direct method call patterns
 
 ---
 
@@ -1495,7 +1613,7 @@ gsutil -m rsync -r gs://basis-strategy-v1-data/ data/
 - Context data: Include position snapshots
 - Alert thresholds: WARNING (log), ERROR (count), CRITICAL (halt)
 
-**See**: [`specs/11_ERROR_LOGGING_STANDARD.md`](specs/11_ERROR_LOGGING_STANDARD.md) for complete spec
+**See**: [`specs/17_HEALTH_ERROR_SYSTEMS.md`](specs/17_HEALTH_ERROR_SYSTEMS.md) <!-- Redirected from 11_ERROR_LOGGING_STANDARD.md - error logging is part of health systems --> for complete spec
 
 ---
 
@@ -1594,7 +1712,7 @@ while self.is_running:
 
 ## ✅ **Final Architectural Decisions Summary**
 
-**Total Decisions**: 44 (all approved, **CORE COMPONENTS IMPLEMENTED** ✅, critical issues remain)
+**Total Decisions**: 44 (all approved, **CORE COMPONENTS IMPLEMENTED** ✅, documentation aligned)
 
 | # | Decision | Choice | Reference |
 |---|----------|--------|-----------|
@@ -1605,7 +1723,7 @@ while self.is_running:
 | 5 | Timing | Hourly + atomic execution | Data Provider |
 | 6 | Event Order | Global sequence | Event Logger |
 | 7 | Live Fields | Optional (future-proof) | Event Logger |
-| 8 | Leverage Loops | Atomic & sequential | OnChain Manager |
+| 8 | Leveraged Staking | Atomic flash loan only | OnChain Manager |
 | 9 | Spot Oracle | Binance USDT | Data Provider |
 | 10 | LST Oracle | AAVE oracle | Exposure Monitor |
 | 11 | Seasonal Rewards | Discrete events | Staking Yields |
@@ -1613,7 +1731,7 @@ while self.is_running:
 | 13 | Data Files | Dynamic configuration loading | Data Provider |
 | 14 | Share Class P&L | ETH vs USDT reporting | P&L Calculator |
 | 15 | Reward Modes | base_only, base_eigen, base_eigen_seasonal | Staking Yields |
-| 16 | Leverage Iterations | None/0/1/N meanings | Leverage Loop |
+| 16 | Leverage Execution | Atomic flash loan only | Leveraged Staking |
 | 17 | Hedging Logic | ETH never, USDT always | Strategy Manager |
 | 18 | Gas Debt | Track as negative ETH | Position Monitor |
 | 19 | Event Logging | Full detail all modes | Event Logger |
@@ -1633,7 +1751,7 @@ while self.is_running:
 | 33 | Config Access | No .get() defaults | ✅ **IMPLEMENTED** | **All code** |
 | 34 | Exposure Outputs | ERC-20 + CEX separate | Exposure Monitor |
 | 35 | GCloud Deployment | GCS data bucket | REQUIREMENTS |
-| 36 | Redis Messaging | Standardized pub/sub | **Decision 36** |
+| 36 | Component Communication | Direct method calls | **Decision 36** |
 | 37 | Error Logging | Structured with codes | **Decision 37** |
 | 38 | Liquidation Sim | AAVE v3 logic | **Decision 38** |
 | 39 | Config Architecture | YAML-based mode system | **Decision 39** |
@@ -1651,12 +1769,65 @@ while self.is_running:
 **Architecture Complete**: ✅  
 **Specifications Ready**: ✅  
 **Config Infrastructure**: ✅  
-**Implementation Status**: ✅ **CORE COMPONENTS COMPLETE** (critical issues remain)
+**Documentation Aligned**: ✅  
+**Implementation Status**: ✅ **CORE COMPONENTS IMPLEMENTED** | ✅ **DOCUMENTATION ALIGNED** | 🔄 **LIVE MODE IMPLEMENTATION IN PROGRESS**
 
-**See**: [REQUIREMENTS.md](REQUIREMENTS.md) for task breakdown  
-**See**: [REPO_INTEGRATION_PLAN.md](REPO_INTEGRATION_PLAN.md) for file mapping  
+**See**: [COMPONENT_SPECS_INDEX.md](COMPONENT_SPECS_INDEX.md) <!-- Redirected from REQUIREMENTS.md - requirements are component specifications --> for task breakdown  
+**See**: [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md) <!-- Redirected from REPO_INTEGRATION_PLAN.md - integration is deployment --> for file mapping  
 **See**: [specs/CONFIGURATION.md](specs/CONFIGURATION.md) for configuration management
 
+## Decision Index
 
-
-
+| ADR | Title | Date | Status | Impact |
+|-----|-------|------|--------|--------|
+| ADR-001 | Tight Loop Architecture Redefinition | 2025-01-06 | Accepted | High |
+| ADR-002 | Redis Removal | 2025-01-06 | Accepted | Medium |
+| ADR-003 | Reference-Based Architecture | 2025-01-06 | Accepted | High |
+| ADR-004 | Shared Clock Pattern | 2025-01-06 | Accepted | High |
+| ADR-005 | Request Isolation Pattern | 2025-01-06 | Accepted | High |
+| ADR-006 | Synchronous Component Execution | 2025-01-06 | Accepted | Medium |
+| ADR-007 | 11 Component Architecture | 2025-01-06 | Accepted | Medium |
+| ADR-008 | Three-Way Venue Interaction | 2025-01-06 | Accepted | Medium |
+| ADR-009 | Separate Data Source from Execution Mode | 2025-01-09 | Accepted | Medium |
+| ADR-010 | Configuration Separation of Concerns | 2025-01-06 | Accepted | High |
+| ADR-011 | Live Data Provider Architecture | 2025-01-06 | Accepted | High |
+| ADR-012 | Execution Interface Architecture | 2025-01-06 | Accepted | High |
+| ADR-013 | Calculator Import Strategy | 2025-01-06 | Accepted | Medium |
+| ADR-014 | BTC Mode Implementation | 2025-01-06 | Accepted | Medium |
+| ADR-015 | Wallet/Venue Model | 2025-01-06 | Accepted | High |
+| ADR-016 | Backtest Timing Constraints | 2025-01-06 | Accepted | High |
+| ADR-017 | Obsolete Code Removal | 2025-01-06 | Accepted | Low |
+| ADR-018 | Share Class P&L Currency | 2025-01-06 | Accepted | Medium |
+| ADR-019 | Reward Modes for weETH | 2025-01-06 | Accepted | Medium |
+| ADR-020 | Leveraged Staking Execution | 2025-01-06 | Accepted | High |
+| ADR-021 | Hedging Logic | 2025-01-06 | Accepted | Medium |
+| ADR-022 | Gas Debt Accounting | 2025-01-06 | Accepted | Medium |
+| ADR-023 | Event Logging Detail | 2025-01-06 | Accepted | Low |
+| ADR-024 | Per-Exchange Price Tracking | 2025-01-06 | Accepted | Medium |
+| ADR-025 | Spot Venue Selection | 2025-01-06 | Accepted | Low |
+| ADR-026 | CEX Hedge Allocation | 2025-01-06 | Accepted | Low |
+| ADR-027 | Output File Structure | 2025-01-06 | Accepted | Low |
+| ADR-028 | Seasonal Reward Distribution | 2025-01-06 | Accepted | Medium |
+| ADR-029 | Data File Naming | 2025-01-06 | Accepted | Low |
+| ADR-030 | Pricing Oracle Strategy | 2025-01-06 | Accepted | Medium |
+| ADR-031 | Live Trading Architecture | 2025-01-06 | Accepted | High |
+| ADR-032 | Rebalancing Implementation | 2025-01-06 | Accepted | High |
+| ADR-033 | Balance Sheet Tracking | 2025-01-06 | Accepted | Medium |
+| ADR-034 | Validation Philosophy | 2025-01-06 | Accepted | High |
+| ADR-035 | Testing Granularity | 2025-01-06 | Accepted | Medium |
+| ADR-036 | Plot Format | 2025-01-06 | Accepted | Low |
+| ADR-037 | Margin Ratio Thresholds | 2025-01-06 | Accepted | Medium |
+| ADR-038 | Shared Calculator Logic | 2025-01-06 | Accepted | Medium |
+| ADR-039 | Data File Naming Strategy | 2025-01-06 | Accepted | Low |
+| ADR-040 | Config Validation: Fail-Fast | 2025-01-06 | Accepted | High |
+| ADR-041 | Configuration Architecture | 2025-01-06 | Accepted | High |
+| ADR-042 | Exposure Monitor Outputs | 2025-01-06 | Accepted | Medium |
+| ADR-043 | BacktestService Configuration | 2025-01-06 | Accepted | High |
+| ADR-044 | Component Data Flow Architecture | 2025-01-06 | Accepted | High |
+| ADR-045 | Config Infrastructure Components | 2025-01-06 | Accepted | High |
+| ADR-046 | Live Trading Service Architecture | 2025-01-06 | Accepted | High |
+| ADR-047 | Deployment to GCloud | 2025-01-06 | Accepted | Medium |
+| ADR-048 | Component Communication Standard | 2025-01-06 | Accepted | Medium |
+| ADR-049 | Error Logging Standard | 2025-01-06 | Accepted | Medium |
+| ADR-050 | Liquidation Simulation | 2025-01-06 | Accepted | Medium |
+| ADR-051 | Live Trading Data Flow Integration | 2025-01-06 | Accepted | High |

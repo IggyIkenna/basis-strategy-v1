@@ -1,7 +1,7 @@
 """
 Exposure Monitor Component
 
-TODO-REFACTOR: GENERIC VS MODE-SPECIFIC ARCHITECTURE VIOLATION - 18_generic_vs_mode_specific_architecture.md
+TODO-REFACTOR: GENERIC VS MODE-SPECIFIC ARCHITECTURE VIOLATION - See docs/REFERENCE_ARCHITECTURE_CANONICAL.md
 ISSUE: This component violates canonical architecture requirements:
 
 1. GENERIC COMPONENT VIOLATIONS:
@@ -9,7 +9,7 @@ ISSUE: This component violates canonical architecture requirements:
    - Should care about config parameters (asset, share_class), not strategy mode
    - Should NOT have hardcoded mode checks like "if mode == 'btc_basis'"
 
-TODO-REFACTOR: MISSING CENTRALIZED UTILITY MANAGER VIOLATION - 14_mode_agnostic_architecture_requirements.md
+TODO-REFACTOR: MISSING CENTRALIZED UTILITY MANAGER VIOLATION - See docs/REFERENCE_ARCHITECTURE_CANONICAL.md
 ISSUE: This component has scattered utility methods that should be centralized:
 
 1. CENTRALIZED UTILITY MANAGER REQUIREMENTS:
@@ -24,7 +24,7 @@ ISSUE: This component has scattered utility methods that should be centralized:
    - Ensure no duplicate utility logic across components
 
 3. CANONICAL SOURCE:
-   - .cursor/tasks/14_mode_agnostic_architecture_requirements.md
+   - docs/REFERENCE_ARCHITECTURE_CANONICAL.md - Mode-Agnostic Architecture
    - Centralized utilities required
 
 2. REQUIRED ARCHITECTURE (per 18_generic_vs_mode_specific_architecture.md):
@@ -48,7 +48,6 @@ CURRENT STATE: This component needs refactoring to be truly generic and mode-agn
 """
 
 from typing import Dict, List, Optional, Any
-import redis
 import json
 import logging
 import asyncio
@@ -152,23 +151,7 @@ class ExposureMonitor:
         if not data_provider:
             raise ValueError("Data provider is required")
         
-        # Redis for inter-component communication
-        self.redis = None
-        execution_mode = getattr(position_monitor, 'execution_mode', 'backtest')
-        if execution_mode == 'live':
-            try:
-                import os
-                redis_url = os.getenv('BASIS_REDIS_URL')
-                if not redis_url:
-                    raise ValueError("BASIS_REDIS_URL environment variable required for live mode")
-                
-                self.redis = redis.Redis.from_url(redis_url, decode_responses=True)
-                # Test connection
-                self.redis.ping()
-                logger.info("Redis connection established for Exposure Monitor")
-            except Exception as e:
-                logger.error(f"Redis connection failed for live mode: {e}")
-                raise ValueError(f"Redis required for live mode but connection failed: {e}")
+        # Redis removed - using direct method calls for component communication
         
         logger.info(f"Exposure Monitor initialized: {share_class} share class, {execution_mode} mode")
     
@@ -1016,13 +999,7 @@ class ExposureMonitor:
                 'risk_breakdown': risk_breakdown
             }
             
-            # Publish to Redis
-            if self.redis:
-                try:
-                    asyncio.create_task(self._publish_exposure(result))
-                except RuntimeError:
-                    # No event loop running, skip publishing
-                    logger.debug("No event loop running, skipping Redis publish")
+            # Redis publishing removed - components use direct method calls
             
             logger.debug(f"Exposure calculated: net_delta_share_class={net_delta_share_class:.4f}, total_value_usd=${total_value_usd:,.2f}")
             
@@ -1291,32 +1268,7 @@ class ExposureMonitor:
         
         return equity_eth
     
-    async def _publish_exposure(self, exposure_data: Dict):
-        """Publish exposure data to Redis."""
-        try:
-            # Store current exposure
-            await asyncio.get_event_loop().run_in_executor(
-                None,
-                self.redis.set,
-                'exposure:current',
-                json.dumps(exposure_data, default=str)
-            )
-            
-            # Publish update event
-            await asyncio.get_event_loop().run_in_executor(
-                None,
-                self.redis.publish,
-                'exposure:calculated',
-                json.dumps({
-                    'timestamp': exposure_data['timestamp'].isoformat() if hasattr(exposure_data['timestamp'], 'isoformat') else str(exposure_data['timestamp']),
-                    'net_delta_share_class': exposure_data['net_delta_share_class'],
-                    'total_value_usd': exposure_data['total_value_usd'],
-                    'share_class': exposure_data['share_class']
-                })
-            )
-            
-        except Exception as e:
-            logger.error(f"Error publishing exposure to Redis: {e}")
+    # Redis publishing removed - components use direct method calls
     
     def get_current_exposure(self) -> Dict:
         """Get current exposure snapshot."""
@@ -1330,33 +1282,7 @@ class ExposureMonitor:
         """Get exposure snapshot (alias for get_current_exposure)."""
         return self.get_current_exposure()
     
-    async def subscribe_to_position_updates(self):
-        """Subscribe to position updates and recalculate exposure."""
-        if not self.redis:
-            logger.warning("Redis not available for position updates subscription")
-            return
-        
-        try:
-            pubsub = self.redis.pubsub()
-            await pubsub.subscribe('position:updated')
-            
-            logger.info("Subscribed to position updates")
-            
-            async for message in pubsub.listen():
-                if message['type'] == 'message':
-                    try:
-                        data = json.loads(message['data'])
-                        timestamp = pd.Timestamp(data['timestamp'])
-                        
-                        # Recalculate exposure
-                        exposure = self.calculate_exposure(timestamp)
-                        logger.debug(f"Exposure recalculated from position update: net_delta={exposure['net_delta_share_class']:.4f}")
-                        
-                    except Exception as e:
-                        logger.error(f"Error processing position update: {e}")
-                        
-        except Exception as e:
-            logger.error(f"Error in position updates subscription: {e}")
+    # Redis subscription removed - components use direct method calls
 
     def log_exposure_snapshot(self, timestamp: pd.Timestamp, trigger: str = "TIMESTEP", exposure_result: Dict = None):
         """Log exposure snapshot to dedicated exposure monitor log file."""

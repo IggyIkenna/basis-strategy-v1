@@ -1,6 +1,6 @@
 """Canonical Configuration Models - Venue-aware mathematical derivation.
 
-TODO-REFACTOR: MODE-SPECIFIC LOGIC IN GENERIC COMPONENTS VIOLATION - 18_generic_vs_mode_specific_architecture.md
+TODO-REFACTOR: MODE-SPECIFIC LOGIC IN GENERIC COMPONENTS VIOLATION - See docs/REFERENCE_ARCHITECTURE_CANONICAL.md
 ISSUE: This component may have mode-specific logic that should be generic:
 
 1. GENERIC VS MODE-SPECIFIC REQUIREMENTS:
@@ -14,7 +14,7 @@ ISSUE: This component may have mode-specific logic that should be generic:
    - Isolate any mode-specific validation logic
 
 3. CANONICAL SOURCE:
-   - .cursor/tasks/18_generic_vs_mode_specific_architecture.md
+   - docs/REFERENCE_ARCHITECTURE_CANONICAL.md - Generic vs Mode-Specific Architecture
    - Components must be mode-agnostic
 
 This is the SINGLE SOURCE OF TRUTH for all configuration validation.
@@ -60,8 +60,12 @@ class StrategyConfig(BaseModel):
     asset: Optional[str] = Field(default=None, description="Primary asset: ETH or BTC")
     lst_type: Optional[str] = Field(default=None, description="Liquid staking token type: weeth or wsteth")
     rewards_mode: Optional[str] = Field(default=None, description="Rewards mode: base_only, base_eigen, base_eigen_seasonal")
-    use_flash_loan: bool = Field(default=False, description="Use flash loans for atomic operations")
-    unwind_mode: Optional[str] = Field(default=None, description="Unwind mode: fast or slow")
+    position_deviation_threshold: Optional[float] = Field(
+        default=0.02, 
+        ge=0.0, 
+        le=1.0,
+        description="Minimum deviation from target position to trigger rebalancing (fraction of target)"
+    )
     hedge_venues: List[str] = Field(default=[], description="List of hedge venues: binance, bybit, okx")
     hedge_allocation: Dict[str, float] = Field(default={}, description="Hedge allocation per venue")
     
@@ -80,7 +84,7 @@ class StrategyConfig(BaseModel):
     lending_enabled: Optional[bool] = Field(default=None, description="Enable LendingComponent")
     staking_enabled: Optional[bool] = Field(default=None, description="Enable StakingComponent") 
     basis_trade_enabled: Optional[bool] = Field(default=None, description="Enable BasisTradingComponent")
-    borrowing_enabled: Optional[bool] = Field(default=None, description="Enable AAVE borrowing for leveraged staking loops")
+    borrowing_enabled: Optional[bool] = Field(default=None, description="Enable AAVE borrowing for leveraged staking")
     # REMOVED: leverage_enabled - not in any config files
     
     # DERIVATIVE FEATURES (Controlled by base operations - User precedence hierarchy)
@@ -116,16 +120,9 @@ class StrategyConfig(BaseModel):
     
     # REMOVED: capital_allocation fields - not needed in config, calculated at runtime
     
-    # EXECUTION PARAMETERS
-    use_flash_loan: Optional[bool] = Field(default=None, description="Use flash loans for execution")
-    unwind_mode: Optional[str] = Field(default=None, description="Unwind mode for positions")
-    
     # MODE IDENTIFICATION
     mode: Optional[str] = Field(default=None, description="Strategy mode identifier")
     
-    # LEVERAGE LOOP PARAMETERS (only if needed by configs)
-    max_leverage_loops: Optional[int] = Field(default=None, description="Maximum leverage iterations") 
-    min_loop_position_usd: Optional[float] = Field(default=None, description="Minimum economic position size")
     
     # REMOVED: Enhanced risk parameters that aren't in configs
     # max_underlying_move, max_spot_perp_basis_move, max_staked_basis_move, 
@@ -173,15 +170,6 @@ class StrategyConfig(BaseModel):
                 raise ValueError(f"Invalid rewards_mode: {v}. Valid modes: {valid_modes}")
         return v
     
-    @field_validator('unwind_mode')
-    @classmethod
-    def validate_unwind_mode(cls, v: Optional[str]) -> Optional[str]:
-        """Validate unwind mode."""
-        if v is not None:
-            valid_modes = ['fast', 'slow']
-            if v not in valid_modes:
-                raise ValueError(f"Invalid unwind_mode: {v}. Valid modes: {valid_modes}")
-        return v
     
     @field_validator('max_ltv', 'liquidation_threshold', 'margin_ratio_target', 'max_stake_spread_move', 'delta_tolerance')
     @classmethod
@@ -295,7 +283,7 @@ class InfrastructureConfig(BaseModel):
     """Infrastructure configuration - REMOVED JSON configs, all handled by environment variables or hardcoded defaults.
     
     DESIGN DECISION: Eliminated configs/*.json entirely because:
-    - Database/Redis/Storage URLs: Environment-specific → moved to env variables
+    - Database/Storage URLs: Environment-specific → moved to env variables
     - API CORS origins: Environment-specific → moved to env variables  
     - Cross-network simulations: Always enabled for realistic backtesting
     - Rates: Use live rates, not fixed rates
@@ -305,7 +293,7 @@ class InfrastructureConfig(BaseModel):
     """
     
     # REMOVED: All infrastructure fields moved to appropriate locations:
-    # - Environment variables: database_url, redis_url, api_cors_origins, storage_path
+    # - Environment variables: database_url, api_cors_origins, storage_path
     # - Hardcoded defaults: cross_network_log_simulations=True, cross_network_simulate_transfers=True  
     # - Eliminated: rates_use_fixed_rates (always use live rates), testnet (live trading only)
     
@@ -355,7 +343,7 @@ MODE_REQUIREMENTS = {
     },
     'eth_leveraged': {
         'required_fields': ['lending_enabled', 'staking_enabled', 'max_ltv', 'liquidation_threshold', 'max_stake_spread_move', 'data_requirements', 'enable_market_impact', 'lst_type', 'max_drawdown', 'monitoring_position_check_interval', 'monitoring_risk_check_interval'],
-        'optional_fields': ['max_leverage_loops'],
+        'optional_fields': [],
         'forbidden_fields': ['basis_trade_enabled', 'hedge_venues']
     },
     'usdt_market_neutral': {
@@ -563,13 +551,6 @@ def validate_config_dependencies(strategy_config: StrategyConfig) -> StrategyCon
                 strategy_config.hedge_allocation = {'binance': 0.33, 'bybit': 0.33, 'okx': 0.34}
             corrections.append(f"Auto-set hedge_venues and allocation for {strategy_config.mode} mode")
     
-    # Validate unwind_mode
-    if strategy_config.mode and not strategy_config.unwind_mode:
-        if strategy_config.mode == 'pure_lending':
-            strategy_config.unwind_mode = 'slow'
-        else:
-            strategy_config.unwind_mode = 'fast'
-        corrections.append(f"Auto-set unwind_mode={strategy_config.unwind_mode} for {strategy_config.mode} mode")
     
     # AUTO-DERIVE REMOVED PARAMETERS (User simplification)
     
@@ -600,11 +581,6 @@ def validate_config_dependencies(strategy_config: StrategyConfig) -> StrategyCon
         # restaking_enabled not in configs, so skip this logic
         pass
     
-    # PRECEDENCE RULE 2: Leverage loops meaningless without borrowing
-    if (strategy_config.max_leverage_loops is not None and strategy_config.max_leverage_loops > 0 and 
-        not strategy_config.borrowing_enabled):
-        strategy_config.max_leverage_loops = 0
-        corrections.append("Auto-disabled leverage loops (borrowing disabled)")
     
     # PRECEDENCE RULE 3: ETH share class basis trading requires leverage (from original system)
     if (strategy_config.share_class == "ETH" and 
@@ -646,9 +622,6 @@ def validate_config_dependencies(strategy_config: StrategyConfig) -> StrategyCon
             "B) Enable basis_trade_enabled=true (buy+hedge ETH)"
         )
     
-    # FAIL-FAST RULE 4: Always validate (only if set)
-    if strategy_config.max_leverage_loops is not None and strategy_config.max_leverage_loops < 0:
-        raise ValueError("INVALID CONFIG: max_leverage_loops cannot be negative")
     
     # Log corrections (many auto-derivations)
     if corrections:

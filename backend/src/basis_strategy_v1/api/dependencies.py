@@ -226,14 +226,7 @@ def get_health_checker():
                 logger.warning(
                     f"Database client unavailable for health checks: {e}")
 
-            try:
-                # Get Redis cache client
-                from ..infrastructure.cache.redis_client import get_redis_client
-                cache = await get_redis_client()
-                logger.info("Redis client injected into HealthChecker")
-            except Exception as e:
-                logger.warning(
-                    f"Redis client unavailable for health checks: {e}")
+            # Redis removed - using direct method calls for component communication
 
             try:
                 # Get data provider
@@ -283,13 +276,7 @@ async def get_unified_health_manager():
         except Exception as e:
             logger.warning(f"Database client unavailable for health checks: {e}")
 
-        try:
-            # Get Redis cache client
-            from ..infrastructure.cache.redis_client import get_redis_client
-            cache = await get_redis_client()
-            logger.info("Redis client injected into UnifiedHealthManager")
-        except Exception as e:
-            logger.warning(f"Redis client unavailable for health checks: {e}")
+        # Redis removed - using direct method calls for component communication
 
         try:
             # Get data provider

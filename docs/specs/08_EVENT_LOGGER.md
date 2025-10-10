@@ -1,20 +1,160 @@
-# Component Spec: Event Logger 📝
+# Event Logger Component Specification
 
-**Component**: Event Logger  
-**Responsibility**: Detailed audit-grade event tracking with balance snapshots  
-**Priority**: ⭐⭐⭐ CRITICAL (All components log events)  
-**Backend File**: `backend/src/basis_strategy_v1/core/strategies/components/event_logger.py`  
-**Last Reviewed**: October 8, 2025  
-**Status**: ✅ Aligned with canonical sources (.cursor/tasks/ + MODES.md)
+## Purpose
+Detailed audit-grade event tracking with balance snapshots for debugging and audit trails.
+
+## Responsibilities
+1. Log all component state changes with timestamps
+2. Maintain global event ordering across all components
+3. Provide event history for debugging
+4. MODE-AWARE: Same logging logic for both backtest and live modes
+
+## State
+- events: List[Dict] (event history)
+- global_order: int (auto-increment for every event)
+- _order_lock: asyncio.Lock (thread-safe order assignment)
+- last_log_timestamp: pd.Timestamp
+
+## Component References (Set at Init)
+The following are set once during initialization and NEVER passed as runtime parameters:
+
+- config: Dict (reference, never modified)
+- execution_mode: str (BASIS_EXECUTION_MODE)
+
+These references are stored in __init__ and used throughout component lifecycle.
+Components NEVER receive these as method parameters during runtime.
+
+## Environment Variables
+
+### System-Level Variables (Read at Initialization)
+- `BASIS_EXECUTION_MODE`: backtest | live
+  - **Usage**: Determines simulated vs real API behavior
+  - **Read at**: Component __init__
+  - **Affects**: Mode-aware conditional logic
+
+- `BASIS_ENVIRONMENT`: dev | staging | production
+  - **Usage**: Credential routing for venue APIs
+  - **Read at**: Component __init__ (if uses external APIs)
+  - **Affects**: Which API keys/endpoints to use
+
+- `BASIS_DEPLOYMENT_MODE`: local | docker
+  - **Usage**: Port/host configuration
+  - **Read at**: Component __init__ (if network calls)
+  - **Affects**: Connection strings
+
+- `BASIS_DATA_MODE`: csv | db
+  - **Usage**: Data source selection (DataProvider only)
+  - **Read at**: DataProvider __init__
+  - **Affects**: File-based vs database data loading
+
+### Component-Specific Variables
+None
+
+### Environment Variable Access Pattern
+```python
+def __init__(self, ...):
+    # Read env vars ONCE at initialization
+    self.execution_mode = os.getenv('BASIS_EXECUTION_MODE', 'backtest')
+    # NEVER read env vars during runtime loops
+```
+
+### Behavior NOT Determinable from Environment Variables
+- Event logging format (hard-coded structure)
+- Event ordering logic (hard-coded algorithms)
+- Event retention policy (hard-coded limits)
+
+## Config Fields Used
+
+### Universal Config (All Components)
+- `strategy_mode`: str - e.g., 'eth_basis', 'pure_lending'
+- `share_class`: str - 'usdt_stable' | 'eth_directional'
+- `initial_capital`: float - Starting capital
+
+### Component-Specific Config
+- `event_buffer_size`: int - Maximum events to keep in memory
+  - **Usage**: Determines memory usage for event buffering
+  - **Default**: 10000
+  - **Validation**: Must be > 0 and < 100000
+
+- `event_export_format`: str - Format for event export
+  - **Usage**: Determines export format (csv, json, both)
+  - **Default**: 'both'
+  - **Validation**: Must be 'csv', 'json', or 'both'
+
+### Config Access Pattern
+```python
+def log_event(self, timestamp: pd.Timestamp, event_type: str, component: str, data: Dict):
+    # Read config fields (NEVER modify)
+    buffer_size = self.config.get('event_buffer_size', 10000)
+    export_format = self.config.get('event_export_format', 'both')
+```
+
+### Behavior NOT Determinable from Config
+- Event logging format (hard-coded structure)
+- Event ordering logic (hard-coded algorithms)
+- Async I/O patterns (hard-coded implementation)
+
+## Data Provider Queries
+
+### Data Types Requested
+N/A - EventLogger does not query DataProvider
+
+### Query Pattern
+N/A - EventLogger does not query DataProvider
+
+### Data NOT Available from DataProvider
+All data - EventLogger does not use DataProvider
+
+## Core Methods
+
+### log_event(timestamp: pd.Timestamp, event_type: str, component: str, data: Dict)
+Log an event with global ordering.
+
+Parameters:
+- timestamp: Current loop timestamp
+- event_type: Type of event (position_update, exposure_calculation, etc.)
+- component: Component that generated the event
+- data: Event-specific data
+
+### get_events(timestamp: pd.Timestamp = None) -> List[Dict]
+Get event history.
+
+Parameters:
+- timestamp: Optional timestamp filter
+
+Returns:
+- List[Dict]: Event history
+
+## Async I/O Pattern
+
+**Exception to ADR-006: Synchronous Component Execution**
+
+The Event Logger uses `async def` methods as an accepted exception to the synchronous component execution principle:
+
+**Rationale**:
+- File/DB writes are I/O operations that shouldn't block trading operations
+- Async I/O provides performance benefits without affecting critical path
+- Sequential awaits guarantee ordering without race conditions
+
+**Implementation**:
+- All logging methods use `async def` with `await` calls
+- Components await: `await self.event_logger.log_event(...)`
+- AsyncIO's single-threaded event loop prevents race conditions
+- No dropped data or out-of-order writes
+
+**Ordering Guarantees**:
+- Sequential awaits ensure events are logged in correct order
+- Global order counter maintains chronological sequence
+- AsyncIO queue processing is FIFO by design
 
 ---
 
 ## 📚 **Canonical Sources**
 
 **This component spec aligns with canonical architectural principles**:
-- **Architectural Principles**: [CANONICAL_ARCHITECTURAL_PRINCIPLES.md](../CANONICAL_ARCHITECTURAL_PRINCIPLES.md) - Consolidated from all .cursor/tasks/
+- **Architectural Principles**: [REFERENCE_ARCHITECTURE_CANONICAL.md](../REFERENCE_ARCHITECTURE_CANONICAL.md) <!-- Link is valid --> - Canonical architectural principles
 - **Strategy Specifications**: [MODES.md](MODES.md) - Canonical strategy mode definitions
-- **Task Specifications**: `.cursor/tasks/` - Individual task specifications
+- **Component Specifications**: [specs/](specs/) - Detailed component implementation guides
 
 ---
 
@@ -25,7 +165,7 @@ Log all events with complete context for audit trail.
 **Key Principles**:
 - **Global order**: Every event gets unique sequence number
 - **Balance snapshots**: Include position snapshot in every event (optional)
-- **Atomic bundles**: Support wrapper + detail events (flash loans, leverage loops)
+- **Atomic bundles**: Support wrapper + detail events (flash loans, leveraged staking)
 - **Hourly timestamps**: All events on the hour in backtest
 - **Future-proof**: Optional fields for live trading (tx_hash, confirmation, etc.)
 
@@ -101,8 +241,7 @@ class EventLogger:
         self.global_order = 0  # Auto-increment for every event
         self._order_lock = asyncio.Lock()  # Thread-safe order assignment
         
-        # Redis for publishing
-        self.redis = redis.Redis() if execution_mode == 'live' else None
+        # Using direct method calls for component communication
     
     async def log_event(
         self,
@@ -156,11 +295,7 @@ class EventLogger:
             
             self.events.append(event)
             
-            # Publish to Redis
-            if self.redis:
-                await self.redis.publish('events:logged', json.dumps({
-                    'order': self.global_order,
-                    'event_type': event_type,
+            # Components use direct method calls
                     'timestamp': timestamp.isoformat()
                 }))
             
@@ -370,7 +505,7 @@ async def log_funding_payment(
 - `ATOMIC_TRANSACTION` - Wrapper for flash loan bundle
 - `FLASH_BORROW` - Flash loan initiation
 - `FLASH_REPAID` - Flash loan repayment
-- `LEVERAGE_LOOP_ITERATION` - Sequential loop step
+- `ATOMIC_LEVERAGE_EXECUTION` - Atomic leveraged staking execution
 
 ### **Monitoring Events**:
 - `HOURLY_RECONCILIATION` - Balance sync
@@ -391,17 +526,17 @@ async def log_funding_payment(
 - CEX Execution Manager (trades)
 - OnChain Execution Manager (transactions)
 
-### **Publishes To**:
-- **Redis** (`events:logged` channel) - Real-time event stream
+### **Provides Data To**:
 - **CSV Export** - Final event_log.csv file
+- **Direct Method Calls** - Component communication
 
 ---
 
-## 📊 **Redis Integration**
+## 📊 **Component Communication**
 
-### **Published Data**:
+### **Direct Method Calls**:
 
-**Channel**: `events:logged`
+**Event Logging**: Components call `log_event()` directly
 ```json
 {
   "order": 1523,
@@ -522,6 +657,64 @@ def test_balance_snapshots_included():
 
 ---
 
+## 🔧 **Current Implementation Status**
+
+**Overall Completion**: 85% (Core functionality working, tight loop architecture violations need fixing)
+
+### **Core Functionality Status**
+- ✅ **Working**: Global order assignment, 20+ event types support, optional balance snapshots, atomic bundle logging, future-proof for live mode, direct method calls, CSV export, parent-child event relationships
+- ⚠️ **Partial**: None
+- ❌ **Missing**: None
+- 🔄 **Refactoring Needed**: Tight loop architecture compliance
+
+### **Architecture Compliance Status**
+- ❌ **VIOLATIONS FOUND**: 
+  - **Issue**: Tight loop architecture violations - component may not follow strict tight loop sequence requirements
+  - **Canonical Source**: [docs/REFERENCE_ARCHITECTURE_CANONICAL.md](../REFERENCE_ARCHITECTURE_CANONICAL.md) - Tight Loop Architecture
+  - **Priority**: High
+  - **Fix Required**: Verify tight loop sequence is enforced, check for proper event processing order, ensure no state clearing violations, validate consistent processing flow
+
+### **TODO Items and Refactoring Needs**
+- **High Priority**:
+  - Fix tight loop architecture violations (TODO-REFACTOR comment in event_logger.py line 4)
+  - Ensure no state clearing violations
+- **Medium Priority**:
+  - None identified
+- **Low Priority**:
+  - None identified
+
+## Related Documentation
+- [Reference-Based Architecture](../REFERENCE_ARCHITECTURE.md)
+- [Shared Clock Pattern](../SHARED_CLOCK_PATTERN.md)
+- [Request Isolation Pattern](../REQUEST_ISOLATION_PATTERN.md)
+
+### **Component Integration**
+- [Position Monitor Specification](01_POSITION_MONITOR.md) - Logs position update events
+- [Exposure Monitor Specification](02_EXPOSURE_MONITOR.md) - Logs exposure calculation events
+- [Risk Monitor Specification](03_RISK_MONITOR.md) - Logs risk assessment events
+- [P&L Calculator Specification](04_PNL_CALCULATOR.md) - Logs P&L calculation events
+- [Strategy Manager Specification](05_STRATEGY_MANAGER.md) - Logs strategy decision events
+- [Execution Manager Specification](06_EXECUTION_MANAGER.md) - Logs execution events
+- [Execution Interface Manager Specification](07_EXECUTION_INTERFACE_MANAGER.md) - Logs execution routing events
+- [Data Provider Specification](09_DATA_PROVIDER.md) - Logs data loading events
+- [Reconciliation Component Specification](10_RECONCILIATION_COMPONENT.md) - Logs reconciliation events
+- [Position Update Handler Specification](11_POSITION_UPDATE_HANDLER.md) - Logs position update orchestration events
+
+### **Quality Gate Status**
+- **Current Status**: PARTIAL
+- **Failing Tests**: Tight loop architecture compliance tests
+- **Requirements**: Fix tight loop violations
+- **Integration**: Integrates with quality gate system through event logger tests
+
+### **Task Completion Status**
+- **Related Tasks**: 
+  - [.cursor/tasks/10_tight_loop_architecture_requirements.md](../../.cursor/tasks/10_tight_loop_architecture_requirements.md) - Tight Loop Architecture (50% complete - violations identified, fixes needed)
+- **Completion**: 85% complete overall
+- **Blockers**: Tight loop architecture compliance
+- **Next Steps**: Fix tight loop architecture violations
+
+---
+
 ## 🎯 **Success Criteria**
 
 - [ ] Global order assignment (unique per event)
@@ -529,7 +722,7 @@ def test_balance_snapshots_included():
 - [ ] Optional balance snapshots (configurable)
 - [ ] Atomic bundle logging (wrapper + details)
 - [ ] Future-proof for live (optional fields)
-- [ ] Redis publishing (optional, live mode)
+- [ ] Direct method calls for component communication
 - [ ] CSV export with all fields
 - [ ] Parent-child event relationships
 

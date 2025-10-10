@@ -20,30 +20,42 @@ cursor --agent-mode background --web-browser-mode --context docs/ .cursor/tasks/
 cursor --agent-mode background --web-browser-mode --validate-environment
 ```
 
-## Specialized Agent Commands
+## Specialized Agent Commands (Logical Order)
 
-### 1. Docs Consistency Agent
+### 1. Docs Consistency Agent (Foundation)
 ```bash
-# Start docs consistency agent
+# Start docs consistency agent - RUNS FIRST
 cursor --agent-mode background --web-browser-mode --agent-config .cursor/docs-consistency-agent.json --instructions .cursor/docs-consistency-instructions.md
 ```
 
-### 2. Task Execution Agent
+### 2. Task Execution Agent (Core Implementation)
 ```bash
-# Start task execution agent
+# Start task execution agent - RUNS SECOND
 cursor --agent-mode background --web-browser-mode --context .cursor/tasks/ docs/ --instructions "Execute tasks from .cursor/tasks/00_master_task_sequence.md in sequence"
 ```
 
-### 3. Quality Gates Agent
+### 3. Architecture Compliance Agent (Architecture Validation)
 ```bash
-# Start quality gates agent
+# Start architecture compliance agent - RUNS THIRD
+cursor --agent-mode background --web-browser-mode --context .cursor/rules.json docs/REFERENCE_ARCHITECTURE_CANONICAL.md --instructions "Ensure all code follows architectural principles and rules"
+```
+
+### 4. Quality Gates Agent (System Validation)
+```bash
+# Start quality gates agent - RUNS FOURTH
 cursor --agent-mode background --web-browser-mode --context scripts/ docs/QUALITY_GATES.md --instructions "Run and fix quality gates to achieve target pass rates"
 ```
 
-### 4. Architecture Compliance Agent
+### 5. Integration Alignment Agent (Integration Validation) - **TRIGGERED AFTER QUALITY GATES PASS**
 ```bash
-# Start architecture compliance agent
-cursor --agent-mode background --web-browser-mode --context .cursor/rules.json docs/CANONICAL_ARCHITECTURAL_PRINCIPLES.md --instructions "Ensure all code follows architectural principles and rules"
+# Start integration alignment agent - RUNS FIFTH (after quality gates pass)
+cursor --agent-mode background --web-browser-mode --agent-config .cursor/integration-alignment-agent.json --instructions .cursor/integration-alignment-instructions.md
+```
+
+### 6. Comprehensive Documentation Agent (Final Validation)
+```bash
+# Start comprehensive documentation agent - RUNS LAST
+cursor --agent-mode background --web-browser-mode --agent-config .cursor/comprehensive-docs-agent.json --instructions .cursor/comprehensive-docs-instructions.md
 ```
 
 ## Web Browser Prompt Instructions
@@ -247,7 +259,7 @@ You are an architecture compliance agent. Your mission is to ensure all code fol
 
 **Your Instructions:**
 1. Read .cursor/rules.json for architecture rules
-2. Read docs/CANONICAL_ARCHITECTURAL_PRINCIPLES.md for principles
+2. Read docs/REFERENCE_ARCHITECTURE_CANONICAL.md for principles
 3. Scan codebase for rule violations
 4. Fix each violation found
 5. Validate fixes don't break functionality
@@ -273,6 +285,121 @@ You are an architecture compliance agent. Your mission is to ensure all code fol
 Start by reading the rules and principles, then scan the codebase for violations.
 ```
 
+### For Integration Alignment Agent
+```
+You are a specialized integration alignment agent. Your mission is to ensure 100% integration alignment across component specifications, API documentation, configuration systems, and canonical architectural principles.
+
+**Your Instructions:**
+1. Read .cursor/integration-alignment-instructions.md for detailed mission
+2. Analyze all component specifications in docs/specs/
+3. Validate component-to-component workflow alignment
+4. Verify function call and method signature alignment
+5. Check links and cross-reference completeness
+6. Validate mode-specific behavior documentation
+7. Ensure configuration and environment variable alignment
+8. Verify API documentation integration
+9. Check canonical architecture compliance
+10. **CRITICAL**: Add comprehensive cross-references between ALL component specs
+11. **CRITICAL**: Document all configuration parameters in component specs
+12. **CRITICAL**: Add environment variable usage context to component specs
+13. **CRITICAL**: Integrate API endpoint references in component specs
+14. **CRITICAL**: Standardize cross-reference format across all specs
+
+**Integration Alignment Process:**
+- Phase 1: Component-to-Component Workflow Alignment
+- Phase 2: Function Call and Method Signature Alignment
+- Phase 3: Links and Cross-Reference Validation
+- Phase 4: Mode-Specific Behavior Documentation
+- Phase 5: Configuration and Environment Variable Alignment
+- Phase 6: API Documentation Integration
+
+**Expected Output:**
+- Comprehensive integration alignment report
+- Updated component specs with comprehensive cross-references
+- Configuration parameter documentation in all component specs
+- Environment variable usage context in all component specs
+- API endpoint references in all component specs
+- Standardized cross-reference format across all specs
+
+**Success Criteria:**
+- 100% component-to-component workflow alignment
+- 100% function call and method signature alignment
+- 100% links and cross-reference validation
+- 100% mode-specific behavior documentation
+- 100% configuration and environment variable alignment
+- 100% API documentation integration
+- All component specs have comprehensive cross-references
+- All component specs document configuration parameters
+- All component specs reference environment variables
+- All component specs integrate with API documentation
+
+Start by reading the instructions file and then begin your comprehensive integration alignment analysis.
+```
+
+### For Comprehensive Documentation Agent
+```
+You are a comprehensive documentation agent. Your mission is to ensure 100% comprehensive documentation alignment across all aspects: consistency, integration, configuration, API, and architectural principles.
+
+**Your Instructions:**
+1. Read .cursor/comprehensive-docs-instructions.md for detailed mission
+2. Analyze all documentation in docs/ directory
+3. Validate documentation consistency across all files
+4. Verify integration alignment across component specifications
+5. Check configuration and environment variable alignment
+6. Validate API documentation integration
+7. Ensure canonical architecture compliance
+8. **CRITICAL**: Detect and repair all broken links by redirecting to closest relevant content
+9. **CRITICAL**: Add comprehensive cross-references between ALL component specs
+10. **CRITICAL**: Document all configuration parameters in component specs
+11. **CRITICAL**: Add environment variable usage context to component specs
+12. **CRITICAL**: Integrate API endpoint references in component specs
+13. **CRITICAL**: Standardize cross-reference format across all specs
+14. **CRITICAL**: Ensure all information is preserved and accessible
+
+**Comprehensive Analysis Process:**
+- Phase 1: Documentation Inventory and Consistency
+- Phase 2: Integration Alignment Analysis
+- Phase 3: Configuration and Environment Variable Alignment
+- Phase 4: API Documentation Integration
+- Phase 5: Mode-Specific Behavior Documentation
+
+**Expected Output:**
+- Comprehensive documentation alignment report
+- Updated component specs with comprehensive cross-references
+- Configuration parameter documentation in all component specs
+- Environment variable usage context in all component specs
+- API endpoint references in all component specs
+- Standardized cross-reference format across all specs
+- Detailed broken link analysis with redirect recommendations
+- Content similarity analysis for each broken link
+
+**Success Criteria:**
+- Zero conflicting statements across docs/ directory
+- All cross-references work correctly
+- All configuration examples are accurate
+- All API documentation is complete
+- All quality gate documentation matches implementation
+- All architectural principles are consistently applied
+- All component specifications align with code
+- All environment variables are documented
+- All file paths exist
+- All section references are valid
+- All component-to-component workflows are aligned
+- All function call and method signatures are aligned
+- All links and cross-references are complete
+- All mode-specific behavior is documented
+- All configuration and environment variables are aligned
+- All API documentation is integrated
+- All canonical architecture compliance is verified
+- All cross-references are standardized
+- ALL broken links identified and redirected to closest relevant content (NEVER removed)
+- ALL file references point to existing files
+- ALL section references are valid
+- ALL information preserved and accessible through redirects
+
+Start by reading the instructions file and then begin your comprehensive documentation alignment analysis.
+```
+
 ## Environment Setup Commands
 
 ### Before Starting Any Agent
@@ -285,7 +412,6 @@ pip install -r requirements.txt
 cd frontend && npm install && cd ..
 
 # Start required services
-sudo service redis-server start
 sudo service docker start
 
 # Verify environment

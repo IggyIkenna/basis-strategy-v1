@@ -46,9 +46,9 @@ show_help() {
     echo "  prod     → docker/.env.prod"
     echo ""
     echo -e "${YELLOW}Services:${NC}"
-    echo "  backend  → Backend API + Redis"
+    echo "  backend  → Backend API"
     echo "  frontend → Backend + Caddy (reverse proxy)"
-    echo "  all      → Backend + Caddy + Redis"
+    echo "  all      → Backend + Caddy"
 }
 
 validate_environment() {
@@ -112,13 +112,13 @@ setup_environment() {
 get_compose_services() {
     case $SERVICES in
         backend)
-            echo "redis backend"
+            echo "backend"
             ;;
         frontend)
-            echo "redis backend caddy"
+            echo "backend caddy"
             ;;
         all)
-            echo "redis backend caddy"
+            echo "backend caddy"
             ;;
     esac
 }

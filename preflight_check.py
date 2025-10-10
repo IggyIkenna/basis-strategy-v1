@@ -12,7 +12,6 @@ def run_preflight_checks():
         ("Git Status", "git status --porcelain"),
         ("Documentation", "python3 validate_docs.py"),
         ("Linting (Flake8)", "flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics --exclude=venv,__pycache__,.git"),
-        ("Redis", "redis-cli ping")
     ]
     
     print("🚀 Running pre-flight checks...")

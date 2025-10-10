@@ -1,24 +1,24 @@
 """
 Position Monitor Component
 
-TODO-REFACTOR: TIGHT LOOP ARCHITECTURE VIOLATION - 10_tight_loop_architecture_requirements.md
-ISSUE: This component may violate tight loop architecture requirements:
+TODO-REFACTOR: SYNCHRONOUS EXECUTION VIOLATION - See docs/ARCHITECTURAL_DECISION_RECORDS.md
+ISSUE: This component violates ADR-006 Synchronous Component Execution:
 
-1. TIGHT LOOP ARCHITECTURE REQUIREMENTS:
-   - Components must follow strict tight loop sequence
-   - Proper event processing order
-   - No state clearing between iterations
-   - Consistent processing flow
+1. SYNCHRONOUS COMPONENT EXECUTION (ADR-006):
+   - Internal methods should be synchronous (no async/await)
+   - Async only for: API entry points, I/O operations, request queue
+   - Line 239: async def update() - should be synchronous
+   - Lines 408, 465, 472, 479, 515: async methods for I/O operations (ALLOWED)
 
-2. REQUIRED VERIFICATION:
-   - Verify tight loop sequence is enforced
-   - Check for proper event processing order
-   - Ensure no state clearing violations
-   - Validate consistent processing flow
+2. CURRENT VIOLATIONS:
+   - Line 239: async def update() - should be synchronous
+   - Lines 408, 465, 472, 479, 515: async I/O methods (ALLOWED per ADR-006)
 
-3. CANONICAL SOURCE:
-   - .cursor/tasks/10_tight_loop_architecture_requirements.md
-   - Tight loop sequence must be enforced
+CANONICAL SOURCE:
+- docs/ARCHITECTURAL_DECISION_RECORDS.md - ADR-006 Synchronous Component Execution
+- docs/REFERENCE_ARCHITECTURE_CANONICAL.md - Section 6 (Async I/O for Non-Critical Path)
+
+CURRENT STATE: Needs refactoring to remove async from internal methods
 
 Tracks raw ERC-20/token balances and derivative positions with NO conversions.
 This component knows about balances in NATIVE token units only.
@@ -37,7 +37,6 @@ AAVE Index Mechanics:
 """
 
 from typing import Dict, List, Optional, Any
-import redis
 import json
 import logging
 import asyncio
@@ -215,22 +214,7 @@ class PositionMonitor:
         # Initialize capital based on share class (NO DEFAULTS)
         self._initialize_capital()
         
-        # Redis for inter-component communication
-        self.redis = None
-        if execution_mode == 'live':
-            try:
-                import os
-                redis_url = os.getenv('BASIS_REDIS_URL')
-                if not redis_url:
-                    raise ValueError("BASIS_REDIS_URL environment variable required for live mode")
-                
-                self.redis = redis.Redis.from_url(redis_url, decode_responses=True)
-                # Test connection
-                self.redis.ping()
-                logger.info("Redis connection established for Position Monitor")
-            except Exception as e:
-                logger.error(f"Redis connection failed for live mode: {e}")
-                raise ValueError(f"Redis required for live mode but connection failed: {e}")
+        # Redis removed - using direct method calls for component communication
         
         logger.info(f"Position Monitor initialized: {execution_mode} mode, {share_class} share class, {initial_capital} initial capital")
     
@@ -290,9 +274,7 @@ class PositionMonitor:
             snapshot['timestamp'] = changes.get('timestamp', pd.Timestamp.now(tz='UTC'))
             snapshot['last_updated'] = datetime.utcnow().isoformat() + 'Z'
             
-            # Publish to Redis (for other components)
-            if self.redis:
-                await self._publish_update(snapshot, changes)
+            # Redis publishing removed - components use direct method calls
             
             logger.debug(f"Position Monitor updated: {changes.get('trigger', 'UNKNOWN')}")
             
@@ -421,37 +403,7 @@ class PositionMonitor:
         else:
             logger.warning(f"Unknown derivative action: {action}")
     
-    async def _publish_update(self, snapshot: Dict, changes: Dict):
-        """Publish update to Redis."""
-        try:
-            # Store snapshot
-            await asyncio.get_event_loop().run_in_executor(
-                None, 
-                self.redis.set, 
-                'position:snapshot', 
-                json.dumps(snapshot, default=str)
-            )
-            
-            # Publish update event
-            update_event = {
-                'timestamp': changes.get('timestamp', pd.Timestamp.now(tz='UTC')),
-                'trigger': changes.get('trigger', 'UNKNOWN'),
-                'changes_count': len(changes.get('token_changes', [])) + len(changes.get('derivative_changes', []))
-            }
-            
-            await asyncio.get_event_loop().run_in_executor(
-                None,
-                self.redis.publish,
-                'position:updated',
-                json.dumps(update_event, default=str)
-            )
-            
-        except Exception as e:
-            raise PositionMonitorError(
-                'POS-005',
-                message=f"Redis publish failed: {e}",
-                error=str(e)
-            )
+    # Redis publishing removed - components use direct method calls
     
     async def reconcile_with_live(self, live_balances: Optional[Dict] = None) -> Dict:
         """

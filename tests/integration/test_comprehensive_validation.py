@@ -5,7 +5,7 @@ Comprehensive Integration Validation Tests
 This test suite validates the complete integration of config loading, data availability,
 and EventDrivenStrategyEngine functionality across all strategy modes.
 
-Author: Agent B
+Author: Implementation Team
 Date: December 2024
 """
 

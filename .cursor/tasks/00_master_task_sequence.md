@@ -1,40 +1,52 @@
 # MASTER TASK SEQUENCE FOR BACKGROUND AGENTS
 
 ## OVERVIEW
-This is the complete sequence of tasks to execute from REMAINING_TASKS.md. Execute these tasks in order, one after another, without stopping between tasks.
+This is the complete sequence of tasks to execute based on the updated TASK_DOCS_CONFLICT_ANALYSIS_REPORT.md. Execute these tasks in order by priority, focusing on HIGH priority architectural violations first.
 
-## TASK SEQUENCE
-0. **00_master_task_sequence.md** - This master task sequence (START HERE)
-1. **01_docs_codebase_reconciliation.md** - Reconcile docs, tasks, and codebase (CRITICAL)
-2. **02_critical_pure_lending_yield_fix.md** - Fix 1166% APY issue (CRITICAL)
-3. **03_scripts_directory_quality_gates.md** - Fix 5/14 scripts passing (HIGH)
-4. **04_btc_basis_strategy_v1_fix.md** - Fix 8/10 quality gates (HIGH)
-5. **05_comprehensive_quality_gates.md** - Run full suite (MEDIUM)
-6. **21_consolidate_duplicate_risk_monitors.md** - Remove duplicate risk_monitor.py files (CRITICAL)
+**Reference**: `TASK_DOCS_CONFLICT_ANALYSIS_REPORT.md` - Updated conflict analysis (October 10, 2025)  
+**Reference**: `docs/DEVIATIONS_AND_CORRECTIONS.md` - Current architectural violations
+
+## TASK SEQUENCE (Priority Order)
+
+### HIGH Priority Tasks (Must Fix Before Production)
+1. **23_fix_async_await_violations.md** - Fix ADR-006 violations (HIGH)
+2. **strategy_manager_refactor.md** - Complete strategy manager refactor (HIGH)
+3. **14_mode_agnostic_architecture_requirements.md** - Fix generic vs mode-specific violations (HIGH)
+
+### MEDIUM Priority Tasks (Should Fix Soon)
+4. **24_implement_fail_fast_configuration.md** - Implement fail-fast config (MEDIUM)
+5. **13_singleton_pattern_requirements.md** - Enforce singleton pattern (MEDIUM)
+6. **21_consolidate_duplicate_risk_monitors.md** - Remove duplicate risk monitor (MEDIUM)
+7. **10_tight_loop_architecture_requirements.md** - Implement tight loop architecture (MEDIUM)
+8. **25_fix_reference_based_architecture_gaps.md** - Fix reference-based architecture (MEDIUM)
+9. **26_fix_component_data_flow_architecture.md** - Fix component data flow (MEDIUM)
+
+### LOW Priority Tasks (Can Defer)
+10. **27_complete_frontend_implementation.md** - Complete frontend implementation (LOW)
+
+### Legacy Tasks (Review and Update)
+11. **01_docs_codebase_reconciliation.md** - Reconcile docs, tasks, and codebase (COMPLETED)
+12. **02_critical_pure_lending_yield_fix.md** - Fix 1166% APY issue (REVIEW)
+13. **03_scripts_directory_quality_gates.md** - Fix scripts directory quality gates (REVIEW)
+14. **04_btc_basis_strategy_v1_fix.md** - Fix BTC basis strategy (REVIEW)
+15. **05_comprehensive_quality_gates.md** - Run comprehensive quality gates (REVIEW)
 
 ## EXECUTION INSTRUCTIONS
-1) Read .cursor/tasks/01_docs_codebase_reconciliation.md for comprehensive reconciliation
-2) Read .cursor/tasks/06_architecture_compliance_rules.md for architecture requirements
-3) Read .cursor/tasks/08_configuration_architecture_guide.md for configuration standards
-4) Read .cursor/tasks/09_backtest_vs_live_mode_architecture.md for mode-specific requirements
-5) Read .cursor/tasks/10_tight_loop_architecture_requirements.md for tight loop requirements
-6) Read .cursor/tasks/11_backtest_mode_quality_gates.md for backtest mode validation
-7) Read .cursor/tasks/12_live_trading_quality_gates.md for live trading validation
-8) Read .cursor/tasks/13_singleton_pattern_requirements.md for singleton pattern requirements
-9) Read .cursor/tasks/14_mode_agnostic_architecture_requirements.md for mode-agnostic requirements
-10) Read .cursor/tasks/16_clean_component_architecture_requirements.md for clean component requirements
-11) Read .cursor/tasks/17_quality_gate_validation_requirements.md for quality gate validation requirements
-12) Read .cursor/tasks/18_generic_vs_mode_specific_architecture.md for generic vs mode-specific requirements
-13) Read .cursor/tasks/19_venue_based_execution_architecture.md for venue-based execution requirements
-14) Read .cursor/tasks/21_consolidate_duplicate_risk_monitors.md for duplicate file consolidation
-15) Read .cursor/rules.json for coding standards and validation rules
-16) Read each task file completely before starting
-17) Reference docs/ and docs/specs/ as needed for detailed specifications
-18) Execute each task in sequence
-19) Do not wait for confirmation between tasks
-20) Report progress after each task completion
-21) **MANDATORY**: Run quality gate validation before moving to next task
-22) Continue to next task immediately after success criteria met AND quality gates pass
+1) **START WITH HIGH PRIORITY TASKS** - Focus on tasks 1-3 (HIGH priority) first
+2) Read each task file completely before starting
+3) Reference `docs/` and `docs/specs/` as needed for detailed specifications
+4) Reference `TASK_DOCS_CONFLICT_ANALYSIS_REPORT.md` for violation details
+5) Reference `docs/DEVIATIONS_AND_CORRECTIONS.md` for current architectural violations
+6) Execute each task in priority order (HIGH → MEDIUM → LOW)
+7) Do not wait for confirmation between tasks
+8) Report progress after each task completion
+9) **MANDATORY**: Run quality gate validation before moving to next task
+10) Continue to next task immediately after success criteria met AND quality gates pass
+
+## ARCHITECTURAL VIOLATION PRIORITIES
+- **HIGH**: Async/await violations, Strategy manager refactor, Generic vs mode-specific
+- **MEDIUM**: Fail-fast config, Singleton pattern, Duplicate files, Tight loop, Reference-based, Data flow
+- **LOW**: Frontend implementation
 
 ## CRITICAL ARCHITECTURE RULES
 - ❌ NEVER use hardcoded values to fix issues (including config values)
@@ -78,11 +90,26 @@ This is the complete sequence of tasks to execute from REMAINING_TASKS.md. Execu
 - Current Status: 8/24 quality gates passing (33.3%)
 
 ## SUCCESS CRITERIA
-- Docs, tasks, and codebase fully reconciled and consistent
-- Pure lending APY: 3-8% (not 1166%)
-- Scripts directory: 10/14 passing (70%+)
-- BTC basis strategy: 10/10 passing (100%)
-- Overall quality gates: 15/24 passing (60%+)
+
+### Primary Success Criteria (HIGH Priority)
+- [ ] All async/await violations fixed (ADR-006 compliance)
+- [ ] Strategy manager refactored with inheritance-based architecture
+- [ ] Generic vs mode-specific violations resolved with config-driven parameters
+
+### Secondary Success Criteria (MEDIUM Priority)
+- [ ] Fail-fast configuration implemented (no .get() with defaults)
+- [ ] Singleton pattern enforced for all 11 components
+- [ ] Duplicate risk monitor file removed
+- [ ] Tight loop architecture properly implemented
+- [ ] Centralized utility manager created
+- [ ] Reference-based architecture gaps fixed
+- [ ] Component data flow architecture updated
+
+### Tertiary Success Criteria (LOW Priority)
+- [ ] Frontend implementation completed
+- [ ] All task files updated with correct documentation references
+- [ ] No duplicate content across task files (DRY compliance)
+- [ ] All references validated and working
 
 ## TIMEOUT HANDLING
 - 10-minute timeout per command

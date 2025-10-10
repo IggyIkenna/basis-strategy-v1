@@ -25,6 +25,18 @@ Add comprehensive "Current Implementation Status" sections to all files in `docs
 - Map implementation gaps to specific refactoring tasks
 - Validate against quality gate requirements
 
+## Canonical Source for Conflict Resolution
+
+When detecting or resolving conflicts, use this hierarchy:
+1. **REFERENCE_ARCHITECTURE_CANONICAL.md** - All architectural principles and patterns
+2. **ARCHITECTURAL_DECISION_RECORDS.md** - Historical ADR details
+3. **MODES.md** - Strategy mode specifications
+4. **VENUE_ARCHITECTURE.md** - Venue execution patterns
+5. **Component specs** - Implementation details
+6. **Guide docs** - Workflow and usage patterns
+
+For architectural conflicts, REFERENCE_ARCHITECTURE_CANONICAL.md is the ultimate authority.
+
 ## Analysis Process
 
 ### Step 1: Component Analysis

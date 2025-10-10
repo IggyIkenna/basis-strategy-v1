@@ -12,10 +12,22 @@ Ensure 100% consistency across all documentation in the `docs/` directory with z
 - Validate all section references
 
 ### 2. Architecture Consistency
-- Ensure `docs/CANONICAL_ARCHITECTURAL_PRINCIPLES.md` is the single source of truth
+- Ensure `docs/REFERENCE_ARCHITECTURE_CANONICAL.md` is the single source of truth
 - Verify all component specs align with architectural principles
 - Check that `.cursor/tasks/` align with architectural decisions
 - Validate that implementation matches documented architecture
+
+## Canonical Source for Conflict Resolution
+
+When detecting or resolving conflicts, use this hierarchy:
+1. **REFERENCE_ARCHITECTURE_CANONICAL.md** - All architectural principles and patterns
+2. **ARCHITECTURAL_DECISION_RECORDS.md** - Historical ADR details
+3. **MODES.md** - Strategy mode specifications
+4. **VENUE_ARCHITECTURE.md** - Venue execution patterns
+5. **Component specs** - Implementation details
+6. **Guide docs** - Workflow and usage patterns
+
+For architectural conflicts, REFERENCE_ARCHITECTURE_CANONICAL.md is the ultimate authority.
 
 ### 3. Configuration Consistency
 - Verify all configuration examples in docs/ match actual config files
@@ -35,6 +47,16 @@ Ensure 100% consistency across all documentation in the `docs/` directory with z
 - Check that test requirements match implementation
 - Validate coverage requirements
 
+### 6. Integration Alignment Consistency
+- Ensure component-to-component workflow alignment
+- Verify function call and method signature alignment
+- Check links and cross-reference completeness
+- Validate mode-specific behavior documentation
+- Ensure configuration and environment variable alignment
+- Verify API documentation integration
+- Check canonical architecture compliance
+- Validate cross-reference standardization
+
 ## Analysis Process
 
 ### Step 1: Document Inventory
@@ -45,7 +67,7 @@ Ensure 100% consistency across all documentation in the `docs/` directory with z
 
 ### Step 2: Consistency Checks
 1. **Architecture Alignment**
-   - Compare `CANONICAL_ARCHITECTURAL_PRINCIPLES.md` with all other docs
+   - Compare `REFERENCE_ARCHITECTURE_CANONICAL.md` with all other docs
    - Check for contradictory architectural statements
    - Verify component specifications align with principles
 
@@ -74,6 +96,16 @@ Ensure 100% consistency across all documentation in the `docs/` directory with z
    - Analyze content similarity between referenced and existing files
    - Identify best matches for broken references
    - Suggest content consolidation where appropriate
+
+7. **Integration Alignment Analysis**
+   - Check component-to-component workflow alignment
+   - Verify function call and method signature alignment
+   - Validate links and cross-reference completeness
+   - Check mode-specific behavior documentation
+   - Ensure configuration and environment variable alignment
+   - Verify API documentation integration
+   - Check canonical architecture compliance
+   - Validate cross-reference standardization
 
 ### Step 3: Conflict Resolution
 1. **Identify Conflicts**
@@ -144,8 +176,8 @@ Ensure 100% consistency across all documentation in the `docs/` directory with z
 - Overall consistency score: X%
 
 ## Critical Conflicts (Must Fix)
-1. **File**: docs/ARCHITECTURAL_DECISIONS.md
-   **Issue**: Contradicts CANONICAL_ARCHITECTURAL_PRINCIPLES.md on singleton pattern
+1. **File**: docs/REFERENCE_ARCHITECTURE_CANONICAL.md
+   **Issue**: Contradicts REFERENCE_ARCHITECTURE_CANONICAL.md on singleton pattern
    **Resolution**: Update to match canonical source
 
 ## High Priority Conflicts
@@ -164,7 +196,7 @@ Ensure 100% consistency across all documentation in the `docs/` directory with z
    **Resolution**: Remove broken link or create missing file
 
 ## Broken Link Analysis
-1. **Broken Link**: docs/ARCHITECTURAL_DECISIONS.md → docs/specs/14_COMPONENT.md
+1. **Broken Link**: docs/REFERENCE_ARCHITECTURE_CANONICAL.md → docs/specs/14_COMPONENT.md
    **Context**: "See component specification for details"
    **Best Match**: docs/specs/05_STRATEGY_MANAGER.md (85% content similarity)
    **Resolution**: Update link to point to docs/specs/05_STRATEGY_MANAGER.md
@@ -180,11 +212,11 @@ Ensure 100% consistency across all documentation in the `docs/` directory with z
 1. **Referenced Content**: "Component architecture patterns"
    **Existing Files**: 
      - docs/specs/05_STRATEGY_MANAGER.md (85% similarity)
-     - docs/CANONICAL_ARCHITECTURAL_PRINCIPLES.md (78% similarity)
+     - docs/REFERENCE_ARCHITECTURE_CANONICAL.md (78% similarity)
    **Recommendation**: Use docs/specs/05_STRATEGY_MANAGER.md as redirect target
 
 ## Recommendations
-1. Update docs/ARCHITECTURAL_DECISIONS.md to match canonical principles
+1. Update docs/REFERENCE_ARCHITECTURE_CANONICAL.md to match canonical principles
 2. Add missing API endpoint documentation
 3. Fix broken cross-references
 4. Remove outdated configuration examples
@@ -206,6 +238,14 @@ Ensure 100% consistency across all documentation in the `docs/` directory with z
 - [ ] All environment variables documented
 - [ ] All file paths verified
 - [ ] All section references validated
+- [ ] All component-to-component workflows aligned
+- [ ] All function call and method signatures aligned
+- [ ] All links and cross-references complete
+- [ ] All mode-specific behavior documented
+- [ ] All configuration and environment variables aligned
+- [ ] All API documentation integrated
+- [ ] All canonical architecture compliance verified
+- [ ] All cross-references standardized
 
 ### Success Criteria
 - [ ] Zero conflicting statements between docs/ files
@@ -218,6 +258,14 @@ Ensure 100% consistency across all documentation in the `docs/` directory with z
 - [ ] All environment variables are documented
 - [ ] All file paths exist
 - [ ] All section references are valid
+- [ ] All component-to-component workflows are aligned
+- [ ] All function call and method signatures are aligned
+- [ ] All links and cross-references are complete
+- [ ] All mode-specific behavior is documented
+- [ ] All configuration and environment variables are aligned
+- [ ] All API documentation is integrated
+- [ ] All canonical architecture compliance is verified
+- [ ] All cross-references are standardized
 
 ## Tools and Commands
 

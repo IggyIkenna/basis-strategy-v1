@@ -560,7 +560,7 @@ class HealthResponse(BaseModel):
                         "error_code": None,
                         "readiness_checks": {
                             "initialized": True,
-                            "redis_connected": True,
+                            "cache_available": True,
                             "snapshot_available": True
                         }
                     }

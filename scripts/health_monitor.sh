@@ -148,3 +148,4 @@ mkdir -p logs
 
 # Start monitoring
 main
+

@@ -9,8 +9,8 @@
   ],
   "context_files": [
     "docs/README.md",
-    "docs/CANONICAL_ARCHITECTURAL_PRINCIPLES.md",
-    "docs/ARCHITECTURAL_DECISIONS.md",
+    "docs/REFERENCE_ARCHITECTURE_CANONICAL.md",
+    "docs/REFERENCE_ARCHITECTURE_CANONICAL.md",
     "docs/VENUE_ARCHITECTURE.md",
     "docs/WORKFLOW_GUIDE.md",
     "docs/DEPLOYMENT_GUIDE.md",
@@ -35,7 +35,15 @@
     "Broken link detection and repair",
     "Cross-reference validation and redirection",
     "File path existence verification",
-    "Content similarity analysis for redirects"
+    "Content similarity analysis for redirects",
+    "Component-to-component workflow alignment",
+    "Function call and method signature alignment",
+    "Links and cross-reference completeness",
+    "Mode-specific behavior documentation",
+    "Configuration and environment variable alignment",
+    "API documentation integration",
+    "Canonical architecture compliance",
+    "Cross-reference standardization"
   ],
   "validation_requirements": [
     "No contradictory statements between docs/ files",
@@ -47,7 +55,17 @@
     "All broken links must be identified and redirected to closest relevant content",
     "All file references must point to existing files",
     "All section references must be valid",
-    "All architectural principles must be consistently applied"
+    "All architectural principles must be consistently applied",
+    "All component specs must have comprehensive cross-references",
+    "All component specs must document configuration parameters",
+    "All component specs must reference environment variables",
+    "All component specs must integrate with API documentation",
+    "All component specs must align with canonical architecture",
+    "All configuration references must match YAML configs",
+    "All environment variable usage must be documented",
+    "All API endpoints must be referenced in component specs",
+    "All workflow patterns must be consistent",
+    "All method signatures must follow canonical patterns"
   ],
   "output_format": "Detailed consistency report with specific conflicts identified and resolution recommendations",
   "success_criteria": "Zero conflicting statements across entire docs/ directory"

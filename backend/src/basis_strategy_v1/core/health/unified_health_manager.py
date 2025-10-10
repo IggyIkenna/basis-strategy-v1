@@ -212,7 +212,7 @@ class UnifiedHealthManager:
             }
     
     async def _check_infrastructure_health(self) -> Dict[str, str]:
-        """Check infrastructure components (Redis, DB, data provider)."""
+        """Check infrastructure components (DB, data provider)."""
         infrastructure = {}
         
         # Check database
@@ -221,11 +221,8 @@ class UnifiedHealthManager:
         else:
             infrastructure["database"] = "not_configured"
         
-        # Check cache (Redis)
-        if self.cache:
-            infrastructure["cache"] = await self._check_cache()
-        else:
-            infrastructure["cache"] = "not_configured"
+        # Cache removed - using in-memory caching only
+        infrastructure["cache"] = "in_memory_only"
         
         # Check data provider
         if self.data_provider:
@@ -253,31 +250,7 @@ class UnifiedHealthManager:
             logger.error(f"Database health check failed: {e}")
             return 'unhealthy'
     
-    async def _check_cache(self) -> str:
-        """Check cache (Redis) connectivity."""
-        try:
-            if hasattr(self.cache, 'enabled') and not self.cache.enabled:
-                return 'not_configured'
-            elif hasattr(self.cache, 'get_health_status'):
-                health_status = await self.cache.get_health_status()
-                if health_status.get('status') == 'healthy':
-                    return 'healthy'
-                elif health_status.get('status') == 'disabled':
-                    return 'not_configured'
-                else:
-                    return 'unhealthy'
-            elif hasattr(self.cache, 'ping'):
-                await self.cache.ping()
-                return 'healthy'
-            elif hasattr(self.cache, 'get'):
-                await self.cache.get("__health_check__")
-                return 'healthy'
-            else:
-                logger.warning("Cache has no health check method")
-                return 'unknown'
-        except Exception as e:
-            logger.error(f"Cache health check failed: {e}")
-            return 'unhealthy'
+    # Cache health check removed - using in-memory caching only
     
     async def _check_data_provider(self) -> str:
         """Check data provider health."""

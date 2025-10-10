@@ -37,6 +37,7 @@ All components must be aware of `startup_mode` which can be either:
 - **Time-based**: Only trigger for full event loop is time
 - **Data granularity**: Restricted to data granularity (currently 1 hour)
 - **Simulated execution**: Actions simulated at same timestamp as event loop timestamp
+- **Tight Loop Reconciliation**: Each execution instruction triggers tight loop verification
 
 ## LIVE MODE CONSIDERATIONS
 
@@ -48,6 +49,8 @@ All components must be aware of `startup_mode` which can be either:
 
 ### 2. Time and Execution
 - **Time trigger**: Can still be main trigger for event loop
+- **Tight Loop Reconciliation**: Each execution instruction triggers tight loop verification
+- **Position Reconciliation**: Verifies position updates match execution expectations
 - **Real delays**: Things take time to happen, record actual delays
 - **Data sync**: In backtest, simulate things happening at same timestamp for easy data sync
 - **Logging**: Log each action by each component for traceability

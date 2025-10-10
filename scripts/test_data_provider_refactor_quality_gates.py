@@ -77,7 +77,7 @@ class DataProviderRefactorQualityGates:
             os.environ['BASIS_DEPLOYMENT_MODE'] = 'local'
             os.environ['BASIS_DATA_DIR'] = 'data'
             os.environ['BASIS_RESULTS_DIR'] = 'results'
-            os.environ['BASIS_REDIS_URL'] = 'redis://localhost:6379'
+            # Redis removed - using in-memory cache only
             os.environ['BASIS_DEBUG'] = 'false'
             os.environ['BASIS_LOG_LEVEL'] = 'info'
             os.environ['BASIS_EXECUTION_MODE'] = 'backtest'

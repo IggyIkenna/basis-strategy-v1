@@ -1,7 +1,12 @@
 # Strategy Manager Refactor
 
 ## Overview
-Refactor the strategy manager architecture to use inheritance-based strategy modes with standardized wrapper actions, replacing the current complex and disorganized rebalancing system. This refactor aligns with the tight loop architecture and EventDrivenStrategyEngine integration requirements from the WORKFLOW_GUIDE.md.
+Refactor the strategy manager architecture to use inheritance-based strategy modes with standardized wrapper actions, replacing the current complex and disorganized rebalancing system. This refactor aligns with the tight loop architecture and EventDrivenStrategyEngine integration requirements.
+
+**Reference**: `docs/ARCHITECTURAL_DECISION_RECORDS.md` - ADR-007 (11 Component Architecture)  
+**Reference**: `docs/MODES.md` - Standardized Strategy Manager Architecture  
+**Reference**: `docs/specs/05_STRATEGY_MANAGER.md` - Component specification  
+**Reference**: `docs/REFERENCE_ARCHITECTURE_CANONICAL.md` - Section 7 (Generic vs Mode-Specific)
 
 ## Key Changes
 

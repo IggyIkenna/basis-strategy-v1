@@ -40,47 +40,7 @@ find_available_port() {
     echo $port
 }
 
-# Function to start Redis for local development
-start_redis() {
-    echo -e "${BLUE}🔴 Starting Redis for local development...${NC}"
-    
-    # Check if Redis is already running
-    if redis-cli ping >/dev/null 2>&1; then
-        echo -e "${GREEN}✅ Redis is already running${NC}"
-        return 0
-    fi
-    
-    # Try to start Redis
-    if command -v redis-server >/dev/null 2>&1; then
-        echo -e "${BLUE}🚀 Starting Redis server...${NC}"
-        redis-server --daemonize yes --port 6379
-        sleep 2
-        
-        # Verify Redis is running
-        if redis-cli ping >/dev/null 2>&1; then
-            echo -e "${GREEN}✅ Redis started successfully${NC}"
-        else
-            echo -e "${RED}❌ Failed to start Redis${NC}"
-            return 1
-        fi
-    else
-        echo -e "${RED}❌ Redis not found. Please install Redis first.${NC}"
-        echo -e "${YELLOW}💡 Install with: brew install redis (macOS) or apt-get install redis-server (Ubuntu)${NC}"
-        return 1
-    fi
-}
-
-# Function to stop Redis
-stop_redis() {
-    echo -e "${BLUE}🛑 Stopping Redis...${NC}"
-    
-    if redis-cli ping >/dev/null 2>&1; then
-        redis-cli shutdown
-        echo -e "${GREEN}✅ Redis stopped${NC}"
-    else
-        echo -e "${YELLOW}⚠️ Redis was not running${NC}"
-    fi
-}
+# Redis removed - using in-memory cache only
 
 # Function to create required directories
 create_directories() {
@@ -164,7 +124,6 @@ load_environment() {
         "BASIS_DEPLOYMENT_MACHINE"
         "BASIS_DATA_DIR"
         "BASIS_RESULTS_DIR"
-        "BASIS_REDIS_URL"
         "BASIS_DEBUG"
         "BASIS_LOG_LEVEL"
         "BASIS_EXECUTION_MODE"
@@ -215,13 +174,7 @@ start_backend() {
     # Create required directories
     create_directories
     
-    # Start Redis if in local mode
-    if [ "$BASIS_DEPLOYMENT_MODE" = "local" ]; then
-        if ! start_redis; then
-            echo -e "${RED}❌ Failed to start Redis${NC}"
-            return 1
-        fi
-    fi
+    # Redis removed - using in-memory cache only
     
     # Check if port is already in use with timeout
     echo -e "${BLUE}🔍 Checking if port $BACKEND_PORT is available...${NC}"
@@ -334,13 +287,7 @@ start_backtest() {
     # Create required directories
     create_directories
     
-    # Start Redis if in local mode
-    if [ "$BASIS_DEPLOYMENT_MODE" = "local" ]; then
-        if ! start_redis; then
-            echo -e "${RED}❌ Failed to start Redis${NC}"
-            return 1
-        fi
-    fi
+    # Redis removed - using in-memory cache only
     
     # Start backend in backtest mode
     echo -e "${BLUE}🚀 Starting backend in backtest mode...${NC}"
@@ -388,10 +335,7 @@ stop_all() {
     kill_port $BACKEND_PORT
     kill_port $FRONTEND_PORT
     
-    # Stop Redis if in local mode
-    if [ "$BASIS_DEPLOYMENT_MODE" = "local" ]; then
-        stop_redis
-    fi
+    # Redis removed - using in-memory cache only
     
     echo -e "${GREEN}✅ All services stopped${NC}"
 }
@@ -423,12 +367,7 @@ show_status() {
         echo -e "${RED}❌ Frontend: Not running${NC}"
     fi
     
-    # Check Redis
-    if redis-cli ping >/dev/null 2>&1; then
-        echo -e "${GREEN}✅ Redis: Running${NC}"
-    else
-        echo -e "${RED}❌ Redis: Not running${NC}"
-    fi
+    # Redis removed - using in-memory cache only
 }
 
 # Function to show logs

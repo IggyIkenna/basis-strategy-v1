@@ -34,9 +34,8 @@
 
 ## 🎯 **Quick Start**
 
-- **[Agent Setup](AGENT_SETUP.md)** - Get started with web agents
-- **[Agent A Tasks](AGENT_A_TASKS.md)** - Frontend implementation (8 days)
-- **[Agent B Tasks](AGENT_B_TASKS.md)** - Infrastructure & deployment (6 days)
+- **[Quality Gates](docs/QUALITY_GATES.md)** - Implementation priorities and quality gates
+- **[Component Specs](docs/specs/)** - Detailed component implementation guides
 - **[Documentation](docs/README.md)** - Complete documentation hub
 - **[Progress](agent-progress.json)** - Real-time progress tracking
 
@@ -45,8 +44,8 @@
 ## 📊 **Current Status**
 
 ### **✅ Completed (9/18 tasks)**
-- **Agent A**: Position Monitor, Event Logger, Exposure Monitor, Risk Monitor, P&L Calculator
-- **Agent B**: Strategy Manager, CEX Execution Manager, OnChain Execution Manager, Data Provider
+- **Core Components**: Position Monitor, Event Logger, Exposure Monitor, Risk Monitor, P&L Calculator
+- **Execution Components**: Strategy Manager, CEX Execution Manager, OnChain Execution Manager, Data Provider
 
 ### **🔄 Major Refactor In Progress**
 - **Configuration System**: Implementing unified config manager with fail-fast environment loading
@@ -106,13 +105,13 @@ python scripts/run_quality_gates.py --all --strict
 ### **Component-Based Service Architecture**
 - **9 Core Components** - Modular, testable, maintainable
 - **6 Strategy Modes** - Pure lending, BTC basis, ETH leveraged, ETH staking only, USDT market neutral, USDT market neutral no leverage
-- **Real-time Processing** - Redis pub/sub, event-driven updates
+- **Real-time Processing** - Direct function calls, event-driven updates
 - **Audit-Grade Logging** - Complete event trail and reconciliation
 - **Common Architecture** - Shared codebase for backtest and live modes
 - **Mode-Specific Execution** - Backtest uses simulations, live uses real APIs
 
 ### **Technology Stack**
-- **Backend**: Python, FastAPI, Redis, Pandas
+- **Backend**: Python, FastAPI, Pandas
 - **Frontend**: React, TypeScript, Tailwind CSS, Plotly
 - **Infrastructure**: Docker, Google Cloud Platform
 - **Testing**: pytest, comprehensive test coverage
@@ -168,7 +167,7 @@ python scripts/run_quality_gates.py --phase 1
 - **[Start Here](docs/START_HERE.md)** - Project overview and goals
 - **[Architecture](docs/ARCHITECTURE.md)** - System design and patterns
 - **[Component Specs](docs/specs/)** - Detailed component specifications
-- **[Architectural Decisions](docs/ARCHITECTURAL_DECISIONS.md)** - 38 key design decisions
+- **[Architectural Decisions](docs/REFERENCE_ARCHITECTURE_CANONICAL.md)** - 38 key design decisions
 
 ### **Implementation Guides**
 - **[Implementation Roadmap](docs/IMPLEMENTATION_ROADMAP.md)** - 4-week development plan
@@ -248,8 +247,8 @@ curl http://localhost:8001/health/
 ### **Real-time Status**
 - **[Refactor Plan](REFACTOR_PLAN.md)** - Comprehensive refactor implementation plan
 - **[Progress JSON](agent-progress.json)** - Machine-readable progress
-- **[Agent A Tasks](AGENT_A_TASKS.md)** - Frontend implementation status
-- **[Agent B Tasks](AGENT_B_TASKS.md)** - Infrastructure status
+- **[Quality Gates](docs/QUALITY_GATES.md)** - Implementation priorities and quality gates
+- **[Component Specs](docs/specs/)** - Detailed component implementation guides
 
 ### **Key Metrics**
 - **Components**: 9/9 implemented ✅ (all tests passing)
@@ -296,7 +295,7 @@ python scripts/run_quality_gates.py --phase-range 1-3
 ### **Documentation**
 - **[FAQ](docs/FAQ.md)** - Frequently asked questions
 - **[Troubleshooting](docs/TROUBLESHOOTING.md)** - Common issues and solutions
-- **[Architecture Decisions](docs/ARCHITECTURAL_DECISIONS.md)** - Design rationale
+- **[Architecture Decisions](docs/REFERENCE_ARCHITECTURE_CANONICAL.md)** - Design rationale
 
 ### **Agent Support**
 - **[Agent Setup](AGENT_SETUP.md)** - Environment configuration

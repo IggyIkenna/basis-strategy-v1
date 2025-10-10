@@ -1,8 +1,4 @@
 services:
-  redis:
-    image: redis:7-alpine
-    restart: unless-stopped
-
   backend:
     build:
       context: ..
@@ -19,8 +15,7 @@ services:
       - .env            # Environment-specific overrides
     environment:
       - HEALTH_CHECK_ENDPOINT=${HEALTH_CHECK_ENDPOINT:-/health}
-    depends_on:
-      - redis
+    depends_on: []
     ports:
       - "8001:8001"  # Expose backend API port
     volumes:

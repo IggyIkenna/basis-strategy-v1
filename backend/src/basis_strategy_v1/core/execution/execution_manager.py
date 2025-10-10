@@ -1,7 +1,7 @@
 """
 Execution Manager Component
 
-TODO-IMPLEMENT: MISSING CRITICAL COMPONENT - 19_venue_based_execution_architecture.md
+TODO-IMPLEMENT: MISSING CRITICAL COMPONENT - See docs/VENUE_ARCHITECTURE.md
 ISSUE: This component is completely missing and is critical for the architecture:
 
 1. MISSING EXECUTION MANAGER:
@@ -15,7 +15,7 @@ ISSUE: This component is completely missing and is critical for the architecture
    - Execution type interfaces direct to venue client implementations
    - Backtest mode: Simulation for venue interactions (dummy calls, no waiting)
    - Live mode: Different endpoints using env variable credentials
-   - **Reference**: .cursor/tasks/19_venue_based_execution_architecture.md (canonical: docs/VENUE_ARCHITECTURE.md)
+   - **Reference**: docs/VENUE_ARCHITECTURE.md - Venue-Based Execution
 
 3. REQUIRED IMPLEMENTATION:
    ```python

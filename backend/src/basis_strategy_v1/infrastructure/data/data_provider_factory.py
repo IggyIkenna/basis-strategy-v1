@@ -48,9 +48,9 @@ def create_data_provider(
     - execution_mode='backtest' + data_mode='db': DatabaseDataProvider with on-demand DB queries (future)
     - execution_mode='live': LiveDataProvider with real-time API queries (data_mode ignored)
         
-    # TODO-REFACTOR: MISSING VENUE FACTORY - 19_venue_based_execution_architecture.md
+    # TODO-REFACTOR: MISSING VENUE FACTORY - See docs/VENUE_ARCHITECTURE.md
     # ISSUE: Data provider factory doesn't handle venue client initialization
-    # Canonical: .cursor/tasks/19_venue_based_execution_architecture.md
+    # Canonical: docs/VENUE_ARCHITECTURE.md - Venue-Based Execution
     # Required Changes:
     #   1. Add venue client initialization based on strategy mode requirements
     #   2. Route to environment-specific credentials (dev/staging/prod)
@@ -58,7 +58,7 @@ def create_data_provider(
     #   4. Handle venue selection logic based on strategy configuration
     #   5. Implement VenueClientFactory and EnvironmentManager
     # Reference: docs/DEPLOYMENT_GUIDE.md - Venue Client Initialization section
-    # Reference: .cursor/tasks/19_venue_based_execution_architecture.md (canonical: docs/VENUE_ARCHITECTURE.md)
+    # Reference: docs/VENUE_ARCHITECTURE.md - Venue-Based Execution
     # Status: PENDING
     """
     if execution_mode == 'backtest':

@@ -12,6 +12,26 @@ import sys
 from pathlib import Path
 from typing import List, Tuple, Dict, Set
 
+# 18-Section Standard Format for Component Specs
+REQUIRED_SECTIONS = [
+    "Purpose",
+    "Responsibilities", 
+    "State",
+    "Component References (Set at Init)",
+    "Environment Variables",  # NEW
+    "Config Fields Used",  # NEW
+    "Data Provider Queries",  # NEW
+    "Core Methods",
+    "Data Access Pattern",
+    "Mode-Aware Behavior",
+    "Event Logging Requirements",  # Check for component-specific log files
+    "Error Codes",  # Check for structured error handling
+    "Quality Gates",
+    "Integration Points",
+    "Code Structure Example",
+    "Related Documentation"
+]
+
 def find_docs_files(docs_dir: str = "docs/") -> Tuple[List[str], List[str]]:
     """Find all markdown files in docs/ and docs/specs/ directories."""
     all_docs = []
@@ -49,6 +69,90 @@ def validate_docs_structure(file_path: str) -> Dict:
             'has_sections': has_sections,
             'has_canonical_sources': has_canonical_sources,
             'structure_score': sum([has_title, has_purpose, has_sections, has_canonical_sources])
+        }
+    
+    except Exception as e:
+        return {
+            'file': file_path,
+            'error': str(e),
+            'structure_score': 0
+        }
+
+def validate_18_section_format(file_path: str) -> Dict:
+    """Validate that a docs/specs/ file has all 18 required sections in correct order."""
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+        
+        # Find all section headers (## headers)
+        section_headers = re.findall(r'^##\s+(.+)$', content, re.MULTILINE)
+        
+        # Check for each required section
+        missing_sections = []
+        present_sections = []
+        
+        for section in REQUIRED_SECTIONS:
+            # Check if section exists (case-insensitive, flexible matching)
+            section_found = False
+            for header in section_headers:
+                if section.lower() in header.lower() or header.lower() in section.lower():
+                    section_found = True
+                    present_sections.append(header)
+                    break
+            
+            if not section_found:
+                missing_sections.append(section)
+        
+        # Check section order (approximate - sections should appear in roughly correct order)
+        section_order_score = 0
+        if len(present_sections) > 0:
+            # Simple order check - first few sections should be in order
+            first_sections = REQUIRED_SECTIONS[:5]  # Check first 5 sections
+            for i, expected_section in enumerate(first_sections):
+                for j, present_section in enumerate(present_sections[:5]):
+                    if expected_section.lower() in present_section.lower():
+                        if j >= i:  # Present section should be at or after expected position
+                            section_order_score += 1
+                        break
+        
+        # Check for enhanced sections (Event Logging, Error Codes)
+        has_component_specific_log_files = bool(re.search(
+            r'logs/events/.*_events\.jsonl', content, re.IGNORECASE
+        ))
+        has_dual_logging = bool(re.search(
+            r'JSON Lines.*CSV Export|CSV.*JSON Lines', content, re.IGNORECASE
+        ))
+        has_structured_error_handling = bool(re.search(
+            r'ComponentError|error_code.*severity', content, re.IGNORECASE
+        ))
+        has_health_integration = bool(re.search(
+            r'health_manager|_health_check|UnifiedHealthManager', content, re.IGNORECASE
+        ))
+        
+        # Calculate overall score
+        total_sections = len(REQUIRED_SECTIONS)
+        present_count = len(present_sections)
+        section_completeness = present_count / total_sections if total_sections > 0 else 0
+        
+        return {
+            'file': file_path,
+            'total_required_sections': total_sections,
+            'present_sections': present_count,
+            'missing_sections': missing_sections,
+            'section_completeness': section_completeness,
+            'section_order_score': section_order_score,
+            'has_component_specific_log_files': has_component_specific_log_files,
+            'has_dual_logging': has_dual_logging,
+            'has_structured_error_handling': has_structured_error_handling,
+            'has_health_integration': has_health_integration,
+            'structure_score': (
+                section_completeness * 0.4 +  # 40% weight for section presence
+                (section_order_score / 5) * 0.2 +  # 20% weight for order
+                (0.1 if has_component_specific_log_files else 0) +  # 10% for log files
+                (0.1 if has_dual_logging else 0) +  # 10% for dual logging
+                (0.1 if has_structured_error_handling else 0) +  # 10% for error handling
+                (0.1 if has_health_integration else 0)  # 10% for health integration
+            )
         }
     
     except Exception as e:
@@ -199,9 +303,24 @@ def run_quality_gate() -> Dict:
     print(f"Specs structure validation complete: {specs_structure_passed}/{len(specs_docs)} passed")
     print()
     
+    # Validate 18-section format for component specs
+    print("4. Validating 18-section standard format for component specs:")
+    section_format_results = []
+    section_format_passed = 0
+    
+    for file_path in specs_docs:
+        result = validate_18_section_format(file_path)
+        section_format_results.append(result)
+        
+        if result.get('structure_score', 0) >= 0.8:  # At least 80% compliance
+            section_format_passed += 1
+    
+    print(f"18-section format validation complete: {section_format_passed}/{len(specs_docs)} passed")
+    print()
+    
     # Calculate overall pass rates
     total_docs = len(all_docs) + len(specs_docs)
-    total_specs_passed = specs_implementation_passed + specs_structure_passed
+    total_specs_passed = specs_implementation_passed + specs_structure_passed + section_format_passed
     total_passed = docs_passed + specs_implementation_passed
     
     if total_docs == 0:
@@ -217,15 +336,17 @@ def run_quality_gate() -> Dict:
     print(f"Docs structure passed: {docs_passed}/{len(all_docs)}")
     print(f"Specs implementation status passed: {specs_implementation_passed}/{len(specs_docs)}")
     print(f"Specs structure passed: {specs_structure_passed}/{len(specs_docs)}")
+    print(f"18-section format passed: {section_format_passed}/{len(specs_docs)}")
     print(f"Overall pass rate: {overall_pass_rate}%")
     print()
     
     # Quality Gate Decision
     if (docs_passed == len(all_docs) and 
         specs_implementation_passed == len(specs_docs) and 
-        specs_structure_passed == len(specs_docs)):
+        specs_structure_passed == len(specs_docs) and
+        section_format_passed == len(specs_docs)):
         print("✅ QUALITY GATE PASSED: All documentation structure requirements met")
-        print("All documentation files have proper structure and implementation status")
+        print("All documentation files have proper structure, implementation status, and 18-section format")
         return {
             "status": "PASSED",
             "total_docs": total_docs,
@@ -233,10 +354,12 @@ def run_quality_gate() -> Dict:
             "docs_total": len(all_docs),
             "specs_implementation_passed": specs_implementation_passed,
             "specs_structure_passed": specs_structure_passed,
+            "section_format_passed": section_format_passed,
             "specs_total": len(specs_docs),
             "overall_pass_rate": overall_pass_rate,
             "docs_results": docs_results,
-            "specs_results": specs_results
+            "specs_results": specs_results,
+            "section_format_results": section_format_results
         }
     else:
         print("❌ QUALITY GATE FAILED: Documentation structure requirements not met")
@@ -266,6 +389,17 @@ def run_quality_gate() -> Dict:
                     print(f"  {result['file']}: {result.get('structure_score', 0)}/11 elements")
             print()
         
+        # Show failing specs/ files - 18-section format
+        if section_format_passed < len(specs_docs):
+            print("Docs/specs/ files missing 18-section standard format:")
+            for result in section_format_results:
+                if result.get('structure_score', 0) < 0.8:
+                    missing_sections = result.get('missing_sections', [])
+                    print(f"  {result['file']}: {result.get('structure_score', 0):.2f} compliance")
+                    if missing_sections:
+                        print(f"    Missing sections: {', '.join(missing_sections[:5])}{'...' if len(missing_sections) > 5 else ''}")
+            print()
+        
         print("Required action: Fix documentation structure issues")
         print("Target: 100% documentation structure compliance")
         print(f"Current: {overall_pass_rate}% documentation structure compliance")
@@ -277,10 +411,12 @@ def run_quality_gate() -> Dict:
             "docs_total": len(all_docs),
             "specs_implementation_passed": specs_implementation_passed,
             "specs_structure_passed": specs_structure_passed,
+            "section_format_passed": section_format_passed,
             "specs_total": len(specs_docs),
             "overall_pass_rate": overall_pass_rate,
             "docs_results": docs_results,
-            "specs_results": specs_results
+            "specs_results": specs_results,
+            "section_format_results": section_format_results
         }
 
 if __name__ == "__main__":

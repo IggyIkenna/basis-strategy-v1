@@ -20,7 +20,7 @@ Pure lending strategy shows 1166% APY (7% yield in 10 days) instead of required 
 - scripts/test_pure_lending_quality_gates.py
 
 ## EXECUTION STEPS
-1) Health check: curl -s http://localhost:8001/health/ && redis-cli ping
+1) Health check: curl -s http://localhost:8001/health/
 2) Run: python scripts/test_pure_lending_quality_gates.py
 3) Analyze the 1166% APY error in logs
 4) Fix backend/src/basis_strategy_v1/core/math/pnl_calculator.py

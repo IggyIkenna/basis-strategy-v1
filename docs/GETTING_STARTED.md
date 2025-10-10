@@ -3,27 +3,26 @@
 **Get the platform running and test your first strategy in under 10 minutes**  
 **Updated**: October 9, 2025 - Backend fully functional  
 **Last Reviewed**: October 9, 2025  
-**Status**: ✅ Aligned with canonical sources (.cursor/tasks/ + MODES.md)
+**Status**: ✅ Aligned with canonical architectural principles
 
 ---
 
 ## 📚 **Canonical Sources**
 
 **This guide aligns with canonical architectural principles**:
-- **Architectural Principles**: [CANONICAL_ARCHITECTURAL_PRINCIPLES.md](CANONICAL_ARCHITECTURAL_PRINCIPLES.md) - Consolidated from all .cursor/tasks/
+- **Architectural Principles**: [REFERENCE_ARCHITECTURE_CANONICAL.md](REFERENCE_ARCHITECTURE_CANONICAL.md) - Canonical architectural principles
 - **Strategy Specifications**: [MODES.md](MODES.md) - Canonical strategy mode definitions
-- **Design Decisions**: [ARCHITECTURAL_DECISIONS.md](ARCHITECTURAL_DECISIONS.md) - Core design decisions
-- **Task Specifications**: `.cursor/tasks/` - Individual task specifications
+- **Design Decisions**: [REFERENCE_ARCHITECTURE_CANONICAL.md](REFERENCE_ARCHITECTURE_CANONICAL.md) - Core design decisions
+- **Component Specifications**: [specs/](specs/) - Detailed component implementation guides
 
 ---
 
 ## ⚡ **Prerequisites** (Required before starting)
 
-- **Redis**: Must be installed and running
-  - macOS: `brew install redis && brew services start redis`
-  - Ubuntu: `sudo apt-get install redis-server && sudo systemctl start redis`
 - **Python 3.8+**: Backend requirements
 - **Node.js 16+**: Frontend requirements
+
+**Note**: For backtest mode, no venue credentials (API keys) are required - execution is simulated.
 
 ---
 
@@ -61,7 +60,7 @@ A **live and backtesting framework** for multi-strategy yield generation with:
 
 **5. ETH Leveraged Staking** (Directional)
 - Stake ETH (wstETH or weETH)
-- Leverage loop on AAVE
+- Leveraged staking on AAVE
 - ETH share class (directional exposure)
 - ~6-15% APR
 
@@ -73,7 +72,7 @@ A **live and backtesting framework** for multi-strategy yield generation with:
 
 **7. USDT Market-Neutral** (Most Complex)
 - Buy ETH + Stake + Leverage + Hedge with perps
-- Full leverage staking loop
+- Full leveraged staking position
 - Multi-venue tracking
 - USDT share class (market-neutral)
 - ~8-15% APR
@@ -82,18 +81,30 @@ A **live and backtesting framework** for multi-strategy yield generation with:
 
 ## ✅ **Current System Status**
 
-**Backend**: ✅ **FULLY FUNCTIONAL**
+**Backend**: ✅ **Core Components Implemented** | 🔄 **Critical Issues Remain**
 - All API endpoints working
 - Backtest system executing end-to-end
 - 6 strategies available (pure_lending, eth_leveraged, etc.)
 - All data loading successfully
-- 43% test coverage with 133/133 component tests passing
+- 17% test coverage with 43 passing tests
+- **CRITICAL**: Pure lending shows 1166% APY (should be 3-8%)
 
 **Frontend**: 🔧 **Backend Integration Complete**
 - API integration working
 - Some UI components need completion
 
-**Production Ready**: ✅ **Ready for backtesting**
+**Production Ready**: ❌ **NOT READY** - Critical yield calculation issue
+
+## ⚠️ **Known Issues**
+
+**CRITICAL**: This system is **NOT production ready**. Core components are implemented but critical issues remain:
+
+- **Pure Lending**: Yield calculation shows 1166% APY (should be 3-8%)
+- **Quality Gates**: Only 5/14 scripts passing (target: 70%+)
+- **BTC Basis**: 8/10 quality gates passing (80%)
+- **Overall Status**: In development - not ready for production use
+
+**See**: [docs/QUALITY_GATES.md](QUALITY_GATES.md) for complete issue list and resolution status.
 
 ---
 
@@ -123,7 +134,6 @@ cd docker && ./deploy.sh local backend start # Backend only
 **What starts**:
 - ✅ Backend API (port 8001) - **CORE COMPONENTS WORKING**
 - 🔧 Frontend UI (port 5173) - Backend integration working
-- ✅ Redis (port 6379) - Used by components
 
 **Access**:
 - Frontend: http://localhost:5173
@@ -218,16 +228,6 @@ Expected: 8-15% APY
 
 ## 🔧 **Troubleshooting**
 
-**"Redis connection failed"**:
-```bash
-# Start Redis
-redis-server
-
-# Or check if running
-redis-cli ping
-# Should return: PONG
-```
-
 **"Data not found"**:
 ```bash
 # Download data
@@ -248,7 +248,7 @@ curl http://localhost:8001/health/detailed
 
 ## 🏗️ **Key Architectural Decisions**
 
-**For complete details**: See **[ARCHITECTURAL_DECISIONS.md](ARCHITECTURAL_DECISIONS.md)** (canonical source)
+**For complete details**: See **[REFERENCE_ARCHITECTURE_CANONICAL.md](REFERENCE_ARCHITECTURE_CANONICAL.md)** (canonical source)
 
 ### **1. Component-Based Architecture** ✅
 
@@ -260,7 +260,10 @@ curl http://localhost:8001/health/detailed
 
 **Sync Update Chain**:
 ```
-Balance Change → Position Monitor → Exposure Monitor → Risk Monitor → P&L Calculator → Strategy Manager
+**DEPRECATED**: The monitoring cascade (position → exposure → risk → pnl) is no longer automatic.
+**NEW ARCHITECTURE**: See ADR-001 in REFERENCE_ARCHITECTURE_CANONICAL.md for current tight loop definition.
+
+**Current Tight Loop**: execution → position_monitor → reconciliation → next instruction
 ```
 
 **See**: [COMPONENT_SPECS_INDEX.md](COMPONENT_SPECS_INDEX.md) for component details
@@ -342,10 +345,10 @@ aave_weeth_supply_eth       # × oracle price
 aave_weeth_supply_usd       # × ETH price
 ```
 
-### **Leverage Methods** 🔄
-- **Sequential**: 23 iterations, 70+ events, ~$200 gas
-- **Atomic Flash**: 1 transaction, 6-7 events, ~$50 gas
-- **Default**: Atomic (gas efficient)
+### **Leverage Execution** ✅
+- **Atomic Flash Only**: 1 transaction, 6-7 events, ~$50 gas
+- **No Sequential**: Sequential execution deprecated (was 23 iterations, 70+ events, ~$200 gas)
+- **Deterministic**: Based on target LTV, no iteration limits needed
 
 ### **Per-Exchange Tracking** 📊
 **CRITICAL**: Each CEX has different prices!
@@ -412,12 +415,12 @@ aave_weeth_supply_usd       # × ETH price
 ## 📚 **Documentation Structure**
 
 **Quick Reference**:
-- **Architecture** → [ARCHITECTURAL_DECISIONS.md](ARCHITECTURAL_DECISIONS.md) (canonical)
-- **Components** → [specs/](specs/) (implementation details)
-- **Implementation** → [IMPLEMENTATION_ROADMAP.md](IMPLEMENTATION_ROADMAP.md)
-- **Tasks** → [REQUIREMENTS.md](REQUIREMENTS.md)
+- **Architecture** → [REFERENCE_ARCHITECTURE_CANONICAL.md](REFERENCE_ARCHITECTURE_CANONICAL.md) (canonical)
+- **Components** → [specs/](specs/) <!-- Directory link to specs folder --> (implementation details)
+- **Implementation** → [README.md](README.md) <!-- Redirected from IMPLEMENTATION_ROADMAP.md - implementation status is documented here -->
+- **Tasks** → [COMPONENT_SPECS_INDEX.md](COMPONENT_SPECS_INDEX.md) <!-- Redirected from REQUIREMENTS.md - requirements are component specifications -->
 - **Configuration** → [specs/CONFIGURATION.md](specs/CONFIGURATION.md)
-- **API/Events** → [REFERENCE.md](REFERENCE.md)
+- **API/Events** → [API_DOCUMENTATION.md](API_DOCUMENTATION.md) <!-- Redirected from REFERENCE.md - reference documentation is API docs -->
 
 **See**: [INDEX.md](INDEX.md) for complete navigation
 

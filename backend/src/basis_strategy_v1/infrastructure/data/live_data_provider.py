@@ -28,7 +28,6 @@ import pandas as pd
 import numpy as np
 from pathlib import Path
 import os
-import redis
 from dataclasses import dataclass
 from enum import Enum
 
@@ -96,18 +95,18 @@ class LiveDataProvider:
     def __init__(self,
                  config: Optional[Dict] = None,
                  mode: Optional[str] = None,
-                 redis_client: Optional[redis.Redis] = None):
+                 redis_client: Optional[Any] = None):
         """
         Initialize live data provider.
 
         Args:
             config: Configuration dictionary
             mode: Strategy mode for data requirements filtering
-            redis_client: Redis client for caching (optional)
+            redis_client: Cache client for caching (optional, deprecated)
         """
         self.config = config or {}
         self.mode = mode
-        self.redis_client = redis_client
+        self.redis_client = None  # Redis removed - using in-memory cache only
         self.session: Optional[aiohttp.ClientSession] = None
 
         # Load configuration from environment variables
@@ -496,7 +495,7 @@ class LiveDataProvider:
             except Exception as e:
                 logger.warning(f"Failed to get {venue} funding rate: {e}")
                 # TODO-REFACTOR: Funding rate data access failed - should fail fast with error code
-                # Canonical: .cursor/tasks/06_architecture_compliance_rules.md
+                # Canonical: docs/REFERENCE_ARCHITECTURE_CANONICAL.md - No Hardcoded Values
                 # Fix: Fail fast with error code, don't use hardcoded values
                 raise ValueError(f"Failed to get {venue} funding rate data: {e}")
 
@@ -506,7 +505,7 @@ class LiveDataProvider:
             snapshot['gas_price_gwei'] = await self.get_gas_cost('standard') * 1e9
         except Exception as e:
             # TODO-REFACTOR: Gas price data access failed - should fail fast with error code
-            # Canonical: .cursor/tasks/06_architecture_compliance_rules.md
+            # Canonical: docs/REFERENCE_ARCHITECTURE_CANONICAL.md - No Hardcoded Values
             # Fix: Fail fast with error code, don't use hardcoded values
             raise ValueError(f"Failed to get gas cost data: {e}")
 
@@ -711,66 +710,28 @@ class LiveDataProvider:
 
     async def _get_from_cache(self, key: str) -> Optional[Dict]:
         """Get data from cache."""
-        if not self.redis_client:
-            # Use in-memory cache
-            if key in self._price_cache:
-                last_update = self._last_update.get(key)
-                if last_update and (
-                    datetime.now(
-                        timezone.utc) -
-                        last_update).seconds < self.live_config.cache_ttl_seconds:
-                    return self._price_cache[key]
-            return None
-
-        try:
-            # Use Redis cache
-            cached_data = await asyncio.get_event_loop().run_in_executor(
-                None, self.redis_client.get, key
-            )
-            if cached_data:
-                return json.loads(cached_data)
-        except Exception as e:
-            logger.warning(f"Cache read error: {e}")
-
+        # Use in-memory cache only
+        if key in self._price_cache:
+            last_update = self._last_update.get(key)
+            if last_update and (
+                datetime.now(
+                    timezone.utc) -
+                    last_update).seconds < self.live_config.cache_ttl_seconds:
+                return self._price_cache[key]
         return None
 
     async def _set_cache(self, key: str, data: Dict):
         """Set data in cache."""
-        if not self.redis_client:
-            # Use in-memory cache
-            self._price_cache[key] = data
-            self._last_update[key] = datetime.now(timezone.utc)
-            return
-
-        try:
-            # Use Redis cache
-            await asyncio.get_event_loop().run_in_executor(
-                None,
-                lambda: self.redis_client.setex(
-                    key,
-                    self.live_config.cache_ttl_seconds,
-                    json.dumps(data)
-                )
-            )
-        except Exception as e:
-            logger.warning(f"Cache write error: {e}")
+        # Use in-memory cache only
+        self._price_cache[key] = data
+        self._last_update[key] = datetime.now(timezone.utc)
 
     async def clear_cache(self):
         """Clear all cached data."""
-        if not self.redis_client:
-            # TODO-REFACTOR: STATE CLEARING - 16_clean_component_architecture_requirements.md
-            # ISSUE: Cache clearing may indicate architectural problem
-            # Canonical: .cursor/tasks/16_clean_component_architecture_requirements.md
-            # Fix: Design components to be naturally clean without needing state clearing
-            # Status: PENDING
-            self._price_cache.clear()
-            self._last_update.clear()
-            return
-
-        try:
-            # Clear Redis cache
-            await asyncio.get_event_loop().run_in_executor(
-                None, self.redis_client.flushdb
-            )
-        except Exception as e:
-            logger.warning(f"Cache clear error: {e}")
+        # TODO-REFACTOR: STATE CLEARING - 16_clean_component_architecture_requirements.md
+        # ISSUE: Cache clearing may indicate architectural problem
+        # Canonical: docs/REFERENCE_ARCHITECTURE_CANONICAL.md - Clean Component Architecture
+        # Fix: Design components to be naturally clean without needing state clearing
+        # Status: PENDING
+        self._price_cache.clear()
+        self._last_update.clear()

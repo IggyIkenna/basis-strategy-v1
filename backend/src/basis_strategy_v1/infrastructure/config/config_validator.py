@@ -130,7 +130,6 @@ class ConfigValidator:
             'BASIS_DATA_DIR',
             'BASIS_DATA_MODE',
             'BASIS_RESULTS_DIR',
-            'BASIS_REDIS_URL',
             'BASIS_DEBUG',
             'BASIS_LOG_LEVEL',
             'BASIS_EXECUTION_MODE',
@@ -343,7 +342,22 @@ class ConfigValidator:
         # logger.debug(print(config))
         
         
-        #TODO: add more business logic checks for modes. 
+        # Validate position_deviation_threshold range
+        position_deviation_threshold = config.get('position_deviation_threshold', 0.02)
+        if not (0.0 <= position_deviation_threshold <= 1.0):
+            self.errors.append(f"Mode {mode_name}: position_deviation_threshold must be between 0.0 and 1.0, got {position_deviation_threshold}")
+        
+        # Validate basis_trade_enabled for ETH share class
+        share_class = config.get('share_class', '')
+        basis_trade_enabled = config.get('basis_trade_enabled', False)
+        if share_class == 'ETH' and basis_trade_enabled:
+            self.errors.append(f"Mode {mode_name}: basis_trade_enabled cannot be true for ETH share class (directional strategy)")
+        
+        # Check for deprecated parameters
+        if 'use_flash_loan' in config:
+            self.errors.append(f"Mode {mode_name}: use_flash_loan parameter is deprecated and should be removed")
+        if 'unwind_mode' in config:
+            self.errors.append(f"Mode {mode_name}: unwind_mode parameter is deprecated and should be removed") 
         
         # Check hedge venues consistency
         hedge_venues = config.get('hedge_venues', [])

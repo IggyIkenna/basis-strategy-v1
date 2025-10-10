@@ -1,7 +1,7 @@
 """
 OnChain Execution Interface
 
-TODO-REFACTOR: ENVIRONMENT VARIABLE INTEGRATION VIOLATION - 19_venue_based_execution_architecture.md
+TODO-REFACTOR: ENVIRONMENT VARIABLE INTEGRATION VIOLATION - See docs/VENUE_ARCHITECTURE.md
 ISSUE: This component violates canonical architecture requirements:
 
 1. ENVIRONMENT VARIABLE INTEGRATION VIOLATIONS:
@@ -9,7 +9,7 @@ ISSUE: This component violates canonical architecture requirements:
    - Missing BASIS_ENVIRONMENT routing for venue credentials
    - Missing BASIS_EXECUTION_MODE routing for backtest vs live execution
 
-TODO-REFACTOR: MISSING CENTRALIZED UTILITY MANAGER VIOLATION - 14_mode_agnostic_architecture_requirements.md
+TODO-REFACTOR: MISSING CENTRALIZED UTILITY MANAGER VIOLATION - See docs/REFERENCE_ARCHITECTURE_CANONICAL.md
 ISSUE: This component has scattered utility methods that should be centralized:
 
 1. CENTRALIZED UTILITY MANAGER REQUIREMENTS:
@@ -24,7 +24,7 @@ ISSUE: This component has scattered utility methods that should be centralized:
    - Ensure no duplicate utility logic across components
 
 3. CANONICAL SOURCE:
-   - .cursor/tasks/14_mode_agnostic_architecture_requirements.md
+   - docs/REFERENCE_ARCHITECTURE_CANONICAL.md - Mode-Agnostic Architecture
    - Centralized utilities required
    - No logic to route based on BASIS_ENVIRONMENT (dev/staging/prod) to select appropriate credentials
 
@@ -36,7 +36,7 @@ ISSUE: This component has scattered utility methods that should be centralized:
    - Live mode: Use real APIs with pattern: BASIS_DEV__ALCHEMY__RPC_URL, BASIS_PROD__ALCHEMY__RPC_URL
    - Live mode: Should handle testnet vs production network routing (sepolia vs ethereum) and heartbeat tests
    - Live mode: Should support environment-specific private keys and wallet addresses
-   - **Reference**: .cursor/tasks/19_venue_based_execution_architecture.md (canonical: docs/VENUE_ARCHITECTURE.md)
+   - **Reference**: docs/VENUE_ARCHITECTURE.md - Venue-Based Execution
 
 3. SEPARATION OF CONCERNS:
    - BASIS_DEPLOYMENT_MODE: Controls port/host forwarding and dependency injection (local vs docker)
@@ -198,7 +198,7 @@ class OnChainExecutionInterface(BaseExecutionInterface):
                 # Get the correct liquidity index using centralized utility
                 # TODO-REFACTOR: MISSING CENTRALIZED UTILITY MANAGER - 15_fix_mode_specific_pnl_calculator.md
                 # ISSUE: Should use centralized UtilityManager instead of local utility methods
-                # Canonical: .cursor/tasks/15_fix_mode_specific_pnl_calculator.md
+                # Canonical: docs/REFERENCE_ARCHITECTURE_CANONICAL.md - Mode-Specific PnL Calculator
                 # Fix: Use centralized UtilityManager for all utility methods
                 # Status: PENDING
                 from ..utils.market_data_utils import get_market_data_utils
@@ -208,7 +208,7 @@ class OnChainExecutionInterface(BaseExecutionInterface):
                     liquidity_index = market_utils.get_liquidity_index('USDT', market_data.get('timestamp'))
                 else:
                     # TODO-REFACTOR: This hardcodes liquidity_index instead of using data provider
-                    # Canonical: .cursor/tasks/06_architecture_compliance_rules.md
+                    # Canonical: docs/REFERENCE_ARCHITECTURE_CANONICAL.md - No Hardcoded Values
                     # Fix: Use self.data_provider.get_liquidity_index(token, timestamp)
                     # Fallback: use a default liquidity index if market_data is not available
                     logger.warning("Market data not available for liquidity index lookup, using default value")

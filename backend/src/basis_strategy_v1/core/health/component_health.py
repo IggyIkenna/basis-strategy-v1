@@ -177,20 +177,8 @@ class PositionMonitorHealthChecker(ComponentHealthChecker):
             # Check if monitor is initialized
             checks["initialized"] = hasattr(self.position_monitor, '_token_monitor')
             
-            # Check Redis connection (if in live mode)
-            if self.position_monitor.execution_mode == 'live':
-                checks["redis_connected"] = self.position_monitor.redis is not None
-                if self.position_monitor.redis:
-                    try:
-                        self.position_monitor.redis.ping()
-                        checks["redis_ping"] = True
-                    except:
-                        checks["redis_ping"] = False
-                else:
-                    checks["redis_ping"] = False
-            else:
-                checks["redis_connected"] = True  # Not needed in backtest
-                checks["redis_ping"] = True
+            # Redis removed - using direct method calls for component communication
+            checks["cache_available"] = True
             
             # Check if can get snapshot
             try:
@@ -223,8 +211,7 @@ class PositionMonitorHealthChecker(ComponentHealthChecker):
         if not hasattr(self.position_monitor, '_token_monitor'):
             return "POS-001", "Position Monitor not initialized"
         
-        if self.position_monitor.execution_mode == 'live' and not self.position_monitor.redis:
-            return "POS-002", "Redis connection not available in live mode"
+        # Redis removed - using direct method calls for component communication
         
         return "POS-003", "Position Monitor readiness check failed"
 
@@ -336,8 +323,8 @@ class RiskMonitorHealthChecker(ComponentHealthChecker):
             # Check configuration
             checks["config_available"] = bool(self.risk_monitor.config)
             
-            # Check Redis connection (if in live mode)
-            checks["redis_connected"] = self.risk_monitor.redis is not None
+            # Redis removed - using direct method calls for component communication
+            checks["cache_available"] = True
             
             # Check if can assess risk
             try:
@@ -403,20 +390,8 @@ class EventLoggerHealthChecker(ComponentHealthChecker):
             # Check if event logger is initialized
             checks["initialized"] = hasattr(self.event_logger, 'events')
             
-            # Check Redis connection (if in live mode)
-            if self.event_logger.execution_mode == 'live':
-                checks["redis_connected"] = self.event_logger.redis is not None
-                if self.event_logger.redis:
-                    try:
-                        self.event_logger.redis.ping()
-                        checks["redis_ping"] = True
-                    except:
-                        checks["redis_ping"] = False
-                else:
-                    checks["redis_ping"] = False
-            else:
-                checks["redis_connected"] = True  # Not needed in backtest
-                checks["redis_ping"] = True
+            # Redis removed - using direct method calls for component communication
+            checks["cache_available"] = True
             
             # Check if can log events
             checks["event_logging_available"] = True  # Basic check
@@ -444,8 +419,7 @@ class EventLoggerHealthChecker(ComponentHealthChecker):
         if not hasattr(self.event_logger, 'events'):
             return "EVENT-001", "Event Logger not initialized"
         
-        if self.event_logger.execution_mode == 'live' and not self.event_logger.redis:
-            return "EVENT-002", "Redis connection not available in live mode"
+        # Redis removed - using direct method calls for component communication
         
         return "EVENT-003", "Event Logger readiness check failed"
 

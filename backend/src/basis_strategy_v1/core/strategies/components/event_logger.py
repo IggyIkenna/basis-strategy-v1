@@ -1,7 +1,7 @@
 """
 Event Logger Component
 
-TODO-REFACTOR: TIGHT LOOP ARCHITECTURE VIOLATION - 10_tight_loop_architecture_requirements.md
+TODO-REFACTOR: TIGHT LOOP ARCHITECTURE VIOLATION - See docs/REFERENCE_ARCHITECTURE_CANONICAL.md
 ISSUE: This component may violate tight loop architecture requirements:
 
 1. TIGHT LOOP ARCHITECTURE REQUIREMENTS:
@@ -17,7 +17,7 @@ ISSUE: This component may violate tight loop architecture requirements:
    - Validate consistent processing flow
 
 3. CANONICAL SOURCE:
-   - .cursor/tasks/10_tight_loop_architecture_requirements.md
+   - docs/REFERENCE_ARCHITECTURE_CANONICAL.md - Tight Loop Architecture
    - Tight loop sequence must be enforced
 
 Detailed audit-grade event tracking with balance snapshots.
@@ -26,13 +26,12 @@ Logs all events with complete context for audit trail.
 Key Principles:
 - Global order: Every event gets unique sequence number
 - Balance snapshots: Include position snapshot in every event (optional)
-- Atomic bundles: Support wrapper + detail events (flash loans, leverage loops)
+- Atomic bundles: Support wrapper + detail events (flash loans, leveraged staking)
 - Hourly timestamps: All events on the hour in backtest
 - Future-proof: Optional fields for live trading (tx_hash, confirmation, etc.)
 """
 
 from typing import Dict, List, Optional, Any
-import redis
 import json
 import logging
 import asyncio
@@ -46,7 +45,7 @@ logger = logging.getLogger(__name__)
 # Error codes for Event Logger
 ERROR_CODES = {
     'EVENT-001': 'Event serialization failed',
-    'EVENT-002': 'Redis publish failed',
+    'EVENT-002': 'Event publishing failed',
     'EVENT-003': 'Event order conflict (duplicate order)',
     'EVENT-004': 'Balance snapshot serialization failed',
     'EVENT-005': 'Event storage limit exceeded'
@@ -63,17 +62,7 @@ class EventLogger:
         self.global_order = 0  # Auto-increment for every event
         self._order_lock = asyncio.Lock()  # Thread-safe order assignment
         
-        # Redis for publishing
-        self.redis = None
-        if execution_mode == 'live':
-            try:
-                self.redis = redis.Redis(host='localhost', port=6379, db=0, decode_responses=True)
-                # Test connection
-                self.redis.ping()
-                logger.info("Redis connection established for Event Logger")
-            except Exception as e:
-                logger.warning(f"Redis not available for Event Logger: {e}")
-                self.redis = None
+        # Redis removed - using direct method calls for component communication
         
         logger.info(f"Event Logger initialized in {execution_mode} mode")
     
@@ -129,45 +118,12 @@ class EventLogger:
             
             self.events.append(event)
             
-            # Publish to Redis
-            if self.redis:
-                await self._publish_event(event)
+            # Redis publishing removed - components use direct method calls
             
             logger.debug(f"Event logged: {event_type} at {venue} (order: {self.global_order})")
             return self.global_order
     
-    async def _publish_event(self, event: Dict):
-        """Publish event to Redis."""
-        try:
-            # Publish to events:logged channel
-            await asyncio.get_event_loop().run_in_executor(
-                None,
-                self.redis.publish,
-                'events:logged',
-                json.dumps({
-                    'order': event['order'],
-                    'event_type': event['event_type'],
-                    'timestamp': event['timestamp'].isoformat() if hasattr(event['timestamp'], 'isoformat') else str(event['timestamp']),
-                    'venue': event['venue']
-                })
-            )
-            
-            # If it's an atomic transaction, also publish to atomic_bundle channel
-            if event['event_type'] == 'ATOMIC_TRANSACTION':
-                await asyncio.get_event_loop().run_in_executor(
-                    None,
-                    self.redis.publish,
-                    'events:atomic_bundle',
-                    json.dumps({
-                        'wrapper_order': event['order'],
-                        'bundle_name': event.get('bundle_name', 'UNKNOWN'),
-                        'detail_orders': event.get('detail_orders', []),
-                        'timestamp': event['timestamp'].isoformat() if hasattr(event['timestamp'], 'isoformat') else str(event['timestamp'])
-                    })
-                )
-                
-        except Exception as e:
-            logger.error(f"Error publishing event to Redis: {e}")
+    # Redis publishing removed - components use direct method calls
     
     # Typed Event Logging Methods
     

@@ -30,9 +30,9 @@ class MarketDataUtils:
     - Rate data (funding rates, APYs)
     - Gas prices
     
-    # TODO-REFACTOR: MISSING CENTRALIZED UTILITY MANAGER - 15_fix_mode_specific_pnl_calculator.md
+    # TODO-REFACTOR: MISSING CENTRALIZED UTILITY MANAGER - See docs/REFERENCE_ARCHITECTURE_CANONICAL.md
     # ISSUE: This class should be integrated into centralized UtilityManager pattern
-    # Canonical: .cursor/tasks/15_fix_mode_specific_pnl_calculator.md
+    # Canonical: docs/REFERENCE_ARCHITECTURE_CANONICAL.md - Mode-Specific PnL Calculator
     # Fix: Create centralized UtilityManager and integrate this class into it
     # Status: PENDING
     """
@@ -118,7 +118,7 @@ class MarketDataUtils:
     def get_gas_price(self, market_data: Dict[str, Any], default: float = 20.0) -> float:
         # TODO-REFACTOR: HARDCODED VALUES - 06_architecture_compliance_rules.md
         # ISSUE: Hardcoded default gas price value
-        # Canonical: .cursor/tasks/06_architecture_compliance_rules.md
+        # Canonical: docs/REFERENCE_ARCHITECTURE_CANONICAL.md - No Hardcoded Values
         # Fix: Load default gas price from config YAML instead of hardcoding
         # Status: PENDING
         """

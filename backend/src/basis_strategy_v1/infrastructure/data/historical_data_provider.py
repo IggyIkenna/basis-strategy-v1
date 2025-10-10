@@ -22,7 +22,6 @@ import logging
 from pathlib import Path
 from typing import Dict, List, Optional, Any, Union
 import asyncio
-import redis
 from datetime import datetime, timezone
 import re
 
@@ -932,12 +931,12 @@ class DataProvider:
                     if asset == 'USDT':
                         # Default liquidation threshold
                         # TODO-REFACTOR: This hardcodes LTV value instead of using config
-                        # Canonical: .cursor/tasks/06_architecture_compliance_rules.md
+                        # Canonical: docs/REFERENCE_ARCHITECTURE_CANONICAL.md - No Hardcoded Values
                         # Fix: Add to config YAML and load from config
                         individual_params[asset] = 0.85  # WRONG - hardcoded LTV value
                     else:
                         # TODO-REFACTOR: This hardcodes LTV value instead of using config
-                        # Canonical: .cursor/tasks/06_architecture_compliance_rules.md
+                        # Canonical: docs/REFERENCE_ARCHITECTURE_CANONICAL.md - No Hardcoded Values
                         # Fix: Add to config YAML and load from config
                         individual_params[asset] = 0.80  # WRONG - hardcoded default LTV
             return individual_params
@@ -1564,19 +1563,19 @@ class DataProvider:
                     logger.debug(f"Data Provider: USDT liquidity index at {timestamp} = {snapshot['usdt_liquidity_index']}")
                 else:
                     # TODO-REFACTOR: This hardcodes liquidity_index instead of using proper data provider
-                    # Canonical: .cursor/tasks/06_architecture_compliance_rules.md
+                    # Canonical: docs/REFERENCE_ARCHITECTURE_CANONICAL.md - No Hardcoded Values
                     # Fix: Use proper data provider method or fail gracefully
                     snapshot['usdt_liquidity_index'] = 1.0  # WRONG - hardcoded value
                     logger.debug(f"Data Provider: No USDT data for {timestamp}, using default 1.0")
             except Exception as e:
                 # TODO-REFACTOR: This hardcodes liquidity_index instead of using proper data provider
-                # Canonical: .cursor/tasks/06_architecture_compliance_rules.md
+                # Canonical: docs/REFERENCE_ARCHITECTURE_CANONICAL.md - No Hardcoded Values
                 # Fix: Use proper data provider method or fail gracefully
                 snapshot['usdt_liquidity_index'] = 1.0  # WRONG - hardcoded value
                 logger.warning(f"Data Provider: Error getting USDT liquidity index: {e}")
         else:
             # TODO-REFACTOR: This hardcodes liquidity_index instead of using proper data provider
-            # Canonical: .cursor/tasks/06_architecture_compliance_rules.md
+            # Canonical: docs/REFERENCE_ARCHITECTURE_CANONICAL.md - No Hardcoded Values
             # Fix: Use proper data provider method or fail gracefully
             snapshot['usdt_liquidity_index'] = 1.0  # WRONG - hardcoded value
             logger.warning(f"Data Provider: No usdt_rates data loaded, using default 1.0")
@@ -1603,7 +1602,7 @@ class DataProvider:
                                                                      'funding_rate']
                 except BaseException:
                     # TODO-REFACTOR: Funding rate data missing - should fail fast with error code
-                    # Canonical: .cursor/tasks/06_architecture_compliance_rules.md
+                    # Canonical: docs/REFERENCE_ARCHITECTURE_CANONICAL.md - No Hardcoded Values
                     # Fix: Fail fast with error code, don't use hardcoded values
                     raise ValueError(f"Funding rate data not available for {venue} at timestamp {timestamp}")
 
@@ -1617,17 +1616,17 @@ class DataProvider:
                                                           'gas_price_avg_gwei']
                 else:
                     # TODO-REFACTOR: Gas price data missing - should fail fast with error code
-                    # Canonical: .cursor/tasks/06_architecture_compliance_rules.md
+                    # Canonical: docs/REFERENCE_ARCHITECTURE_CANONICAL.md - No Hardcoded Values
                     # Fix: Fail fast with error code, don't use hardcoded values
                     raise ValueError(f"Gas price data not available for timestamp {timestamp}")
             else:
                 # TODO-REFACTOR: Gas costs data not loaded - should fail fast with error code
-                # Canonical: .cursor/tasks/06_architecture_compliance_rules.md
+                # Canonical: docs/REFERENCE_ARCHITECTURE_CANONICAL.md - No Hardcoded Values
                 # Fix: Fail fast with error code, don't use hardcoded values
                 raise ValueError("Gas costs data not loaded in data provider")
         except BaseException as e:
             # TODO-REFACTOR: Gas price data access failed - should fail fast with error code
-            # Canonical: .cursor/tasks/06_architecture_compliance_rules.md
+            # Canonical: docs/REFERENCE_ARCHITECTURE_CANONICAL.md - No Hardcoded Values
             # Fix: Fail fast with error code, don't use hardcoded values
             raise ValueError(f"Failed to access gas price data: {e}")
 

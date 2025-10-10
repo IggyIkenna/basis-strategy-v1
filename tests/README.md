@@ -134,7 +134,7 @@ pytest tests/unit/components/test_position_monitor.py::TestPositionMonitor::test
 - ✅ Data flow between components
 - ✅ Error propagation
 - ✅ Performance requirements
-- ✅ Redis messaging
+- ✅ Direct method calls
 - ✅ Event ordering
 
 ### **E2E Tests Must Include**
@@ -200,7 +200,7 @@ Shared fixtures and test configuration for all tests.
 
 ### **Common Issues**
 1. **Import Errors** - ✅ FIXED: All import paths corrected
-2. **Redis Connection** - Ensure Redis is running
+2. **Component Communication** - Using direct method calls
 3. **Data Files** - ✅ FIXED: Data path resolution works from any directory
 4. **Environment Variables** - Check configuration
 5. **Async Tests** - ✅ FIXED: All async tests now have proper decorators

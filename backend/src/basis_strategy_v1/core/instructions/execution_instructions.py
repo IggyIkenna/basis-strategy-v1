@@ -255,7 +255,7 @@ class InstructionGenerator:
         weeth_price: float,
         flash_source: str = 'BALANCER'
     ) -> List[InstructionBlock]:
-        """Generate instruction blocks for atomic leveraged staking (from atomic_recursive_loop.md)."""
+        """Generate instruction blocks for atomic leveraged staking."""
         
         # Calculate flash loan sizing (from atomic_recursive_loop.md)
         E = equity_usd

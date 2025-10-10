@@ -18,10 +18,9 @@ asset: "USDT"
 lst_type: "weeth"  # or "wsteth"
 rewards_mode: "base_eigen"  # base + EIGEN rewards
 reserve_ratio: 0.1
+position_deviation_threshold: 0.02  # 2% deviation from target triggers rebalancing
 
 # Execution parameters
-use_flash_loan: false
-unwind_mode: "slow"  # Direct protocol unwinding
 hedge_venues: []
 hedge_allocation: {}
 

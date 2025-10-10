@@ -34,7 +34,6 @@ backend/logs/
 # Large result files and package-lock files
 pure_lending_backtest_results_*.json
 *package-lock.json
-results/
 tests/tmp/
 
 # Build artifacts

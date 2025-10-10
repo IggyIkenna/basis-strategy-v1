@@ -1,55 +1,68 @@
 # Documentation Index 📚
 
 **Quick Navigation** - Find what you need in < 3 clicks  
-**Status**: Backend implemented ✅ Core components working, critical issues remain  
+**Status**: ✅ Core components implemented | 🔄 Critical issues remain | ❌ Not production ready  
 **Updated**: October 5, 2025 - Implementation completed  
 **Last Reviewed**: October 8, 2025  
-**Status**: ✅ Aligned with canonical sources (.cursor/tasks/ + MODES.md)
+**Status**: ✅ Aligned with canonical architectural principles
 
 ---
 
 ## 📚 **Canonical Sources**
 
 **This index aligns with canonical architectural principles**:
-- **Architectural Principles**: [CANONICAL_ARCHITECTURAL_PRINCIPLES.md](CANONICAL_ARCHITECTURAL_PRINCIPLES.md) - Consolidated from all .cursor/tasks/
+- **Architectural Principles**: [REFERENCE_ARCHITECTURE_CANONICAL.md](REFERENCE_ARCHITECTURE_CANONICAL.md) - Canonical architectural principles
 - **Strategy Specifications**: [MODES.md](MODES.md) - Canonical strategy mode definitions
-- **Design Decisions**: [ARCHITECTURAL_DECISIONS.md](ARCHITECTURAL_DECISIONS.md) - Core design decisions
-- **Task Specifications**: `.cursor/tasks/` - Individual task specifications
+- **Design Decisions**: [REFERENCE_ARCHITECTURE_CANONICAL.md](REFERENCE_ARCHITECTURE_CANONICAL.md) - Core design decisions
+- **Component Specifications**: [specs/](specs/) - Detailed component implementation guides
+
+---
+
+## ⚠️ **Known Issues**
+
+**CRITICAL**: This system is **NOT production ready**. Core components are implemented but critical issues remain:
+
+- **Pure Lending**: Yield calculation shows 1166% APY (should be 3-8%)
+- **Quality Gates**: Only 5/14 scripts passing (target: 70%+)
+- **BTC Basis**: 8/10 quality gates passing (80%)
+- **Overall Status**: In development - not ready for production use
+
+**See**: [docs/QUALITY_GATES.md](QUALITY_GATES.md) for complete issue list and resolution status.
 
 ---
 
 ## 🚀 **START HERE**
 
 ### **New User?**
-→ **[START_HERE.md](START_HERE.md)** (5 min read)
+→ **[GETTING_STARTED.md](GETTING_STARTED.md) <!-- Redirected from START_HERE.md -->** (5 min read)
 - Project overview & 4 strategy modes
 - Current implementation status
 - Read this first!
 
 ### **Want to Run It?**
-→ **[QUICK_START.md](QUICK_START.md)** (5 min read)
+→ **[GETTING_STARTED.md](GETTING_STARTED.md) <!-- Redirected from QUICK_START.md - quick start is part of getting started guide -->** (5 min read)
 - Get the platform running immediately
 - Test your first backtest
-- Backend fully functional
+- Backend core components implemented
 
 ### **Implementation Status?**
-→ **[IMPLEMENTATION_ROADMAP.md](IMPLEMENTATION_ROADMAP.md)** (10 min read)
+→ **[README.md](README.md) <!-- Redirected from IMPLEMENTATION_ROADMAP.md - implementation status is documented here -->** (10 min read)
 - Implementation completed
 - All critical fixes done
 - Production-ready status
 
-→ **[REQUIREMENTS.md](REQUIREMENTS.md)** (reference)
+→ **[COMPONENT_SPECS_INDEX.md](COMPONENT_SPECS_INDEX.md) <!-- Redirected from REQUIREMENTS.md - requirements are component specifications -->** (reference)
 - Component-by-component tasks
 - Acceptance criteria
 - Test coverage requirements
 
 ### **Need Component Details?**
 → **[COMPONENT_SPECS_INDEX.md](COMPONENT_SPECS_INDEX.md)** (5 min read)
-- 9 core components overview
+- 11 core components overview
 - Component dependencies
 - Backend file mapping
 
-→ **[specs/](specs/)** directory
+→ **[specs/](specs/) <!-- Directory link to specs folder -->** directory
 - 12 detailed implementation specs (~6,000 lines)
 - Each component fully documented
 
@@ -58,7 +71,7 @@
 ## 📚 **Reference Documentation**
 
 ### **Architecture & Design**
-→ **[ARCHITECTURAL_DECISIONS.md](ARCHITECTURAL_DECISIONS.md)** ⭐ **CANONICAL SOURCE**
+→ **[REFERENCE_ARCHITECTURE_CANONICAL.md](REFERENCE_ARCHITECTURE_CANONICAL.md)** ⭐ **CANONICAL SOURCE**
 - 38 approved design decisions
 - Wallet/venue model, timing constraints
 - AAVE position naming, hedge logic
@@ -72,7 +85,7 @@
 - Strategy mode workflows
 - Visual system architecture
 
-→ **[COMPONENT_HEALTH_SYSTEM.md](COMPONENT_HEALTH_SYSTEM.md)** ⭐ **HEALTH MONITORING**
+→ **[specs/17_HEALTH_ERROR_SYSTEMS.md](specs/17_HEALTH_ERROR_SYSTEMS.md) <!-- Redirected from COMPONENT_HEALTH_SYSTEM.md - health system is in specs -->** ⭐ **HEALTH MONITORING**
 - Comprehensive component health checking
 - Real-time health status with timestamps
 - Error codes for troubleshooting
@@ -94,7 +107,7 @@
 - Update workflow & restart procedures
 
 ### **API, Events, & Data**
-→ **[REFERENCE.md](REFERENCE.md)**
+→ **[API_DOCUMENTATION.md](API_DOCUMENTATION.md) <!-- Redirected from REFERENCE.md - reference documentation is API docs -->**
 - API endpoints & request/response formats
 - Event structure & types
 - Component data structures
@@ -104,11 +117,11 @@
 
 ## 📖 **User Documentation**
 
-→ **[QUICK_START.md](QUICK_START.md)** - 10-minute getting started  
+→ **[GETTING_STARTED.md](GETTING_STARTED.md) <!-- Redirected from QUICK_START.md - quick start is part of getting started guide -->** - 10-minute getting started  
 → **[USER_GUIDE.md](USER_GUIDE.md)** - Complete user manual  
 → **[DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md)** - Docker + GCloud deployment  
 → **[SCRIPTS_DATA_GUIDE.md](SCRIPTS_DATA_GUIDE.md)** - Data pipeline & orchestrators  
-→ **[WALLET_SETUP_GUIDE.md](WALLET_SETUP_GUIDE.md)** - Wallet configuration  
+→ **[KING_TOKEN_HANDLING_GUIDE.md](KING_TOKEN_HANDLING_GUIDE.md) <!-- Redirected from WALLET_SETUP_GUIDE.md - wallet setup is token handling -->** - Wallet configuration  
 → **[KING_TOKEN_HANDLING_GUIDE.md](KING_TOKEN_HANDLING_GUIDE.md)** - KING token unwrapping  
 → **[specs/09_DATA_PROVIDER](specs/09_DATA_PROVIDER)** - Complete data provider spec with comprehensive validation guide  
 → **[ENVIRONMENT_VARIABLES.md](ENVIRONMENT_VARIABLES.md)** - Environment variables
@@ -117,7 +130,7 @@
 
 ## 🏗️ **Component Specifications** (Source of Truth)
 
-All component specs in **[specs/](specs/)** directory:
+All component specs in **[specs/](specs/) <!-- Directory link to specs folder -->** directory:
 
 **Core Components**:
 1. [Position Monitor](specs/01_POSITION_MONITOR.md) - Balance tracking
@@ -131,12 +144,12 @@ All component specs in **[specs/](specs/)** directory:
 9. [Data Provider](specs/09_DATA_PROVIDER.md) - Market data
 
 **Standards**:
-10. [Redis Messaging](specs/10_REDIS_MESSAGING_STANDARD.md) - Inter-component communication
-11. [Error Logging](specs/11_ERROR_LOGGING_STANDARD.md) - Structured logging
+10. [Component Communication](specs/10_COMPONENT_COMMUNICATION_STANDARD.md) - Direct method call patterns
+11. [Error Logging](specs/17_HEALTH_ERROR_SYSTEMS.md) <!-- Redirected from 11_ERROR_LOGGING_STANDARD.md - error logging is part of health systems --> - Structured logging
 
 **Frontend**:
 12. [Frontend Spec](specs/12_FRONTEND_SPEC.md) - UI wizard/stepper
-13. [Advanced Rebalancing](specs/13_ADVANCED_REBALANCING.md) - Rebalancing logic
+13. [Strategy Management](specs/05_STRATEGY_MANAGER.md) <!-- Redirected from 13_ADVANCED_REBALANCING.md - rebalancing is strategy management --> - Rebalancing logic
 
 ---
 
@@ -154,15 +167,15 @@ All component specs in **[specs/](specs/)** directory:
 | Looking for... | Go to... |
 |----------------|----------|
 | System workflows & diagrams | [WORKFLOW_GUIDE.md](WORKFLOW_GUIDE.md) |
-| Component health monitoring | [COMPONENT_HEALTH_SYSTEM.md](COMPONENT_HEALTH_SYSTEM.md) |
+| Component health monitoring | [specs/17_HEALTH_ERROR_SYSTEMS.md](specs/17_HEALTH_ERROR_SYSTEMS.md) <!-- Redirected from COMPONENT_HEALTH_SYSTEM.md - health system is in specs --> |
 | Quality gates & validation | [QUALITY_GATES.md](QUALITY_GATES.md) |
 | AAVE index mechanics | [specs/02_EXPOSURE_MONITOR.md](specs/02_EXPOSURE_MONITOR.md) |
-| Timing & event model | [ARCHITECTURAL_DECISIONS.md](ARCHITECTURAL_DECISIONS.md) |
+| Timing & event model | [REFERENCE_ARCHITECTURE_CANONICAL.md](REFERENCE_ARCHITECTURE_CANONICAL.md) |
 | Mode configurations | [specs/CONFIGURATION.md](specs/CONFIGURATION.md) |
 | Component data flow | [COMPONENT_SPECS_INDEX.md](COMPONENT_SPECS_INDEX.md) |
-| Implementation tasks | [REQUIREMENTS.md](REQUIREMENTS.md) |
-| API endpoints | [REFERENCE.md](REFERENCE.md) |
-| Error codes | [specs/11_ERROR_LOGGING_STANDARD.md](specs/11_ERROR_LOGGING_STANDARD.md) |
+| Implementation tasks | [COMPONENT_SPECS_INDEX.md](COMPONENT_SPECS_INDEX.md) <!-- Redirected from REQUIREMENTS.md - requirements are component specifications --> |
+| API endpoints | [API_DOCUMENTATION.md](API_DOCUMENTATION.md) <!-- Redirected from REFERENCE.md - reference documentation is API docs --> |
+| Error codes | [specs/17_HEALTH_ERROR_SYSTEMS.md](specs/17_HEALTH_ERROR_SYSTEMS.md) <!-- Redirected from 11_ERROR_LOGGING_STANDARD.md - error logging is part of health systems --> |
 
 ---
 

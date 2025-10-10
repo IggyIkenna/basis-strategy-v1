@@ -15,7 +15,6 @@ Key Principles:
 """
 
 from typing import Dict, List, Optional, Any
-import redis
 import json
 import logging
 import asyncio
@@ -346,16 +345,7 @@ class RiskMonitor:
             })
             raise RiskMonitorError('RISK-004', f'Config validation failed: missing required field {e}', missing_field=str(e))
         
-        # Redis for inter-component communication
-        self.redis = None
-        try:
-            self.redis = redis.Redis(host='localhost', port=6379, db=0, decode_responses=True)
-            # Test connection
-            self.redis.ping()
-            logger.info("✅ RiskMonitor connected to Redis")
-        except Exception as e:
-            logger.warning(f"Redis connection failed: {e}. Using in-memory storage.")
-            self.redis = None
+        # Redis removed - using direct method calls for component communication
         
         # Risk state tracking
         self.current_risks = {
@@ -910,7 +900,7 @@ class RiskMonitor:
                     # Get current funding rate (would come from data provider)
                     # For now, assume positive funding rate
                     # TODO-REFACTOR: This hardcodes funding rate instead of using config
-                    # Canonical: .cursor/tasks/06_architecture_compliance_rules.md
+                    # Canonical: docs/REFERENCE_ARCHITECTURE_CANONICAL.md - No Hardcoded Values
                     # Fix: Add to config YAML and load from config
                     funding_rate = 0.0001  # WRONG - hardcoded funding rate (0.01% per 8 hours)
                     
@@ -1038,21 +1028,7 @@ class RiskMonitor:
                 'timestamp': datetime.utcnow().isoformat()
             }
     
-    async def publish_risk_update(self, risk_data: Dict[str, Any]):
-        """Publish risk update to Redis for other components (live mode only)."""
-        # Only publish to Redis in live mode
-        execution_mode = getattr(self.position_monitor, 'execution_mode', 'backtest')
-        
-        if execution_mode == 'live' and self.redis:
-            try:
-                await asyncio.get_event_loop().run_in_executor(
-                    None,
-                    self.redis.publish,
-                    'risk_updates',
-                    json.dumps(risk_data)
-                )
-            except Exception as e:
-                logger.error(f"Failed to publish risk update: {e}")
+    # Redis publishing removed - components use direct method calls
     
     async def get_current_risks(self) -> Dict[str, Any]:
         """Get current risk state."""

@@ -1,9 +1,9 @@
 """
 Basis Strategy Core Module
 
-# TODO-REFACTOR: MISSING SYSTEM IMPLEMENTATIONS - Multiple Task Files
+# TODO-REFACTOR: MISSING SYSTEM IMPLEMENTATIONS - See docs/REFERENCE_ARCHITECTURE_CANONICAL.md
 # ISSUE: Multiple critical system implementations are missing from the codebase
-# Canonical: Various .cursor/tasks/ files
+# Canonical: docs/REFERENCE_ARCHITECTURE_CANONICAL.md
 # Fix: Implement all missing systems according to task specifications
 # Status: PENDING
 
@@ -11,49 +11,49 @@ Basis Strategy Core Module
 
 ### 1. Centralized Utility Manager (Task 15)
 - File: backend/src/basis_strategy_v1/core/utilities/utility_manager.py
-- Reference: .cursor/tasks/15_fix_mode_specific_pnl_calculator.md
+- Reference: docs/REFERENCE_ARCHITECTURE_CANONICAL.md - Mode-Specific PnL Calculator
 - Purpose: Centralize all utility methods (liquidity index, market prices, conversions)
 - Status: NOT IMPLEMENTED
 
 ### 2. Equity Tracking System (Equity Tracking Task)
 - File: backend/src/basis_strategy_v1/core/equity/equity_calculator.py
-- Reference: .cursor/tasks/equity_tracking_system.md
+- Reference: docs/specs/04_PNL_CALCULATOR.md - Equity Tracking
 - Purpose: Track equity across all venues in share class currency
 - Status: NOT IMPLEMENTED
 
 ### 3. Dust Management System (Dust Management Task)
 - File: backend/src/basis_strategy_v1/core/dust/dust_manager.py
-- Reference: .cursor/tasks/dust_management_system.md
+- Reference: docs/specs/04_PNL_CALCULATOR.md - Dust Management
 - Purpose: Detect and convert dust tokens to share class currency
 - Status: NOT IMPLEMENTED
 
 ### 4. Reserve Management System (Reserve Management Task)
 - File: backend/src/basis_strategy_v1/core/reserves/reserve_manager.py
-- Reference: .cursor/tasks/reserve_management_system.md
+- Reference: docs/specs/04_PNL_CALCULATOR.md - Reserve Management
 - Purpose: Manage withdrawal reserves for fast client redemptions
 - Status: NOT IMPLEMENTED
 
 ### 5. Venue Factory (Task 19)
 - File: backend/src/basis_strategy_v1/core/venues/venue_factory.py
-- Reference: .cursor/tasks/19_venue_based_execution_architecture.md
+- Reference: docs/VENUE_ARCHITECTURE.md - Venue-Based Execution
 - Purpose: Create venue clients based on strategy requirements
 - Status: NOT IMPLEMENTED
 
 ### 6. BaseStrategyManager Refactor (Strategy Manager Refactor Task)
 - File: backend/src/basis_strategy_v1/core/strategies/base_strategy_manager.py
-- Reference: .cursor/tasks/strategy_manager_refactor.md
+- Reference: docs/specs/05_STRATEGY_MANAGER.md - Strategy Manager Refactor
 - Purpose: Inheritance-based strategy modes with standardized wrapper actions
 - Status: NOT IMPLEMENTED
 
 ### 7. Duplicate Risk Monitor Consolidation (Task 21)
 - File: backend/src/basis_strategy_v1/core/rebalancing/risk_monitor.py (TO REMOVE)
-- Reference: .cursor/tasks/21_consolidate_duplicate_risk_monitors.md
+- Reference: docs/specs/03_RISK_MONITOR.md - Consolidate Duplicate Risk Monitors
 - Purpose: Remove duplicate risk monitor file and update imports
 - Status: PENDING
 
 ### 8. Transfer Manager Removal (Strategy Manager Refactor Task)
 - File: backend/src/basis_strategy_v1/core/rebalancing/transfer_manager.py (TO REMOVE)
-- Reference: .cursor/tasks/strategy_manager_refactor.md
+- Reference: docs/specs/05_STRATEGY_MANAGER.md - Strategy Manager Refactor
 - Purpose: Remove complex transfer manager (1068 lines) and replace with inheritance-based strategy
 - Status: PENDING
 

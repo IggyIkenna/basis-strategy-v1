@@ -6,8 +6,9 @@
 ## PROPER DATA FLOW ARCHITECTURE
 1. **Data Provider** loads all data at startup from data/ directory
 2. **Execution Interfaces** query data provider for current timestamp data
-3. **Position Monitor** receives data from execution interfaces
-4. **Component Chain** passes data through proper sequence
+3. **Tight Loop Reconciliation** verifies execution matches position updates
+4. **Position Monitor** receives data from execution interfaces
+5. **Component Chain** passes data through proper sequence
 
 ## FORBIDDEN PRACTICES
 - ❌ Hardcoding any values (liquidity index, rates, prices, configuration values, etc.)
@@ -29,6 +30,8 @@
 ## REQUIRED PRACTICES
 - ✅ Use data provider for all external data and configuration loading for all components
 - ✅ Query data provider for current timestamp
+- ✅ Implement tight loop reconciliation after each execution instruction
+- ✅ Verify position updates match execution expectations
 - ✅ Pass data through proper component chain
 - ✅ Maintain architecture integrity
 - ✅ Use dynamic data, not static values

@@ -3,30 +3,30 @@
 **For**: Advanced strategy configuration, results interpretation, and optimization  
 **Level**: Intermediate to advanced  
 **Prerequisites**: Platform running (see [GETTING_STARTED.md](GETTING_STARTED.md))  
-**Updated**: October 9, 2025 - Core components working, critical issues remain  
-**Last Reviewed**: October 9, 2025  
-**Status**: ✅ Aligned with canonical sources (.cursor/tasks/ + MODES.md)
+**Updated**: January 6, 2025 - Core components working, critical issues remain  
+**Last Reviewed**: January 6, 2025  
+**Status**: ✅ Aligned with canonical architectural principles
 
 ---
 
 ## 📚 **Canonical Sources**
 
 **This guide aligns with canonical architectural principles**:
-- **Architectural Principles**: [CANONICAL_ARCHITECTURAL_PRINCIPLES.md](CANONICAL_ARCHITECTURAL_PRINCIPLES.md) - Consolidated from all .cursor/tasks/
+- **Architectural Principles**: [REFERENCE_ARCHITECTURE_CANONICAL.md](REFERENCE_ARCHITECTURE_CANONICAL.md) - Canonical architectural principles
 - **Strategy Specifications**: [MODES.md](MODES.md) - Canonical strategy mode definitions
-- **Design Decisions**: [ARCHITECTURAL_DECISIONS.md](ARCHITECTURAL_DECISIONS.md) - Core design decisions
-- **Task Specifications**: `.cursor/tasks/` - Individual task specifications
+- **Design Decisions**: [REFERENCE_ARCHITECTURE_CANONICAL.md](REFERENCE_ARCHITECTURE_CANONICAL.md) - Core design decisions
+- **Component Specifications**: [specs/](specs/) - Detailed component implementation guides
 
 ---
 
 ## ✅ **Current System Status**
 
-**Backend**: ✅ **FULLY FUNCTIONAL**
+**Backend**: ✅ **Core Components Implemented** | 🔄 **Critical Issues Remain**
 - All API endpoints working
 - Backtest system executing end-to-end
 - 6 strategies available and loaded
 - All data loading successfully
-- 43% test coverage with 133/133 component tests passing
+- 17% test coverage with 43 passing tests
 
 **Frontend**: 🔧 **Backend Integration Complete**
 - API integration working
@@ -37,8 +37,8 @@
 ## 📚 **Key References**
 
 **Technical Details**:
-- **Components** → [COMPONENT_SPECS_INDEX.md](COMPONENT_SPECS_INDEX.md) (9 core components + specs/)
-- **Architecture** → [ARCHITECTURAL_DECISIONS.md](ARCHITECTURAL_DECISIONS.md) (design decisions)
+- **Components** → [COMPONENT_SPECS_INDEX.md](COMPONENT_SPECS_INDEX.md) (11 core components + specs/)
+- **Architecture** → [REFERENCE_ARCHITECTURE_CANONICAL.md](REFERENCE_ARCHITECTURE_CANONICAL.md) (design decisions)
 - **Configuration** → [specs/CONFIGURATION.md](specs/CONFIGURATION.md) (config management)
 - **Data Validation** → [specs/09_DATA_PROVIDER](specs/09_DATA_PROVIDER) (data requirements)
 
@@ -230,9 +230,9 @@ cd docker
 - (EIGEN/ETHFI rewards only available for ETH share class)
 
 **Leverage Options**:
-- **Flash Loan**: Use atomic (saves ~$150 gas) vs sequential
+- **Execution**: Atomic flash loan only (saves ~$150 gas vs sequential)
 - **Target LTV**: 0.91 recommended (safe), 0.93 max (risky)
-- **Max Iterations**: null = unlimited, or set limit
+- **No Iterations**: Atomic execution is deterministic based on target LTV
 
 **Hedging**:
 - **Venues**: Select exchanges (Binance, Bybit, OKX)
@@ -373,10 +373,10 @@ cd docker
 - ~$50 gas cost
 - Faster, more efficient
 
-**Sequential Loop**:
-- Multiple transactions (23 iterations)
+**Legacy Sequential** (Deprecated):
+- Multiple transactions (23 iterations) - NO LONGER SUPPORTED
 - ~$200 gas cost
-- Easier to debug
+- Replaced by atomic flash loan execution
 
 **Target LTV**:
 - 0.91: Safe (recommended)

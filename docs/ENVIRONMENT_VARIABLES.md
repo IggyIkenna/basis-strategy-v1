@@ -2,21 +2,21 @@
 
 **Purpose**: Complete mapping, usage, and validation for all environment variables  
 **Status**: Comprehensive environment variable reference  
-**Updated**: October 9, 2025 - Streamlined to focus on environment variables only  
-**Last Reviewed**: October 9, 2025  
-**Status**: ✅ Aligned with canonical sources (.cursor/tasks/ + MODES.md + VENUE_ARCHITECTURE.md)
+**Updated**: January 6, 2025 - Streamlined to focus on environment variables only  
+**Last Reviewed**: January 6, 2025  
+**Status**: ✅ Aligned with canonical architectural principles
 
 ---
 
 ## 📋 **Table of Contents**
 
-1. [Overview](#overview)
-2. [Environment Variables by Category](#environment-variables-by-category)
-3. [Usage Analysis](#usage-analysis)
-4. [Redundancy Analysis](#redundancy-analysis)
-5. [Recommendations](#recommendations)
-6. [Security](#security)
-7. [Validation](#validation)
+1. [Overview](#-overview)
+2. [Environment Variables by Category](#-environment-variables-by-category)
+3. [Usage Analysis](#-usage-analysis)
+4. [Environment Variable Validation](#-environment-variable-validation)
+5. [Security](#-security)
+6. [Validation](#-validation)
+7. [Usage Examples](#-usage-examples)
 
 ---
 
@@ -38,9 +38,11 @@
 
 **Critical Distinction**:
 - **BASIS_DEPLOYMENT_MODE**: Controls port/host forwarding and dependency injection (local vs docker)
-- **BASIS_ENVIRONMENT**: Controls venue credential routing (dev/staging/prod) and data sources (CSV vs DB)
+- **BASIS_ENVIRONMENT**: Controls venue credential routing (dev/staging/prod) AND deployment infrastructure (hosts, ports, API endpoints)
 - **BASIS_EXECUTION_MODE**: Controls venue execution behavior (simulated vs real)
 - **BASIS_DATA_MODE**: Controls data source for backtest mode (file-based vs database) - NOT related to data persistence or execution routing
+
+**Important**: BASIS_DATA_MODE can be set to csv or db independently of BASIS_ENVIRONMENT. For example, dev environment can use db, prod can use csv - they are orthogonal concerns.
 
 **Backtest Mode**:
 - Execution interfaces exist for CODE ALIGNMENT only
@@ -153,7 +155,6 @@ Each strategy mode has specific venue requirements based on its configuration:
 | `BASIS_DATA_MODE` | Data mode | Data Provider | Controls data source (CSV vs DB) |
 | `BASIS_DATA_DIR` | Data directory | Data Provider | Local vs cloud data storage |
 | `BASIS_RESULTS_DIR` | Results directory | Results system | Where to store backtest results |
-| `BASIS_REDIS_URL` | Redis connection | All components | Inter-component communication (both backtest and live modes) |
 | `BASIS_DEBUG` | Debug mode | All components | Development vs production |
 | `BASIS_LOG_LEVEL` | Logging verbosity | All components | Debug vs production logging |
 | `BASIS_EXECUTION_MODE` | Execution mode | All components | Controls venue execution behavior (backtest vs live) |
@@ -282,7 +283,7 @@ Each strategy mode has specific venue requirements based on its configuration:
 **Health Monitoring Behavior**:
 - **Docker Deployments**: Native Docker healthcheck pings endpoint at interval, restarts container on failure
 - **Non-Docker Deployments**: Background monitor script pings endpoint at interval, runs `platform.sh restart` on failure
-- **Restart Behavior**: Restarts all services (backend + frontend + Redis) but preserves Redis data for both backtest and live modes
+- **Restart Behavior**: Restarts all services (backend + frontend) for both backtest and live modes
 - **Retry Logic**: Up to 3 restart attempts with exponential backoff before giving up
 - **Default Values**: `HEALTH_CHECK_INTERVAL=30s`, `HEALTH_CHECK_ENDPOINT=/health`
 
@@ -337,7 +338,6 @@ REQUIRED_BACKTEST_VARS = [
     'BASIS_DATA_MODE', # Controls data source (CSV vs DB)
     'BASIS_DATA_DIR',
     'BASIS_RESULTS_DIR',
-    'BASIS_REDIS_URL',
     'BASIS_DEBUG',
     'BASIS_LOG_LEVEL',
     'BASIS_DATA_START_DATE',
@@ -346,6 +346,13 @@ REQUIRED_BACKTEST_VARS = [
 ```
 
 **CRITICAL**: Backtest mode requires NO venue credentials - execution interfaces exist for CODE ALIGNMENT only.
+
+**Backtest Mode Credential Exemption**:
+- Execution is simulated using historical data
+- No real API calls to CEX or DeFi protocols
+- No heartbeat tests or connectivity validation
+- Venue credentials are loaded but not validated
+- System will start successfully without any venue credentials
 
 #### **Required for Live Testing**
 ```python
@@ -441,7 +448,6 @@ def validate_environment_security():
 ```python
 REQUIRED_BACKTEST_VARS = [
     'BASIS_DATA__DATA_DIR',
-    'BASIS_REDIS__ENABLED',
     'BASIS_DEBUG',
     'BASIS_EXECUTION_MODE',  # Must be 'backtest'
     'BASIS_ENVIRONMENT',     # Controls data source (CSV vs DB)
@@ -508,8 +514,7 @@ def validate_environment_variables(mode='backtest'):
 - **Network Connectivity**: Environment variables determine testnet vs mainnet endpoints
 
 
-**Reference**: `.cursor/tasks/11_backtest_mode_quality_gates.md` - Backtest Mode Quality Gates
-**Reference**: `.cursor/tasks/12_live_trading_quality_gates.md` - Live Trading Quality Gates
+**Reference**: [docs/QUALITY_GATES.md](QUALITY_GATES.md) - Quality Gates System
 
 ### **Validation Checklist**
 

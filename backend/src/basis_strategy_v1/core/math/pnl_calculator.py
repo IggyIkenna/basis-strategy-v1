@@ -1,7 +1,7 @@
 """
 P&L Calculator Component
 
-TODO-REFACTOR: GENERIC VS MODE-SPECIFIC ARCHITECTURE VIOLATION - 18_generic_vs_mode_specific_architecture.md
+TODO-REFACTOR: GENERIC VS MODE-SPECIFIC ARCHITECTURE VIOLATION - See docs/REFERENCE_ARCHITECTURE_CANONICAL.md
 ISSUE: This component violates canonical architecture requirements:
 
 1. GENERIC COMPONENT VIOLATIONS:
@@ -37,7 +37,6 @@ CURRENT STATE: This component needs refactoring to be truly generic with share_c
 """
 
 from typing import Dict, List, Optional, Any
-import redis
 import json
 import logging
 import asyncio
@@ -183,16 +182,7 @@ class PnLCalculator:
         # Previous exposure for delta calculations
         self.previous_exposure = None
         
-        # Redis for inter-component communication
-        self.redis = None
-        try:
-            self.redis = redis.Redis(host='localhost', port=6379, db=0, decode_responses=True)
-            # Test connection
-            self.redis.ping()
-            logger.info("Redis connection established for P&L Calculator")
-        except Exception as e:
-            logger.warning(f"Redis not available for P&L Calculator: {e}")
-            self.redis = None
+        # Redis removed - using direct method calls for component communication
         
         logger.info(f"P&L Calculator initialized for {share_class} share class with ${initial_capital:,.2f} initial capital")
         pnl_logger.info(f"P&L Calculator initialized: share_class={share_class}, initial_capital=${initial_capital:,.2f}")
@@ -269,9 +259,7 @@ class PnLCalculator:
             # Store previous exposure for next calculation
             self.previous_exposure = current_exposure.copy()
             
-            # Publish to Redis
-            if self.redis:
-                await self._publish_pnl(pnl_data)
+            # Redis publishing removed - components use direct method calls
             
             logger.debug(f"P&L calculated: balance=${balance_pnl_data['pnl_cumulative']:,.2f}, attribution=${attribution_pnl_data['pnl_cumulative']:,.2f}")
             return pnl_data
@@ -624,7 +612,7 @@ class PnLCalculator:
                 if position_size > 0:
                     # Estimate funding rate (this would come from market data)
                     # TODO-REFACTOR: This hardcodes funding rate instead of using config
-                    # Canonical: .cursor/tasks/06_architecture_compliance_rules.md
+                    # Canonical: docs/REFERENCE_ARCHITECTURE_CANONICAL.md - No Hardcoded Values
                     # Fix: Add to config YAML and load from config
                     estimated_funding_rate = 0.0001  # WRONG - hardcoded funding rate (0.01% per 8 hours)
                     funding_pnl = position_size * estimated_funding_rate * exp.get('mark_price', 3000)
@@ -820,67 +808,9 @@ class PnLCalculator:
             }
         }
     
-    async def _publish_pnl(self, pnl_data: Dict):
-        """Publish P&L data to Redis."""
-        try:
-            # Store current P&L
-            await asyncio.get_event_loop().run_in_executor(
-                None,
-                self.redis.set,
-                'pnl:current',
-                json.dumps(pnl_data, default=str)
-            )
-            
-            # Publish update event
-            await asyncio.get_event_loop().run_in_executor(
-                None,
-                self.redis.publish,
-                'pnl:calculated',
-                json.dumps({
-                    'timestamp': pnl_data['timestamp'].isoformat() if hasattr(pnl_data['timestamp'], 'isoformat') else str(pnl_data['timestamp']),
-                    'pnl_cumulative': pnl_data['balance_based']['pnl_cumulative'],
-                    'reconciliation_passed': pnl_data['reconciliation']['passed']
-                })
-            )
-            
-        except Exception as e:
-            logger.error(f"Error publishing P&L to Redis: {e}")
+    # Redis publishing removed - components use direct method calls
     
-    async def subscribe_to_risk_updates(self):
-        """Subscribe to risk updates and recalculate P&L."""
-        if not self.redis:
-            logger.warning("Redis not available for risk updates subscription")
-            return
-        
-        try:
-            pubsub = self.redis.pubsub()
-            await pubsub.subscribe('risk:calculated')
-            
-            logger.info("Subscribed to risk updates")
-            
-            async for message in pubsub.listen():
-                if message['type'] == 'message':
-                    try:
-                        data = json.loads(message['data'])
-                        timestamp = pd.Timestamp(data['timestamp'])
-                        
-                        # Get exposure data from Redis
-                        exposure_data = await asyncio.get_event_loop().run_in_executor(
-                            None,
-                            self.redis.get,
-                            'exposure:current'
-                        )
-                        
-                        if exposure_data:
-                            exposure = json.loads(exposure_data)
-                            pnl = await self.calculate_pnl(exposure, timestamp=timestamp)
-                            logger.debug(f"P&L recalculated from risk update: ${pnl['balance_based']['pnl_cumulative']:,.2f}")
-                        
-                    except Exception as e:
-                        logger.error(f"Error processing risk update: {e}")
-                        
-        except Exception as e:
-            logger.error(f"Error in risk updates subscription: {e}")
+    # Redis subscription removed - components use direct method calls
     
     def get_pnl_summary(self, pnl_data: Dict) -> str:
         """Get a human-readable P&L summary."""

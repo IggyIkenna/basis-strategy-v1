@@ -1,7 +1,7 @@
 """
 Position Monitor Update Handler
 
-TODO-REFACTOR: TIGHT LOOP ARCHITECTURE VIOLATION - 10_tight_loop_architecture_requirements.md
+TODO-REFACTOR: TIGHT LOOP ARCHITECTURE VIOLATION - See docs/REFERENCE_ARCHITECTURE_CANONICAL.md
 ISSUE: This component may violate tight loop architecture requirements:
 
 1. TIGHT LOOP ARCHITECTURE REQUIREMENTS:
@@ -17,7 +17,7 @@ ISSUE: This component may violate tight loop architecture requirements:
    - Validate consistent processing flow
 
 3. CANONICAL SOURCE:
-   - .cursor/tasks/10_tight_loop_architecture_requirements.md
+   - docs/REFERENCE_ARCHITECTURE_CANONICAL.md - Tight Loop Architecture
    - Tight loop sequence must be enforced
 
 Provides a tight loop abstraction for position monitor updates that automatically triggers

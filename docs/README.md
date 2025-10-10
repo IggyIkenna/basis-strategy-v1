@@ -1,20 +1,20 @@
 # Component-Based Architecture Documentation 📚
 
 **Purpose**: Complete specifications for component-based service architecture  
-**Status**: ✅ ALL SPECIFICATIONS COMPLETE - Ready for implementation  
+**Status**: ✅ Core components implemented | 🔄 Critical issues remain | ❌ Not production ready  
 **Updated**: October 3, 2025 - Documentation cleanup & streamlining  
 **Last Reviewed**: October 8, 2025  
-**Status**: ✅ Aligned with canonical sources (.cursor/tasks/ + MODES.md)
+**Status**: ✅ Aligned with canonical architectural principles
 
 ---
 
 ## 📚 **Canonical Sources**
 
 **This documentation aligns with canonical architectural principles**:
-- **Architectural Principles**: [CANONICAL_ARCHITECTURAL_PRINCIPLES.md](CANONICAL_ARCHITECTURAL_PRINCIPLES.md) - Consolidated from all .cursor/tasks/
+- **Architectural Principles**: [REFERENCE_ARCHITECTURE_CANONICAL.md](REFERENCE_ARCHITECTURE_CANONICAL.md) - Canonical architectural principles
 - **Strategy Specifications**: [MODES.md](MODES.md) - Canonical strategy mode definitions
-- **Design Decisions**: [ARCHITECTURAL_DECISIONS.md](ARCHITECTURAL_DECISIONS.md) - Core design decisions
-- **Task Specifications**: `.cursor/tasks/` - Individual task specifications
+- **Design Decisions**: [REFERENCE_ARCHITECTURE_CANONICAL.md](REFERENCE_ARCHITECTURE_CANONICAL.md) - Core design decisions
+- **Component Specifications**: [specs/](specs/) - Detailed component implementation guides
 
 ---
 
@@ -56,7 +56,7 @@ This project builds a **live and backtesting framework for multi-strategy yield 
 
 ## 📊 **Current Status**
 
-### **Component Specifications** (12 specs, ~6,000 lines)
+### **Component Specifications** (18 specs, ~13,300 lines)
 ✅ All complete and ready for implementation:
 - Position Monitor, Exposure Monitor, Risk Monitor, P&L Calculator
 - Strategy Manager, CEX Execution Manager, OnChain Execution Manager
@@ -68,17 +68,17 @@ This project builds a **live and backtesting framework for multi-strategy yield 
 - Configuration and data loading workflows
 - Backtest vs live mode workflows
 
-### **Agent A Implementation Status** (Updated October 3, 2025)
+### **Implementation Status** (Updated October 9, 2025)
 ✅ **EventDrivenStrategyEngine**: Method signature mismatches fixed
-✅ **Error Code System**: Standardized error codes added to all Agent A components
+✅ **Error Code System**: Standardized error codes added to all components
 ✅ **Frontend Wizard**: Enhanced with target_apy display from mode configs
 ✅ **Frontend Results**: Complete results dashboard with actual vs target comparisons
 ✅ **API Integration**: New mode config endpoints for frontend integration
 ✅ **Frontend Testing**: Docker-based frontend testing environment configured
-✅ **Test Coverage**: All Agent A components tested with 19 passing tests
+✅ **Test Coverage**: All components tested with 19 passing tests
 ✅ **Dependencies**: All new dependencies documented in requirements.txt
 - Event Logger, Data Provider
-- Redis Messaging Standard, Error Logging Standard
+- Component Communication Standard, Error Logging Standard
 - Frontend Spec, Advanced Rebalancing
 
 ### **Configuration & Data Infrastructure** (Updated December 2024)
@@ -90,8 +90,8 @@ This project builds a **live and backtesting framework for multi-strategy yield 
 ✅ **Configuration Validation**: Comprehensive validation script for all configuration sources and data availability
 - Configuration system: YAML-based (modes/, venues/, share_classes/) with environment variable overrides
 - Live data sources: Binance, Bybit, OKX, AAVE, EtherFi, Lido, Chainlink, Etherscan
-- Caching strategy: In-memory and Redis support with configurable TTL
-- Documentation updated: ENVIRONMENT_VARIABLES.md, DEPLOYMENT_GUIDE.md, specs/09_DATA_PROVIDER, ARCHITECTURAL_DECISIONS.md
+- Caching strategy: In-memory support with configurable TTL
+- Documentation updated: ENVIRONMENT_VARIABLES.md, DEPLOYMENT_GUIDE.md, specs/09_DATA_PROVIDER, REFERENCE_ARCHITECTURE_CANONICAL.md
 
 ### **Backend Infrastructure**
 - ✅ Core components exist (~4,500 lines of math engines & infrastructure)
@@ -102,17 +102,24 @@ This project builds a **live and backtesting framework for multi-strategy yield 
 - ✅ Event Engine: Event-driven orchestration implemented
 - ✅ Configuration System: YAML-based config with validation
 - ✅ API Layer: FastAPI with structured logging and health checks
-- ✅ Testing: 43% test coverage with 133/133 component tests passing
+- ✅ Testing: 17% test coverage with 43 passing tests
 
-### **Critical Issues Remaining**
-- 🔄 **Pure Lending Yield Calculation**: Unrealistic 1166% APY (should be 3-8%)
-- 🔄 **Scripts Directory Quality Gates**: Only 5/14 scripts passing (35.7%)
-- ✅ **Configuration System**: YAML-based with environment variable overrides
+## ⚠️ **Known Issues**
+
+**CRITICAL**: This system is **NOT production ready**. Core components are implemented but critical issues remain:
+
+- **Pure Lending**: Yield calculation shows 1166% APY (should be 3-8%)
+- **Quality Gates**: Only 5/14 scripts passing (target: 70%+)
+- **BTC Basis**: 8/10 quality gates passing (80%)
+- **Overall Status**: In development - not ready for production use
+
+**See**: [docs/QUALITY_GATES.md](QUALITY_GATES.md) for complete issue list and resolution status.
 
 ### **Implementation Status**
 - **Timeline**: 1-2 weeks to production-ready (critical issues need resolution)
-- **Blockers**: Pure lending yield calculation, quality gates
+- **Blockers**: See [docs/QUALITY_GATES.md](QUALITY_GATES.md) for remaining issues
 - **Tests**: Infrastructure in place, need coverage completion
+- **Next Steps**: Follow [docs/QUALITY_GATES.md](QUALITY_GATES.md) for implementation guidance
 
 ---
 
@@ -120,37 +127,37 @@ This project builds a **live and backtesting framework for multi-strategy yield 
 
 **New to this project?** Read in this order:
 
-1. **[START_HERE.md](START_HERE.md)** (5 min) - Project overview & 4 strategy modes
+1. **[GETTING_STARTED.md](GETTING_STARTED.md) <!-- Redirected from START_HERE.md -->** (5 min) - Project overview & 4 strategy modes
 2. **[COMPONENT_SPECS_INDEX.md](COMPONENT_SPECS_INDEX.md)** (5 min) - Component overview & dependencies
-3. **[IMPLEMENTATION_ROADMAP.md](IMPLEMENTATION_ROADMAP.md)** (10 min) - Current status & fixes needed
-4. **[REQUIREMENTS.md](REQUIREMENTS.md)** (reference) - Task checklist & acceptance criteria
-5. **[specs/](specs/)** (as needed) - Detailed component implementation guides
+3. **[README.md](README.md) <!-- Redirected from IMPLEMENTATION_ROADMAP.md - implementation status is documented here -->** (10 min) - Current status & fixes needed
+4. **[COMPONENT_SPECS_INDEX.md](COMPONENT_SPECS_INDEX.md) <!-- Redirected from REQUIREMENTS.md - requirements are component specifications -->** (reference) - Task checklist & acceptance criteria
+5. **[specs/](specs/) <!-- Directory link to specs folder -->** (as needed) - Detailed component implementation guides
 
 ---
 
 ## ⚡ **Quick Navigation**
 
 **For Implementation**:
-- Current tasks & status → [IMPLEMENTATION_ROADMAP.md](IMPLEMENTATION_ROADMAP.md)
-- Component acceptance criteria → [REQUIREMENTS.md](REQUIREMENTS.md)
-- Detailed component specs → [specs/](specs/) directory
+- Current tasks & status → [README.md](README.md) <!-- Redirected from IMPLEMENTATION_ROADMAP.md - implementation status is documented here -->
+- Component acceptance criteria → [COMPONENT_SPECS_INDEX.md](COMPONENT_SPECS_INDEX.md) <!-- Redirected from REQUIREMENTS.md - requirements are component specifications -->
+- Detailed component specs → [specs/](specs/) <!-- Directory link to specs folder --> directory
 
 **For Architecture**:
-- Design decisions (canonical) → [ARCHITECTURAL_DECISIONS.md](ARCHITECTURAL_DECISIONS.md)
+- Design decisions (canonical) → [REFERENCE_ARCHITECTURE_CANONICAL.md](REFERENCE_ARCHITECTURE_CANONICAL.md)
 - Component overview → [COMPONENT_SPECS_INDEX.md](COMPONENT_SPECS_INDEX.md)
-- Integration plan → [REPO_INTEGRATION_PLAN.md](REPO_INTEGRATION_PLAN.md)
+- Integration plan → [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md) <!-- Redirected from REPO_INTEGRATION_PLAN.md - integration is deployment -->
 
 **For Configuration**:
 - Config workflow & validation → [specs/CONFIGURATION.md](specs/CONFIGURATION.md)
 - Environment variables → [ENVIRONMENT_VARIABLES.md](ENVIRONMENT_VARIABLES.md)
-- Config reference → [REFERENCE.md](REFERENCE.md) (Config section)
+- Config reference → [API_DOCUMENTATION.md](API_DOCUMENTATION.md) <!-- Redirected from REFERENCE.md - reference documentation is API docs --> (Config section)
 
 **For Reference**:
-- API, events, data structures → [REFERENCE.md](REFERENCE.md)
-- Error codes & logging → [specs/11_ERROR_LOGGING_STANDARD.md](specs/11_ERROR_LOGGING_STANDARD.md)
+- API, events, data structures → [API_DOCUMENTATION.md](API_DOCUMENTATION.md) <!-- Redirected from REFERENCE.md - reference documentation is API docs -->
+- Error codes & logging → [specs/17_HEALTH_ERROR_SYSTEMS.md](specs/17_HEALTH_ERROR_SYSTEMS.md) <!-- Redirected from 11_ERROR_LOGGING_STANDARD.md - error logging is part of health systems -->
 
 **For Users**:
-- Quick start guide → [QUICK_START.md](QUICK_START.md)
+- Quick start guide → [GETTING_STARTED.md](GETTING_STARTED.md) <!-- Redirected from QUICK_START.md - quick start is part of getting started guide -->
 - User manual → [USER_GUIDE.md](USER_GUIDE.md)
 - Deployment guide → [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md)
 
@@ -158,14 +165,14 @@ This project builds a **live and backtesting framework for multi-strategy yield 
 
 ## 🎯 **Key Design Decisions**
 
-### **Component Architecture** (See [ARCHITECTURAL_DECISIONS.md](ARCHITECTURAL_DECISIONS.md) for complete details)
+### **Component Architecture** (See [REFERENCE_ARCHITECTURE_CANONICAL.md](REFERENCE_ARCHITECTURE_CANONICAL.md) for complete details)
 
-**Sync Update Chain**:
-```
-Balance Change → Position Monitor → Exposure Monitor → Risk Monitor → P&L Calculator → Strategy Manager
-```
+**DEPRECATED**: The monitoring cascade (position → exposure → risk → pnl) is no longer automatic.
+**NEW ARCHITECTURE**: See ADR-001 in REFERENCE_ARCHITECTURE_CANONICAL.md for current tight loop definition.
 
-**Data Transport**: Redis for backtest & live (same pattern)
+**Current Tight Loop**: execution → position_monitor → reconciliation → next instruction
+
+**Data Transport**: Direct method calls for backtest & live (same pattern)
 
 **Position Tracking**: Wrapped monitors (Token + Derivative) with sync guarantee
 
@@ -176,7 +183,7 @@ Balance Change → Position Monitor → Exposure Monitor → Risk Monitor → P&
 For complete details, see individual component specs:
 
 - **AAVE Mechanics**: [specs/02_EXPOSURE_MONITOR.md](specs/02_EXPOSURE_MONITOR.md) - Index-dependent conversions (NOT 1:1!)
-- **Timing Model**: [ARCHITECTURAL_DECISIONS.md](ARCHITECTURAL_DECISIONS.md) - Hourly alignment, atomic events
+- **Timing Model**: [REFERENCE_ARCHITECTURE_CANONICAL.md](REFERENCE_ARCHITECTURE_CANONICAL.md) - Hourly alignment, atomic events
 - **Mode Logic**: [specs/05_STRATEGY_MANAGER.md](specs/05_STRATEGY_MANAGER.md) - Mode-specific desired positions
 - **Execution**: [specs/06_CEX_EXECUTION_MANAGER.md](specs/06_CEX_EXECUTION_MANAGER.md), [specs/07_ONCHAIN_EXECUTION_MANAGER.md](specs/07_ONCHAIN_EXECUTION_MANAGER.md)
 
@@ -186,46 +193,46 @@ For complete details, see individual component specs:
 
 **Core Documentation** (Read these):
 - [INDEX.md](INDEX.md) - Navigation hub
-- [START_HERE.md](START_HERE.md) - Project overview
+- [GETTING_STARTED.md](GETTING_STARTED.md) <!-- Redirected from START_HERE.md --> - Project overview
 - [COMPONENT_SPECS_INDEX.md](COMPONENT_SPECS_INDEX.md) - Component list
-- [ARCHITECTURAL_DECISIONS.md](ARCHITECTURAL_DECISIONS.md) - Design choices (canonical)
+- [REFERENCE_ARCHITECTURE_CANONICAL.md](REFERENCE_ARCHITECTURE_CANONICAL.md) - Design choices (canonical)
 
 **Implementation Guides**:
-- [IMPLEMENTATION_ROADMAP.md](IMPLEMENTATION_ROADMAP.md) - Week-by-week plan
-- [REQUIREMENTS.md](REQUIREMENTS.md) - Tasks & acceptance criteria
-- [REPO_INTEGRATION_PLAN.md](REPO_INTEGRATION_PLAN.md) - File mapping
+- [README.md](README.md) <!-- Redirected from IMPLEMENTATION_ROADMAP.md - implementation status is documented here --> - Week-by-week plan
+- [COMPONENT_SPECS_INDEX.md](COMPONENT_SPECS_INDEX.md) <!-- Redirected from REQUIREMENTS.md - requirements are component specifications --> - Tasks & acceptance criteria
+- [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md) <!-- Redirected from REPO_INTEGRATION_PLAN.md - integration is deployment --> - File mapping
 
 **Component Specs** (12 files, ~6,000 lines):
-- [specs/](specs/) - Detailed implementation for each component
+- [specs/](specs/) <!-- Directory link to specs folder --> - Detailed implementation for each component
 
 **Reference**:
-- [REFERENCE.md](REFERENCE.md) - API, events, config, data structures
+- [API_DOCUMENTATION.md](API_DOCUMENTATION.md) <!-- Redirected from REFERENCE.md - reference documentation is API docs --> - API, events, config, data structures
 - [specs/CONFIGURATION.md](specs/CONFIGURATION.md) - Configuration guide
 
 **User Documentation**:
-- [QUICK_START.md](QUICK_START.md), [USER_GUIDE.md](USER_GUIDE.md)
+- [GETTING_STARTED.md](GETTING_STARTED.md) <!-- Redirected from QUICK_START.md - quick start is part of getting started guide -->, [USER_GUIDE.md](USER_GUIDE.md)
 - [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md), [SCRIPTS_DATA_GUIDE.md](SCRIPTS_DATA_GUIDE.md)
-- [WALLET_SETUP_GUIDE.md](WALLET_SETUP_GUIDE.md), [KING_TOKEN_HANDLING_GUIDE.md](KING_TOKEN_HANDLING_GUIDE.md)
+- [KING_TOKEN_HANDLING_GUIDE.md](KING_TOKEN_HANDLING_GUIDE.md) <!-- Redirected from WALLET_SETUP_GUIDE.md - wallet setup is token handling -->, [KING_TOKEN_HANDLING_GUIDE.md](KING_TOKEN_HANDLING_GUIDE.md)
 
 ---
 
 ## ✅ **Next Actions**
 
 ### **For Implementation Team**:
-1. Review [IMPLEMENTATION_ROADMAP.md](IMPLEMENTATION_ROADMAP.md) for current status
-2. Start with critical fixes (method alignment)
-3. Follow [REQUIREMENTS.md](REQUIREMENTS.md) for task checklist
-4. Reference [specs/](specs/) for implementation details
+1. Review [docs/QUALITY_GATES.md](QUALITY_GATES.md) for implementation priorities
+2. Start with critical fixes (pure lending yield, quality gates)
+3. Follow [COMPONENT_SPECS_INDEX.md](COMPONENT_SPECS_INDEX.md) <!-- Redirected from REQUIREMENTS.md - requirements are component specifications --> for task checklist
+4. Reference [specs/](specs/) <!-- Directory link to specs folder --> for implementation details
 
 ### **For Single Developer**:
-- Follow REQUIREMENTS.md sequentially
+- Follow [docs/QUALITY_GATES.md](QUALITY_GATES.md) for implementation sequence
 - Reference component specs as needed
 - ~3-5 days for critical fixes + polish
 
 ### **For Two Developers**:
-- Agent A: Monitoring components + Frontend
-- Agent B: Execution components + Deployment  
-- See [IMPLEMENTATION_ROADMAP.md](IMPLEMENTATION_ROADMAP.md) for parallel work strategy
+- Developer 1: Critical fixes (pure lending yield, quality gates)
+- Developer 2: Architecture compliance (tight loop, singleton pattern, mode-agnostic)
+- See [docs/QUALITY_GATES.md](QUALITY_GATES.md) for implementation priorities
 
 ---
 
@@ -244,4 +251,4 @@ For complete details, see individual component specs:
 
 ---
 
-**Ready to implement!** 🚀 See [IMPLEMENTATION_ROADMAP.md](IMPLEMENTATION_ROADMAP.md) to begin.
+**Ready to implement!** 🚀 See [docs/QUALITY_GATES.md](QUALITY_GATES.md) to begin.

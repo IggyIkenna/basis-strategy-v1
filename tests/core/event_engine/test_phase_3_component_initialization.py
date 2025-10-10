@@ -104,29 +104,21 @@ class TestPositionMonitorInitialization:
         
         assert pm_eth._token_monitor.wallet['ETH'] == 25.0
     
-    def test_live_mode_requires_redis(self):
-        """Test that live mode requires Redis connection."""
+    def test_live_mode_uses_direct_calls(self):
+        """Test that live mode uses direct method calls for component communication."""
         config = {'mode': 'pure_lending'}
         mock_data_provider = Mock()
         
-        with patch.dict('os.environ', {'BASIS_REDIS_URL': 'redis://localhost:6379/0'}):
-            with patch('redis.Redis.from_url') as mock_redis:
-                mock_redis_instance = Mock()
-                mock_redis_instance.ping.return_value = True
-                mock_redis.return_value = mock_redis_instance
-                
-                pm = PositionMonitor(
-                    config=config,
-                    execution_mode='live',
-                    initial_capital=100000.0,
-                    share_class='USDT',
-                    data_provider=mock_data_provider
-                )
-                
-                # Should establish Redis connection for live mode
-                mock_redis.assert_called_once_with('redis://localhost:6379/0', decode_responses=True)
-                mock_redis_instance.ping.assert_called_once()
-                assert pm.redis == mock_redis_instance
+        pm = PositionMonitor(
+            config=config,
+            execution_mode='live',
+            initial_capital=100000.0,
+            share_class='USDT',
+            data_provider=mock_data_provider
+        )
+        
+        # Should use direct method calls (no Redis)
+        assert pm.redis is None  # Redis removed
 
 
 class TestExposureMonitorInitialization:

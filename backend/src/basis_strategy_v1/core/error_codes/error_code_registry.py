@@ -52,7 +52,7 @@ class ErrorCodeRegistry:
             'POS-002': ('Negative balance in unexpected token', ErrorSeverity.HIGH),
             'POS-003': ('CEX account balance mismatch', ErrorSeverity.MEDIUM),
             'POS-004': ('Invalid venue specified in balance update', ErrorSeverity.MEDIUM),
-            'POS-005': ('Redis connection lost during publish', ErrorSeverity.HIGH)
+            'POS-005': ('Component communication failed', ErrorSeverity.HIGH)
         })
         
         # Exposure Monitor
@@ -88,7 +88,7 @@ class ErrorCodeRegistry:
             'STRAT-007': ('Instruction generation failed', ErrorSeverity.MEDIUM),
             'STRAT-008': ('Rebalancing check failed', ErrorSeverity.MEDIUM),
             'STRAT-009': ('KING token management failed', ErrorSeverity.MEDIUM),
-            'STRAT-010': ('Redis communication failed', ErrorSeverity.HIGH)
+            'STRAT-010': ('Component communication failed', ErrorSeverity.HIGH)
         })
         
         # CEX Execution Manager
@@ -115,8 +115,7 @@ class ErrorCodeRegistry:
             'CHAIN-004': ('Contract interaction failed', ErrorSeverity.HIGH),
             'CHAIN-005': ('Web3 client initialization failed', ErrorSeverity.HIGH),
             'CHAIN-006': ('Gas cost calculation failed', ErrorSeverity.MEDIUM),
-            'CHAIN-007': ('Atomic leverage loop failed', ErrorSeverity.HIGH),
-            'CHAIN-008': ('Sequential leverage loop failed', ErrorSeverity.HIGH),
+            'CHAIN-007': ('Atomic leveraged staking failed', ErrorSeverity.HIGH),
             'CHAIN-009': ('Position unwind failed', ErrorSeverity.HIGH),
             'CHAIN-010': ('KING token unwrap failed', ErrorSeverity.MEDIUM),
             'CHAIN-011': ('Alchemy client connection failed', ErrorSeverity.HIGH),

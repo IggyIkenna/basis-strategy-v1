@@ -22,10 +22,9 @@ rewards_mode: "base_eigen_seasonal"  # base + EIGEN + seasonal rewards
 stake_allocation_eth: 0.5 #how much of initial capital to stake in eth vs freed up for margin on perp shorting
 dust_delta: 0.002
 reserve_ratio: 0.1
+position_deviation_threshold: 0.02  # 2% deviation from target triggers rebalancing
 
 # Execution parameters
-use_flash_loan: true
-unwind_mode: "fast"  # Flash loan unwinding
 hedge_venues: ["binance", "bybit", "okx"]
 hedge_allocation_binance: 0.4
 hedge_allocation_bybit: 0.3
@@ -36,9 +35,6 @@ margin_ratio_target: 1.0  # Target CEX margin ratio (100% = full capital utiliza
 max_stake_spread_move: 0.02215  # Max expected adverse weETH/ETH oracle move (2.215%)
 # NOTE: max_ltv and liquidation_threshold loaded from data/protocol_data/aave/risk_params/aave_v3_risk_parameters.json
 
-# Sequential leverage parameters (used if use_flash_loan: false)
-max_leverage_loops: 23  # Maximum iterations for sequential leverage
-min_loop_position_usd: 10000.0  # Minimum position size to continue looping
 
 # Performance targets
 target_apy: 0.15  # 15% APY target (market neutral with leverage)

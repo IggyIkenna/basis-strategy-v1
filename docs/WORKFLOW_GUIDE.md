@@ -4,23 +4,23 @@
 **Status**: ✅ COMPLETE - Comprehensive system documentation with all workflow patterns  
 **Updated**: January 2025  
 **Last Reviewed**: January 2025  
-**Status**: ✅ Aligned with canonical sources (.cursor/tasks/ + MODES.md + VENUE_ARCHITECTURE.md + architecture_updates.md)
+**Status**: ✅ Aligned with canonical architectural principles
 
 ---
 
 ## 📚 **Canonical Sources**
 
 **This workflow guide aligns with canonical architectural principles**:
-- **Architectural Principles**: [CANONICAL_ARCHITECTURAL_PRINCIPLES.md](CANONICAL_ARCHITECTURAL_PRINCIPLES.md) - Consolidated from all .cursor/tasks/
+- **Architectural Principles**: [REFERENCE_ARCHITECTURE_CANONICAL.md](REFERENCE_ARCHITECTURE_CANONICAL.md) - Canonical architectural principles
 - **Strategy Specifications**: [MODES.md](MODES.md) - Canonical strategy mode definitions
 - **Venue Architecture**: [VENUE_ARCHITECTURE.md](VENUE_ARCHITECTURE.md) - Venue client initialization and execution
 - **Deployment Architecture**: [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md) - Deployment and startup architecture
-- **Task Specifications**: `.cursor/tasks/` - Individual task specifications
+- **Component Specifications**: [specs/](specs/) - Detailed component implementation guides
 
 ## 📚 **Key References**
 
 - **Component Details** → [COMPONENT_SPECS_INDEX.md](COMPONENT_SPECS_INDEX.md)
-- **Architecture Decisions** → [ARCHITECTURAL_DECISIONS.md](ARCHITECTURAL_DECISIONS.md)
+- **Architecture Decisions** → [REFERENCE_ARCHITECTURE_CANONICAL.md](REFERENCE_ARCHITECTURE_CANONICAL.md)
 - **Configuration** → [specs/CONFIGURATION.md](specs/CONFIGURATION.md)
 - **Environment Variables** → [ENVIRONMENT_VARIABLES.md](ENVIRONMENT_VARIABLES.md)
 - **Deployment Guide** → [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md)
@@ -32,7 +32,7 @@
 The Basis Strategy system is a **component-based, event-driven architecture** that seamlessly switches between backtest and live modes while maintaining the same execution interfaces and data flow patterns.
 
 ### **Core Architecture Principles**
-- **Component-Based**: 9 core components with clear responsibilities
+- **Component-Based**: 11 core components with clear responsibilities
 - **Event-Driven**: Synchronous event chain with audit logging
 - **Mode-Agnostic**: Same interfaces for backtest and live execution
 - **Fail-Fast**: Explicit configuration with no hidden defaults
@@ -232,27 +232,377 @@ graph TD
 
 **Note**: Position updates are logged for analytics but don't trigger immediate workflows. They're processed during the next time-triggered workflow.
 
-### **8. Risk Monitor Liquidation Warning Workflow**
+### **8. Health Check Workflows**
 
-**Trigger**: External API call to `/api/v1/risk/liquidation-warning`
+**Trigger**: External API calls to health endpoints
+
+#### **8.1. Basic Health Check Workflow**
+
+**Trigger**: External API call to `GET /health`
 
 ```mermaid
 graph TD
-    A[POST /api/v1/risk/liquidation-warning] --> B[Validate liquidation warning]
-    B --> C[Update risk monitor state]
-    C --> D[Trigger emergency rebalancing]
-    D --> E[Execute position reduction]
-    E --> F[Log liquidation warning event]
-    F --> G[Return risk mitigation confirmation]
+    A[GET /health] --> B[Check System Status]
+    B --> C[Get Uptime & System Metrics]
+    C --> D[Return Basic Health Response]
     
-    style A fill:#ffebee
+    style A fill:#e3f2fd
+    style B fill:#fff3e0
+    style C fill:#fff3e0
+    style D fill:#e8f5e8
+```
+
+**Response Time**: < 50ms for load balancer health checks
+
+#### **8.2. Detailed Health Check Workflow**
+
+**Trigger**: External API call to `GET /health/detailed`
+
+```mermaid
+graph TD
+    A[GET /health/detailed] --> B[Check All Components]
+    B --> C[Get Component Status]
+    C --> D[Get System Metrics]
+    D --> E[Filter by Execution Mode]
+    E --> F[Return Detailed Health Response]
+    
+    style A fill:#e3f2fd
+    style B fill:#fff3e0
+    style C fill:#fff3e0
+    style D fill:#fff3e0
+    style E fill:#fff3e0
+    style F fill:#e8f5e8
+```
+
+**Response Time**: < 500ms for comprehensive health monitoring
+
+### **9. Backtest Status & Results Workflows**
+
+#### **9.1. Get Backtest Status Workflow**
+
+**Trigger**: External API call to `GET /api/v1/backtest/{request_id}/status`
+
+```mermaid
+graph TD
+    A[GET /api/v1/backtest/{request_id}/status] --> B[Validate Request ID]
+    B --> C[Check Backtest Status]
+    C --> D[Get Progress & Metrics]
+    D --> E[Return Status Response]
+    
+    style A fill:#e3f2fd
+    style B fill:#fff3e0
+    style C fill:#fff3e0
+    style D fill:#fff3e0
+    style E fill:#e8f5e8
+```
+
+#### **9.2. Get Backtest Results Workflow**
+
+**Trigger**: External API call to `GET /api/v1/backtest/{request_id}/result`
+
+```mermaid
+graph TD
+    A[GET /api/v1/backtest/{request_id}/result] --> B[Validate Request ID]
+    B --> C[Check Completion Status]
+    C --> D[Load Results Data]
+    D --> E[Format Performance Metrics]
+    E --> F[Return Results Response]
+    
+    style A fill:#e3f2fd
+    style B fill:#fff3e0
+    style C fill:#fff3e0
+    style D fill:#fff3e0
+    style E fill:#fff3e0
+    style F fill:#e8f5e8
+```
+
+### **10. Live Trading Status & Performance Workflows**
+
+#### **10.1. Get Live Trading Status Workflow**
+
+**Trigger**: External API call to `GET /api/v1/live/status/{request_id}`
+
+```mermaid
+graph TD
+    A[GET /api/v1/live/status/{request_id}] --> B[Validate Request ID]
+    B --> C[Check Live Trading Status]
+    C --> D[Get Performance Metrics]
+    D --> E[Get Risk Metrics]
+    E --> F[Return Status Response]
+    
+    style A fill:#e3f2fd
+    style B fill:#fff3e0
+    style C fill:#fff3e0
+    style D fill:#fff3e0
+    style E fill:#fff3e0
+    style F fill:#e8f5e8
+```
+
+#### **10.2. Get Live Trading Performance Workflow**
+
+**Trigger**: External API call to `GET /api/v1/live/performance/{request_id}`
+
+```mermaid
+graph TD
+    A[GET /api/v1/live/performance/{request_id}] --> B[Validate Request ID]
+    B --> C[Get Performance Data]
+    C --> D[Calculate Metrics]
+    D --> E[Return Performance Response]
+    
+    style A fill:#e3f2fd
+    style B fill:#fff3e0
+    style C fill:#fff3e0
+    style D fill:#fff3e0
+    style E fill:#e8f5e8
+```
+
+### **11. Strategy Information Workflows**
+
+#### **11.1. List Available Strategies Workflow**
+
+**Trigger**: External API call to `GET /api/v1/strategies/`
+
+```mermaid
+graph TD
+    A[GET /api/v1/strategies/] --> B[Load Strategy Configs]
+    B --> C[Parse Strategy Information]
+    C --> D[Apply Filters]
+    D --> E[Return Strategy List]
+    
+    style A fill:#e3f2fd
+    style B fill:#fff3e0
+    style C fill:#fff3e0
+    style D fill:#fff3e0
+    style E fill:#e8f5e8
+```
+
+#### **11.2. Get Strategy Details Workflow**
+
+**Trigger**: External API call to `GET /api/v1/strategies/{strategy_name}`
+
+```mermaid
+graph TD
+    A[GET /api/v1/strategies/{strategy_name}] --> B[Validate Strategy Name]
+    B --> C[Load Strategy Config]
+    C --> D[Derive Strategy Info]
+    D --> E[Return Strategy Details]
+    
+    style A fill:#e3f2fd
+    style B fill:#fff3e0
+    style C fill:#fff3e0
+    style D fill:#fff3e0
+    style E fill:#e8f5e8
+```
+
+### **12. Results & Export Workflows**
+
+#### **12.1. Get Result Events Workflow**
+
+**Trigger**: External API call to `GET /api/v1/results/{result_id}/events`
+
+```mermaid
+graph TD
+    A[GET /api/v1/results/{result_id}/events] --> B[Validate Result ID]
+    B --> C[Load Event Log]
+    C --> D[Apply Pagination]
+    D --> E[Return Events Response]
+    
+    style A fill:#e3f2fd
+    style B fill:#fff3e0
+    style C fill:#fff3e0
+    style D fill:#fff3e0
+    style E fill:#e8f5e8
+```
+
+#### **12.2. Get Export Information Workflow**
+
+**Trigger**: External API call to `GET /api/v1/results/{result_id}/export`
+
+```mermaid
+graph TD
+    A[GET /api/v1/results/{result_id}/export] --> B[Validate Result ID]
+    B --> C[Check Available Files]
+    C --> D[Get Export Information]
+    D --> E[Return Export Response]
+    
+    style A fill:#e3f2fd
+    style B fill:#fff3e0
+    style C fill:#fff3e0
+    style D fill:#fff3e0
+    style E fill:#e8f5e8
+```
+
+#### **12.3. List Results Workflow**
+
+**Trigger**: External API call to `GET /api/v1/results/`
+
+```mermaid
+graph TD
+    A[GET /api/v1/results/] --> B[Apply Filters]
+    B --> C[Load Results List]
+    C --> D[Apply Pagination]
+    D --> E[Return Results Response]
+    
+    style A fill:#e3f2fd
+    style B fill:#fff3e0
+    style C fill:#fff3e0
+    style D fill:#fff3e0
+    style E fill:#e8f5e8
+```
+
+### **13. Charts Workflows**
+
+#### **13.1. List Charts Workflow**
+
+**Trigger**: External API call to `GET /api/v1/results/{request_id}/charts`
+
+```mermaid
+graph TD
+    A[GET /api/v1/results/{request_id}/charts] --> B[Validate Request ID]
+    B --> C[Check Available Charts]
+    C --> D[Get Chart Information]
+    D --> E[Return Charts Response]
+    
+    style A fill:#e3f2fd
+    style B fill:#fff3e0
+    style C fill:#fff3e0
+    style D fill:#fff3e0
+    style E fill:#e8f5e8
+```
+
+### **14. Root API Workflows**
+
+#### **14.1. API Information Workflow**
+
+**Trigger**: External API call to `GET /`
+
+```mermaid
+graph TD
+    A[GET /] --> B[Get API Information]
+    B --> C[Get System Status]
+    C --> D[Return API Info Response]
+    
+    style A fill:#e3f2fd
+    style B fill:#fff3e0
+    style C fill:#fff3e0
+    style D fill:#e8f5e8
+```
+
+### **15. Live Trading Additional Workflows**
+
+#### **15.1. Emergency Stop Live Trading Workflow**
+
+**Trigger**: External API call to `POST /api/v1/live/emergency-stop/{request_id}`
+
+```mermaid
+graph TD
+    A[POST /api/v1/live/emergency-stop/{request_id}] --> B[Validate Request ID]
+    B --> C[Check Strategy Status]
+    C --> D[Execute Emergency Stop]
+    D --> E[Close All Positions]
+    E --> F[Log Emergency Stop Event]
+    F --> G[Return Emergency Stop Response]
+    
+    style A fill:#e3f2fd
+    style B fill:#fff3e0
     style C fill:#fff3e0
     style D fill:#ffebee
     style E fill:#ffebee
+    style F fill:#f1f8e9
     style G fill:#e8f5e8
 ```
 
-**Emergency Response**: Liquidation warnings trigger immediate emergency rebalancing to reduce risk exposure.
+#### **15.2. List Running Strategies Workflow**
+
+**Trigger**: External API call to `GET /api/v1/live/strategies`
+
+```mermaid
+graph TD
+    A[GET /api/v1/live/strategies] --> B[Get Running Strategies]
+    B --> C[Get Strategy Status]
+    C --> D[Format Response]
+    D --> E[Return Strategies List]
+    
+    style A fill:#e3f2fd
+    style B fill:#fff3e0
+    style C fill:#fff3e0
+    style D fill:#fff3e0
+    style E fill:#e8f5e8
+```
+
+#### **15.3. Manual Rebalancing Workflow**
+
+**Trigger**: External API call to `POST /api/v1/live/rebalance`
+
+```mermaid
+graph TD
+    A[POST /api/v1/live/rebalance] --> B[Validate Strategy ID]
+    B --> C[Check Strategy Status]
+    C --> D[Trigger Rebalancing]
+    D --> E[Execute Rebalancing Logic]
+    E --> F[Return Rebalancing Response]
+    
+    style A fill:#e3f2fd
+    style B fill:#fff3e0
+    style C fill:#fff3e0
+    style D fill:#e8f5e8
+    style E fill:#e8f5e8
+    style F fill:#e8f5e8
+```
+
+### **16. Strategy Information Additional Workflows**
+
+#### **16.1. Get Merged Strategy Config Workflow**
+
+**Trigger**: External API call to `GET /api/v1/strategies/{strategy_name}/config/merged`
+
+```mermaid
+graph TD
+    A[GET /api/v1/strategies/{strategy_name}/config/merged] --> B[Validate Strategy Name]
+    B --> C[Load Base Config]
+    C --> D[Apply Query Parameters]
+    D --> E[Merge Configurations]
+    E --> F[Return Merged Config]
+    
+    style A fill:#e3f2fd
+    style B fill:#fff3e0
+    style C fill:#fff3e0
+    style D fill:#fff3e0
+    style E fill:#fff3e0
+    style F fill:#e8f5e8
+```
+
+#### **16.2. Get Strategy Mode Config Workflow**
+
+**Trigger**: External API call to `GET /api/v1/strategies/{strategy_name}/config/mode`
+
+```mermaid
+graph TD
+    A[GET /api/v1/strategies/{strategy_name}/config/mode] --> B[Validate Strategy Name]
+    B --> C[Load Mode Config]
+    C --> D[Return Mode Config]
+    
+    style A fill:#e3f2fd
+    style B fill:#fff3e0
+    style C fill:#fff3e0
+    style D fill:#e8f5e8
+```
+
+#### **16.3. List Strategy Modes Workflow**
+
+**Trigger**: External API call to `GET /api/v1/strategies/modes`
+
+```mermaid
+graph TD
+    A[GET /api/v1/strategies/modes] --> B[Load All Mode Configs]
+    B --> C[Extract Mode Information]
+    C --> D[Return Modes List]
+    
+    style A fill:#e3f2fd
+    style B fill:#fff3e0
+    style C fill:#fff3e0
+    style D fill:#e8f5e8
+```
 
 ---
 
@@ -264,25 +614,31 @@ graph TD
 
 ```mermaid
 graph TD
-    A[Time Trigger] --> B[Get Current Market Data]
-    B --> C[Position Monitor: Get Current Positions]
-    C --> D[Exposure Monitor: Calculate Exposure]
-    D --> E[Risk Monitor: Assess Risk]
-    E --> F[P&L Monitor: Calculate P&L]
-    F --> G[Strategy Manager: Make Decision]
-    G --> H[Execute Strategy Decision]
-    H --> I[Update Position Monitor]
-    I --> J[Log All Events]
-    J --> K[Wait for Next Time Trigger]
+    A[Time Trigger] --> B[Position Monitor: Get Current Positions]
+    B --> C[Exposure Monitor: Calculate Exposure]
+    C --> D[Risk Monitor: Assess Risk]
+    D --> E[Strategy Manager: Make Decision]
+    E --> F{Need Execution?}
+    F -->|Yes| G[Execute Trades via Tight Loop]
+    F -->|No| H[P&L Monitor: Calculate P&L]
+    G --> I[P&L Monitor: Calculate P&L on Final Positions]
+    H --> J[Results Store: Persist Results]
+    I --> J
+    J --> K[Log All Events]
+    K --> L[Wait for Next Time Trigger]
     
     style A fill:#e3f2fd
+    style B fill:#fff3e0
     style C fill:#fff3e0
     style D fill:#fff3e0
-    style E fill:#fff3e0
-    style F fill:#fff3e0
+    style E fill:#f3e5f5
+    style F fill:#ffebee
     style G fill:#e8f5e8
-    style H fill:#fce4ec
-    style J fill:#f1f8e9
+    style H fill:#fff3e0
+    style I fill:#fff3e0
+    style J fill:#e1f5fe
+    style K fill:#f1f8e9
+    style L fill:#e8f5e8
 ```
 
 **Business Logic Handled**:
@@ -300,28 +656,42 @@ graph TD
 ```mermaid
 graph TD
     A[Trade Flow Trigger] --> B[Execution Manager: Get Next Instruction]
-    B --> C[Execute Instruction]
-    C --> D[Wait for Completion]
-    D --> E[Update Position Monitor]
-    E --> F[Trigger Tight Loop Chain]
-    F --> G[Position Monitor → Exposure → Risk → P&L]
-    G --> H{More Instructions?}
-    H -->|Yes| B
-    H -->|No| I[Trade Flow Complete]
+    B --> C[Execution Interface Manager: Route Instruction]
+    C --> D[Venue-Specific Interface: Execute]
+    D --> E[Position Update Handler: Orchestrate Tight Loop]
+    E --> F[Position Monitor: Update Position]
+    F --> G[Reconciliation Component: Verify]
+    G --> H{Reconciliation Success?}
+    H -->|Yes| I[Move to Next Instruction]
+    H -->|No| J[Retry or Fail]
+    I --> K{More Instructions?}
+    K -->|Yes| B
+    K -->|No| L[Complete Trade Flow]
+    J --> M[Log Error]
+    M --> N[End Trade Flow]
     
     style A fill:#e3f2fd
-    style B fill:#fce4ec
-    style C fill:#fce4ec
-    style D fill:#fff3e0
+    style B fill:#e8f5e8
+    style C fill:#e8f5e8
+    style D fill:#e8f5e8
     style E fill:#fff3e0
     style F fill:#fff3e0
+    style G fill:#fff3e0
+    style H fill:#ffebee
     style I fill:#e8f5e8
+    style J fill:#ffebee
+    style K fill:#ffebee
+    style L fill:#e8f5e8
+    style M fill:#ffebee
+    style N fill:#ffebee
 ```
 
 **Key Characteristics**:
 - **Sequential Execution**: Each instruction must complete before next
-- **Tight Loop Integration**: Position updates trigger component chain
-- **No Race Conditions**: Execution manager waits for each step
+- **Execution Manager Orchestration**: Orchestrates Execution Interface Manager
+- **Venue Routing**: Execution Interface Manager routes to appropriate venue interfaces
+- **Tight Loop Integration**: Position Update Handler orchestrates reconciliation
+- **No Race Conditions**: Execution manager waits for reconciliation success
 - **Atomic Operations**: Complex multi-step operations handled as units
 
 ### **3. Reserve Management Workflow**
@@ -620,8 +990,7 @@ graph TB
     end
     
     subgraph "Logging Layer"
-        V[Event Logger] --> W[Redis Pub/Sub]
-        V --> X[Audit Trail]
+        V[Event Logger] --> X[Audit Trail]
     end
     
     A --> E
@@ -686,8 +1055,8 @@ graph TD
 
 **Environment Variables** (Deployment-Specific Configs):
 - **Purpose**: Configuration that changes per deployment environment
-- **Content**: Database URLs, Redis URLs, API ports, venue credentials, data sources
-- **Examples**: `BASIS_DATABASE__URL`, `BASIS_REDIS__URL`, `BASIS_DEV__CEX__BINANCE_SPOT_API_KEY`
+- **Content**: Database URLs, API ports, venue credentials, data sources
+- **Examples**: `BASIS_DATABASE__URL`, `BASIS_DEV__CEX__BINANCE_SPOT_API_KEY`
 - **Location**: `backend/env.unified` (overridden by deployment-specific files)
 
 **Deployment Configuration** (`deploy/.env*`):
@@ -1015,8 +1384,7 @@ graph TD
     C --> D[Create Event Record]
     D --> E[Add Position Snapshot]
     E --> F[Store Event]
-    F --> G[Publish to Redis]
-    G --> H[Audit Trail Complete]
+    F --> H[Audit Trail Complete]
     
     style A fill:#fce4ec
     style B fill:#f3e5f5
@@ -1028,7 +1396,7 @@ graph TD
 - **Input**: Execution results from all interfaces
 - **Event Creation**: Create structured event records
 - **Position Snapshots**: Include position state before/after
-- **Storage**: Store events locally and publish to Redis (live mode)
+- **Storage**: Store events locally
 
 ### **Complete Component Chain Workflow**
 
@@ -1060,52 +1428,76 @@ graph TD
 
 ## 🔄 **Tight Loop Architecture (MANDATORY)**
 
-### **Core Tight Loop - Sequential Component Chain**
+### **NEW TIGHT LOOP DEFINITION - Execution Reconciliation Pattern**
 
-**MUST execute in chain sequential triggers without exception**:
+**CRITICAL REDEFINITION**: Tight loop is now the execution reconciliation pattern that ensures position updates are verified before proceeding to the next instruction.
+
+**NEW TIGHT LOOP**:
+```mermaid
+graph TD
+    A[Execution Manager] --> B[Send Instruction]
+    B --> C[Position Monitor Updates]
+    C --> D[Verify Reconciliation]
+    D --> E{Position Matches Expected?}
+    E -->|Yes| F[Next Instruction]
+    E -->|No| G[Retry/Error]
+    F --> H[Continue Execution]
+    G --> I[Handle Error]
+    
+    style A fill:#fce4ec
+    style B fill:#fce4ec
+    style C fill:#fff3e0
+    style D fill:#fff3e0
+    style E fill:#e1f5fe
+    style F fill:#e8f5e8
+    style G fill:#ffebee
+    style H fill:#e8f5e8
+```
+
+### **Full Loop Pattern - Time-Based Workflow with Embedded Tight Loops**
+
+**FULL LOOP** = Time-Based Workflow with Embedded Tight Loops:
 
 ```mermaid
 graph TD
-    A[Market Data Update] --> B[Position Monitor]
+    A[Time Trigger 60s] --> B[Position Monitor]
     B --> C[Exposure Monitor]
     C --> D[Risk Monitor]
-    D --> E[P&L Monitor]
-    E --> F{Execution Path?}
-    F -->|Strategy Path| G[Strategy Manager]
-    F -->|Tight Loop Path| H[Execution Managers]
-    G --> H
-    H --> I[Update Positions]
-    I --> J[Event Logger]
-    J --> K[Redis Pub/Sub]
-    J --> L[Audit Trail]
+    D --> E[Strategy Decision]
+    E --> F{Need Execution?}
+    F -->|Yes| G[Instruction 1]
+    F -->|No| H[P&L Calculator]
+    G --> I[Tight Loop 1: execution_manager → execution_interface_manager → position_update_handler → position_monitor → reconciliation_component]
+    I --> J[Instruction 2]
+    J --> K[Tight Loop 2: execution_manager → execution_interface_manager → position_update_handler → position_monitor → reconciliation_component]
+    K --> L[Instruction N]
+    L --> M[Tight Loop N: execution_manager → execution_interface_manager → position_update_handler → position_monitor → reconciliation_component]
+    M --> N[P&L Calculator: Calculate P&L on Final Positions]
+    H --> O[Results Store: Persist Results]
+    N --> O
+    O --> P[Full Loop Complete]
     
     style A fill:#e3f2fd
-    style B fill:#fff3e0
-    style C fill:#fff3e0
+    style B fill:#e8f5e8
     style D fill:#fff3e0
-    style E fill:#fff3e0
-    style F fill:#e1f5fe
-    style G fill:#e8f5e8
-    style H fill:#fce4ec
-    style J fill:#f1f8e9
+    style F fill:#fff3e0
+    style O fill:#e1f5fe
+    style P fill:#e8f5e8
+    style H fill:#fff3e0
+    style I fill:#e8f5e8
 ```
 
-### **Execution Flow Patterns**
+### **DEPRECATED MONITORING CASCADE (NO LONGER USED)**
 
-#### **Pattern 1: Strategy Manager Path**
+**OLD CONCEPT** (DEPRECATED):
 ```
-position_monitor → exposure_monitor → risk_monitor → pnl_monitor → strategy → execution_managers
-```
-
-#### **Pattern 2: Tight Loop Path (Bypass Strategy)**
-```
-position_monitor → exposure_monitor → risk_monitor → pnl_monitor → execution_managers
+position_monitor → exposure_monitor → risk_monitor → pnl_monitor
 ```
 
-**When to use Pattern 2**:
-- Strategy has given sequence of execution instructions
-- Example: Wallet transfer followed by several trade blocks
-- Iteration: Update position monitor and repeat sequence until completion
+**Why Deprecated**:
+- Nothing triggers this cascade anymore
+- Components may exist independently for reporting/analytics
+- NOT part of the execution flow
 
 ### **Tight Loop Component Responsibilities**
 
@@ -1244,8 +1636,8 @@ graph TD
 ### **Code References**
 - **P&L Monitor**: `backend/src/basis_strategy_v1/core/math/pnl_calculator.py`
 - **Utility Manager**: `backend/src/basis_strategy_v1/core/utilities/utility_manager.py`
-- **Mode-Agnostic Design**: `.cursor/tasks/14_mode_agnostic_architecture_requirements.md`
-- **P&L Calculator Fix**: `.cursor/tasks/15_fix_mode_specific_pnl_calculator.md`
+- **Mode-Agnostic Design**: [docs/REFERENCE_ARCHITECTURE_CANONICAL.md](REFERENCE_ARCHITECTURE_CANONICAL.md) - Mode-Agnostic Architecture
+- **P&L Calculator Fix**: [docs/REFERENCE_ARCHITECTURE_CANONICAL.md](REFERENCE_ARCHITECTURE_CANONICAL.md) - Mode-Specific PnL Calculator
 
 ---
 
@@ -1331,10 +1723,9 @@ graph TD
     E --> F[Store in Memory]
     F --> G{Execution Mode?}
     G -->|backtest| H[Store Locally]
-    G -->|live| I[Publish to Redis]
-    I --> J[Redis Subscribers]
-    J --> K[Real-time Monitoring]
+    G -->|live| I[Store Locally]
     H --> L[Audit Trail]
+    I --> L
     K --> L
     
     style A fill:#e3f2fd
@@ -1342,7 +1733,7 @@ graph TD
     style L fill:#e8f5e8
 ```
 
-**Implementation Note**: Redis is only used in the Event Logger component for live mode. Other components use direct method calls for communication, not Redis pub/sub as described in the Redis Messaging Standard.
+**Implementation Note**: All components use direct method calls for communication. No Redis pub/sub messaging is used.
 
 ### **Event Structure**
 
@@ -1363,7 +1754,7 @@ graph TD
 
 ### **Code References**
 - **Event Logging**: `backend/src/basis_strategy_v1/core/strategies/components/event_logger.py:log_event()`
-- **Redis Publishing**: `backend/src/basis_strategy_v1/core/strategies/components/event_logger.py:_publish_event()`
+- **Event Storage**: `backend/src/basis_strategy_v1/core/strategies/components/event_logger.py:_store_event()`
 - **Position Snapshots**: `backend/src/basis_strategy_v1/core/strategies/components/position_monitor.py:get_snapshot()`
 
 ---
@@ -1466,7 +1857,7 @@ graph TD
     B --> C[Supply LST to AAVE]
     C --> D[Borrow ETH from AAVE]
     D --> E[Stake Borrowed ETH]
-    E --> F[Repeat Leverage Loop]
+    E --> F[Atomic Leveraged Position]
     F --> G[Monitor LTV]
     G --> H{Need Rebalance?}
     H -->|Yes| I[Adjust Leverage]
@@ -1760,7 +2151,7 @@ graph TD
 - YAML-based configuration system
 - Event-driven architecture with synchronous communication
 - Execution interfaces (not separate manager classes)
-- Event Logger with Redis support for live mode
+- Event Logger with local storage
 - Error code system
 - Frontend wizard components
 - Transfer manager for cross-venue operations
@@ -1775,12 +2166,12 @@ graph TD
 
 **❌ Documented but Not Implemented**:
 - YAML configuration system (modes/, venues/, share_classes/)
-- Redis pub/sub communication between all components (only Event Logger uses Redis)
+- Redis pub/sub communication between all components (removed - no Redis used)
 - Separate execution manager classes (implemented as interfaces instead)
 
 **🔄 Partially Implemented**:
 - Configuration loading uses YAML files with environment variable overrides
-- Redis messaging standard only applies to Event Logger, not all components
+- No Redis messaging used - all components use direct function calls
 
 ### **CRITICAL FIXES REQUIRED**
 
@@ -1812,11 +2203,10 @@ graph TD
    - All configuration is handled through YAML files and environment variables
    - No JSON configuration hierarchy needed
 
-2. **Implement Full Redis Messaging**:
-   - Add Redis pub/sub to all components for live mode
-   - Implement channel naming conventions as documented
-   - Add Redis state caching for all components
-   - Maintain synchronous fallback for backtest mode
+2. **Remove Redis Dependencies**:
+   - All components use direct function calls for communication
+   - No Redis pub/sub messaging needed
+   - Maintain synchronous communication for both backtest and live modes
 
 3. **Separate Execution Manager Classes**:
    - Create separate `CEXExecutionManager` and `OnChainExecutionManager` classes
@@ -1825,4 +2215,4 @@ graph TD
 
 **Status**: Workflow guide updated with comprehensive workflow documentation covering all trigger types and system activities! ✅
 
-*Last Updated: January 2025*
+*Last Updated: January 6, 2025*

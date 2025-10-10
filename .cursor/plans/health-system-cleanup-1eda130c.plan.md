@@ -9,7 +9,7 @@
 
 Create a brand new unified health manager that:
 
-- Consolidates infrastructure health (Redis, DB, data provider)
+- Consolidates infrastructure health (DB, data provider)
 - Consolidates config health (component registration)
 - Consolidates component health (200+ error codes, readiness checks)
 - Mode-aware (backtest vs live)
@@ -228,7 +228,7 @@ Update health check sections:
 Update health check sections (lines 567-613):
 
 - Simplify to 2 endpoints
-- Remove Redis requirement mentions for backtest mode
+- Remove Redis requirement mentions (Redis removed)
 
 ### 5.4 Update Config Workflow
 
@@ -241,7 +241,7 @@ Update health monitoring section (lines 211-227):
 
 ### 5.5 Update Architectural Decisions
 
-**File**: `docs/ARCHITECTURAL_DECISIONS.md`
+**File**: `docs/REFERENCE_ARCHITECTURE_CANONICAL.md`
 
 Add new decision for unified health system
 

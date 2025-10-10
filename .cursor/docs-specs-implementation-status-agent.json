@@ -8,8 +8,8 @@
     ".cursor/tasks/"
   ],
   "context_files": [
-    "docs/CANONICAL_ARCHITECTURAL_PRINCIPLES.md",
-    "docs/ARCHITECTURAL_DECISIONS.md",
+    "docs/REFERENCE_ARCHITECTURE_CANONICAL.md",
+    "docs/REFERENCE_ARCHITECTURE_CANONICAL.md",
     "docs/specs/",
     ".cursor/tasks/",
     "backend/src/basis_strategy_v1/core/strategies/components/"

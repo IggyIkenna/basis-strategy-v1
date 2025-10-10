@@ -63,7 +63,7 @@ class ConfigDataValidator:
                 self.results['config_validation']['base_config'] = {
                     'status': 'loaded',
                     'keys': list(base_config.keys()),
-                    'has_required_sections': all(key in base_config for key in ['api', 'database', 'redis', 'data'])
+                    'has_required_sections': all(key in base_config for key in ['api', 'database', 'data'])
                 }
             else:
                 self.results['config_validation']['base_config'] = {'status': 'missing'}

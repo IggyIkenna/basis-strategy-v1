@@ -1,8 +1,8 @@
 # Venue Architecture Specification
 
-**Last Reviewed**: January 2025  
-**Status**: ✅ Canonical architecture based on consolidated principles  
-**Source**: Consolidated from CANONICAL_ARCHITECTURAL_PRINCIPLES.md, MODES.md, and task specifications
+**Last Reviewed**: January 6, 2025  
+**Status**: ✅ Focused on venue-based execution architecture  
+**Scope**: Venue-specific architecture only - no duplication of other architectural content
 
 **Canonical References**:
 - **Strategy Modes**: `docs/MODES.md` - Complete strategy mode specifications and venue requirements
@@ -14,10 +14,36 @@
 
 This document defines the venue-based execution architecture for the basis-strategy-v1 platform. The architecture supports multiple execution venues (CEX, DeFi, Infrastructure) with mode-agnostic components and venue-specific execution interfaces.
 
+**Scope**: This document focuses specifically on venue-based execution architecture. For other architectural concerns, see:
+- **Component Architecture**: `docs/REFERENCE_ARCHITECTURE_CANONICAL.md`
+- **Strategy Manager**: `docs/specs/05_STRATEGY_MANAGER.md`
+- **Configuration Management**: `docs/specs/CONFIGURATION.md`
+- **Quality Gates**: `docs/QUALITY_GATES.md`
+
 ## Core Architecture Principles
 
-### 1. Venue-Based Execution Architecture (Canonical Principle #8)
-**CRITICAL REQUIREMENT**: Execution manager is venue-centric, with configuration mapping action types to venues for each strategy.
+### 1. Three-Way Venue Interaction Architecture (Canonical Principle #8)
+**CRITICAL REQUIREMENT**: Each venue has three distinct interaction types that must be handled separately.
+
+**Three-Way Venue Interaction**:
+
+**A. Market Data Feed (Public)**:
+- Backtest: Historical CSV data loaded at startup
+- Live: Real-time API connections with heartbeat tests
+- Component: DataProvider
+- No credentials needed for backtest
+
+**B. Order Handling (Private, Credentials in Live Only)**:
+- Backtest: Simulated execution, always returns success
+- Live: Real order submission, await confirmation
+- Component: Execution interfaces
+- Startup test: Verify API connection (no actual order)
+
+**C. Position Updates (Private, Credentials in Live Only)**:
+- Backtest: Position monitor updates via simulation (stateful - cannot recover after restart)
+- Live: Position monitor queries venue for actual positions (stateless - can recover after restart)
+- Component: Position Monitor
+- Part of tight loop reconciliation
 
 **Key Principles**:
 - **Action Type to Venue Mapping**: Execution manager maps action types from strategy manager to appropriate venues
@@ -156,8 +182,8 @@ configs/venues/
 
 ## Execution Interface Architecture
 
-### Base Execution Interface
-All venue interfaces inherit from `BaseExecutionInterface`:
+### Tight Loop Integration
+All execution interfaces are integrated with the tight loop reconciliation pattern:
 
 ```python
 class BaseExecutionInterface(ABC):
@@ -165,7 +191,7 @@ class BaseExecutionInterface(ABC):
     
     @abstractmethod
     async def execute_trade(self, instruction: Dict, market_data: Dict) -> Dict:
-        """Execute trade instruction."""
+        """Execute trade instruction and trigger tight loop reconciliation."""
     
     @abstractmethod
     async def get_balance(self, asset: str, venue: Optional[str] = None) -> float:
@@ -177,7 +203,14 @@ class BaseExecutionInterface(ABC):
     
     @abstractmethod
     async def execute_transfer(self, instruction: Dict, market_data: Dict) -> Dict:
-        """Execute transfer instruction."""
+        """Execute transfer instruction and trigger tight loop reconciliation."""
+    
+    async def _trigger_tight_loop(self, instruction: Dict, result: Dict):
+        """Trigger tight loop: execution → position_monitor → reconciliation."""
+        # Update position monitor
+        await self.position_monitor.update(result)
+        # Verify reconciliation
+        await self._verify_reconciliation(instruction, result)
 ```
 
 ### CEX Execution Interface
@@ -280,7 +313,7 @@ class ExecutionInterfaceFactory:
 ### ETH Leveraged Mode
 **Required Venues**:
 - **Lido or EtherFi**: ETH staking/unstaking (based on `lst_type`)
-- **AAVE V3**: LST collateral supply and ETH borrowing for leverage loops
+- **AAVE V3**: LST collateral supply and ETH borrowing for leveraged staking
 - **Morpho**: Flash loans for atomic leverage operations
 - **Alchemy**: Wallet transfers and ETH conversions
 - **Instadapp**: Atomic transaction middleware
@@ -298,7 +331,7 @@ class ExecutionInterfaceFactory:
 ### USDT Market Neutral Mode
 **Required Venues**:
 - **Lido or EtherFi**: ETH staking/unstaking (based on `lst_type`)
-- **AAVE V3**: LST collateral supply and ETH borrowing for leverage loops
+- **AAVE V3**: LST collateral supply and ETH borrowing for leveraged staking
 - **Binance**: ETH perp shorts (40% allocation)
 - **Bybit**: ETH perp shorts (30% allocation)
 - **OKX**: ETH perp shorts (30% allocation)
@@ -332,17 +365,18 @@ class ExecutionInterfaceFactory:
 ### Backtest Mode
 - **Simulated execution**: Using historical data and execution cost models
 - **No real API calls**: All operations simulated
-- **Dummy venue calls**: Execution interfaces make dummy calls to venues but don't wait for responses
-- **Immediate completion**: Mark themselves complete to trigger downstream chain of updates
+- **Tight loop reconciliation**: Simulated position updates with immediate reconciliation
 - **Data provider handles**: CSV vs DB routing for backtest mode
 - **Time-based triggers**: Only time-based execution
 - **Position monitor initialization**: Via strategy mode
+- **Stateful**: Cannot recover after restart
 
 ### Live Mode
 - **Real execution**: Using external APIs (testnet or production)
 - **Real delays**: Transaction confirmations and API rate limits
 - **Retry logic**: Exponential backoff for failed operations
-- **External interfaces**: Provide data to position monitor
+- **Tight loop reconciliation**: Real position queries with reconciliation verification
+- **Stateless**: Can recover after restart by querying venue positions
 
 ### Testnet Mode
 - **Live execution**: On testnets (Sepolia, testnet exchanges)
@@ -371,12 +405,14 @@ class ExecutionInterfaceFactory:
 - **Fail fast**: Fail fast and pass failure down codebase
 - **Immediate feedback**: Errors should be immediately visible
 - **Stop execution**: Stop tight loop on critical errors
+- **Stateful**: Cannot recover after restart
 
 ### Live Mode
 - **Retry logic**: Wait 5s, retry with exponential backoff
 - **Max attempts**: Maximum 3 attempts
 - **Error logging**: Log error and pass failure down after max attempts
 - **Continue execution**: Continue tight loop after non-critical errors
+- **Stateless**: Can recover after restart by querying venue positions
 
 ## Configuration Management
 
@@ -452,84 +488,19 @@ class ExecutionInterfaceFactory:
 - Execution interfaces expect different config structure than what's provided
 - Missing venue-specific configuration merging for execution interfaces
 
-## Required Code Restructuring
+## Venue Implementation Status
 
-### 1. Create Execution Manager
-**Priority**: HIGH - Core missing component
+**Reference**: For implementation details, see:
+- **Strategy Manager Architecture**: `docs/specs/05_STRATEGY_MANAGER.md` - Strategy manager refactor and inheritance-based modes
+- **Execution Manager**: `docs/specs/06_EXECUTION_MANAGER.md` - Centralized execution manager for venue routing
+- **Configuration Management**: `docs/specs/CONFIGURATION.md` - Environment variable integration and venue configuration
+- **Architectural Decisions**: `docs/REFERENCE_ARCHITECTURE_CANONICAL.md` - Generic vs mode-specific architecture and component design
 
-**Reference**: `docs/MODES.md` - Execution Architecture section
-
-**ARCHITECTURE**: Centralized ExecutionManager routes requests to execution type interfaces (wallet vs trade) which direct to venue client implementations (simulation for backtest vs different endpoints using env variable credentials for live).
-
-**Required Implementation**:
-```python
-class ExecutionManager:
-    """Centralized execution manager for venue-based instruction routing."""
-    
-    def __init__(self, execution_mode: str, config: Dict[str, Any]):
-        self.execution_mode = execution_mode
-        self.config = config
-        self.execution_interfaces = {}  # wallet, trade, etc.
-        self._initialize_execution_interfaces()
-    
-    def _initialize_execution_interfaces(self):
-        """Initialize execution type interfaces (wallet, trade, etc.)."""
-        # Create execution interfaces that handle different instruction types
-        # Each interface routes to appropriate venue client implementations
-        
-    async def route_instruction(self, instruction_type: str, instruction: Dict, market_data: Dict) -> Dict:
-        """Route instruction to appropriate execution type interface."""
-        # Route to execution type interface (wallet_transfer, cex_trade, smart_contract)
-        # Each interface handles venue client routing and credential management
-        
-    def _get_venue_credentials(self, venue: str, environment: str) -> Dict:
-        """Get venue credentials based on environment (dev/staging/prod)."""
-        # Route to appropriate environment-specific credentials from env.unified
-        
-    def _map_instruction_to_interface(self, instruction_type: str) -> str:
-        """Map instruction type to execution interface."""
-        # wallet_transfer -> TransferExecutionInterface
-        # cex_trade -> CEXExecutionInterface  
-        # smart_contract -> OnChainExecutionInterface
-```
-
-### 2. Fix Environment Variable Integration
-**Priority**: HIGH - Critical for live trading
-
-**SEPARATION OF CONCERNS**:
-- **BASIS_DEPLOYMENT_MODE**: Controls port/host forwarding and dependency injection (local vs docker)
-- **BASIS_ENVIRONMENT**: Controls venue credential routing (dev/staging/prod) and data sources (CSV vs DB)
-- **BASIS_EXECUTION_MODE**: Controls venue execution behavior (backtest simulation vs live execution)
-
-**Required Changes**:
-- **Update CEX execution interface** to use environment-specific variables (follow LiveDataProvider pattern)
-- **Implement BASIS_ENVIRONMENT routing** to select dev/staging/prod credentials
-- **Add separate spot/futures client initialization** for Binance with environment-specific endpoints
-- **Add testnet vs production endpoint routing** based on environment
-- **Update OnChain execution interface** to use environment-specific Alchemy credentials
-- **Add environment-specific network routing** (Sepolia for dev, Ethereum for prod)
-
-### 3. Remove Transfer Manager Complexity
-**Priority**: MEDIUM - Architectural cleanup
-
-**Required Actions**:
-- Remove `backend/src/basis_strategy_v1/core/rebalancing/transfer_manager.py`
-- Move venue routing logic to execution manager
-- Simplify strategy manager to use execution manager for all venue operations
-
-### 4. Enhance Venue Configuration
-**Priority**: MEDIUM - Configuration completeness
-
-**PURPOSE**: Venue configuration files contain **static venue data only**:
-- Order size constraints (min_order_size_usd, max_leverage)
-- Trading parameters (tick_size, min_size)
-- Protocol parameters (unstaking_period, liquidation_threshold)
-- **NOT credentials** - credentials handled by environment variables
-
-**Required Additions**:
-- Add detailed static venue parameters to YAML files
-- Add venue capability definitions (spot, futures, staking, etc.)
-- **NO environment-specific sections** - credentials handled by env variables
+### Current Implementation Gaps
+- **Missing Execution Manager**: No centralized venue-based instruction routing
+- **Environment Variable Integration**: Execution interfaces need BASIS_ENVIRONMENT routing
+- **Venue Configuration Enhancement**: Need detailed venue parameters in YAML files
+- **Transfer Manager Complexity**: Overly complex architecture needs simplification
 
 ## Quality Gates
 
@@ -568,357 +539,33 @@ class ExecutionManager:
 - [ ] Atomic operations work correctly for DeFi venues
 - [ ] Transfer operations work correctly between venues
 
-## Comprehensive Implementation Roadmap
+## Implementation References
 
-### Phase 1: Strategy Manager Refactor (CRITICAL PRIORITY)
-**Based on**: strategy_manager_refactor.md + `docs/MODES.md` - Standardized Strategy Manager Architecture section
+**For detailed implementation roadmaps, see**:
+- **Strategy Manager Refactor**: `docs/specs/05_STRATEGY_MANAGER.md` - Inheritance-based strategy modes and transfer manager removal
+- **Generic vs Mode-Specific Architecture**: `docs/REFERENCE_ARCHITECTURE_CANONICAL.md` - Component architecture and mode-agnostic design
+- **Execution Manager Implementation**: `docs/specs/06_EXECUTION_MANAGER.md` - Venue-based instruction routing
+- **Configuration Management**: `docs/specs/CONFIGURATION.md` - Environment variable integration and venue configuration
+- **Quality Gate Implementation**: `docs/QUALITY_GATES.md` - Venue-specific quality checks and validation
+- **Dust Management System**: `docs/specs/05_STRATEGY_MANAGER.md` - Dust detection and conversion
+- **Reserve Management System**: `docs/specs/05_STRATEGY_MANAGER.md` - Reserve monitoring and withdrawal handling
 
-1. **Remove Transfer Manager Complexity**:
-   - Delete `backend/src/basis_strategy_v1/core/rebalancing/transfer_manager.py` (1068 lines)
-   - Remove all references to transfer manager in strategy manager
+## Codebase Analysis References
 
-2. **Implement Inheritance-Based Strategy Modes**:
-   - Create `BaseStrategyManager` with standardized wrapper actions
-   - Implement 5 wrapper actions: `entry_full`, `entry_partial`, `exit_full`, `exit_partial`, `sell_dust`
-   - Create strategy-specific implementations: `BTCBasisStrategyManager`, `ETHLeveragedStrategyManager`, etc.
-   - **Reference**: `docs/MODES.md` - Standardized Strategy Manager Architecture section
-
-3. **Create Strategy Factory**:
-   - Implement strategy instance creation based on mode
-   - Add strategy mode detection and instantiation
-
-4. **Implement Equity Tracking System**:
-   - Add comprehensive equity tracking in share class currency
-   - Track assets minus debt (excluding futures positions)
-   - Include AAVE aTokens, LST tokens, CEX balances, on-chain wallet balances
-
-### Phase 2: Generic vs Mode-Specific Architecture Fix (CRITICAL PRIORITY)
-**Based on**: 18_generic_vs_mode_specific_architecture.md
-
-1. **Fix Exposure Monitor**:
-   - Remove mode-specific logic (`if mode == 'btc_basis'`)
-   - Implement config-driven parameters (`asset`, `share_class`)
-   - Make component truly mode-agnostic
-
-2. **Fix P&L Monitor**:
-   - Ensure generic attribution logic across all modes
-   - Add share_class awareness for reporting currency
-   - Remove any mode-specific P&L calculation logic
-
-3. **Validate Generic Components**:
-   - Position Monitor: ✅ Already correctly implemented as generic
-   - Risk Monitor: ✅ Already correctly implemented with config-driven parameters
-   - Utility Manager: Ensure generic utility methods
-
-### Phase 3: Execution Manager Implementation (HIGH PRIORITY)
-**Based on**: execution_venue_integration.md, 19_venue_based_execution_architecture.md
-
-1. **Create ExecutionManager class**:
-   - Implement venue-based instruction routing
-   - Add environment-specific credential routing
-   - Integrate with existing execution interfaces
-   - Add venue capability detection
-
-2. **Fix Environment Variable Integration**:
-   - Update CEX execution interface to use environment-specific variables
-   - Implement proper credential routing based on `BASIS_ENVIRONMENT`
-   - Add separate spot/futures client initialization for Binance
-   - Add testnet vs production endpoint routing
-
-3. **Implement Venue-Based Routing**:
-   - Map action types from strategy manager to appropriate venues
-   - Handle special cases like weETH/wstETH not available on Binance spot
-   - Add venue selection logic based on strategy configuration
-
-### Phase 4: Mode-Agnostic Architecture Implementation (HIGH PRIORITY)
-**Based on**: 14_mode_agnostic_architecture_requirements.md
-
-1. **Ensure Mode-Agnostic Components**:
-   - Position Monitor: Generic monitoring tool ✅
-   - P&L Monitor: Must work for both backtest and live modes
-   - Exposure Monitor: Generic exposure calculation
-   - Risk Monitor: Generic risk assessment
-   - Utility Manager: Generic utility methods
-
-2. **Fix Mode-Specific Components**:
-   - Strategy Manager: Strategy mode specific by nature ✅
-   - Data Subscriptions: Heavily strategy mode dependent
-   - Execution Interfaces: Strategy mode aware for data subscriptions
-
-### Phase 5: Venue Configuration Enhancement (MEDIUM PRIORITY)
-1. **Enhance Venue Configuration Files**:
-   - Add detailed venue parameters to existing YAML files
-   - Add environment-specific configuration sections
-   - Add venue capability definitions (spot, futures, staking, etc.)
-   - Add missing Instadapp configuration
-
-2. **Update Configuration Loading**:
-   - Implement venue configuration merging in config manager
-   - Add venue-specific configuration validation
-   - Test configuration loading for all strategy modes
-
-### Phase 6: Execution Interface Enhancement (MEDIUM PRIORITY)
-1. **Align Execution Interfaces**:
-   - Implement missing market data integration features
-   - Add atomic operation support for DeFi venues
-   - Enhance error handling and retry logic
-   - Add proper venue client initialization
-
-2. **Data Provider Integration**:
-   - Complete live data provider venue API integration
-   - Add venue-specific data loading to historical data provider
-   - Implement market data snapshot generation for execution decisions
-
-### Phase 7: Quality Gate Implementation (HIGH PRIORITY)
-1. **Backtest Mode Quality Gates**:
-   - Implement data provider initialization checks
-   - Add venue data availability validation
-   - Test data synchronization across venues
-
-2. **Live Mode Quality Gates**:
-   - Implement venue API health checks
-   - Add credential validation
-   - Test endpoint connectivity
-
-3. **Integration Testing**:
-   - Run venue integration quality gates
-   - Run configuration quality gates
-   - Run execution quality gates
-   - Fix any issues found during validation
-
-### Phase 8: Dust Management System (MEDIUM PRIORITY)
-**Based on**: dust_management_system task
-
-1. **Implement Dust Detection**:
-   - Add configurable threshold (`dust_delta`)
-   - Detect non-share-class tokens (EIGEN, ETHFI rewards)
-   - Priority over normal rebalancing
-
-2. **Implement Dust Conversion**:
-   - Automatic conversion to share class currency
-   - Integration with strategy manager
-   - Handle weETH staking rewards
-
-### Phase 9: Reserve Management System (MEDIUM PRIORITY)
-**Based on**: reserve_management_system task
-
-1. **Implement Reserve Monitoring**:
-   - Monitor reserves against `reserve_ratio` config parameter
-   - Publish reserve_low events for downstream consumers
-   - Handle fast vs slow withdrawal execution modes
-
-2. **Implement Withdrawal Handling**:
-   - All strategies unwind 1:1 with withdrawals
-   - Fast unwinding using available reserves
-   - Slow unwinding requiring unwinding locked positions
-
-## Comprehensive Codebase Analysis Against Canonical Requirements
-
-### 1. Strategy Manager Refactor Requirements ⚠️
-**Status**: PARTIALLY IMPLEMENTED - Needs major refactoring per strategy_manager_refactor.md
-
-**Current Issues**:
-- **Complex Rebalancing System**: Still uses complex transfer_manager.py (1068 lines) that should be removed
-- **Missing Inheritance-Based Strategy Modes**: No standardized wrapper actions (entry_full, entry_partial, exit_full, exit_partial, sell_dust)
-- **No Strategy Factory**: Missing strategy instance creation based on mode
-- **Mode-Specific Logic**: Has mode checks that should be config-driven parameters
-
-**Required Implementation** (per strategy_manager_refactor.md):
-```python
-class BaseStrategyManager:
-    """Base strategy manager with standardized wrapper actions."""
-    
-    def __init__(self, config: Dict, mode: str):
-        self.config = config
-        self.mode = mode
-        self.share_class = config.get('share_class')
-        self.asset = config.get('asset')
-    
-    async def entry_full(self, equity: float, market_data: Dict) -> List[InstructionBlock]:
-        """Enter full position (initial setup or large deposits)."""
-        pass
-    
-    async def entry_partial(self, equity: float, market_data: Dict) -> List[InstructionBlock]:
-        """Scale up position (small deposits or PnL gains)."""
-        pass
-    
-    async def exit_full(self, equity: float, market_data: Dict) -> List[InstructionBlock]:
-        """Exit entire position (withdrawals or risk override)."""
-        pass
-    
-    async def exit_partial(self, equity: float, market_data: Dict) -> List[InstructionBlock]:
-        """Scale down position (small withdrawals or risk reduction)."""
-        pass
-    
-    async def sell_dust(self, equity: float, market_data: Dict) -> List[InstructionBlock]:
-        """Convert non-share-class tokens to share class currency."""
-        pass
-
-class BTCBasisStrategyManager(BaseStrategyManager):
-    """BTC Basis strategy implementation."""
-    pass
-
-class ETHLeveragedStrategyManager(BaseStrategyManager):
-    """ETH Leveraged strategy implementation."""
-    pass
-```
-
-### 2. Generic vs Mode-Specific Architecture Requirements ⚠️
-**Status**: MAJOR VIOLATIONS - Components have incorrect mode-specific logic
-
-**Critical Violations**:
-
-#### Position Monitor ❌
-**Current**: Generic monitoring tool ✅
-**Issue**: Correctly implemented as generic
-
-#### Exposure Monitor ❌
-**Current**: Uses mode-specific logic instead of config-driven parameters
-```python
-# ❌ WRONG: Mode-specific logic
-mode = self.config.get('mode')
-if mode == 'btc_basis':
-    return self._calculate_btc_exposure()
-```
-**Required**: Config-driven parameters
-```python
-# ✅ CORRECT: Config-driven parameters
-asset = self.config.get('asset')  # Which deltas to monitor
-share_class = self.config.get('share_class')  # Reporting currency
-```
-
-#### P&L Monitor ❌
-**Current**: Mode-agnostic but missing share_class awareness
-**Required**: Generic attribution logic that only cares about share_class for reporting
-
-#### Risk Monitor ❌
-**Current**: Uses mode-specific parameters correctly ✅
-**Issue**: Correctly implemented with config-driven parameters
-
-#### Strategy Manager ❌
-**Current**: Has mode-specific logic but wrong implementation
-**Required**: Inheritance-based strategy modes with standardized wrapper actions
-
-### 3. Environment Variable Integration Gap ⚠️
-**Impact**: Live trading will fail due to incorrect credential routing
-
-**Current Implementation Issues**:
-- **Live Data Provider**: ✅ Correctly implements environment variable routing using `BASIS_DEV__CEX__BINANCE_SPOT_API_KEY` pattern
-- **Execution Interfaces**: ❌ Use hardcoded config keys instead of environment-specific routing
-- **Missing BASIS_ENVIRONMENT Routing**: ❌ No logic to route based on `BASIS_ENVIRONMENT` (dev/staging/prod) to select appropriate credentials
-- **Backtest Mode Misunderstanding**: ❌ Execution interfaces should NOT require credentials or heartbeat tests in backtest mode
-
-**Required Implementation** (per architecture_updates.md):
-```python
-def _get_venue_credentials(self, venue: str, environment: str, execution_mode: str) -> Dict:
-    """Route to appropriate environment-specific credentials based on BASIS_ENVIRONMENT and BASIS_EXECUTION_MODE."""
-    if execution_mode == 'backtest':
-        # Backtest mode: Execution interfaces exist for CODE ALIGNMENT only
-        # NO credentials needed - NO heartbeat tests - NO real API calls
-        # Data source (CSV vs DB) is handled by DATA PROVIDER, not venue execution manager
-        # Venues are simulated based on data loaded by data provider
-        return {
-            'simulation_mode': True,
-            'no_credentials_required': True,
-            'no_heartbeat_tests': True,
-            'data_source_handled_by_data_provider': True
-        }
-    elif execution_mode == 'live':
-        # Live mode: Use real APIs (testnet for dev, mainnet for prod)
-        if environment == 'dev':
-            return {
-                'api_key': os.getenv(f'BASIS_DEV__CEX__{venue.upper()}_API_KEY'),
-                'secret': os.getenv(f'BASIS_DEV__CEX__{venue.upper()}_SECRET'),
-                'testnet': True,
-                'network': 'sepolia',
-                'heartbeat_tests_required': True
-            }
-        elif environment == 'staging':
-            return {
-                'api_key': os.getenv(f'BASIS_STAGING__CEX__{venue.upper()}_API_KEY'),
-                'secret': os.getenv(f'BASIS_STAGING__CEX__{venue.upper()}_SECRET'),
-                'testnet': True,
-                'network': 'sepolia',
-                'heartbeat_tests_required': True
-            }
-        elif environment == 'production':
-            return {
-                'api_key': os.getenv(f'BASIS_PROD__CEX__{venue.upper()}_API_KEY'),
-                'secret': os.getenv(f'BASIS_PROD__CEX__{venue.upper()}_SECRET'),
-                'testnet': False,
-                'network': 'ethereum',
-                'heartbeat_tests_required': True
-            }
-```
-
-### 4. Missing Execution Manager ⚠️
-**Impact**: Strategy manager cannot properly route instructions to venues
-**Solution**: Create centralized execution manager with venue-based routing
-
-### 5. Transfer Manager Complexity ⚠️
-**Impact**: Overly complex architecture that doesn't align with canonical principles
-**Solution**: Remove transfer manager and move logic to execution manager
-
-### 6. Incomplete Venue Client Initialization ⚠️
-**Impact**: Missing separate spot/futures clients and environment-specific configuration
-**Solution**: Enhance venue client initialization with proper environment routing
-
-## Summary of Critical Issues
-
-### 🚨 **CRITICAL PRIORITY** (Must Fix First):
-1. **Strategy Manager Refactor**: Remove transfer_manager.py, implement inheritance-based strategy modes
-2. **Generic vs Mode-Specific Architecture**: Fix Exposure Monitor and P&L Monitor to use config-driven parameters
-3. **Environment Variable Integration**: Fix execution interfaces to use BASIS_ENVIRONMENT routing
-4. **Execution Manager**: Create centralized venue-based instruction routing
-
-### ⚠️ **HIGH PRIORITY**:
-5. **Mode-Agnostic Architecture**: Ensure components work for both backtest and live modes
-6. **Venue-Based Routing**: Implement proper venue selection logic
-7. **Quality Gates**: Implement backtest and live mode validation
-
-### 📋 **MEDIUM PRIORITY**:
-8. **Venue Configuration Enhancement**: Add detailed parameters and environment-specific sections
-9. **Execution Interface Enhancement**: Add missing market data integration and atomic operations
-10. **Dust Management System**: Implement dust detection and conversion
-11. **Reserve Management System**: Implement reserve monitoring and withdrawal handling
-
-## Validation Checklist
-
-### Architecture Compliance
-- [ ] Strategy manager uses inheritance-based strategy modes with standardized wrapper actions
-- [ ] Transfer manager complexity removed (1068 lines deleted)
-- [ ] Execution manager routes instructions from strategy manager to venues
-- [ ] Environment variables properly routed based on BASIS_ENVIRONMENT
-- [ ] Generic components use config-driven parameters, not mode-specific logic
-- [ ] Mode-specific components are naturally strategy mode specific
-
-### Component Quality
-- [ ] Position Monitor: Generic monitoring tool ✅
-- [ ] Exposure Monitor: Uses config-driven parameters (asset, share_class)
-- [ ] P&L Monitor: Generic attribution logic with share_class awareness
-- [ ] Risk Monitor: Generic risk assessment with config-driven parameters ✅
-- [ ] Strategy Manager: Inheritance-based with standardized wrapper actions
-- [ ] Execution Manager: Venue-based instruction routing
-
-### Environment Integration
-- [ ] CEX execution interface uses environment-specific variables
-- [ ] OnChain execution interface uses environment-specific credentials
-- [ ] Testnet vs production endpoint routing implemented
-- [ ] Sepolia for dev vs Ethereum for prod network routing
-
-### Quality Gates
-- [ ] Backtest mode: Data provider initialization checks
-- [ ] Live mode: Venue API health checks and credential validation
-- [ ] Integration testing: All quality gates pass
+**For detailed codebase analysis, see**:
+- **Strategy Manager Analysis**: `docs/specs/05_STRATEGY_MANAGER.md` - Current implementation gaps and refactor requirements
+- **Component Architecture Analysis**: `docs/REFERENCE_ARCHITECTURE_CANONICAL.md` - Generic vs mode-specific architecture violations
+- **Environment Integration Analysis**: `docs/specs/CONFIGURATION.md` - Environment variable integration gaps
+- **Execution Manager Analysis**: `docs/specs/06_EXECUTION_MANAGER.md` - Missing execution manager and venue routing
+- **Quality Gate Analysis**: `docs/QUALITY_GATES.md` - Venue-specific quality gate requirements
 
 ---
 
-**Status**: Document completed with comprehensive analysis of current state and required restructuring.
+**Status**: Document focused on venue-based execution architecture with cross-references to other architectural documents.
 
 **Next Steps**: 
-1. **CRITICAL**: Implement Strategy Manager refactor (remove transfer_manager.py, add inheritance-based modes)
-2. **CRITICAL**: Fix Generic vs Mode-Specific architecture violations
-3. **CRITICAL**: Fix environment variable integration in execution interfaces
-4. **CRITICAL**: Create ExecutionManager class for venue-based routing
-5. **HIGH**: Implement mode-agnostic architecture requirements
-6. **HIGH**: Add quality gates for backtest and live mode validation
+1. **CRITICAL**: Implement Execution Manager for venue-based instruction routing
+2. **CRITICAL**: Fix environment variable integration in execution interfaces
+3. **CRITICAL**: Implement tight loop reconciliation pattern in execution interfaces
+4. **HIGH**: Add quality gates for backtest and live mode validation
+5. **MEDIUM**: Enhance venue configuration files with detailed parameters

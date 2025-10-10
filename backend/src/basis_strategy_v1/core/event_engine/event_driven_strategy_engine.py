@@ -1,7 +1,7 @@
 """
 New Event-Driven Strategy Engine using the new component architecture.
 
-TODO-REFACTOR: SINGLETON PATTERN VIOLATION - 13_singleton_pattern_requirements.md
+TODO-REFACTOR: SINGLETON PATTERN VIOLATION - See docs/REFERENCE_ARCHITECTURE_CANONICAL.md
 ISSUE: This component may violate singleton pattern requirements:
 
 1. SINGLETON PATTERN REQUIREMENTS:
@@ -15,19 +15,19 @@ ISSUE: This component may violate singleton pattern requirements:
    - Check for multiple instantiation issues
 
 3. CANONICAL SOURCE:
-   - .cursor/tasks/13_singleton_pattern_requirements.md
+   - docs/REFERENCE_ARCHITECTURE_CANONICAL.md - Singleton Pattern
    - All components must be single instances
 
 This engine wires together all 9 components:
-- Position Monitor (Agent A)
-- Event Logger (Agent A) 
-- Exposure Monitor (Agent A)
-- Risk Monitor (Agent A)
-- P&L Calculator (Agent A)
-- Strategy Manager (Agent B)
-- CEX Execution Manager (Agent B)
-- OnChain Execution Manager (Agent B)
-- Data Provider (Agent B)
+- Position Monitor (Core Component)
+- Event Logger (Core Component) 
+- Exposure Monitor (Core Component)
+- Risk Monitor (Core Component)
+- P&L Calculator (Core Component)
+- Strategy Manager (Execution Component)
+- CEX Execution Manager (Execution Component)
+- OnChain Execution Manager (Execution Component)
+- Data Provider (Execution Component)
 """
 
 import asyncio
@@ -37,6 +37,8 @@ from typing import Dict, List, Optional, Any
 from datetime import datetime, timedelta
 import json
 from pathlib import Path
+import os
+import uuid
 
 # Import the new components
 from ..strategies.components.position_monitor import PositionMonitor
@@ -48,6 +50,7 @@ from ..strategies.components.strategy_manager import StrategyManager
 from ..strategies.components.position_update_handler import PositionUpdateHandler
 # Legacy execution managers removed - using new execution interfaces instead
 from ..interfaces.execution_interface_factory import ExecutionInterfaceFactory
+from ...infrastructure.persistence.async_results_store import AsyncResultsStore
 from ..health import (
     system_health_aggregator,
     PositionMonitorHealthChecker,
@@ -123,6 +126,10 @@ class EventDrivenStrategyEngine:
         # Initialize global market data utils with data provider
         from ..utils.market_data_utils import set_global_data_provider
         set_global_data_provider(data_provider)
+        
+        # Initialize async results store
+        results_dir = os.getenv('BASIS_RESULTS_DIR', 'results')
+        self.results_store = AsyncResultsStore(results_dir, execution_mode)
         
         # Validate required parameters (FAIL FAST)
         if not self.mode:
@@ -433,13 +440,14 @@ class EventDrivenStrategyEngine:
             
             logger.info(f"Data loaded successfully for backtest")
             
-            # Initialize results tracking
+            # Generate unique request ID for this backtest
+            request_id = str(uuid.uuid4())
+            
+            # Start async results store
+            await self.results_store.start()
+            
+            # Initialize results tracking (minimal for async storage)
             results = {
-                'pnl_history': [],
-                'events': [],
-                'positions': [],
-                'exposures': [],
-                'risks': [],
                 'config': self.config,
                 'start_date': start_date,
                 'end_date': end_date
@@ -460,22 +468,32 @@ class EventDrivenStrategyEngine:
                 try:
                     # Get market data snapshot for this timestamp
                     market_data = self.data_provider.get_market_data_snapshot(timestamp)
-                    await self._process_timestep(timestamp, market_data, results)
+                    await self._process_timestep(timestamp, market_data, request_id)
                 except Exception as e:
                     logger.warning(f"Skipping timestamp {timestamp} due to missing data: {e}")
                     continue
             
-            # Calculate final results
+            # Save final results and event log
             final_results = await self._calculate_final_results(results)
+            await self.results_store.save_final_result(request_id, final_results)
+            await self.results_store.save_event_log(request_id, self.event_logger.get_all_events())
+            
+            # Stop async results store
+            await self.results_store.stop()
             
             logger.info("Backtest completed successfully")
             return final_results
             
         except Exception as e:
             logger.error(f"Backtest failed: {e}")
+            # Ensure results store is stopped even on error
+            try:
+                await self.results_store.stop()
+            except Exception as stop_error:
+                logger.error(f"Error stopping results store: {stop_error}")
             raise
     
-    async def _process_timestep(self, timestamp: pd.Timestamp, market_data: Dict, results: Dict):
+    async def _process_timestep(self, timestamp: pd.Timestamp, market_data: Dict, request_id: str):
         """
         Process a single timestep in the backtest - CORE EVENT BEHAVIOR.
         
@@ -581,29 +599,18 @@ class EventDrivenStrategyEngine:
                 }
             )
             
-            # 8. Store results
-            results['pnl_history'].append({
-                'timestamp': timestamp,
-                'pnl': pnl
-            })
-            results['exposures'].append({
-                'timestamp': timestamp,
-                'exposure': exposure
-            })
-            results['risks'].append({
-                'timestamp': timestamp,
-                'risk': risk_assessment
-            })
-            results['events'].append({
-                'timestamp': timestamp,
-                'event_type': 'TIMESTEP_PROCESSED',
-                'data': {
+            # 8. Store results asynchronously
+            await self.results_store.save_timestep_result(
+                request_id=request_id,
+                timestamp=timestamp,
+                data={
+                    'pnl': pnl,
                     'exposure': exposure,
                     'risk': risk_assessment,
-                    'pnl': pnl,
-                    'decision': strategy_decision
+                    'decision': strategy_decision,
+                    'event_type': 'TIMESTEP_PROCESSED'
                 }
-            })
+            )
             
         except Exception as e:
             logger.error(f"Error processing timestep {timestamp}: {e}")
@@ -640,17 +647,14 @@ class EventDrivenStrategyEngine:
     async def _calculate_final_results(self, results: Dict) -> Dict[str, Any]:
         """Calculate final backtest results."""
         
+        # Get current position and calculate final P&L
+        current_position = self.position_monitor.get_snapshot(self.current_timestamp)
+        final_pnl = self.pnl_calculator.calculate_pnl(self.current_timestamp, current_position)
+        
         # Calculate performance metrics
-        pnl_history = results['pnl_history']
-        if not pnl_history:
-            return {'error': 'No P&L data available'}
-        
-        initial_pnl = pnl_history[0]['pnl']['balance_based']['pnl_cumulative']
-        final_pnl = pnl_history[-1]['pnl']['balance_based']['pnl_cumulative']
-        total_return = final_pnl - initial_pnl
-        
-        # Get initial capital from config
-        initial_capital = self.config.get('initial_capital', self.config.get('backtest', {}).get('initial_capital', 100000))
+        initial_capital = self.initial_capital
+        final_value = initial_capital + final_pnl['balance_based']['pnl_cumulative']
+        total_return = final_pnl['balance_based']['pnl_cumulative']
         total_return_pct = (total_return / initial_capital) * 100
         
         # Get all events
@@ -661,12 +665,11 @@ class EventDrivenStrategyEngine:
                 'total_return': total_return,
                 'total_return_pct': total_return_pct,
                 'initial_capital': initial_capital,
-                'final_value': initial_capital + total_return
+                'final_value': final_value
             },
-            'pnl_history': pnl_history,
+            'final_pnl': final_pnl,
+            'final_position': current_position,
             'events': all_events,
-            'exposures': results['exposures'],
-            'risks': results['risks'],
             'config': self.config,
             'start_date': results['start_date'],
             'end_date': results['end_date'],
@@ -674,7 +677,7 @@ class EventDrivenStrategyEngine:
             'share_class': self.share_class
         }
         
-        logger.info(f"Event Engine: Final results calculated - total_return: {total_return}, final_value: {initial_capital + total_return}, pnl_history_length: {len(pnl_history)}")
+        logger.info(f"Event Engine: Final results calculated - total_return: {total_return}, final_value: {final_value}")
         return final_results
     
     async def run_live(self):

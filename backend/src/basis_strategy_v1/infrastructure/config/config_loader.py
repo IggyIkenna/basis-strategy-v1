@@ -1,7 +1,7 @@
 """
 Centralized Configuration Loader
 
-TODO-REFACTOR: CONFIGURATION LOADING ARCHITECTURE VIOLATION - 08_configuration_architecture_guide.md
+TODO-REFACTOR: CONFIGURATION LOADING ARCHITECTURE VIOLATION - See docs/REFERENCE_ARCHITECTURE_CANONICAL.md
 ISSUE: This component may violate configuration loading architecture requirements:
 
 1. CONFIGURATION ARCHITECTURE REQUIREMENTS:
@@ -17,7 +17,7 @@ ISSUE: This component may violate configuration loading architecture requirement
    - Ensure fail-fast validation
 
 3. CANONICAL SOURCE:
-   - .cursor/tasks/08_configuration_architecture_guide.md
+   - docs/REFERENCE_ARCHITECTURE_CANONICAL.md - Configuration Architecture
    - YAML-only configuration system
 
 Loads all configuration from a single place and ensures consistency.
@@ -112,7 +112,7 @@ class ConfigLoader:
         # Current Issue: Config loader still loads JSON files that should be removed per separation of concerns
         # Required Changes:
         #   1. Remove JSON configuration loading (default.json, {environment}.json, local.json)
-        #   2. Database/Redis configuration should be in env.unified (deployment-specific)
+        #   2. Database configuration should be in env.unified (deployment-specific)
         #   3. Strategy/venue configuration should be in YAML files (static configs)
         #   4. Environment variables should handle deployment-specific overrides
         # Reference: docs/specs/CONFIGURATION.md - Separation of Concerns section
@@ -326,7 +326,7 @@ class ConfigLoader:
         
         # TODO-REFACTOR: STATE CLEARING - 16_clean_component_architecture_requirements.md
         # ISSUE: Cache clearing may indicate architectural problem
-        # Canonical: .cursor/tasks/16_clean_component_architecture_requirements.md
+        # Canonical: docs/REFERENCE_ARCHITECTURE_CANONICAL.md - Clean Component Architecture
         # Fix: Design components to be naturally clean without needing state clearing
         # Status: PENDING
         self._config_cache.clear()

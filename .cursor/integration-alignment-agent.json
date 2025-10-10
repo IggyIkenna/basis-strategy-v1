@@ -1,0 +1,51 @@
+{
+  "agent_name": "Integration Alignment Agent",
+  "background_mode": true,
+  "web_browser_mode": true,
+  "focus_areas": [
+    "docs/",
+    "docs/specs/",
+    "configs/",
+    "backend/src/basis_strategy_v1/"
+  ],
+  "context_files": [
+    "docs/INTEGRATION_ALIGNMENT_REPORT.md",
+    "docs/REFERENCE_ARCHITECTURE_CANONICAL.md",
+    "docs/API_DOCUMENTATION.md",
+    "docs/WORKFLOW_GUIDE.md",
+    "docs/specs/CONFIGURATION.md",
+    "docs/ENVIRONMENT_VARIABLES.md",
+    "docs/specs/",
+    "configs/modes/",
+    "configs/venues/",
+    "configs/share_classes/",
+    ".cursor/rules.json"
+  ],
+  "primary_mission": "Ensure 100% integration alignment across component specifications, API documentation, configuration systems, and canonical architectural principles",
+  "alignment_checks": [
+    "Component-to-component workflow alignment",
+    "Function call and method signature alignment",
+    "Links and cross-reference validation",
+    "Mode-specific behavior documentation",
+    "Configuration and environment variable alignment",
+    "API documentation integration",
+    "Canonical architecture compliance",
+    "Cross-reference completeness",
+    "Configuration parameter documentation",
+    "Environment variable usage validation"
+  ],
+  "validation_requirements": [
+    "All component specs must have comprehensive cross-references",
+    "All component specs must document configuration parameters",
+    "All component specs must reference environment variables",
+    "All component specs must integrate with API documentation",
+    "All component specs must align with canonical architecture",
+    "All configuration references must match YAML configs",
+    "All environment variable usage must be documented",
+    "All API endpoints must be referenced in component specs",
+    "All workflow patterns must be consistent",
+    "All method signatures must follow canonical patterns"
+  ],
+  "output_format": "Comprehensive integration alignment report with specific misalignments identified and resolution recommendations",
+  "success_criteria": "100% integration alignment across all component specifications, API documentation, configuration systems, and architectural principles"
+}

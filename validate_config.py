@@ -24,13 +24,7 @@ def validate_environment():
         if not Path(dir_path).exists():
             issues.append(f"Missing directory: {dir_path}")
     
-    # Check Redis connection
-    try:
-        import redis
-        r = redis.Redis(host='localhost', port=6379, db=0)
-        r.ping()
-    except Exception as e:
-        issues.append(f"Redis connection failed: {e}")
+    # Redis removed - using in-memory cache only
     
     # Check git configuration
     try:

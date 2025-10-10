@@ -1,6 +1,6 @@
 """New Backtest Service using the refactored components.
 
-This service coordinates the new Agent A and Agent B components to run backtests.
+This service coordinates the core components to run backtests.
 """
 
 from decimal import Decimal

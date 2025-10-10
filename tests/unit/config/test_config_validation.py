@@ -84,8 +84,7 @@ class TestConfigValidator:
             default_config = {
                 "api": {"port": 8000},
                 "database": {"type": "sqlite"},
-                "redis": {"enabled": True},
-                "cache": {"type": "redis"}
+                "cache": {"type": "in_memory"}
             }
             
             with open(configs_dir / "default.json", 'w') as f:
@@ -252,7 +251,7 @@ class TestConfigLoader:
                 
                 override = {
                     'api': {'port': 8001},
-                    'cache': {'type': 'redis'}
+                    'cache': {'type': 'in_memory'}
                 }
                 
                 result = loader._deep_merge(base, override)
@@ -260,7 +259,7 @@ class TestConfigLoader:
                 assert result['api']['port'] == 8001
                 assert result['api']['host'] == 'localhost'
                 assert result['database']['type'] == 'sqlite'
-                assert result['cache']['type'] == 'redis'
+                assert result['cache']['type'] == 'in_memory'
 
 
 class TestConfigHealthChecker:
@@ -468,7 +467,7 @@ class TestComprehensiveConfigLoading:
         assert isinstance(base_config, dict)
         
         # Check required sections
-        required_sections = ['environment', 'api', 'database', 'redis', 'data', 'execution']
+        required_sections = ['environment', 'api', 'database', 'data', 'execution']
         for section in required_sections:
             assert section in base_config, f"Missing required section: {section}"
         

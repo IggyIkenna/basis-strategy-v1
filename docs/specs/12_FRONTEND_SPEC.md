@@ -6,17 +6,17 @@
 **Technology**: React + TypeScript + Tailwind CSS + shadcn/ui  
 **Location**: `frontend/src/`  
 **Status**: 🔧 **PARTIALLY IMPLEMENTED** - Wizard components complete, results components missing  
-**Last Reviewed**: October 8, 2025  
-**Status**: ✅ Aligned with canonical sources (.cursor/tasks/ + MODES.md)
+**Last Reviewed**: October 9, 2025  
+**Status**: ✅ Aligned with canonical architectural principles
 
 ---
 
 ## 📚 **Canonical Sources**
 
 **This specification aligns with canonical architectural principles**:
-- **Architectural Principles**: [CANONICAL_ARCHITECTURAL_PRINCIPLES.md](../CANONICAL_ARCHITECTURAL_PRINCIPLES.md) - Consolidated from all .cursor/tasks/
+- **Architectural Principles**: [REFERENCE_ARCHITECTURE_CANONICAL.md](../REFERENCE_ARCHITECTURE_CANONICAL.md) <!-- Link is valid --> - Canonical architectural principles
 - **Strategy Specifications**: [MODES.md](MODES.md) - Canonical strategy mode definitions
-- **Task Specifications**: `.cursor/tasks/` - Individual task specifications
+- **Component Specifications**: [specs/](specs/) - Detailed component implementation guides
 
 ---
 
@@ -210,10 +210,6 @@ const modePerformance = {
               disabled
               tooltip="USDT strategies only support base rewards" />
       
-      <Checkbox name="use_flash_loan"
-                label="Use Atomic Flash Loan"
-                default={true}
-                tooltip="Saves ~$150 gas vs sequential (~$200)" />
       
       <Slider name="target_ltv"
               label="Target LTV"
@@ -222,6 +218,15 @@ const modePerformance = {
               default={0.91}
               step={0.01}
               marks={{0.91: 'Recommended', 0.93: 'Max'}} />
+      
+      <Slider name="position_deviation_threshold"
+              label="Position Deviation Threshold"
+              min={0.01}
+              max={0.1}
+              default={0.02}
+              step={0.01}
+              marks={{0.02: 'Default', 0.05: 'Conservative'}}
+              tooltip="Minimum deviation from target position to trigger rebalancing" />
       
       <HedgeVenueSelector 
         venues={['binance', 'bybit', 'okx']}
@@ -463,7 +468,7 @@ The automatic health monitoring system ensures backend availability for the fron
 **Health Check Configuration**:
 - **Interval**: Configurable via `HEALTH_CHECK_INTERVAL` (default: 30s)
 - **Endpoint**: `/health` (fast) or `/health/detailed` (comprehensive)
-- **Restart Behavior**: On unhealthy backend, all services restart (backend + frontend + Redis)
+- **Restart Behavior**: On unhealthy backend, all services restart (backend + frontend + database)
 
 **Frontend Impact**:
 - **During Restart**: Brief service interruption (~5-10 seconds)
@@ -526,6 +531,50 @@ async function callAPI(endpoint: string, retries = 3) {
 3. **Shared Components**: Button, Input, Select, etc. (using inline styles currently)
 4. **API Service**: No centralized API client
 5. **Type Definitions**: No TypeScript interfaces for results/events
+
+---
+
+## 🔧 **Current Implementation Status**
+
+**Overall Completion**: 50% (Wizard components complete, results components missing)
+
+### **Core Functionality Status**
+- ✅ **Working**: Wizard flow intuitive, mode-specific forms, real-time validation, estimated APY display, mobile responsive, fast load times, API integration, state management, UI framework
+- ⚠️ **Partial**: None
+- ❌ **Missing**: Results display, Plotly charts, event log handling, event filters, balance snapshots, download functionality
+- 🔄 **Refactoring Needed**: Results components implementation
+
+### **Architecture Compliance Status**
+- ✅ **COMPLIANT**: Frontend follows canonical architecture requirements
+- **No Violations Found**: Component fully compliant with architectural principles
+
+### **TODO Items and Refactoring Needs**
+- **High Priority**:
+  - Implement ResultsPage component (referenced in App.tsx but missing)
+  - Implement results components (MetricCard, PlotlyChart, EventLogViewer, etc.)
+  - Implement shared components (Button, Input, Select, etc.)
+  - Create centralized API client
+  - Add TypeScript interfaces for results/events
+- **Medium Priority**:
+  - Implement event log virtualization for 70k+ events
+  - Implement event filters (type, venue, date)
+  - Implement balance snapshots expandable view
+  - Implement download functionality (CSV, HTML, events)
+- **Low Priority**:
+  - None identified
+
+### **Quality Gate Status**
+- **Current Status**: PARTIAL
+- **Failing Tests**: Results components tests
+- **Requirements**: Implement missing results components
+- **Integration**: Integrates with quality gate system through frontend tests
+
+### **Task Completion Status**
+- **Related Tasks**: 
+  - Frontend implementation tasks (50% complete - wizard complete, results missing)
+- **Completion**: 50% complete overall
+- **Blockers**: Missing results components implementation
+- **Next Steps**: Implement ResultsPage and all results components
 
 ---
 

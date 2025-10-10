@@ -39,7 +39,7 @@ ERROR_CODES = {
 class ConfigManager:
     """Unified configuration manager with fail-fast policy.
     
-    TODO-REFACTOR: ENVIRONMENT VARIABLE INTEGRATION VIOLATION - 19_venue_based_execution_architecture.md
+    TODO-REFACTOR: ENVIRONMENT VARIABLE INTEGRATION VIOLATION - See docs/VENUE_ARCHITECTURE.md
     ISSUE: This component has environment variable naming inconsistencies:
     
     1. ENVIRONMENT VARIABLE NAMING VIOLATIONS:
@@ -115,7 +115,7 @@ class ConfigManager:
         #   3. Add BASIS_EXECUTION_MODE routing for backtest vs live mode credential requirements
         #   4. Implement venue client initialization based on environment-specific credentials
         # Reference: docs/ENVIRONMENT_VARIABLES.md - Environment-Specific Credential Routing section
-        # Reference: .cursor/tasks/19_venue_based_execution_architecture.md (canonical: docs/VENUE_ARCHITECTURE.md)
+        # Reference: docs/VENUE_ARCHITECTURE.md - Venue-Based Execution
         # Status: PENDING
         
         if deployment_mode == 'local' and (self.base_dir / ".env.dev").exists():
@@ -131,7 +131,6 @@ class ConfigManager:
             'BASIS_DEPLOYMENT_MODE', 
             'BASIS_DATA_DIR',
             'BASIS_RESULTS_DIR',
-            'BASIS_REDIS_URL',
             'BASIS_DEBUG',
             'BASIS_LOG_LEVEL',
             'BASIS_EXECUTION_MODE',
@@ -145,6 +144,13 @@ class ConfigManager:
                 logger.error(f"CONFIG-MGR-002: REQUIRED environment variable not set: {var}")
                 raise ValueError(f"REQUIRED environment variable not set: {var}")
             env_vars[var] = value
+        
+        # Check execution mode for credential requirements
+        execution_mode = env_vars.get('BASIS_EXECUTION_MODE', 'backtest')
+        if execution_mode == 'backtest':
+            logger.info("Backtest mode: Venue credentials not required - execution is simulated")
+        else:
+            logger.info("Live mode: Venue credentials required for real API access")
         
         # Load optional variables
         for key, value in os.environ.items():
@@ -182,9 +188,6 @@ class ConfigManager:
         """Get results directory from environment variables."""
         return self.config_cache['env']['BASIS_RESULTS_DIR']
     
-    def get_redis_url(self) -> str:
-        """Get Redis URL from environment variables."""
-        return self.config_cache['env']['BASIS_REDIS_URL']
     
     def get_data_date_range(self) -> Tuple[str, str]:
         """Get data date range from environment variables."""
@@ -196,7 +199,7 @@ class ConfigManager:
         """Get complete settings (alias for get_complete_config)."""
         return self.get_complete_config()
     
-    def get_complete_config(self, mode: str = None, venue: str = None, scenario: str = None) -> Dict[str, Any]:
+    def get_complete_config(self, mode: str = None, venue: str = None) -> Dict[str, Any]:
         """Get complete configuration by merging all relevant configs."""
         config = self.config_cache['base'].copy()
         
@@ -249,7 +252,7 @@ class ConfigManager:
         logger.info("✅ Base configuration eliminated - infrastructure handled by environment variables")
         
         # DESIGN DECISION: All infrastructure configuration moved to environment variables
-        # - Database/Redis/Storage URLs: Environment-specific variables
+        # - Database/Storage URLs: Environment-specific variables
         # - API settings: Environment-specific variables  
         # - Cross-network/Rates: Hardcoded defaults in components
         # - Testnet: Live trading only, not needed for backtest focus
@@ -375,7 +378,8 @@ def load_share_class_config(share_class: str) -> Dict[str, Any]:
 
 def load_scenario_config(scenario: str) -> Dict[str, Any]:
     """Load scenario configuration (compatibility function)."""
-    # For now, return empty dict - scenarios not implemented yet
+    # Scenarios eliminated - return empty dict
+    logger.warning(f"Scenario configuration requested for '{scenario}' - scenarios have been eliminated")
     return {}
 
 

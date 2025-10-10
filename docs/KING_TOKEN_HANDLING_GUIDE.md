@@ -4,7 +4,7 @@
 **Status**: ✅ IMPLEMENTED - KING token handling fully functional  
 **Updated**: October 5, 2025  
 **Last Reviewed**: October 8, 2025  
-**Status**: ✅ Aligned with canonical sources (.cursor/tasks/ + MODES.md)
+**Status**: ✅ Aligned with canonical architectural principles
 
 ---
 

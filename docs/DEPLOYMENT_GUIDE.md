@@ -3,7 +3,7 @@
 **Platform**: Non-Docker (dev/staging/prod) + Docker (dev/staging/prod)  
 **Target**: Local development, staging, and production environments  
 **Status**: ✅ Infrastructure configured, works with component architecture  
-**Updated**: October 9, 2025
+**Updated**: January 6, 2025
 
 ---
 
@@ -53,7 +53,7 @@ cd docker
 | **Mode** | **Command** | **Services** | **Use Case** |
 |----------|-------------|--------------|--------------|
 | **Non-Docker** | `./platform.sh` | Backend + Frontend (local) | Development, testing |
-| **Docker** | `cd docker && ./deploy.sh` | Backend + Caddy + Redis | All environments |
+| **Docker** | `cd docker && ./deploy.sh` | Backend + Caddy | All environments |
 
 ### **Backend Startup Initialization Sequence**
 
@@ -93,7 +93,7 @@ The `main()` function orchestrates startup with these steps:
 The system uses three distinct environment variables:
 
 - **`BASIS_DEPLOYMENT_MODE`**: `local` vs `docker` (port/host forwarding and dependency injection)
-- **`BASIS_ENVIRONMENT`**: `dev` vs `staging` vs `production` ( mainly for testnet vs mainnet APIs and any other environment specific credentials we want to override in the env file)
+- **`BASIS_ENVIRONMENT`**: `dev` vs `staging` vs `production` (controls venue credentials AND deployment infrastructure like hosts, ports, API endpoints)
 - **`BASIS_DATA_MODE`**: `csv` vs `db` (data source: CSV vs DB)
 - **`BASIS_EXECUTION_MODE`**: `backtest` vs `live` (venue execution: simulated in backtest vs real)
 
@@ -291,7 +291,6 @@ BASIS_DEPLOYMENT_MODE=local
 BASIS_DATA_DIR=./data
 BASIS_DATA_MODE=csv
 BASIS_RESULTS_DIR=./results
-BASIS_REDIS_URL=redis://localhost:6379/0
 BASIS_DEBUG=true
 BASIS_LOG_LEVEL=DEBUG
 BASIS_EXECUTION_MODE=backtest
@@ -353,9 +352,9 @@ cd docker
 The `deploy.sh` script automatically switches environments by copying the appropriate override file to `.env` before deployment.
 
 ### **Services**
-- **backend**: Backend API + Redis
+- **backend**: Backend API
 - **frontend**: Backend + Caddy (reverse proxy)
-- **all**: Backend + Caddy + Redis
+- **all**: Backend + Caddy
 
 ### **Access Points**
 - **Backend API**: http://localhost:8001
@@ -399,7 +398,6 @@ BASIS_DEPLOYMENT_MODE=docker
 BASIS_DATA_DIR=/app/data
 BASIS_DATA_MODE=db
 BASIS_RESULTS_DIR=/app/results
-BASIS_REDIS_URL=redis://redis:6379/0
 BASIS_DEBUG=false
 BASIS_LOG_LEVEL=INFO
 BASIS_EXECUTION_MODE=backtest  # Start with backtest, switch to live when ready
@@ -486,7 +484,7 @@ BASIS_ENVIRONMENT=dev
 BASIS_DEPLOYMENT_MODE=local  # or docker
 BASIS_DATA_DIR=./data  # or /app/data for docker
 BASIS_DATA_MODE=csv
-BASIS_REDIS_URL=redis://localhost:6379/0  # or redis://redis:6379/0 for docker
+  # or redis://redis:6379/0 for docker
 BASIS_DEBUG=true
 BASIS_LOG_LEVEL=DEBUG
 BASIS_EXECUTION_MODE=backtest
@@ -498,7 +496,6 @@ BASIS_ENVIRONMENT=prod
 BASIS_DEPLOYMENT_MODE=docker
 BASIS_DATA_DIR=/app/data
 BASIS_DATA_MODE=db
-BASIS_REDIS_URL=redis://redis:6379/0
 BASIS_DEBUG=false
 BASIS_LOG_LEVEL=INFO
 BASIS_EXECUTION_MODE=live  # When ready for live trading
@@ -563,17 +560,6 @@ This is different from environment-based credentials in `env.unified` - it's for
 
 ### **Common Issues**
 
-**Redis Not Connected**:
-```bash
-# Check Redis running
-docker compose ps | grep redis
-
-# View Redis logs
-docker compose logs redis
-
-# Restart Redis
-docker compose restart redis
-```
 
 **Component Initialization Failed**:
 ```bash
@@ -581,7 +567,6 @@ docker compose restart redis
 docker compose logs backend
 
 # Common issues:
-# - Redis not available → Check connection
 # - Data not loaded → Check /app/data volume mount
 # - Config missing → Check env variables
 ```
@@ -603,14 +588,12 @@ lsof -i :5173
 **Before Deployment**:
 - [ ] Push to main
 - [ ] Configure environment files (`.env.dev`, `.env.prod`, etc.)
-- [ ] Verify Redis configuration
 - [ ] Test locally with Docker
 - [ ] Set proper permissions: `chmod 600 env.unified`
 
 **After Deployment**:
 - [ ] Check health endpoints (`/health` and `/health/detailed`)
 - [ ] Test mode selection via UI
-- [ ] Verify Redis connections
 - [ ] Verify environment file is loaded
 - [ ] Check logs for execution mode
 
@@ -672,7 +655,6 @@ gsutil -m rsync -r gs://basis-strategy-v1-data/ data/
       "error_code": null,
       "readiness_checks": {
         "initialized": true,
-        "redis_connected": true
       }
     },
     "data_provider": {
@@ -696,25 +678,9 @@ gsutil -m rsync -r gs://basis-strategy-v1-data/ data/
 
 ## 🔧 **Component Architecture Notes**
 
-### **Redis Requirement**
-**Backtest Mode**: Redis optional (not_configured if not available)  
-**Live Mode**: Redis required for component communication and health checks
-
-**Monitoring Redis**:
-```bash
-# Connect to Redis
-redis-cli
-
-# Subscribe to component updates
-SUBSCRIBE position:updated
-SUBSCRIBE exposure:calculated
-SUBSCRIBE risk:calculated
-
-# View current state
-GET position:snapshot
-GET exposure:current
-GET risk:current
-```
+### **Component Communication**
+**Backtest Mode**: Direct function calls between components  
+**Live Mode**: Direct function calls between components with tight loop reconciliation
 
 ---
 
@@ -736,13 +702,12 @@ HEALTH_CHECK_ENDPOINT=/health      # Fast check (< 50ms)
 **Docker Deployments**:
 - Docker's native healthcheck pings `HEALTH_CHECK_ENDPOINT` every `HEALTH_CHECK_INTERVAL`
 - On failure (10 consecutive failures with 3s timeout): Docker restarts backend container
-- Redis data preserved during restart
 - Logs visible via `docker compose logs backend`
 
 **Non-Docker Deployments**:
 - Background monitor script (`scripts/health_monitor.sh`) runs automatically when you start services
 - Pings `HEALTH_CHECK_ENDPOINT` every `HEALTH_CHECK_INTERVAL`
-- On failure: Restarts all services via `platform.sh restart` (backend + frontend + Redis)
+- On failure: Restarts all services via `platform.sh restart` (backend + frontend)
 - Retry logic: Up to 3 attempts with exponential backoff (5s, 10s, 20s)
 - After 3 failures: Gives up and logs error
 - Logs to `logs/health_monitor.log`

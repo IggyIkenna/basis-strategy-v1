@@ -1,0 +1,110 @@
+{
+  "agent_name": "Codebase Documentation Agent",
+  "background_mode": true,
+  "web_browser_mode": true,
+  "focus_areas": [
+    "backend/src/",
+    ".cursor/tasks/",
+    "docs/specs/"
+  ],
+  "context_files": [
+    "backend/src/basis_strategy_v1/core/strategies/components/",
+    "backend/src/basis_strategy_v1/core/event_engine/",
+    "backend/src/basis_strategy_v1/core/execution/",
+    "backend/src/basis_strategy_v1/core/monitoring/",
+    "backend/src/basis_strategy_v1/core/data/",
+    ".cursor/tasks/",
+    "docs/specs/",
+    "docs/REFERENCE_ARCHITECTURE_CANONICAL.md",
+    "docs/REFERENCE_ARCHITECTURE_CANONICAL.md",
+    "docs/QUALITY_GATES.md"
+  ],
+  "primary_mission": "Ensure refactor areas have comprehensive docstrings with refactor plan, links to docs, and quality gate criteria",
+  "refactor_area_identification": [
+    "Search codebase for TODO comments",
+    "Find TODO-REFACTOR markers",
+    "Identify FIXME and HACK comments",
+    "Locate architecture violation patterns from tasks",
+    "Find code sections mentioned in task refactor requirements",
+    "Identify components with implementation status issues",
+    "Find code areas referenced in quality gate failures"
+  ],
+  "docstring_validation": [
+    "Check if refactor areas have module/class/function docstrings",
+    "Verify docstrings explain what needs refactoring",
+    "Ensure docstrings describe planned refactor approach",
+    "Validate docstrings link to relevant docs/specs",
+    "Confirm docstrings reference quality gate criteria",
+    "Check docstrings include task references",
+    "Validate docstrings have proper traceability links"
+  ],
+  "documentation_completeness_requirements": [
+    "What needs refactor: Clear description of current issue",
+    "Why refactor needed: Reference to architecture violation or task requirement",
+    "Refactor approach: High-level plan for the refactor",
+    "Canonical source: Link to docs/specs for full implementation spec",
+    "Quality gates: Reference to relevant quality gate validation",
+    "Related tasks: Link to .cursor/tasks/ files",
+    "Dependencies: What other components need refactoring first",
+    "Blocking issues: What this refactor blocks or unblocks"
+  ],
+  "docstring_template": {
+    "header": "Component/Function Name",
+    "refactor_required": {
+      "current_issue": "What's wrong with current implementation",
+      "violation": "Architecture principle violated",
+      "task_reference": ".cursor/tasks/XX_task_name.md"
+    },
+    "planned_refactor": {
+      "approach": "High-level description of refactor",
+      "key_changes": ["Change 1", "Change 2", "Change 3"]
+    },
+    "documentation": {
+      "spec": "docs/specs/XX_COMPONENT.md",
+      "architecture": "docs/REFERENCE_ARCHITECTURE_CANONICAL.md (Section X)",
+      "implementation_status": "docs/specs/XX_COMPONENT.md#current-implementation-status"
+    },
+    "quality_gates": {
+      "test": "scripts/test_XX_quality_gates.py",
+      "success_criteria": "Specific criteria from quality gates",
+      "coverage_required": "80%+ unit test coverage"
+    },
+    "related": {
+      "task": ".cursor/tasks/XX_task_name.md",
+      "depends_on": "Other components that need refactoring first",
+      "blocks": "What this blocks"
+    },
+    "normal_docs": "Args/Returns: [Normal function documentation]"
+  },
+  "traceability_requirements": [
+    "Every refactor area must have task in .cursor/tasks/",
+    "Every refactor area must have spec in docs/specs/",
+    "Every refactor area must have docstring in code",
+    "Every refactor area must have quality gate test",
+    "All four pieces must be linked together",
+    "Code docstring must reference task, spec, and quality gate",
+    "Task must reference spec and quality gate",
+    "Spec must reference quality gate and task"
+  ],
+  "report_generation": [
+    "Output format: CODEBASE_DOCUMENTATION_REPORT_[timestamp].md",
+    "Executive summary with total refactor areas and documentation completeness",
+    "Critical refactor areas missing docstrings with priority assessment",
+    "Incomplete docstrings with missing information identified",
+    "Well-documented refactor areas as examples",
+    "Recommended docstring updates with full examples",
+    "Traceability matrix showing links between code, tasks, docs, and quality gates"
+  ],
+  "validation_requirements": [
+    "All refactor areas identified from tasks",
+    "Each refactor area has comprehensive docstring",
+    "All docstrings follow template with required sections",
+    "Traceability links verified (code → task → doc → quality gate)",
+    "Documentation completeness report generated",
+    "All TODO-REFACTOR markers have proper documentation",
+    "All architecture violations have docstring explanations",
+    "All quality gate failures have docstring references"
+  ],
+  "output_format": "Comprehensive codebase documentation report with docstring recommendations and traceability matrix",
+  "success_criteria": "All refactor areas have comprehensive docstrings with complete traceability to tasks, docs, and quality gates"
+}

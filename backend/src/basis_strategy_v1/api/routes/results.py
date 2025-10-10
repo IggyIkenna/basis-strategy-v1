@@ -446,7 +446,7 @@ async def get_result(
             include_timeseries=include_timeseries
         )
         
-        # Prefer in-memory/Redis service result (new runs have richer metrics)
+        # Prefer in-memory service result (new runs have richer metrics)
         result = await service.get_result(result_id)
         if isinstance(result, dict) and result.get('status') is not None:
             # Not completed; force 404/unfinished behavior below by nulling

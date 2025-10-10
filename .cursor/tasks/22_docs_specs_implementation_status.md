@@ -115,10 +115,10 @@ Each spec must include:
 - **Key Issues**: Minor refactoring for consistency
 - **Tasks**: Data provider refactor tasks
 
-### **Redis Messaging Standard (10_REDIS_MESSAGING_STANDARD.md)**
-- **Current State**: Standard defined, implementation needed
-- **Key Issues**: Implementation of messaging standard
-- **Tasks**: Redis messaging implementation tasks
+### **Component Communication Standard (10_COMPONENT_COMMUNICATION_STANDARD.md)**
+- **Current State**: Standard defined, implementation complete
+- **Key Issues**: Direct method calls implemented
+- **Tasks**: Component communication via direct method calls
 
 ### **Frontend Spec (12_FRONTEND_SPEC.md)**
 - **Current State**: Spec defined, implementation in progress

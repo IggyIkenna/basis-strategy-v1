@@ -7,6 +7,10 @@ There are two identical `risk_monitor.py` files that need to be consolidated:
 
 The correct location is `backend/src/basis_strategy_v1/core/strategies/components/` as this is where the main EventDrivenStrategyEngine imports it from.
 
+**Reference**: `docs/REFERENCE_ARCHITECTURE_CANONICAL.md` - Section 12 (Duplicate Risk Monitors Consolidation)  
+**Reference**: `docs/specs/03_RISK_MONITOR.md` - Component specification  
+**Reference**: `docs/DEVIATIONS_AND_CORRECTIONS.md` - Lines 129-141 (Duplicate Risk Monitor Files)
+
 ## CURRENT USAGE ANALYSIS
 
 ### Files Importing from CORRECT Location:

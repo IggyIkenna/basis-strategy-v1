@@ -118,8 +118,6 @@ class MockConfigLoader:
                 'hedge_allocation': {},
                 'margin_ratio_target': 1.0,
                 'max_stake_spread_move': 0.02215,
-                'max_leverage_loops': 23,
-                'min_loop_position_usd': 10000.0,
                 'capital_allocation': {
                     'spot_capital': 0.5,
                     'perp_capital': 0.5,
@@ -212,8 +210,6 @@ class MockConfigLoader:
                 },
                 'margin_ratio_target': 1.0,
                 'max_stake_spread_move': 0.02215,
-                'max_leverage_loops': 23,
-                'min_loop_position_usd': 10000.0,
                 'capital_allocation': {
                     'spot_capital': 0.5,
                     'perp_capital': 0.5,

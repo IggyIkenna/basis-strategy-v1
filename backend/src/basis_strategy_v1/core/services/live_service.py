@@ -1,6 +1,6 @@
 """Live Trading Service using the refactored components.
 
-This service coordinates the new Agent A and Agent B components to run live trading strategies.
+This service coordinates the core components to run live trading strategies.
 """
 
 from decimal import Decimal

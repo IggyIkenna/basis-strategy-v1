@@ -1,8 +1,3 @@
 """Caching infrastructure for the application."""
 
-from .redis_client import RedisClient, get_redis_client
-
-__all__ = [
-    'RedisClient',
-    'get_redis_client'
-]
+# Redis client removed - using in-memory caching only

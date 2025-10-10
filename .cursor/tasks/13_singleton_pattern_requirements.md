@@ -3,6 +3,12 @@
 ## OVERVIEW
 All components must use the singleton pattern to ensure single instances across the entire run, preventing data synchronization issues and ensuring consistent state management.
 
+**Reference**: `docs/REFERENCE_ARCHITECTURE_CANONICAL.md` - Section 2 (Singleton Pattern)  
+**Reference**: `docs/ARCHITECTURAL_DECISION_RECORDS.md` - ADR-003 (Reference-Based Architecture)  
+**Reference**: `docs/specs/01_POSITION_MONITOR.md` - Component specification  
+**Reference**: `docs/specs/02_EXPOSURE_MONITOR.md` - Component specification  
+**Reference**: `docs/specs/03_RISK_MONITOR.md` - Component specification
+
 ## CRITICAL REQUIREMENTS
 
 ### 1. Single Instance Per Component

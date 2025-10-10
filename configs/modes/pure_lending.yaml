@@ -17,10 +17,9 @@ asset: "USDT"
 lst_type: null
 rewards_mode: "base_only"
 reserve_ratio: 0.1
+position_deviation_threshold: 0.02  # 2% deviation from target triggers rebalancing
 
 # Execution parameters
-use_flash_loan: false
-unwind_mode: "fast"  # Not applicable but required
 
 # Risk parameters
 margin_ratio_target: 1.0  # Not applicable (no CEX margin, no borrowing)

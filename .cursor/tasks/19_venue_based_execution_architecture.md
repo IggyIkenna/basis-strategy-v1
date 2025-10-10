@@ -20,7 +20,7 @@ This task file provides implementation guidance. For complete architectural deta
   - Example: BASIS_PROD__ALCHEMY__RPC_URL
 
 ## OVERVIEW
-Execution manager is venue-centric, with configuration mapping action types to venues for each strategy. Each venue needs clients with live, testnet, and simulation modes for smooth transition from backtest to live trading.
+Execution manager is venue-centric, with configuration mapping action types to venues for each strategy. Each venue needs clients with live, testnet, and simulation modes for smooth transition from backtest to live trading. All execution interfaces implement tight loop reconciliation for position verification.
 
 ## VENUE CONFIGURATION ARCHITECTURE
 

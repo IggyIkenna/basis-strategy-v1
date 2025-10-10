@@ -193,7 +193,7 @@ class LTVCalculator:
         max_safe_ltv: Decimal,
         strategy_config: Dict[str, Any]
     ) -> Decimal:
-        """Calculate borrowing capacity for next leverage loop.
+        """Calculate borrowing capacity for leveraged staking.
         
         Sophisticated capacity calculation from original strategy_engine.py
         that accounts for LTV headroom and loop efficiency factors.
@@ -211,7 +211,7 @@ class LTVCalculator:
             return Decimal('0')
         
         # Get config values
-        next_leverage_loop_factor = Decimal(str(strategy_config['next_leverage_loop_factor']))  # Fail-fast if missing
+        leverage_factor = Decimal(str(strategy_config['leverage_factor']))  # Fail-fast if missing
         
         # Use safe_ltv from config (already buffered vs max_ltv)
         safe_ltv_config = strategy_config['ltv']['safe_ltv']  # Fail-fast if missing
@@ -226,11 +226,11 @@ class LTVCalculator:
         if ltv_headroom <= 0:
             return Decimal('0')
         
-        # Calculate borrowing capacity using loop factor
-        # Original logic: current_collateral_value * ltv_headroom * loop_factor
-        next_loop_capacity = current_collateral_value * ltv_headroom * next_leverage_loop_factor
+        # Calculate borrowing capacity using leverage factor
+        # Original logic: current_collateral_value * ltv_headroom * leverage_factor
+        leverage_capacity = current_collateral_value * ltv_headroom * leverage_factor
         
-        return max(Decimal('0'), next_loop_capacity)
+        return max(Decimal('0'), leverage_capacity)
     
     @staticmethod 
     def calculate_health_factor(

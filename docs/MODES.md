@@ -4,6 +4,12 @@
 
 This document provides comprehensive specifications for all strategy modes in the basis-strategy-v1 platform. Each mode represents a distinct investment strategy with specific risk profiles, yield sources, and execution requirements.
 
+## 📚 **Canonical Sources**
+
+- **Architectural Principles**: [REFERENCE_ARCHITECTURE_CANONICAL.md](REFERENCE_ARCHITECTURE_CANONICAL.md) - Canonical architectural principles
+- **Strategy Specifications**: [MODES.md](MODES.md) - Canonical strategy mode definitions (this document)
+- **Component Specifications**: [specs/](specs/) - Detailed component implementation guides
+
 ## Core Principles
 
 ### Share Class Risk Profile
@@ -28,7 +34,7 @@ The delta to market may grow from P&L if the share class is not USDT (e.g., we g
 - **Mode-Agnostic Components**: Position monitor, exposure monitor, risk monitor, P&L monitor work across all modes
 - **Mode-Specific Logic**: Strategy manager and data subscriptions are strategy mode specific by nature
 - **Config-Driven Parameters**: Components use config parameters (share_class, asset, lst_type, hedge_allocation) instead of strategy mode logic
-- **Tight Loop Architecture**: MANDATORY sequential component chain (position_monitor → exposure_monitor → risk_monitor → pnl_monitor) for both backtest and live modes
+- **Tight Loop Architecture**: MANDATORY execution reconciliation pattern (execution → position_monitor → verify reconciliation → next instruction) for both backtest and live modes
 - **Centralized Utility Manager**: All utility methods (liquidity index, market prices, conversions) centralized in single utility manager
 - **Event Engine Integration**: All components properly integrated with EventDrivenStrategyEngine for consistent event handling
 
@@ -75,12 +81,12 @@ The delta to market may grow from P&L if the share class is not USDT (e.g., we g
 - Each strategy defines a `reserve_ratio` config parameter (e.g., 5% of total capital)
 - Strategies monitor reserves and send fast execution requests when reserves are low
 - Reserve low events are published for downstream consumers to handle withdrawal speed
+- Position deviation from target must exceed `position_deviation_threshold` before rebalancing triggers
 
 **Execution Modes**:
-- **Atomic Transactions**: Via Instadapp middleware for complex multi-step operations
-- **Sequential Transactions**: Direct API calls to individual venues (Lido, AAVE, etc.)
-- **Strategy Decision**: Strategy manager decides when to use atomic vs sequential execution
-- **Leverage Loops**: Only relevant for sequential transactions (not atomic)
+- **Atomic Transactions**: Via Instadapp middleware for complex multi-step operations (leveraged staking)
+- **Sequential Transactions**: Direct API calls to individual venues (Lido, AAVE, etc.) for simple operations
+- **Leveraged Staking**: Always use atomic flash loan execution for efficiency
 
 **Withdrawal Handling**:
 - **All strategies unwind 1:1 with withdrawals** (no exceptions)
@@ -90,11 +96,12 @@ The delta to market may grow from P&L if the share class is not USDT (e.g., we g
 
 ### Standardized Strategy Manager Architecture
 
-**CANONICAL ARCHITECTURE**: Inheritance-based strategy modes with standardized wrapper actions (per strategy_manager_refactor.md)
+**PLANNED ARCHITECTURE**: Inheritance-based strategy modes with standardized wrapper actions (per strategy_manager_refactor.md)
 
 **Base Strategy Manager**:
 - **Equity Tracking**: Always track equity in share class currency (assets net of debt, excluding futures positions)
 - **Target Position Calculation**: Compare current position to desired position based on equity
+- **Position Deviation Threshold**: Only trigger rebalancing when deviation exceeds `position_deviation_threshold` (default 2%)
 - **Standardized Actions**: All strategies use 5 wrapper actions:
   1. `entry_full`: Enter full position (initial setup or large deposits)
   2. `entry_partial`: Scale up position (small deposits or PnL gains)
@@ -140,7 +147,7 @@ The delta to market may grow from P&L if the share class is not USDT (e.g., we g
 - `share_class == asset` ("USDT" == "USDT"): No hedging required
 - `market_neutral: true` in share class config: Enforces market neutrality
 - `lending_enabled: true` and `staking_enabled: false`: Pure lending strategy
-- `borrowing_enabled: false`: No leverage or borrowing loops
+- `borrowing_enabled: false`: No leverage or borrowing
 
 **Required Execution Venues**:
 - **AAVE V3**: USDT lending/supply operations
@@ -351,7 +358,7 @@ The delta to market may grow from P&L if the share class is not USDT (e.g., we g
 - `share_class == asset` ("ETH" == "ETH"): No hedging required for directional strategy
 - `market_neutral: false` in share class config: Allows directional exposure
 - `staking_enabled: true` and `lending_enabled: false`: Pure staking strategy
-- `borrowing_enabled: false`: No leverage or borrowing loops
+- `borrowing_enabled: false`: No leverage or borrowing
 
 **Required Execution Venues**:
 - **Lido or EtherFi**: ETH staking/unstaking (based on `lst_type`)
@@ -382,7 +389,7 @@ The delta to market may grow from P&L if the share class is not USDT (e.g., we g
    - **Withdrawals**: Unstake LST and convert to ETH (1:1 with withdrawal amount)
    - **PnL Changes**: Adjust staked position to match equity changes
 4. **Ad-hoc Actions**:
-   - **Sell Dust**: Convert EIGEN/ETHFI rewards to ETH (if `lst_type: weeth` and dust > `dust_delta` threshold)
+   - **Sell Dust**: Convert KING tokens (EIGEN/ETHFI composite) to ETH (if `lst_type: weeth` and dust > `dust_delta` threshold)
 5. **Tight Loop**: Position updates trigger sequential component chain (position_monitor → exposure_monitor → risk_monitor → pnl_monitor)
 
 **Reserve Balance Management**:
@@ -414,7 +421,7 @@ The delta to market may grow from P&L if the share class is not USDT (e.g., we g
 - Buy ETH and stake via LST
 - Use AAVE to borrow against LST collateral
 - Reinvest borrowed funds into more ETH staking
-- Create leverage loop (up to 23 iterations)
+- Create leveraged position using atomic flash loan
 - ETH share class (P&L in ETH terms)
 - **Directional ETH exposure** - takes ETH price risk (no hedging)
 
@@ -422,11 +429,11 @@ The delta to market may grow from P&L if the share class is not USDT (e.g., we g
 - `share_class == asset` ("ETH" == "ETH"): No hedging required for directional strategy
 - `market_neutral: false` in share class config: Allows directional exposure
 - `staking_enabled: true` and `lending_enabled: true`: Leveraged staking strategy
-- `borrowing_enabled: true`: Enables leverage loops via AAVE borrowing
+- `borrowing_enabled: true`: Enables leveraged staking via AAVE borrowing
 
 **Required Execution Venues**:
 - **Lido or EtherFi**: ETH staking/unstaking (based on `lst_type`)
-- **AAVE V3**: LST collateral supply and ETH borrowing for leverage loops
+- **AAVE V3**: LST collateral supply and ETH borrowing for leveraged staking
 - **Alchemy**: Wallet transfers and ETH conversions
 - **No CEX venues**: No spot trades or perp positions
 
@@ -441,7 +448,6 @@ The delta to market may grow from P&L if the share class is not USDT (e.g., we g
 - `rewards_mode`: "base_eigen"
 - `max_ltv`: 0.91
 - `liquidation_threshold`: 0.95
-- `max_leverage_loops`: 23
 - `target_apy`: 0.20 (20%)
 
 **Execution Flow**:
@@ -454,18 +460,18 @@ The delta to market may grow from P&L if the share class is not USDT (e.g., we g
 3. **Rebalancing**:
    - **Target Position**: Supply = `equity * leverage`, Debt = `equity * (leverage - 1)`
    - **Deposits**: Stake excess ETH, recalculate desired debt/supply, execute atomic leverage
-   - **Withdrawals**: Unwind leverage loop (1:1 with withdrawal amount)
+   - **Withdrawals**: Unwind leveraged position (1:1 with withdrawal amount)
    - **PnL Changes**: Adjust positions to match equity changes
 4. **Risk Override**: If LTV health factor too low, reduce position to stay within limits
 5. **Ad-hoc Actions**:
-   - **Sell Dust**: Convert EIGEN/ETHFI rewards to ETH (if `lst_type: weeth` and dust > `dust_delta` threshold)
+   - **Sell Dust**: Convert KING tokens (EIGEN/ETHFI composite) to ETH (if `lst_type: weeth` and dust > `dust_delta` threshold)
    - **Fast Unwind**: If reserves too low, DEX swap LST to ETH for immediate withdrawal
 6. **Tight Loop**: Position updates trigger sequential component chain (position_monitor → exposure_monitor → risk_monitor → pnl_monitor)
 
 **Reserve Balance Management**:
 - **Fast Withdrawals**: Maintain ETH reserve for immediate client redemptions
 - **Reserve Threshold**: If reserve < 10% of total ETH, slow down withdrawals
-- **Unwinding**: If too many withdrawals, unwind leverage loop (slow, requires multiple AAVE transactions)
+- **Unwinding**: If too many withdrawals, unwind leveraged position (slow, requires multiple AAVE transactions)
 
 **Risk Profile**:
 - **Market Risk**: Full ETH price exposure (directional strategy)
@@ -502,7 +508,7 @@ The delta to market may grow from P&L if the share class is not USDT (e.g., we g
 - `share_class != asset` ("USDT" != "ETH"): Must hedge directional exposure
 - `market_neutral: true` in share class config: Enforces hedging requirements
 - `staking_enabled: true` and `basis_trade_enabled: true`: Staking + hedging strategy
-- `borrowing_enabled: false`: No leverage or borrowing loops
+- `borrowing_enabled: false`: No leverage or borrowing
 - `stake_allocation_eth`: Configures proportion of equity for staking vs hedging
 - **Locked capital strategy**: Must reserve USDT for CEX margin (cannot use LST as collateral)
 
@@ -530,9 +536,30 @@ The delta to market may grow from P&L if the share class is not USDT (e.g., we g
 **Execution Flow**:
 1. **Initial Setup** (backtest mode):
    - Split equity: `stake_allocation_eth` to ETH staking, `1 - stake_allocation_eth` to CEX margin
-   - Buy ETH and stake via LST (based on `lst_type`)
-   - Short ETH perps on CEX (hedge the staked ETH)
-   - Distribute perp shorts across venues per `hedge_allocation` ratios
+   - **Step 1**: Fund ALL CEXs simultaneously with USDT margin
+     ```python
+     wallet.USDT -= (binance + bybit + okx)
+     cex['binance'].USDT += binance
+     cex['bybit'].USDT += bybit
+     cex['okx'].USDT += okx
+     ```
+   - **Step 2**: Execute ALL perp shorts simultaneously (same timestamp!)
+     ```python
+     # Binance: Spot + Perp
+     cex['binance'].ETH_spot += eth_bought
+     cex['binance'].perp = short_binance
+     
+     # Bybit & OKX: Perp only (executed at same time as Binance!)
+     cex['bybit'].perp = short_bybit
+     cex['okx'].perp = short_okx
+     ```
+   - **Step 3**: Transfer ETH to wallet and stake via LST
+     ```python
+     cex['binance'].ETH_spot -= eth_transfer
+     wallet.ETH += eth_transfer
+     # Stake ETH via LST protocol (based on lst_type)
+     ```
+   - **Key**: ALL perp shorts at same time, not sequential!
 2. **Live Mode**: Read existing positions and rebalance as needed
 3. **Rebalancing**:
    - Monitor delta neutrality (from risk monitor)
@@ -572,7 +599,7 @@ The delta to market may grow from P&L if the share class is not USDT (e.g., we g
 **Strategy Description**:
 - Take `stake_allocation_eth` proportion of equity and buy ETH
 - Stake ETH via LST protocols
-- Use AAVE to create leverage loop on staking side
+- Use AAVE to create leveraged position on staking side
 - Send remaining equity to CEX for perp shorting
 - Hedge leveraged ETH exposure with short perps
 - USDT share class (P&L in USDT terms)
@@ -582,14 +609,14 @@ The delta to market may grow from P&L if the share class is not USDT (e.g., we g
 - `share_class != asset` ("USDT" != "ETH"): Must hedge directional exposure
 - `market_neutral: true` in share class config: Enforces hedging requirements
 - `staking_enabled: true`, `lending_enabled: true`, and `basis_trade_enabled: true`: Leveraged staking + hedging strategy
-- `borrowing_enabled: true`: Enables leverage loops via AAVE borrowing
+- `borrowing_enabled: true`: Enables leveraged staking via AAVE borrowing
 - `stake_allocation_eth`: Configures proportion of equity for leveraged staking vs hedging
 - **Locked capital strategy**: Must reserve USDT for CEX margin (cannot use LST as collateral)
 - **Flash loan potential**: Morpho/Instadapp for atomic leverage operations
 
 **Required Execution Venues**:
 - **Lido or EtherFi**: ETH staking/unstaking (based on `lst_type`)
-- **AAVE V3**: LST collateral supply and ETH borrowing for leverage loops
+- **AAVE V3**: LST collateral supply and ETH borrowing for leveraged staking
 - **Binance**: ETH perp shorts (40% allocation)
 - **Bybit**: ETH perp shorts (30% allocation)
 - **OKX**: ETH perp shorts (30% allocation)
@@ -605,18 +632,38 @@ The delta to market may grow from P&L if the share class is not USDT (e.g., we g
 - `basis_trade_enabled`: true
 - `borrowing_enabled`: true
 - `rewards_mode`: "base_eigen_seasonal"
-- `use_flash_loan`: true
 - `hedge_venues`: ["binance", "bybit", "okx"]
 - `target_apy`: 0.15 (15%)
 
 **Execution Flow**:
 1. **Initial Setup** (backtest mode):
    - Split equity: `stake_allocation_eth` to leveraged ETH staking, `1 - stake_allocation_eth` to CEX margin
-   - Buy ETH and stake via LST (based on `lst_type`)
-   - Create AAVE leverage loop on staking side (sequential or atomic via Instadapp)
-   - Short ETH perps on CEX (hedge the leveraged staked ETH)
-   - Distribute perp shorts across venues per `hedge_allocation` ratios
-2. **Live Mode**: Read existing positions and rebalance as needed
+   - **Step 1**: Fund ALL CEXs simultaneously with USDT margin
+     ```python
+     wallet.USDT -= (binance + bybit + okx)
+     cex['binance'].USDT += binance
+     cex['bybit'].USDT += bybit
+     cex['okx'].USDT += okx
+     ```
+   - **Step 2**: Execute ALL perp shorts simultaneously (same timestamp!)
+     ```python
+     # Binance: Spot + Perp
+     cex['binance'].ETH_spot += eth_bought
+     cex['binance'].perp = short_binance
+     
+     # Bybit & OKX: Perp only (executed at same time as Binance!)
+     cex['bybit'].perp = short_bybit
+     cex['okx'].perp = short_okx
+     ```
+   - **Step 3**: Transfer ETH to wallet and create leveraged position
+     ```python
+     cex['binance'].ETH_spot -= eth_transfer
+     wallet.ETH += eth_transfer
+     # Stake ETH via LST (based on lst_type)
+     # Create AAVE leveraged position: borrow_flash → stake → supply_lst → borrow_aave → repay_flash
+     ```
+   - **Key**: ALL perp shorts at same time, not sequential!
+2. **Live Mode**: Read existing positions and rebalance as needed with the same order of operations accepting some time delay awaiting execution instruction completions
 3. **Rebalancing**:
    - Monitor AAVE health factor and delta neutrality (from risk monitor)
    - Add margin to CEX if perps losing money
@@ -629,7 +676,7 @@ The delta to market may grow from P&L if the share class is not USDT (e.g., we g
 **Reserve Balance Management**:
 - **Fast Withdrawals**: Maintain USDT reserve for immediate client redemptions
 - **Reserve Threshold**: If reserve < `reserve_ratio` of total USDT, publish reserve_low event
-- **Unwinding**: All withdrawals unwind 1:1 (close perp shorts first, then unwind leverage loop)
+- **Unwinding**: All withdrawals unwind 1:1 (close perp shorts first, then unwind leveraged position)
 
 **Risk Profile**:
 - **Market Risk**: None (delta neutral)
@@ -654,7 +701,7 @@ The delta to market may grow from P&L if the share class is not USDT (e.g., we g
 
 ## Strategy Manager Architecture
 
-**CANONICAL ARCHITECTURE**: Inheritance-based strategy modes with standardized wrapper actions (per strategy_manager_refactor.md)
+**PLANNED ARCHITECTURE**: Inheritance-based strategy modes with standardized wrapper actions (per strategy_manager_refactor.md)
 
 ### Inheritance-Based Interface
 All strategy modes inherit from BaseStrategyManager and implement the same 5 wrapper actions:

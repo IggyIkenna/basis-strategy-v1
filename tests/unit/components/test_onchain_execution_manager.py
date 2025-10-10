@@ -80,7 +80,7 @@ async def test_onchain_execution_manager():
         position_monitor=position_monitor,
         event_logger=event_logger,
         data_provider=data_provider,
-        config={'strategy': {'min_loop_position_usd': 10000}}
+        config={'strategy': {}}
     )
     
     print("✅ OnChain execution manager initialized in backtest mode")

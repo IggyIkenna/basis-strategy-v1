@@ -1,4 +1,4 @@
-"""Test error codes across Agent A components."""
+"""Test error codes across core components."""
 import pytest
 import re
 import sys
@@ -12,7 +12,7 @@ from basis_strategy_v1.core.strategies.components.event_logger import ERROR_CODE
 
 
 def test_all_error_codes_exist():
-    """Test that all Agent A components have error codes defined."""
+    """Test that all core components have error codes defined."""
     assert len(POS_CODES) >= 3
     assert len(EXP_CODES) >= 3
     assert len(PNL_CODES) >= 3

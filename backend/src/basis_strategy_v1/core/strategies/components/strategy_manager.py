@@ -1,7 +1,7 @@
 """
 Strategy Manager Component
 
-TODO-REFACTOR: MAJOR ARCHITECTURE VIOLATION - strategy_manager_refactor.md
+TODO-REFACTOR: STRATEGY MANAGER ARCHITECTURE VIOLATION - See docs/ARCHITECTURAL_DECISION_RECORDS.md
 ISSUE: This component violates canonical architecture requirements in multiple ways:
 
 1. STRATEGY MANAGER REFACTOR VIOLATIONS:
@@ -10,7 +10,7 @@ ISSUE: This component violates canonical architecture requirements in multiple w
    - No strategy factory for mode-based instantiation
    - Has hardcoded mode checks instead of config-driven parameters
 
-2. REQUIRED NEW ARCHITECTURE (per strategy_manager_refactor.md + docs/MODES.md):
+2. REQUIRED NEW ARCHITECTURE (per ADR-007 + docs/MODES.md):
    - Create BaseStrategyManager with standardized wrapper actions:
      * entry_full() - Enter full position (initial setup or large deposits)
      * entry_partial() - Scale up position (small deposits or PnL gains)  
@@ -22,7 +22,7 @@ ISSUE: This component violates canonical architecture requirements in multiple w
    - Remove transfer_manager.py completely
    - **Reference**: docs/MODES.md - Standardized Strategy Manager Architecture section
 
-3. GENERIC VS MODE-SPECIFIC VIOLATIONS (per 18_generic_vs_mode_specific_architecture.md):
+3. GENERIC VS MODE-SPECIFIC VIOLATIONS (per docs/REFERENCE_ARCHITECTURE_CANONICAL.md):
    - Strategy Manager should be strategy mode specific by nature ✅
    - But should use config-driven parameters, not hardcoded mode logic
    - Should care about: share_class, asset, lst_type, hedge_allocation from config
@@ -46,7 +46,6 @@ import numpy as np
 import logging
 import json
 from typing import Dict, List, Optional, Any, Union
-import redis
 import asyncio
 from datetime import datetime, timezone
 from pathlib import Path
@@ -96,7 +95,7 @@ ERROR_CODES = {
     'STRAT-007': 'Instruction generation failed',
     'STRAT-008': 'Rebalancing check failed',
     'STRAT-009': 'KING token management failed',
-    'STRAT-010': 'Redis communication failed',
+    'STRAT-010': 'Component communication failed',
     # BTC Basis specific error codes
     'STRAT-BTC-001': 'BTC basis initial setup failed',
     'STRAT-BTC-002': 'BTC basis rebalancing failed', 
@@ -130,15 +129,7 @@ class StrategyManager:
         
         logger.info(f"Strategy Manager: share_class = {self.share_class}, asset = {self.asset}")
 
-        # Redis (optional for testing)
-        try:
-            self.redis = redis.Redis()
-            self.pubsub = self.redis.pubsub()
-            self.pubsub.subscribe('risk:calculated')
-        except redis.exceptions.ConnectionError:
-            # Redis not available (e.g., in tests)
-            self.redis = None
-            self.pubsub = None
+        # Redis removed - using direct method calls for component communication
 
         # Thresholds
         self.margin_warning_threshold = config.get(
@@ -325,15 +316,7 @@ class StrategyManager:
         else:
             result['components']['risk_monitor'] = 'unavailable'
 
-        # Redis connectivity
-        if self.redis:
-            try:
-                self.redis.ping()
-                result['components']['redis'] = 'connected'
-            except BaseException:
-                result['components']['redis'] = 'disconnected'
-        else:
-            result['components']['redis'] = 'unavailable'
+        # Redis removed - components use direct method calls
 
         return result
 
@@ -963,8 +946,7 @@ class StrategyManager:
                     'executor': 'OnChainExecutionManager',
                     'params': {
                         'amount_usd': amount_usd,
-                        'mode': 'atomic' if self.config.get('strategy', {}).get('use_flash_loan', False) else 'sequential',
-                        'unwind_mode': self.config.get('strategy', {}).get('unwind_mode', 'fast')
+                        'mode': 'atomic'  # Always use atomic flash loan for leveraged staking
                     }
                 },
                 {
@@ -1093,15 +1075,12 @@ class StrategyManager:
                     risk_data
                 )
 
-                # Publish instructions to execution managers
-                await self.redis.publish('strategy:instructions', json.dumps(instructions))
+                # Redis publishing removed - components use direct method calls
 
         except Exception as e:
             logger.error(f"Error handling risk update: {e}")
 
-    async def publish_instructions(self, instructions: Dict):
-        """Publish instructions to execution managers via Redis."""
-        await self.redis.publish('strategy:instructions', json.dumps(instructions))
+    # Redis publishing removed - components use direct method calls
 
     async def handle_king_token_management(
         self,

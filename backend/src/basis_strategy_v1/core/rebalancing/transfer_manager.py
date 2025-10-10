@@ -1,6 +1,6 @@
 """Cross-Venue Transfer Manager - Execute intelligent transfers between venues.
 
-TODO-REMOVE: MAJOR ARCHITECTURE VIOLATION - strategy_manager_refactor.md
+TODO-REMOVE: STRATEGY MANAGER ARCHITECTURE VIOLATION - See docs/ARCHITECTURAL_DECISION_RECORDS.md
 ISSUE: This component violates canonical architecture requirements and should be REMOVED:
 
 1. STRATEGY MANAGER REFACTOR VIOLATIONS:
@@ -8,7 +8,7 @@ ISSUE: This component violates canonical architecture requirements and should be
    - Too complex and strategy-agnostic generalization is not feasible
    - Should be replaced with inheritance-based strategy-specific implementations
 
-2. REQUIRED REMOVAL (per strategy_manager_refactor.md + docs/MODES.md):
+2. REQUIRED REMOVAL (per ADR-007 + docs/MODES.md):
    - DELETE this entire file (1068 lines)
    - Remove all references to transfer_manager.py in strategy manager
    - Replace with inheritance-based strategy-specific implementations

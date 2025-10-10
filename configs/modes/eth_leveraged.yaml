@@ -19,10 +19,9 @@ asset: "ETH"
 lst_type: "weeth"  # or "wsteth"
 rewards_mode: "base_eigen"  # base + EIGEN rewards
 reserve_ratio: 0.1
+position_deviation_threshold: 0.02  # 2% deviation from target triggers rebalancing
 
 # Execution parameters
-use_flash_loan: false
-unwind_mode: "slow"  # Direct protocol unwinding
 hedge_venues: []
 hedge_allocation: {}
 
@@ -32,9 +31,6 @@ max_stake_spread_move: 0.02215  # Max expected adverse weETH/ETH oracle move (2.
 max_ltv: 0.91  # Maximum LTV for weETH (derived from AAVE risk params)
 liquidation_threshold: 0.95  # Liquidation threshold for weETH (derived from AAVE risk params)
 
-# Sequential leverage parameters (used if use_flash_loan: false)
-max_leverage_loops: 23  # Maximum iterations for sequential leverage
-min_loop_position_usd: 10000.0  # Minimum position size to continue looping
 
 # Performance targets
 target_apy: 0.20  # 20% APY target (leveraged staking)

@@ -43,7 +43,7 @@ async def run_backtest(
     #   3. Initialize venue clients based on environment configuration (dev/staging/prod)
     #   4. Implement time-triggered workflow for backtest execution
     # Reference: docs/WORKFLOW_GUIDE.md - Strategy Mode Selection & Venue Architecture Integration section
-    # Reference: .cursor/tasks/19_venue_based_execution_architecture.md (canonical: docs/VENUE_ARCHITECTURE.md)
+    # Reference: docs/VENUE_ARCHITECTURE.md - Venue-Based Execution
     # Status: PENDING
     """
     correlation_id = getattr(http_request.state, "correlation_id", "unknown")

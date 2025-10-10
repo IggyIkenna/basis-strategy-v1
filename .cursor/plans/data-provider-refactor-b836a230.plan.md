@@ -155,14 +155,14 @@ Refactor data provider to separate data source mode (csv vs db) from execution m
 - Add section: "Date Range Validation with Environment Variables"
 - Update factory pattern documentation
 
-**File: `docs/CANONICAL_ARCHITECTURAL_PRINCIPLES.md`**
+**File: `docs/REFERENCE_ARCHITECTURE_CANONICAL.md`**
 
 - Section 6.1 "Infrastructure Configuration Elimination":
 - Add `BASIS_DATA_MODE` to environment variables list
 - Clarify: Only controls data source, NOT persistence/execution
 - Update configuration architecture section if needed
 
-**File: `docs/ARCHITECTURAL_DECISIONS.md`**
+**File: `docs/REFERENCE_ARCHITECTURE_CANONICAL.md`**
 
 - Add decision record: "Separate Data Source from Execution Mode"
 - Document why `BASIS_DATA_MODE` is separate from `BASIS_EXECUTION_MODE`
@@ -211,7 +211,7 @@ Refactor data provider to separate data source mode (csv vs db) from execution m
 - [ ] Update backtest API route: Add date range validation against BASIS_DATA_START_DATE/END_DATE, create data provider on-demand with strategy mode and dates, handle DataProviderError exceptions
 - [ ] Update health check system: Modify DataProviderHealthChecker and unified_health_manager.py to handle uninitialized data provider state, add BASIS_DATA_MODE validation
 - [ ] Update docs/specs/09_DATA_PROVIDER.md: Document BASIS_DATA_MODE, remove startup_mode references, add on-demand loading section, update factory pattern docs
-- [ ] Update CANONICAL_ARCHITECTURAL_PRINCIPLES.md, ARCHITECTURAL_DECISIONS.md, USER_GUIDE.md, DEPLOYMENT_GUIDE.md: Add BASIS_DATA_MODE documentation, clarify separation from execution mode
+- [ ] Update REFERENCE_ARCHITECTURE_CANONICAL.md, REFERENCE_ARCHITECTURE_CANONICAL.md, USER_GUIDE.md, DEPLOYMENT_GUIDE.md: Add BASIS_DATA_MODE documentation, clarify separation from execution mode
 - [ ] Update docs/specs/17_HEALTH_ERROR_SYSTEMS.md: Document data provider health checks for uninitialized state, add error codes for date validation failures
 - [ ] Update scripts/run_quality_gates.py Phase 2: Test data loading for ALL modes, validate date range rejection, test BASIS_DATA_MODE validation, ensure no startup loading
 - [ ] Create scripts/test_data_provider_refactor_quality_gates.py: Comprehensive tests for new architecture including env validation, on-demand loading, date validation, health checks

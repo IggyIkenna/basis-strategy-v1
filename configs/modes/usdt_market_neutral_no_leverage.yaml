@@ -21,10 +21,9 @@ lst_type: "weeth"  # or "wsteth"
 rewards_mode: "base_eigen_seasonal"  # base + EIGEN + seasonal rewards
 stake_allocation_eth: 0.5 #how much of initial capital to stake in eth vs freed up for margin on perp shorting
 reserve_ratio: 0.1
+position_deviation_threshold: 0.02  # 2% deviation from target triggers rebalancing
 
 # Execution parameters
-use_flash_loan: false
-unwind_mode: "fast"  # Flash loan unwinding
 hedge_venues: ["binance", "bybit", "okx"]
 hedge_allocation_binance: 0.4
 hedge_allocation_bybit: 0.3

@@ -46,7 +46,7 @@ async def start_live_trading(
     #   4. Validate venue credentials for live trading mode
     #   5. Implement time-triggered workflow for live trading execution
     # Reference: docs/WORKFLOW_GUIDE.md - Strategy Mode Selection & Venue Architecture Integration section
-    # Reference: .cursor/tasks/19_venue_based_execution_architecture.md (canonical: docs/VENUE_ARCHITECTURE.md)
+    # Reference: docs/VENUE_ARCHITECTURE.md - Venue-Based Execution
     # Status: PENDING
     """
     correlation_id = getattr(http_request.state, "correlation_id", "unknown")

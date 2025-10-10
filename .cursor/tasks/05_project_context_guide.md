@@ -17,7 +17,7 @@ This is a DeFi yield optimization platform with multiple trading strategies focu
 - **docs/REMAINING_TASKS.md**: Current task priorities and status
 - **docs/QUALITY_GATES.md**: Quality gate standards and requirements
 - **docs/QUALITY_GATES_SUMMARY.md**: Current quality gate status
-- **docs/ARCHITECTURAL_DECISIONS.md**: System architecture decisions
+- **docs/REFERENCE_ARCHITECTURE_CANONICAL.md**: System architecture decisions
 - **docs/IMPLEMENTATION_ROADMAP.md**: Development roadmap
 
 ## COMPONENT SPECIFICATIONS (docs/specs/)
@@ -30,7 +30,7 @@ This is a DeFi yield optimization platform with multiple trading strategies focu
 - **07_ONCHAIN_EXECUTION_MANAGER.md**: On-chain execution
 - **08_EXECUTION_INTERFACES.md**: Execution interface specifications
 - **09_DATA_PROVIDER.md**: Data provider specifications
-- **10_REDIS_MESSAGING_STANDARD.md**: Messaging standards
+- **10_COMPONENT_COMMUNICATION_STANDARD.md**: Component communication standards
 - **11_ERROR_LOGGING_STANDARD.md**: Error logging standards
 - **12_FRONTEND_SPEC.md**: Frontend specifications
 - **13_ADVANCED_REBALANCING.md**: Advanced rebalancing logic
@@ -55,7 +55,7 @@ This is a DeFi yield optimization platform with multiple trading strategies focu
 4. **Overall Quality Gates**: 8/24 passing, need 15/24 (MEDIUM)
 
 ## ENVIRONMENT SETUP
-- **Backend**: Python 3.10+, FastAPI, Redis
+- **Backend**: Python 3.10+, FastAPI, in-memory caching
 - **Frontend**: React 19, TypeScript, Vite
 - **Testing**: pytest, Vitest
 - **Platform**: ./platform.sh backtest (for backtest mode)

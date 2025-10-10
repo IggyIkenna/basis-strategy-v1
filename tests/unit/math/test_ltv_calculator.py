@@ -82,7 +82,6 @@ class TestLTVCalculator:
         
         strategy_config = {
             'next_leverage_loop_factor': Decimal("0.95"),
-            'min_loop_position_usd': Decimal("10000"),
             'ltv': {
                 'safe_ltv': {
                     'standard_borrowing': Decimal("0.75")

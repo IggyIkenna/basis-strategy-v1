@@ -2,8 +2,8 @@
 
 **Purpose**: Comprehensive API documentation covering all endpoints, request/response structures, and integration patterns  
 **Status**: ✅ Complete API reference with new unified health system  
-**Updated**: January 2025  
-**Last Reviewed**: January 2025  
+**Updated**: January 6, 2025  
+**Last Reviewed**: January 6, 2025  
 **Status**: ✅ Aligned with canonical sources and health system cleanup plan
 
 ---
@@ -12,7 +12,7 @@
 
 **This API documentation aligns with canonical architectural principles**:
 - **Health System**: `.cursor/plans/health-system-cleanup-1eda130c.plan.md` - New unified health system (2 endpoints only)
-- **Architectural Principles**: [CANONICAL_ARCHITECTURAL_PRINCIPLES.md](CANONICAL_ARCHITECTURAL_PRINCIPLES.md) - Consolidated from all .cursor/tasks/
+- **Architectural Principles**: [REFERENCE_ARCHITECTURE_CANONICAL.md](REFERENCE_ARCHITECTURE_CANONICAL.md) - Canonical architectural principles
 - **Strategy Specifications**: [MODES.md](MODES.md) - Canonical strategy mode definitions
 - **Venue Architecture**: [VENUE_ARCHITECTURE.md](VENUE_ARCHITECTURE.md) - Venue client initialization and execution
 
@@ -162,8 +162,8 @@ Production: https://api.basis-strategy.com/api/v1
     }
   },
   "summary": {
-    "total_components": 9,
-    "healthy_components": 9,
+    "total_components": 11,
+    "healthy_components": 11,
     "unhealthy_components": 0,
     "not_ready_components": 0,
     "unknown_components": 0
@@ -188,7 +188,7 @@ Production: https://api.basis-strategy.com/api/v1
 
 ### **1. Start Backtest**
 
-**Endpoint**: `POST /backtest/start`
+**Endpoint**: `POST /api/v1/backtest/`
 
 **Purpose**: Start a new backtest with specified strategy and parameters
 
@@ -227,7 +227,7 @@ Production: https://api.basis-strategy.com/api/v1
 
 ### **2. Get Backtest Status**
 
-**Endpoint**: `GET /backtest/{backtest_id}/status`
+**Endpoint**: `GET /api/v1/backtest/{request_id}/status`
 
 **Purpose**: Get current status of a running backtest
 
@@ -252,9 +252,9 @@ Production: https://api.basis-strategy.com/api/v1
 - `"failed"`: Backtest failed with error
 - `"cancelled"`: Backtest was cancelled
 
-### **3. Stop Backtest**
+### **3. Cancel Backtest**
 
-**Endpoint**: `POST /backtest/{backtest_id}/stop`
+**Endpoint**: `DELETE /api/v1/backtest/{request_id}`
 
 **Purpose**: Stop a running backtest
 
@@ -271,7 +271,7 @@ Production: https://api.basis-strategy.com/api/v1
 
 ### **4. Get Backtest Results**
 
-**Endpoint**: `GET /backtest/{backtest_id}/results`
+**Endpoint**: `GET /api/v1/backtest/{request_id}/result`
 
 **Purpose**: Get complete results of a finished backtest
 
@@ -402,7 +402,7 @@ The `performance_attribution` field breaks down the total return into specific s
 
 ### **2. Get Live Trading Status**
 
-**Endpoint**: `GET /live/{live_trading_id}/status`
+**Endpoint**: `GET /api/v1/live/status/{request_id}`
 
 **Purpose**: Get current status of live trading
 
@@ -432,7 +432,7 @@ The `performance_attribution` field breaks down the total return into specific s
 
 ### **3. Stop Live Trading**
 
-**Endpoint**: `POST /live/{live_trading_id}/stop`
+**Endpoint**: `POST /api/v1/live/stop/{request_id}`
 
 **Purpose**: Stop live trading and close all positions
 
@@ -449,9 +449,108 @@ The `performance_attribution` field breaks down the total return into specific s
 }
 ```
 
+### **4. Get Live Trading Performance**
+
+**Endpoint**: `GET /api/v1/live/performance/{request_id}`
+
+**Purpose**: Get performance metrics for a live trading strategy
+
+**Response**:
+```json
+{
+  "success": true,
+  "data": {
+    "request_id": "lt_20240115_103000_def456",
+    "initial_capital": 100000.0,
+    "current_value": 102500.0,
+    "total_pnl": 2500.0,
+    "return_pct": 0.025,
+    "total_trades": 15,
+    "current_drawdown": 0.005,
+    "uptime_hours": 24.5,
+    "engine_status": "running",
+    "last_heartbeat": "2024-01-15T10:30:00Z"
+  }
+}
+```
+
+### **5. Emergency Stop Live Trading**
+
+**Endpoint**: `POST /api/v1/live/emergency-stop/{request_id}`
+
+**Purpose**: Emergency stop a live trading strategy with reason
+
+**Query Parameters**:
+- `reason` (optional): Reason for emergency stop (default: "Emergency stop requested")
+
+**Response**:
+```json
+{
+  "success": true,
+  "data": {
+    "message": "Live trading emergency stopped",
+    "request_id": "lt_20240115_103000_def456",
+    "reason": "Emergency stop requested"
+  }
+}
+```
+
+### **6. List Running Strategies**
+
+**Endpoint**: `GET /api/v1/live/strategies`
+
+**Purpose**: Get list of all currently running live trading strategies
+
+**Response**:
+```json
+{
+  "success": true,
+  "data": {
+    "strategies": [
+      {
+        "request_id": "lt_20240115_103000_def456",
+        "strategy_name": "usdt_market_neutral",
+        "status": "running",
+        "started_at": "2024-01-15T10:30:00Z",
+        "current_pnl": 2500.0
+      }
+    ],
+    "count": 1
+  }
+}
+```
+
+### **7. Manual Rebalancing**
+
+**Endpoint**: `POST /api/v1/live/rebalance`
+
+**Purpose**: Trigger manual rebalancing for a running strategy
+
+**Request**:
+```json
+{
+  "strategy_id": "lt_20240115_103000_def456",
+  "force": false
+}
+```
+
+**Response**:
+```json
+{
+  "success": true,
+  "data": {
+    "message": "Rebalancing request received",
+    "strategy_id": "lt_20240115_103000_def456",
+    "note": "Rebalancing logic handled by StrategyManager and TransferManager"
+  }
+}
+```
+
 ---
 
 ## 💰 **Capital Management Endpoints**
+
+**⚠️ Note**: These endpoints are documented but not yet implemented in the current codebase.
 
 ### **1. Deposit Capital**
 
@@ -519,6 +618,8 @@ The `performance_attribution` field breaks down the total return into specific s
 ---
 
 ## 📊 **Position Management Endpoints**
+
+**⚠️ Note**: These endpoints are documented but not yet implemented in the current codebase.
 
 ### **1. Get Current Positions**
 
@@ -593,6 +694,280 @@ The `performance_attribution` field breaks down the total return into specific s
   "status": "updated",
   "updated_at": "2024-01-15T10:30:00Z",
   "new_total_equity": 125000.0
+}
+```
+
+---
+
+## 📋 **Strategy Information Endpoints**
+
+### **1. List Available Strategies**
+
+**Endpoint**: `GET /api/v1/strategies/`
+
+**Purpose**: Get a list of all available trading strategies from config files
+
+**Query Parameters**:
+- `share_class` (optional): Filter by share class (ETH or USDT)
+- `risk_level` (optional): Filter by risk level
+
+**Response**:
+```json
+{
+  "success": true,
+  "data": {
+    "strategies": [
+      {
+        "name": "usdt_market_neutral",
+        "display_name": "Usdt Market Neutral",
+        "description": "Config-driven strategy: lending_staking_basis_trading",
+        "share_class": "USDT",
+        "risk_level": "high",
+        "expected_return": "15-50% APR",
+        "minimum_capital": 1000,
+        "supported_venues": ["AAVE", "LIDO", "BYBIT"],
+        "parameters": {
+          "strategy_type": "lending_staking_basis_trading",
+          "complexity": "complex",
+          "architecture": "config_driven_components",
+          "features": {
+            "lending_enabled": true,
+            "staking_enabled": true,
+            "leverage_enabled": true,
+            "basis_trade_enabled": true
+          }
+        }
+      }
+    ],
+    "total": 1
+  }
+}
+```
+
+### **2. Get Strategy Details**
+
+**Endpoint**: `GET /api/v1/strategies/{strategy_name}`
+
+**Purpose**: Get detailed information about a specific strategy from its config
+
+**Response**:
+```json
+{
+  "success": true,
+  "data": {
+    "name": "usdt_market_neutral",
+    "display_name": "Usdt Market Neutral",
+    "description": "Config-driven strategy: lending_staking_basis_trading",
+    "share_class": "USDT",
+    "risk_level": "high",
+    "expected_return": "15-50% APR",
+    "minimum_capital": 1000,
+    "supported_venues": ["AAVE", "LIDO", "BYBIT"],
+    "parameters": {
+      "strategy_type": "lending_staking_basis_trading",
+      "complexity": "complex",
+      "architecture": "config_driven_components",
+      "features": {
+        "lending_enabled": true,
+        "staking_enabled": true,
+        "leverage_enabled": true,
+        "basis_trade_enabled": true
+      }
+    }
+  }
+}
+```
+
+### **3. Get Merged Strategy Config**
+
+**Endpoint**: `GET /api/v1/strategies/{strategy_name}/config/merged`
+
+**Purpose**: Get merged configuration for a strategy (infrastructure + scenario)
+
+**Query Parameters**:
+- `start_date` (optional): Backtest start date YYYY-MM-DD
+- `end_date` (optional): Backtest end date YYYY-MM-DD
+- `initial_capital` (optional): Initial capital amount (default: 10000.0)
+- `share_class` (optional): Share class (default: USDT)
+
+**Response**:
+```json
+{
+  "success": true,
+  "data": {
+    "strategy_name": "usdt_market_neutral",
+    "config_json": {
+      "strategy": {
+        "share_class": "USDT",
+        "lending_enabled": true,
+        "staking_enabled": true,
+        "staking_leverage_enabled": true,
+        "basis_trade_enabled": true
+      },
+      "backtest": {
+        "start_date": "2024-01-01",
+        "end_date": "2024-12-31",
+        "initial_capital": 10000.0
+      }
+    },
+    "config_yaml": "strategy:\n  share_class: USDT\n  lending_enabled: true\n..."
+  }
+}
+```
+
+---
+
+## 📊 **Results & Export Endpoints**
+
+### **1. Get Result Events**
+
+**Endpoint**: `GET /api/v1/results/{result_id}/events`
+
+**Purpose**: Return chronological actions with balances and P&L attribution
+
+**Query Parameters**:
+- `limit` (optional): Max events to return (default: 500, max: 10000)
+- `offset` (optional): Offset for pagination (default: 0)
+
+**Response**:
+```json
+{
+  "success": true,
+  "data": {
+    "events": [
+      {
+        "timestamp": "2024-01-01T12:00:00Z",
+        "event_type": "ORDER_FILLED",
+        "venue": "AAVE",
+        "token": "USDT",
+        "amount": 1000.0,
+        "balance_after": {...}
+      }
+    ],
+    "total_events": 1500,
+    "has_event_log": true,
+    "component_summaries": {...},
+    "balances_by_venue": {...}
+  }
+}
+```
+
+### **2. Get Export Information**
+
+**Endpoint**: `GET /api/v1/results/{result_id}/export`
+
+**Purpose**: Get information about available export files (charts and CSV)
+
+**Response**:
+```json
+{
+  "success": true,
+  "data": {
+    "result_id": "bt_20240115_103000_abc123",
+    "available_files": {
+      "csv_report": "/results/bt_20240115_103000_abc123/results.csv",
+      "html_plots": "/results/bt_20240115_103000_abc123/plots.html",
+      "event_log": "/results/bt_20240115_103000_abc123/event_log.csv"
+    },
+    "file_sizes": {
+      "csv_report": "2.5MB",
+      "html_plots": "1.2MB",
+      "event_log": "5.8MB"
+    }
+  }
+}
+```
+
+### **3. List Results**
+
+**Endpoint**: `GET /api/v1/results/`
+
+**Purpose**: List all available results with filtering options
+
+**Query Parameters**:
+- `strategy` (optional): Filter by strategy name
+- `start_date` (optional): Filter by start date after this date
+- `end_date` (optional): Filter by start date before this date
+- `limit` (optional): Maximum results to return (default: 1000, max: 10000)
+- `offset` (optional): Results offset for pagination (default: 0)
+
+**Response**:
+```json
+{
+  "success": true,
+  "data": {
+    "results": [
+      {
+        "result_id": "bt_20240115_103000_abc123",
+        "strategy_name": "usdt_market_neutral",
+        "start_date": "2024-01-01T00:00:00Z",
+        "end_date": "2024-01-31T23:59:59Z",
+        "status": "completed",
+        "total_return": 0.0525,
+        "created_at": "2024-01-15T10:30:00Z"
+      }
+    ],
+    "total": 25,
+    "has_more": false
+  }
+}
+```
+
+---
+
+## 📈 **Charts Endpoints**
+
+### **1. List Charts**
+
+**Endpoint**: `GET /api/v1/results/{request_id}/charts`
+
+**Purpose**: Get available chart files for a specific backtest result
+
+**Response**:
+```json
+{
+  "success": true,
+  "data": {
+    "request_id": "bt_20240115_103000_abc123",
+    "available_charts": [
+      {
+        "name": "equity_curve",
+        "title": "Equity Curve",
+        "file_path": "/results/bt_20240115_103000_abc123/charts/equity_curve.png",
+        "description": "Portfolio value over time"
+      },
+      {
+        "name": "drawdown",
+        "title": "Drawdown Chart",
+        "file_path": "/results/bt_20240115_103000_abc123/charts/drawdown.png",
+        "description": "Maximum drawdown over time"
+      }
+    ]
+  }
+}
+```
+
+---
+
+## 🏠 **Root Endpoint**
+
+### **1. API Information**
+
+**Endpoint**: `GET /`
+
+**Purpose**: Root endpoint with API information
+
+**Response**:
+```json
+{
+  "name": "Basis Strategy API",
+  "version": "2.0.0",
+  "description": "DeFi Basis Trading Strategy Platform",
+  "status": "operational",
+  "documentation": "/docs",
+  "health": "/health",
+  "detailed_health": "/health/detailed",
+  "metrics": "/metrics"
 }
 ```
 
@@ -811,12 +1186,16 @@ curl -X POST https://api.basis-strategy.com/api/v1/backtest/start \
 
 **API Endpoints**:
 - **Health**: 2 endpoints (basic + detailed)
-- **Backtest**: 4 endpoints (start, status, stop, results)
-- **Live Trading**: 3 endpoints (start, status, stop)
-- **Capital Management**: 2 endpoints (deposit, withdraw)
-- **Position Management**: 2 endpoints (current, update)
+- **Backtest**: 4 endpoints (start, status, result, cancel)
+- **Live Trading**: 7 endpoints (start, status, performance, stop, emergency-stop, strategies, rebalance)
+- **Strategies**: 5 endpoints (list, details, merged config, mode config, list modes)
+- **Results**: 3 endpoints (events, export, list)
+- **Charts**: 1 endpoint (charts)
+- **Root**: 1 endpoint (API info)
 
-**Total**: 13 endpoints covering all system functionality
+**Total**: 23 endpoints covering all system functionality
+
+**Note**: Capital Management and Position Management endpoints are documented but not yet implemented in the current codebase.
 
 ---
 

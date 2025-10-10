@@ -1,40 +1,594 @@
-# Component Spec: Exposure Monitor 🎯
+# Exposure Monitor Component Specification
 
-**Component**: Exposure Monitor  
-**Responsibility**: Convert all balances to share class currency, calculate net delta  
-**Priority**: ⭐⭐⭐ CRITICAL (Foundation for risk, P&L, strategy decisions)  
-**Backend File**: `backend/src/basis_strategy_v1/core/strategies/components/exposure_monitor.py`  
-**Last Reviewed**: October 8, 2025  
-**Status**: ✅ Aligned with canonical sources (.cursor/tasks/ + MODES.md)
-
----
+## Purpose
+Convert all balances to share class currency and calculate net delta exposure across all venues.
 
 ## 📚 **Canonical Sources**
 
-**This component spec aligns with canonical architectural principles**:
-- **Architectural Principles**: [CANONICAL_ARCHITECTURAL_PRINCIPLES.md](../CANONICAL_ARCHITECTURAL_PRINCIPLES.md) - Consolidated from all .cursor/tasks/
-- **Strategy Specifications**: [MODES.md](MODES.md) - Canonical strategy mode definitions
-- **Task Specifications**: `.cursor/tasks/` - Individual task specifications
+- **Architectural Principles**: [REFERENCE_ARCHITECTURE_CANONICAL.md](../REFERENCE_ARCHITECTURE_CANONICAL.md) - Canonical architectural principles
+- **Strategy Specifications**: [MODES.md](../MODES.md) - Canonical strategy mode definitions
+- **Component Specifications**: [specs/](specs/) - Detailed component implementation guides
 
----
+## Responsibilities
+1. Convert token balances to share class currency (ETH or USD)
+2. Calculate net delta exposure (sum all long ETH - sum all short ETH)
+3. Handle AAVE index mechanics for aToken conversions
+4. Provide exposure snapshots to other components
+5. MODE-AWARE: Same conversion logic for both backtest and live modes
 
-## 🎯 **Purpose**
+## State
+- current_exposure: Dict (exposure in share class currency)
+- last_calculation_timestamp: pd.Timestamp
+- exposure_history: List[Dict] (for debugging)
+- share_class: str (ETH or USDT)
 
-Aggregate exposure across all venues in share class currency.
+## Component References (Set at Init)
+The following are set once during initialization and NEVER passed as runtime parameters:
 
-**Key Principles**:
-- **Converts**: Token balances → ETH or USD (share class dependent)
-- **AAVE conversion chain**: aWeETH → underlying weETH → ETH → USD (via indices + oracle)
-- **Net delta calculation**: Sum all long ETH - sum all short ETH
-- **Share class aware**: ETH share class = ETH units, USDT share class = USD units
+- position_monitor: PositionMonitor (reference, call get_current_positions())
+- data_provider: DataProvider (reference, query with timestamps)
+- config: Dict (reference, never modified)
+- execution_mode: str (BASIS_EXECUTION_MODE)
 
-**Data Flow Integration**:
-- **Input**: Receives `position_snapshot` and `market_data` as parameters
-- **Method**: `calculate_exposure(timestamp, position_snapshot=None, market_data=None)`
-- **No Direct Dependencies**: Doesn't hold DataProvider or PositionMonitor references
-- **Data Source**: Market data passed from EventDrivenStrategyEngine via `_process_timestamp()`
+These references are stored in __init__ and used throughout component lifecycle.
+Components NEVER receive these as method parameters during runtime.
 
-**Critical**: This is where AAVE index mechanics happen! (From PNL_RECONCILIATION.md)
+## Environment Variables
+
+### System-Level Variables (Read at Initialization)
+- `BASIS_EXECUTION_MODE`: backtest | live
+  - **Usage**: Determines simulated vs real API behavior
+  - **Read at**: Component __init__
+  - **Affects**: Mode-aware conditional logic
+
+- `BASIS_ENVIRONMENT`: dev | staging | production
+  - **Usage**: Credential routing for venue APIs
+  - **Read at**: Component __init__ (if uses external APIs)
+  - **Affects**: Which API keys/endpoints to use
+
+- `BASIS_DEPLOYMENT_MODE`: local | docker
+  - **Usage**: Port/host configuration
+  - **Read at**: Component __init__ (if network calls)
+  - **Affects**: Connection strings
+
+- `BASIS_DATA_MODE`: csv | db
+  - **Usage**: Data source selection (DataProvider only)
+  - **Read at**: DataProvider __init__
+  - **Affects**: File-based vs database data loading
+
+### Component-Specific Variables
+None
+
+### Environment Variable Access Pattern
+```python
+def __init__(self, ...):
+    # Read env vars ONCE at initialization
+    self.execution_mode = os.getenv('BASIS_EXECUTION_MODE', 'backtest')
+    # NEVER read env vars during runtime loops
+```
+
+### Behavior NOT Determinable from Environment Variables
+- AAVE index conversion logic (hard-coded conversion rates)
+- Exposure calculation precision (hard-coded decimal places)
+- Exposure history retention (hard-coded limits)
+
+## Config Fields Used
+
+### Universal Config (All Components)
+- `strategy_mode`: str - e.g., 'eth_basis', 'pure_lending'
+- `share_class`: str - 'usdt_stable' | 'eth_directional'
+- `initial_capital`: float - Starting capital
+
+### Component-Specific Config
+- `exposure_tolerance`: float - Tolerance for exposure calculations
+  - **Usage**: Determines precision of exposure calculations
+  - **Default**: 0.001 (0.1%)
+  - **Validation**: Must be > 0 and < 0.01
+
+- `exposure_history_limit`: int - Maximum exposure history entries
+  - **Usage**: Limits memory usage for exposure history
+  - **Default**: 1000
+  - **Validation**: Must be > 0
+
+### Config Access Pattern
+```python
+def update_state(self, timestamp: pd.Timestamp, trigger_source: str):
+    # Read config fields (NEVER modify)
+    tolerance = self.config.get('exposure_tolerance', 0.001)
+```
+
+### Behavior NOT Determinable from Config
+- AAVE index conversion rates (hard-coded)
+- Token price precision (hard-coded decimal places)
+- Exposure calculation algorithm (hard-coded logic)
+
+## Data Provider Queries
+
+### Data Types Requested
+`data = self.data_provider.get_data(timestamp)`
+
+#### Market Data
+- `prices`: Dict[str, float] - Token prices in USD
+  - **Tokens needed**: ETH, USDT, BTC, LST tokens, AAVE tokens
+  - **Update frequency**: 1min
+  - **Usage**: Token price conversion for exposure calculations
+
+#### Protocol Data
+- `aave_indexes`: Dict[str, float] - AAVE liquidity indexes
+  - **Tokens needed**: aETH, aUSDT, aBTC, variableDebtETH, etc.
+  - **Update frequency**: 1min
+  - **Usage**: AAVE token conversion to underlying assets
+
+### Query Pattern
+```python
+def update_state(self, timestamp: pd.Timestamp, trigger_source: str):
+    data = self.data_provider.get_data(timestamp)
+    prices = data['market_data']['prices']
+    aave_indexes = data['protocol_data']['aave_indexes']
+```
+
+### Data NOT Available from DataProvider
+None - all data comes from DataProvider
+
+### **YAML Configuration**
+**Mode Configuration** (from `configs/modes/*.yaml`):
+- `share_class`: Share class ('USDT' | 'ETH') - determines exposure currency
+- `asset`: Primary asset ('BTC' | 'ETH') - determines exposure calculation
+- `lst_type`: LST type ('weeth' | 'wsteth') - affects AAVE conversion logic
+- `leverage_enabled`: Enable leverage (boolean) - affects exposure calculations
+
+**Venue Configuration** (from `configs/venues/*.yaml`):
+- `venue`: Venue identifier - used for venue-specific exposure calculations
+- `type`: Venue type ('cex' | 'dex' | 'onchain') - affects exposure logic
+- `supported_assets`: Supported asset lists - used for exposure validation
+
+**Share Class Configuration** (from `configs/share_classes/*.yaml`):
+- `base_currency`: Base currency ('USDT' | 'ETH') - determines exposure currency
+- `market_neutral`: Market neutral flag (boolean) - affects exposure calculations
+
+**Cross-Reference**: [CONFIGURATION.md](CONFIGURATION.md) - Complete configuration hierarchy
+**Cross-Reference**: [ENVIRONMENT_VARIABLES.md](../ENVIRONMENT_VARIABLES.md) - Environment variable definitions
+
+## Core Methods
+
+### update_state(timestamp: pd.Timestamp, trigger_source: str, **kwargs)
+Main entry point for exposure calculations.
+
+Parameters:
+- timestamp: Current loop timestamp (from EventDrivenStrategyEngine)
+- trigger_source: 'full_loop' | 'tight_loop' | 'manual'
+- **kwargs: Additional parameters (not used)
+
+Behavior:
+1. Query data using: market_data = self.data_provider.get_data(timestamp)
+2. Access position monitor via reference: positions = self.position_monitor.get_current_positions()
+3. Calculate exposure based on current positions and market data
+4. NO async/await: Synchronous execution only
+
+Returns:
+- None (state updated in place)
+
+### get_current_exposure() -> Dict
+Get current exposure snapshot.
+
+Returns:
+- Dict: Current exposure in share class currency
+
+### calculate_exposure(timestamp: pd.Timestamp, positions: Dict, market_data: Dict) -> Dict
+Calculate exposure from positions and market data.
+
+Parameters:
+- timestamp: Current loop timestamp
+- positions: Position snapshot from PositionMonitor
+- market_data: Market data from DataProvider
+
+Returns:
+- Dict: Exposure in share class currency
+
+## Data Access Pattern
+
+Components query data using shared clock:
+```python
+def update_state(self, timestamp: pd.Timestamp, trigger_source: str, **kwargs):
+    # Query data with timestamp (data <= timestamp guaranteed)
+    market_data = self.data_provider.get_data(timestamp)
+    positions = self.position_monitor.get_current_positions()
+    
+    # Calculate exposure based on current state
+    exposure = self.calculate_exposure(timestamp, positions, market_data)
+    
+    # Update internal state
+    self.current_exposure = exposure
+    self.last_calculation_timestamp = timestamp
+```
+
+NEVER pass market_data or positions as parameters between components.
+NEVER cache market_data across timestamps.
+
+## Mode-Aware Behavior
+
+### Backtest Mode
+```python
+def calculate_exposure(self, timestamp: pd.Timestamp, positions: Dict, market_data: Dict):
+    if self.execution_mode == 'backtest':
+        # Use historical market data for conversions
+        return self._calculate_exposure_with_data(positions, market_data)
+```
+
+### Live Mode
+```python
+def calculate_exposure(self, timestamp: pd.Timestamp, positions: Dict, market_data: Dict):
+    elif self.execution_mode == 'live':
+        # Use real-time market data for conversions
+        return self._calculate_exposure_with_data(positions, market_data)
+```
+
+## Event Logging Requirements
+
+### Component Event Log File
+**Separate log file** for this component's events:
+- **File**: `logs/events/exposure_monitor_events.jsonl`
+- **Format**: JSON Lines (one event per line)
+- **Rotation**: Daily rotation, keep 30 days
+- **Purpose**: Component-specific audit trail
+
+### Event Logging via EventLogger
+All events logged through centralized EventLogger:
+
+```python
+self.event_logger.log_event(
+    timestamp=timestamp,
+    event_type='[event_type]',
+    component='ExposureMonitor',
+    data={
+        'event_specific_data': value,
+        'state_snapshot': self.get_state_snapshot()  # optional
+    }
+)
+```
+
+### Events to Log
+
+#### 1. Component Initialization
+```python
+self.event_logger.log_event(
+    timestamp=pd.Timestamp.now(),
+    event_type='component_initialization',
+    component='ExposureMonitor',
+    data={
+        'execution_mode': self.execution_mode,
+        'share_class': self.share_class,
+        'config_hash': hash(str(self.config))
+    }
+)
+```
+
+#### 2. State Updates (Every update_state() Call)
+```python
+self.event_logger.log_event(
+    timestamp=timestamp,
+    event_type='state_update',
+    component='ExposureMonitor',
+    data={
+        'trigger_source': trigger_source,
+        'net_delta_exposure': self.current_exposure.get('net_delta', 0),
+        'total_value': self.current_exposure.get('total_value', 0),
+        'processing_time_ms': processing_time
+    }
+)
+```
+
+#### 3. Error Events
+```python
+self.event_logger.log_event(
+    timestamp=timestamp,
+    event_type='error',
+    component='ExposureMonitor',
+    data={
+        'error_code': 'EXP-001',
+        'error_message': str(e),
+        'stack_trace': traceback.format_exc(),
+        'error_severity': 'CRITICAL|HIGH|MEDIUM|LOW'
+    }
+)
+```
+
+#### 4. Component-Specific Critical Events
+- **AAVE Conversion Failed**: When AAVE index conversion fails
+- **Exposure Calculation Error**: When exposure calculation fails
+- **Price Data Missing**: When required price data is unavailable
+
+### Event Retention & Output Formats
+
+#### Dual Logging Approach
+**Both formats are used**:
+1. **JSON Lines (Iterative)**: Write events to component-specific JSONL files during execution
+   - **Purpose**: Real-time monitoring during backtest runs
+   - **Location**: `logs/events/exposure_monitor_events.jsonl`
+   - **When**: Events written as they occur (buffered for performance)
+   
+2. **CSV Export (Final)**: Comprehensive CSV export at Results Store stage
+   - **Purpose**: Final analysis, spreadsheet compatibility
+   - **Location**: `results/[backtest_id]/events.csv`
+   - **When**: At backtest completion or on-demand
+
+#### Mode-Specific Behavior
+- **Backtest**: 
+  - Write JSONL iteratively (allows tracking during long runs)
+  - Export CSV at completion to Results Store
+  - Keep all events in memory for final processing
+  
+- **Live**: 
+  - Write JSONL immediately (no buffering)
+  - Rotate daily, keep 30 days
+  - CSV export on-demand for analysis
+
+**Note**: Current implementation stores events in memory and exports to CSV only. Enhanced implementation will add iterative JSONL writing. Reference: `docs/specs/17_HEALTH_ERROR_SYSTEMS.md`
+
+## Error Codes
+
+### Component Error Code Prefix: EXP
+All ExposureMonitor errors use the `EXP` prefix.
+
+### Error Code Registry
+**Source**: `backend/src/basis_strategy_v1/core/error_codes/error_code_registry.py`
+
+All error codes registered with:
+- **code**: Unique error code
+- **component**: Component name
+- **severity**: CRITICAL | HIGH | MEDIUM | LOW
+- **message**: Human-readable error message
+- **resolution**: How to resolve
+
+### Component Error Codes
+
+#### EXP-001: AAVE Conversion Failed (HIGH)
+**Description**: Failed to convert AAVE tokens to underlying assets
+**Cause**: Missing AAVE indexes, invalid token addresses, network issues
+**Recovery**: Retry with fallback values, check AAVE index data
+```python
+raise ComponentError(
+    error_code='EXP-001',
+    message='AAVE conversion failed for token',
+    component='ExposureMonitor',
+    severity='HIGH'
+)
+```
+
+#### EXP-002: Price Data Missing (HIGH)
+**Description**: Required price data not available for exposure calculation
+**Cause**: DataProvider issues, missing price feeds, network problems
+**Recovery**: Use cached prices, retry data fetch, check data provider
+```python
+raise ComponentError(
+    error_code='EXP-002',
+    message='Price data missing for exposure calculation',
+    component='ExposureMonitor',
+    severity='HIGH'
+)
+```
+
+#### EXP-003: Exposure Calculation Error (MEDIUM)
+**Description**: Failed to calculate net delta exposure
+**Cause**: Invalid position data, calculation overflow, precision errors
+**Recovery**: Log warning, use previous exposure, continue processing
+```python
+raise ComponentError(
+    error_code='EXP-003',
+    message='Exposure calculation failed',
+    component='ExposureMonitor',
+    severity='MEDIUM'
+)
+```
+
+### Structured Error Handling Pattern
+
+#### Error Raising
+```python
+from backend.src.basis_strategy_v1.core.error_codes.exceptions import ComponentError
+
+try:
+    result = self._calculate_exposure(positions, market_data)
+except Exception as e:
+    # Log error event
+    self.event_logger.log_event(
+        timestamp=timestamp,
+        event_type='error',
+        component='ExposureMonitor',
+        data={
+            'error_code': 'EXP-003',
+            'error_message': str(e),
+            'stack_trace': traceback.format_exc()
+        }
+    )
+    
+    # Raise structured error
+    raise ComponentError(
+        error_code='EXP-003',
+        message=f'ExposureMonitor failed: {str(e)}',
+        component='ExposureMonitor',
+        severity='MEDIUM',
+        original_exception=e
+    )
+```
+
+#### Error Propagation Rules
+- **CRITICAL**: Propagate to health system → trigger app restart
+- **HIGH**: Log and retry with exponential backoff (max 3 retries)
+- **MEDIUM**: Log and continue with degraded functionality
+- **LOW**: Log for monitoring, no action needed
+
+### Component Health Integration
+
+#### Health Check Registration
+```python
+def __init__(self, ..., health_manager: UnifiedHealthManager):
+    # Store health manager reference
+    self.health_manager = health_manager
+    
+    # Register component with health system
+    self.health_manager.register_component(
+        component_name='ExposureMonitor',
+        checker=self._health_check
+    )
+
+def _health_check(self) -> Dict:
+    """Component-specific health check."""
+    return {
+        'status': 'healthy' | 'degraded' | 'unhealthy',
+        'last_update': self.last_calculation_timestamp,
+        'errors': self.recent_errors[-10:],  # Last 10 errors
+        'metrics': {
+            'update_count': self.update_count,
+            'avg_processing_time_ms': self.avg_processing_time,
+            'error_rate': self.error_count / max(self.update_count, 1),
+            'net_delta_exposure': self.current_exposure.get('net_delta', 0),
+            'total_value': self.current_exposure.get('total_value', 0)
+        }
+    }
+```
+
+#### Health Status Definitions
+- **healthy**: No errors in last 100 updates, processing time < threshold
+- **degraded**: Minor errors, slower processing, retries succeeding
+- **unhealthy**: Critical errors, failed retries, unable to process
+
+**Reference**: `docs/specs/17_HEALTH_ERROR_SYSTEMS.md`
+
+## Quality Gates
+
+### Validation Criteria
+- [ ] All 18 sections present and complete
+- [ ] Environment Variables section documents system-level and component-specific variables
+- [ ] Config Fields Used section documents universal and component-specific config
+- [ ] Data Provider Queries section documents market data and protocol data queries
+- [ ] Event Logging Requirements section documents component-specific JSONL file
+- [ ] Event Logging Requirements section documents dual logging (JSONL + CSV)
+- [ ] Error Codes section has structured error handling pattern
+- [ ] Error Codes section references health integration
+- [ ] Health integration documented with UnifiedHealthManager
+- [ ] Component-specific log file documented (`logs/events/exposure_monitor_events.jsonl`)
+
+### Section Order Validation
+- [ ] Purpose (section 1)
+- [ ] Responsibilities (section 2)
+- [ ] State (section 3)
+- [ ] Component References (Set at Init) (section 4)
+- [ ] Environment Variables (section 5)
+- [ ] Config Fields Used (section 6)
+- [ ] Data Provider Queries (section 7)
+- [ ] Core Methods (section 8)
+- [ ] Data Access Pattern (section 9)
+- [ ] Mode-Aware Behavior (section 10)
+- [ ] Event Logging Requirements (section 11)
+- [ ] Error Codes (section 12)
+- [ ] Quality Gates (section 13)
+- [ ] Integration Points (section 14)
+- [ ] Code Structure Example (section 15)
+- [ ] Related Documentation (section 16)
+
+### Implementation Status
+- [ ] Backend implementation exists and matches spec
+- [ ] All required methods implemented
+- [ ] Error handling follows structured pattern
+- [ ] Health integration implemented
+- [ ] Event logging implemented
+
+## Integration Points
+
+### Called BY
+- EventDrivenStrategyEngine (full loop): exposure_monitor.update_state(timestamp, 'full_loop')
+- PositionUpdateHandler (tight loop): exposure_monitor.update_state(timestamp, 'tight_loop')
+- StrategyManager (exposure query): exposure_monitor.get_current_exposure()
+
+### Calls TO
+- data_provider.get_data(timestamp) - data queries
+- position_monitor.get_current_positions() - position queries
+
+### Communication
+- Direct method calls ONLY
+- NO event publishing
+- NO Redis/message queues
+- NO async/await in internal methods
+
+## Code Structure Example
+
+```python
+class ExposureMonitor:
+    def __init__(self, config: Dict, data_provider: DataProvider, execution_mode: str,
+                 position_monitor: PositionMonitor):
+        # Store references (NEVER modified)
+        self.config = config
+        self.data_provider = data_provider
+        self.execution_mode = execution_mode
+        self.position_monitor = position_monitor
+        
+        # Initialize component-specific state
+        self.current_exposure = {}
+        self.last_calculation_timestamp = None
+        self.exposure_history = []
+        self.share_class = config.get('share_class', 'USDT')
+    
+    def update_state(self, timestamp: pd.Timestamp, trigger_source: str, **kwargs):
+        """Main exposure calculation entry point."""
+        # Query data with timestamp
+        market_data = self.data_provider.get_data(timestamp)
+        positions = self.position_monitor.get_current_positions()
+        
+        # Calculate exposure
+        exposure = self.calculate_exposure(timestamp, positions, market_data)
+        
+        # Update internal state
+        self.current_exposure = exposure
+        self.last_calculation_timestamp = timestamp
+        self.exposure_history.append({
+            'timestamp': timestamp,
+            'exposure': exposure.copy()
+        })
+    
+    def get_current_exposure(self) -> Dict:
+        """Get current exposure snapshot."""
+        return self.current_exposure.copy()
+    
+    def calculate_exposure(self, timestamp: pd.Timestamp, positions: Dict, market_data: Dict) -> Dict:
+        """Calculate exposure from positions and market data."""
+        # Convert all positions to share class currency
+        exposure = {
+            'total_equity': 0.0,
+            'net_delta_eth': 0.0,
+            'net_delta_usd': 0.0,
+            'venue_exposures': {}
+        }
+        
+        # Process each venue
+        for venue, venue_positions in positions.items():
+            venue_exposure = self._calculate_venue_exposure(venue_positions, market_data)
+            exposure['venue_exposures'][venue] = venue_exposure
+            exposure['total_equity'] += venue_exposure['equity']
+            exposure['net_delta_eth'] += venue_exposure['delta_eth']
+            exposure['net_delta_usd'] += venue_exposure['delta_usd']
+        
+        return exposure
+    
+    def _calculate_venue_exposure(self, venue_positions: Dict, market_data: Dict) -> Dict:
+        """Calculate exposure for a single venue."""
+        # Implementation would handle AAVE index mechanics, token conversions, etc.
+        pass
+```
+
+## Related Documentation
+- [Reference-Based Architecture](../REFERENCE_ARCHITECTURE.md)
+- [Shared Clock Pattern](../SHARED_CLOCK_PATTERN.md)
+- [Request Isolation Pattern](../REQUEST_ISOLATION_PATTERN.md)
+
+### **Component Integration**
+- [Position Monitor Specification](01_POSITION_MONITOR.md) - Provides position data for exposure calculations
+- [Risk Monitor Specification](03_RISK_MONITOR.md) - Depends on Exposure Monitor for exposure data
+- [P&L Calculator Specification](04_PNL_CALCULATOR.md) - Depends on Exposure Monitor for exposure data
+- [Strategy Manager Specification](05_STRATEGY_MANAGER.md) - Depends on Exposure Monitor for exposure data
+- [Data Provider Specification](09_DATA_PROVIDER.md) - Provides market data for exposure calculations
+- [Event Logger Specification](08_EVENT_LOGGER.md) - Logs exposure calculation events
+- [Position Update Handler Specification](11_POSITION_UPDATE_HANDLER.md) - Triggers exposure updates
 
 ---
 
@@ -240,10 +794,12 @@ weeth_redeemable = wallet.aWeETH × new_liquidity_index
 class ExposureMonitor:
     """Calculate exposure from raw balances."""
     
-    def __init__(self, share_class: str, position_monitor, data_provider):
-        self.share_class = share_class
-        self.position_monitor = position_monitor
-        self.data_provider = data_provider
+    def __init__(self, config: Dict, position_monitor, data_provider, execution_mode: str):
+        self.config = config
+        self.position_monitor = position_monitor  # Shared instance reference
+        self.data_provider = data_provider  # Shared instance reference
+        self.execution_mode = execution_mode
+        self.share_class = config.get('share_class', 'USDT')
     
     def calculate_exposure(self, timestamp: pd.Timestamp) -> Dict:
         """
@@ -494,25 +1050,24 @@ def _calculate_total_value(self, exposures: Dict, market_data: Dict) -> float:
 ## 🔗 **Integration**
 
 ### **Triggered By**:
-- Position Monitor updates (via Redis `position:updated` channel)
+- Position Monitor updates (via direct method calls)
 
 ### **Uses Data From**:
 - **Position Monitor** ← Raw balances
 - **Data Provider** ← Prices, indices, oracles
 
-### **Publishes To**:
+### **Provides Data To**:
 - **Risk Monitor** ← Exposure data
 - **P&L Calculator** ← Exposure data
 - **Strategy Manager** ← Exposure data
 
-### **Redis Pub/Sub**:
+### **Component Communication**:
 
-**Subscribes**:
-- `position:updated` → Triggers recalculation
-
-**Publishes**:
-- `exposure:calculated` (channel) → Notifies downstream
-- `exposure:current` (key) → Latest exposure data
+**Direct Method Calls**:
+- Position Monitor → Triggers recalculation via direct method calls
+- Risk Monitor ← Exposure data via direct method calls
+- P&L Calculator ← Exposure data via direct method calls
+- Strategy Manager ← Exposure data via direct method calls
 
 ---
 
@@ -620,6 +1175,51 @@ okx_price = 3304.80      # OKX-specific
 
 ---
 
+## 🔧 **Current Implementation Status**
+
+**Overall Completion**: 85% (Core functionality working, centralized utility manager needs implementation)
+
+### **Core Functionality Status**
+- ✅ **Working**: AAVE index conversions, net delta calculation, per-exchange perp prices, share class value calculations, total value aggregation, gas debt handling, USDT short exposure, config-driven parameters
+- ⚠️ **Partial**: Centralized utility manager implementation (scattered utility methods need centralization)
+- ❌ **Missing**: None
+- 🔄 **Refactoring Needed**: Centralized utility manager implementation
+
+### **Architecture Compliance Status**
+- ✅ **COMPLIANT**: Component follows canonical architectural principles
+  - **Reference-Based Architecture**: Components receive references at init, never pass as runtime parameters
+  - **Shared Clock Pattern**: All methods receive timestamp from EventDrivenStrategyEngine
+  - **Request Isolation Pattern**: Fresh instances per backtest/live request
+  - **Synchronous Component Execution**: Internal methods are synchronous, async only for I/O operations
+  - **Mode-Aware Behavior**: Uses BASIS_EXECUTION_MODE for conditional logic
+  - **Config-Driven Parameters**: Uses config parameters (asset, share_class, lst_type, hedge_allocation) instead of mode-specific logic
+
+### **Implementation Status**
+- **High Priority**:
+  - Implement centralized utility manager for scattered utility methods
+  - Centralize liquidity index calculations
+  - Centralize market price conversions
+- **Medium Priority**:
+  - Optimize utility method performance
+- **Low Priority**:
+  - None identified
+
+### **Quality Gate Status**
+- **Current Status**: PARTIAL
+- **Failing Tests**: Centralized utility manager tests
+- **Requirements**: Implement centralized utility manager
+- **Integration**: Integrates with quality gate system through exposure monitor tests
+
+### **Task Completion Status**
+- **Related Tasks**: 
+  - [.cursor/tasks/18_generic_vs_mode_specific_architecture.md](../../.cursor/tasks/18_generic_vs_mode_specific_architecture.md) - Generic vs Mode-Specific Architecture (100% complete - config-driven parameters implemented)
+  - [.cursor/tasks/14_mode_agnostic_architecture_requirements.md](../../.cursor/tasks/14_mode_agnostic_architecture_requirements.md) - Mode-Agnostic Architecture (80% complete - centralized utilities need implementation)
+- **Completion**: 85% complete overall
+- **Blockers**: Centralized utility manager implementation
+- **Next Steps**: Implement centralized utility manager for scattered utility methods
+
+---
+
 ## 🎯 **Success Criteria**
 
 - [ ] Correct AAVE index conversions (scaled → underlying)
@@ -630,7 +1230,7 @@ okx_price = 3304.80      # OKX-specific
 - [ ] Gas debt handled correctly (negative ETH)
 - [ ] USDT as short ETH exposure
 - [ ] Triggered by every position update
-- [ ] Publishes to downstream components
+- [ ] Provides data to downstream components via direct method calls
 - [ ] Balance sheet data available for plotting (wallet, CEX, AAVE positions)
 
 ---
