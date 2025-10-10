@@ -5,7 +5,15 @@ import pandas as pd
 from typing import Dict, Any, List
 from datetime import datetime
 
-from ..error_codes.exceptions import ComponentError
+# ComponentError class for structured error handling
+class ComponentError(Exception):
+    """Structured error for component failures."""
+    def __init__(self, error_code: str, message: str, component: str, severity: str = 'HIGH', original_exception=None):
+        self.error_code = error_code
+        self.component = component
+        self.severity = severity
+        self.original_exception = original_exception
+        super().__init__(message)
 
 logger = structlog.get_logger()
 

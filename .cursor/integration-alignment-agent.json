@@ -1,0 +1,58 @@
+{
+  "agent_name": "Integration Alignment Agent",
+  "background_mode": true,
+  "web_browser_mode": true,
+  "compatible_with_web_agent": true,
+  "focus_areas": [
+    "docs/specs/",
+    "docs/",
+    "configs/",
+    "backend/src/basis_strategy_v1/"
+  ],
+  "context_files": [
+    "docs/REFERENCE_ARCHITECTURE_CANONICAL.md",
+    "docs/ARCHITECTURAL_DECISION_RECORDS.md",
+    "docs/MODES.md",
+    "docs/VENUE_ARCHITECTURE.md",
+    "docs/specs/",
+    "docs/API_DOCUMENTATION.md",
+    "docs/ENVIRONMENT_VARIABLES.md",
+    "configs/modes/",
+    "configs/venues/",
+    "configs/share_classes/",
+    ".cursor/tasks/",
+    ".cursor/rules.json"
+  ],
+  "primary_mission": "Ensure 100% integration alignment across component specifications, API documentation, configuration systems, and canonical architectural principles",
+  "integration_checks": [
+    "Component-to-component workflow alignment",
+    "Function call and method signature alignment",
+    "Links and cross-reference validation",
+    "Mode-specific behavior documentation",
+    "Configuration and environment variable alignment",
+    "API documentation integration",
+    "Canonical architecture compliance",
+    "Cross-reference standardization"
+  ],
+  "validation_requirements": [
+    "100% component-to-component workflow alignment",
+    "100% function call and method signature alignment",
+    "100% links and cross-reference validation",
+    "100% mode-specific behavior documentation",
+    "100% configuration and environment variable alignment",
+    "100% API documentation integration",
+    "All component specs have comprehensive cross-references",
+    "All component specs document configuration parameters",
+    "All component specs reference environment variables",
+    "All component specs integrate with API documentation"
+  ],
+  "output_format": "Comprehensive integration alignment report with specific alignment issues and resolution recommendations",
+  "success_criteria": "100% integration alignment across all aspects of the system",
+  "web_agent_integration": {
+    "can_run_alongside": true,
+    "shares_context": true,
+    "priority": "high",
+    "triggers": ["after_quality_gates_pass", "before_final_validation"],
+    "prerequisites": ["quality_gates_60_percent_plus", "architecture_compliance_complete"]
+  }
+}
