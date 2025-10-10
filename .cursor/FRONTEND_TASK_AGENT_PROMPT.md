@@ -14,32 +14,56 @@ You are an autonomous frontend-focused background agent executing frontend-speci
 
 ## Immediate Actions Required
 
-### 0. Install Dependencies (Fresh Machine Setup)
-**CRITICAL**: For fresh machines, install frontend dependencies first:
+### 0. Environment Setup (Fresh Machine)
+**CRITICAL**: Complete environment setup before starting frontend development:
 
 ```bash
-# Install frontend dependencies
+# 1. Install Python dependencies (if not already installed)
+pip3 install -r requirements.txt
+
+# 2. Install frontend dependencies
 cd frontend && npm install && cd ..
 
-# Verify system requirements
+# 3. Verify system requirements
+python3 --version  # Requires Python 3.8+
 node --version     # Requires Node.js 16+
 npm --version      # Verify npm is available
+
+# 4. Check environment files exist
+ls -la env.unified env.dev env.staging env.prod
 ```
 
-### 1. Start Frontend Development Server
+### 1. Start Backend Server (Required for API Integration)
+```bash
+# Start backend in backtest mode (recommended for frontend development)
+./platform.sh backtest
+
+# Wait for backend to be healthy, then verify:
+curl -s http://localhost:8001/health/
+curl -s http://localhost:8001/api/v1/strategies/
+
+# If backend fails to start, check logs:
+tail -f backend/logs/api.log
+```
+
+### 2. Start Frontend Development Server
 ```bash
 # Start frontend in development mode
 cd frontend && npm run dev
 
 # Verify frontend is running
 curl -s http://localhost:5173
+
+# Frontend should be available at: http://localhost:5173
+# Backend API should be available at: http://localhost:8001
 ```
 
-### 2. Verify Backend API Integration
+### 3. Verify Full Stack Integration
 ```bash
-# Test backend API endpoints
-curl -s http://localhost:8001/health/
-curl -s http://localhost:8001/api/v1/strategies/
+# Test complete integration
+curl -s http://localhost:8001/health/ | jq
+curl -s http://localhost:8001/api/v1/strategies/ | jq
+curl -s http://localhost:5173 | grep -i "basis strategy"
 ```
 
 ## Execution Protocol
@@ -264,6 +288,70 @@ const mockApiClient = {
 - **Live Trading**: Mock live trading status and performance data
 - **Authentication**: Mock JWT tokens and user data
 
+## Environment & Backend Management
+
+### Environment Variables Setup
+```bash
+# Check current environment
+echo $BASIS_ENVIRONMENT
+
+# Set environment for frontend development
+export BASIS_ENVIRONMENT=dev
+
+# Load environment variables (platform.sh handles this automatically)
+# Manual loading if needed:
+source env.unified
+source env.dev  # or env.staging, env.prod
+
+# Verify environment variables
+env | grep BASIS_
+```
+
+**Note**: Environment files are `env.dev`, `env.staging`, `env.prod` (not `.env.*` format)
+
+### Backend Server Management
+```bash
+# Start backend in different modes (aligned with docs/GETTING_STARTED.md)
+./platform.sh backtest     # Backend only, backtest mode (recommended for frontend dev)
+./platform.sh start        # Full stack (backend + frontend)
+./platform.sh backend      # Backend only, uses env file BASIS_EXECUTION_MODE
+
+# Environment switching (as documented in GETTING_STARTED.md)
+BASIS_ENVIRONMENT=dev ./platform.sh backtest      # Development environment
+BASIS_ENVIRONMENT=staging ./platform.sh backtest  # Staging environment  
+BASIS_ENVIRONMENT=prod ./platform.sh backtest     # Production environment
+
+# Stop services
+./platform.sh stop-local   # Stop all local services
+./platform.sh stop         # Stop all services
+
+# Check backend status
+./platform.sh status
+curl -s http://localhost:8001/health/
+curl -s http://localhost:8001/health/detailed
+```
+
+**Note**: Environment switching follows the pattern from `docs/GETTING_STARTED.md` lines 37-50
+
+**⚠️ Known Issue**: The `platform.sh` script looks for `.env.production` but the actual file is `env.prod`. This may cause issues with production environment loading.
+
+### Backend Troubleshooting
+```bash
+# Check if backend is running
+ps aux | grep python | grep uvicorn
+
+# Check backend logs
+tail -f backend/logs/api.log
+
+# Check backend health
+curl -s http://localhost:8001/health/ | jq
+curl -s http://localhost:8001/health/detailed | jq
+
+# Restart backend if needed
+./platform.sh stop-local
+./platform.sh backtest
+```
+
 ## Key Commands
 
 ### Frontend Development
@@ -279,16 +367,23 @@ cd frontend && npm run test
 
 # Run frontend linting
 cd frontend && npm run lint
+
+# Preview production build
+cd frontend && npm run preview
 ```
 
 ### Backend Integration
 ```bash
-# Start backend (if needed for integration testing)
+# Start backend (required for frontend development)
 ./platform.sh backtest
 
 # Test backend API endpoints
 curl -s http://localhost:8001/health/
 curl -s http://localhost:8001/api/v1/strategies/
+curl -s http://localhost:8001/api/v1/strategies/modes/
+
+# Test specific endpoints for frontend
+curl -s http://localhost:8001/api/v1/backtest/run -X POST -H "Content-Type: application/json" -d '{"strategy_name":"pure_lending","share_class":"usdt","initial_capital":10000,"start_date":"2024-01-01T00:00:00Z","end_date":"2024-01-31T00:00:00Z"}'
 ```
 
 ### Testing
@@ -301,6 +396,91 @@ cd frontend && npm run test:ui
 
 # Check test coverage
 cd frontend && npm run test -- --coverage
+
+# Run specific test files
+cd frontend && npm run test -- components/results/
+```
+
+### Development Workflow
+```bash
+# 1. Start backend first
+./platform.sh backtest
+
+# 2. Start frontend in another terminal
+cd frontend && npm run dev
+
+# 3. Verify both are running
+curl -s http://localhost:8001/health/  # Backend
+curl -s http://localhost:5173          # Frontend
+
+# 4. Open browser
+open http://localhost:5173  # macOS
+xdg-open http://localhost:5173  # Linux
+```
+
+### Environment File Management
+```bash
+# Check which environment files exist
+ls -la env.unified env.dev env.staging env.prod
+
+# Set environment for session
+export BASIS_ENVIRONMENT=dev
+
+# Load environment variables manually
+source env.unified
+source .env.dev
+
+# Check if environment variables are loaded
+env | grep BASIS_ | head -10
+```
+
+### Common Issues & Solutions
+
+#### Backend Won't Start
+```bash
+# Check if port 8001 is in use
+lsof -i :8001
+
+# Kill processes on port 8001
+lsof -ti :8001 | xargs kill -9
+
+# Check Python dependencies
+pip3 list | grep fastapi
+
+# Reinstall dependencies if needed
+pip3 install -r requirements.txt
+
+# Check environment files
+ls -la env.unified env.dev
+```
+
+#### Frontend Won't Start
+```bash
+# Check Node.js version
+node --version  # Should be 16+
+
+# Clear npm cache
+npm cache clean --force
+
+# Reinstall dependencies
+cd frontend && rm -rf node_modules package-lock.json
+cd frontend && npm install
+
+# Check if port 5173 is in use
+lsof -i :5173
+```
+
+#### API Integration Issues
+```bash
+# Test backend connectivity
+curl -v http://localhost:8001/health/
+
+# Check CORS issues in browser console
+# Verify API base URL in frontend
+grep -r "VITE_API_BASE_URL" frontend/
+
+# Test specific API endpoints
+curl -s http://localhost:8001/api/v1/strategies/ | jq
 ```
 
 ## Success Metrics
