@@ -131,7 +131,7 @@ class IntegrationAlignmentQualityGates:
             if spec_file.name.startswith("0"):
                 self._check_file_contains(
                     f"docs/specs/{spec_file.name}",
-                    "[.*]\(.*\.md\)",
+                    r"\[.*\]\(.*\.md\)",
                     f"Cross-reference format in {spec_file.name}",
                     use_regex=True
                 )

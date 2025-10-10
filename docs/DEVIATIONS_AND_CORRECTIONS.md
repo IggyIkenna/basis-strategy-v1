@@ -209,16 +209,24 @@
 ### **11. Frontend Implementation Gap** ❌ LOW PRIORITY
 **Violation**: Frontend specification incomplete
 **Files**:
-- `frontend/src/components/results/` - Directory is empty
-- Missing: ResultsPage, MetricCard, PlotlyChart, EventLogViewer
-- Missing: API service layer, type definitions
+- `frontend/src/components/live/` - Directory missing
+- `frontend/src/components/auth/` - Directory missing
+- `frontend/src/services/` - Directory missing
+- `frontend/src/types/` - Directory missing
+- `frontend/src/utils/` - Directory missing
+- Missing: LiveTradingPanel, CapitalManagement, StatusMonitor
+- Missing: LoginPage, AuthContext, ProtectedRoute
+- Missing: API service layer, type definitions, utility functions
 
 **Canonical Source**:
 - docs/specs/12_FRONTEND_SPEC.md
+- .cursor/tasks/27_authentication_system.md
+- .cursor/tasks/28_live_trading_ui.md
+- .cursor/tasks/29_shared_utilities.md
 
-**Required Fix**: Implement missing results components
+**Required Fix**: Implement missing frontend components and utilities
 
-**Status**: No TODO comments present
+**Status**: Tasks created in .cursor/tasks/ directory
 
 ---
 
@@ -307,9 +315,10 @@
     - No direct component references
 
 ### Low Priority (Can Defer):
-11. **Complete Frontend Implementation** - Implement missing results components
-    - Create ResultsPage, MetricCard, PlotlyChart, EventLogViewer
-    - Implement API service layer and type definitions
+11. **Complete Frontend Implementation** - Implement missing frontend components
+    - Create LiveTradingPanel, CapitalManagement, StatusMonitor
+    - Create LoginPage, AuthContext, ProtectedRoute
+    - Implement API service layer, type definitions, and utility functions
 
 ---
 

@@ -1,5 +1,7 @@
 # Data Provider Component Specification
 
+**Last Reviewed**: October 10, 2025
+
 ## Purpose
 Load and provide market data with hourly alignment enforcement and comprehensive validation for both backtest and live modes.
 
@@ -24,6 +26,359 @@ The following are set once during initialization and NEVER passed as runtime par
 
 These references are stored in __init__ and used throughout component lifecycle.
 Components NEVER receive these as method parameters during runtime.
+
+## Environment Variables
+
+### System-Level Variables
+- **BASIS_EXECUTION_MODE**: 'backtest' | 'live' (determines data source)
+- **BASIS_LOG_LEVEL**: 'DEBUG' | 'INFO' | 'WARNING' | 'ERROR' (logging level)
+- **BASIS_DATA_DIR**: Path to data directory (for backtest mode)
+
+### Component-Specific Variables
+- **DATA_LOAD_TIMEOUT**: Data loading timeout in seconds (default: 300)
+- **DATA_VALIDATION_STRICT**: Strict data validation mode (default: true)
+- **DATA_CACHE_SIZE**: Data cache size in MB (default: 1000)
+
+## Config Fields Used
+
+### Universal Config (All Components)
+- **execution_mode**: 'backtest' | 'live' (from strategy mode slice)
+- **log_level**: 'DEBUG' | 'INFO' | 'WARNING' | 'ERROR' (from strategy mode slice)
+
+### Component-Specific Config
+- **data_settings**: Dict (data-specific settings)
+  - **data_dir**: Data directory path
+  - **validation_rules**: Data validation rules
+  - **cache_settings**: Data caching settings
+- **mode_settings**: Dict (mode-specific settings)
+  - **backtest_data_range**: Backtest data date range
+  - **live_update_interval**: Live data update interval
+
+## Data Provider Queries
+
+### Market Data Queries
+- **prices**: Current market prices for all tokens
+- **orderbook**: Order book data for price impact calculation
+- **funding_rates**: Funding rates for perpetual contracts
+- **liquidity**: Liquidity data for DEX swaps
+
+### Protocol Data Queries
+- **protocol_rates**: Lending/borrowing rates from protocols
+- **stake_rates**: Staking rewards and rates
+- **protocol_balances**: Current balances in protocols
+
+### Data NOT Available from DataProvider
+- **Component state** - handled by individual components
+- **Execution results** - handled by execution components
+- **Real-time position updates** - handled by position components
+
+## Data Access Pattern
+
+### Query Pattern
+```python
+def get_data(self, timestamp: pd.Timestamp):
+    # Query data using shared clock
+    data = self._get_data_for_timestamp(timestamp)
+    
+    # Validate data alignment
+    self._validate_hourly_alignment(data, timestamp)
+    
+    return data
+```
+
+### Data Dependencies
+- **Market Data**: Prices, orderbook, funding rates, liquidity
+- **Protocol Data**: Lending rates, staking rates, protocol balances
+- **External APIs**: Real-time data sources (live mode)
+
+## Mode-Aware Behavior
+
+### Backtest Mode
+```python
+def get_data(self, timestamp: pd.Timestamp):
+    if self.execution_mode == 'backtest':
+        # Return historical data
+        return self._get_historical_data(timestamp)
+```
+
+### Live Mode
+```python
+def get_data(self, timestamp: pd.Timestamp):
+    elif self.execution_mode == 'live':
+        # Return real-time data
+        return self._get_live_data(timestamp)
+```
+
+## Event Logging Requirements
+
+### Component Event Log File
+**Separate log file** for this component's events:
+- **File**: `logs/events/data_provider_events.jsonl`
+- **Format**: JSON Lines (one event per line)
+- **Rotation**: Daily rotation, keep 30 days
+- **Purpose**: Component-specific audit trail
+
+### Event Logging via EventLogger
+All events logged through centralized EventLogger:
+
+```python
+self.event_logger.log_event(
+    timestamp=timestamp,
+    event_type='[event_type]',
+    component='DataProvider',
+    data={
+        'event_specific_data': value,
+        'state_snapshot': self.get_state_snapshot()  # optional
+    }
+)
+```
+
+### Events to Log
+
+#### 1. Component Initialization
+```python
+self.event_logger.log_event(
+    timestamp=pd.Timestamp.now(),
+    event_type='component_initialization',
+    component='DataProvider',
+    data={
+        'execution_mode': self.execution_mode,
+        'data_loaded': self._data_loaded,
+        'config_hash': hash(str(self.config))
+    }
+)
+```
+
+#### 2. State Updates (Every get_data() Call)
+```python
+self.event_logger.log_event(
+    timestamp=timestamp,
+    event_type='state_update',
+    component='DataProvider',
+    data={
+        'query_timestamp': timestamp,
+        'data_types_queried': list(data.keys()),
+        'processing_time_ms': processing_time
+    }
+)
+```
+
+#### 3. Error Events
+```python
+self.event_logger.log_event(
+    timestamp=timestamp,
+    event_type='error',
+    component='DataProvider',
+    data={
+        'error_code': 'DPR-001',
+        'error_message': str(e),
+        'stack_trace': traceback.format_exc(),
+        'error_severity': 'CRITICAL|HIGH|MEDIUM|LOW'
+    }
+)
+```
+
+#### 4. Component-Specific Critical Events
+- **Data Loading Failed**: When data loading fails
+- **Data Validation Failed**: When data validation fails
+- **Data Alignment Failed**: When hourly alignment fails
+
+### Event Retention & Output Formats
+
+#### Dual Logging Approach
+**Both formats are used**:
+1. **JSON Lines (Iterative)**: Write events to component-specific JSONL files during execution
+   - **Purpose**: Real-time monitoring during backtest runs
+   - **Location**: `logs/events/data_provider_events.jsonl`
+   - **When**: Events written as they occur (buffered for performance)
+   
+2. **CSV Export (Final)**: Comprehensive CSV export at Results Store stage
+   - **Purpose**: Final analysis, spreadsheet compatibility
+   - **Location**: `results/[backtest_id]/events.csv`
+   - **When**: At backtest completion or on-demand
+
+#### Mode-Specific Behavior
+- **Backtest**: 
+  - Write JSONL iteratively (allows tracking during long runs)
+  - Export CSV at completion to Results Store
+  - Keep all events in memory for final processing
+  
+- **Live**: 
+  - Write JSONL immediately (no buffering)
+  - Rotate daily, keep 30 days
+  - CSV export on-demand for analysis
+
+**Note**: Current implementation stores events in memory and exports to CSV only. Enhanced implementation will add iterative JSONL writing. Reference: `docs/specs/17_HEALTH_ERROR_SYSTEMS.md`
+
+## Error Codes
+
+### Component Error Code Prefix: DPR
+All DataProvider errors use the `DPR` prefix.
+
+### Error Code Registry
+**Source**: `backend/src/basis_strategy_v1/core/error_codes/error_code_registry.py`
+
+All error codes registered with:
+- **code**: Unique error code
+- **component**: Component name
+- **severity**: CRITICAL | HIGH | MEDIUM | LOW
+- **message**: Human-readable error message
+- **resolution**: How to resolve
+
+### Component Error Codes
+
+#### DPR-001: Data Loading Failed (HIGH)
+**Description**: Failed to load data from source
+**Cause**: File system errors, API failures, network issues
+**Recovery**: Retry loading, check data sources, verify connectivity
+```python
+raise ComponentError(
+    error_code='DPR-001',
+    message='Data loading failed',
+    component='DataProvider',
+    severity='HIGH'
+)
+```
+
+#### DPR-002: Data Validation Failed (HIGH)
+**Description**: Data validation failed
+**Cause**: Invalid data format, missing required fields, data corruption
+**Recovery**: Check data integrity, validate data sources, fix data format
+```python
+raise ComponentError(
+    error_code='DPR-002',
+    message='Data validation failed',
+    component='DataProvider',
+    severity='HIGH'
+)
+```
+
+#### DPR-003: Data Alignment Failed (MEDIUM)
+**Description**: Hourly alignment validation failed
+**Cause**: Data timestamp misalignment, timezone issues, data gaps
+**Recovery**: Check data timestamps, verify timezone settings, fill data gaps
+```python
+raise ComponentError(
+    error_code='DPR-003',
+    message='Data alignment failed',
+    component='DataProvider',
+    severity='MEDIUM'
+)
+```
+
+### Structured Error Handling Pattern
+
+#### Error Raising
+```python
+from backend.src.basis_strategy_v1.core.error_codes.exceptions import ComponentError
+
+try:
+    result = self._load_data()
+except Exception as e:
+    # Log error event
+    self.event_logger.log_event(
+        timestamp=timestamp,
+        event_type='error',
+        component='DataProvider',
+        data={
+            'error_code': 'DPR-001',
+            'error_message': str(e),
+            'stack_trace': traceback.format_exc()
+        }
+    )
+    
+    # Raise structured error
+    raise ComponentError(
+        error_code='DPR-001',
+        message=f'DataProvider failed: {str(e)}',
+        component='DataProvider',
+        severity='HIGH',
+        original_exception=e
+    )
+```
+
+#### Error Propagation Rules
+- **CRITICAL**: Propagate to health system → trigger app restart
+- **HIGH**: Log and retry with exponential backoff (max 3 retries)
+- **MEDIUM**: Log and continue with degraded functionality
+- **LOW**: Log for monitoring, no action needed
+
+### Component Health Integration
+
+#### Health Check Registration
+```python
+def __init__(self, ..., health_manager: UnifiedHealthManager):
+    # Store health manager reference
+    self.health_manager = health_manager
+    
+    # Register component with health system
+    self.health_manager.register_component(
+        component_name='DataProvider',
+        checker=self._health_check
+    )
+
+def _health_check(self) -> Dict:
+    """Component-specific health check."""
+    return {
+        'status': 'healthy' | 'degraded' | 'unhealthy',
+        'last_update': self.last_query_timestamp,
+        'errors': self.recent_errors[-10:],  # Last 10 errors
+        'metrics': {
+            'update_count': self.update_count,
+            'avg_processing_time_ms': self.avg_processing_time,
+            'error_rate': self.error_count / max(self.update_count, 1),
+            'data_loaded': self._data_loaded,
+            'data_types_available': len(self.data),
+            'cache_hit_rate': self._calculate_cache_hit_rate()
+        }
+    }
+```
+
+#### Health Status Definitions
+- **healthy**: No errors in last 100 updates, processing time < threshold
+- **degraded**: Minor errors, slower processing, retries succeeding
+- **unhealthy**: Critical errors, failed retries, unable to process
+
+**Reference**: `docs/specs/17_HEALTH_ERROR_SYSTEMS.md`
+
+## Quality Gates
+
+### Validation Criteria
+- [ ] All 18 sections present and complete
+- [ ] Environment Variables section documents system-level and component-specific variables
+- [ ] Config Fields Used section documents universal and component-specific config
+- [ ] Data Provider Queries section documents market and protocol data queries
+- [ ] Event Logging Requirements section documents component-specific JSONL file
+- [ ] Event Logging Requirements section documents dual logging (JSONL + CSV)
+- [ ] Error Codes section has structured error handling pattern
+- [ ] Error Codes section references health integration
+- [ ] Health integration documented with UnifiedHealthManager
+- [ ] Component-specific log file documented (`logs/events/data_provider_events.jsonl`)
+
+### Section Order Validation
+- [ ] Purpose (section 1)
+- [ ] Responsibilities (section 2)
+- [ ] State (section 3)
+- [ ] Component References (Set at Init) (section 4)
+- [ ] Environment Variables (section 5)
+- [ ] Config Fields Used (section 6)
+- [ ] Data Provider Queries (section 7)
+- [ ] Core Methods (section 8)
+- [ ] Data Access Pattern (section 9)
+- [ ] Mode-Aware Behavior (section 10)
+- [ ] Event Logging Requirements (section 11)
+- [ ] Error Codes (section 12)
+- [ ] Quality Gates (section 13)
+- [ ] Integration Points (section 14)
+- [ ] Code Structure Example (section 15)
+- [ ] Related Documentation (section 16)
+
+### Implementation Status
+- [ ] Backend implementation exists and matches spec
+- [ ] All required methods implemented
+- [ ] Error handling follows structured pattern
+- [ ] Health integration implemented
+- [ ] Event logging implemented
 
 ## Configuration Parameters
 
@@ -54,6 +409,22 @@ Components NEVER receive these as method parameters during runtime.
 **Cross-Reference**: [ENVIRONMENT_VARIABLES.md](../ENVIRONMENT_VARIABLES.md) - Environment variable definitions
 
 ## Core Methods
+
+### update_state(timestamp: pd.Timestamp, trigger_source: str, **kwargs)
+Standard component update method following canonical architecture:
+```python
+def update_state(self, timestamp: pd.Timestamp, trigger_source: str, **kwargs):
+    """
+    Update component state with new data.
+    
+    Args:
+        timestamp: Current timestamp from EventDrivenStrategyEngine
+        trigger_source: Source component that triggered this update
+        **kwargs: Additional parameters specific to component
+    """
+    # Implementation specific to data provider
+    pass
+```
 
 ### get_data(timestamp: pd.Timestamp) -> Dict[str, Any]
 Get market data for specific timestamp.
@@ -101,7 +472,9 @@ Provide market data (prices, rates, indices) to all components with comprehensiv
 - **Hourly alignment**: For backtest ALL data must be on the hour UTC timezone (minute=0, second=0)
 - **Mode-aware loading**: Only load data needed for the mode
 - **Per-exchange data**: Track separate prices per CEX (Binance ≠ Bybit ≠ OKX)
-- **OKX Data Policy**: Use OKX funding rates only (full range available), proxy Binance data for OKX futures/spot
+- **OKX Data Policy**: 
+  - **Backtest Mode**: Use OKX funding rates only (full range available), proxy Binance data for OKX futures/spot due to data availability issues
+  - **Live Mode**: Use real OKX APIs for all data types (futures, spot, funding rates)
 - **On-Demand Loading**: Data loaded during API calls, not at startup
 - **Environment-Driven Architecture**: 
   - **BASIS_EXECUTION_MODE**: 'backtest' or 'live' (controls execution behavior)
@@ -132,9 +505,9 @@ Provide market data (prices, rates, indices) to all components with comprehensiv
 
 | Data Type | Backtest Source | Live Source | Same Structure |
 |-----------|----------------|-------------|----------------|
-| **Spot Prices** | CSV files | CEX APIs (Binance, Bybit, OKX) | ✅ Yes |
-| **Futures Data** | CSV files | CEX APIs (Binance, Bybit, OKX) | ✅ Yes |
-| **Funding Rates** | CSV files | CEX APIs (Binance, Bybit, OKX) | ✅ Yes |
+| **Spot Prices** | CSV files (OKX proxied from Binance) | CEX APIs (Binance, Bybit, OKX) | ✅ Yes |
+| **Futures Data** | CSV files (OKX proxied from Binance) | CEX APIs (Binance, Bybit, OKX) | ✅ Yes |
+| **Funding Rates** | CSV files (OKX real data) | CEX APIs (Binance, Bybit, OKX) | ✅ Yes |
 | **AAVE Rates** | CSV files | AAVE API | ✅ Yes |
 | **Oracle Prices** | CSV files | Chainlink/Pyth APIs | ✅ Yes |
 | **Gas Prices** | CSV files | Etherscan/Alchemy APIs | ✅ Yes |
@@ -218,7 +591,7 @@ requirement_mapping = {
     # CEX futures (per exchange - SEPARATE dataframes!)
     'binance_futures': pd.DataFrame,  # Columns: open, high, low, close, volume
     'bybit_futures': pd.DataFrame,
-    'okx_futures': pd.DataFrame,  # Proxied from Binance data (OKX futures not used)
+    'okx_futures': pd.DataFrame,  # Backtest: Proxied from Binance data | Live: Real OKX data
     
     # Funding rates (per exchange)
     'binance_funding': pd.DataFrame,  # Columns: funding_rate, funding_timestamp
@@ -1407,7 +1780,7 @@ await live_provider.validate_data_freshness()
   - None identified
 
 ## Related Documentation
-- [Reference-Based Architecture](../REFERENCE_ARCHITECTURE.md)
+- [Reference-Based Architecture](../REFERENCE_ARCHITECTURE_CANONICAL.md)
 - [Shared Clock Pattern](../SHARED_CLOCK_PATTERN.md)
 - [Request Isolation Pattern](../REQUEST_ISOLATION_PATTERN.md)
 
@@ -1467,7 +1840,9 @@ await live_provider.validate_data_freshness()
 - [ ] AAVE indices used correctly (normalized, not raw 1e27)
 - [ ] Fast asof() lookups
 - [ ] Validates data synchronization
-- [ ] OKX data policy: funding rates only, proxy Binance for futures/spot
+- [x] OKX data policy: 
+  - Backtest mode: funding rates only, proxy Binance for futures/spot
+  - Live mode: use real OKX APIs for all data types
 - [ ] Protocol token prices loaded for KING unwrapping
 - [ ] Benchmark data loaded for comparison
 - [ ] Live mode: WebSocket + contract queries

@@ -146,7 +146,7 @@ Columns: oracle_price_eth (weETH/ETH ratio)
 data/market_data/derivatives/futures_ohlcv/binance_ETHUSDT_perp_1h_2024-01-01_2025-09-26.csv
 data/market_data/derivatives/futures_ohlcv/bybit_ETHUSDT_perp_1h_2024-01-01_2025-09-26.csv
 data/market_data/derivatives/futures_ohlcv/okx_ETHUSDT_perp_1h_2024-08-01_2025-09-18.csv
-NOTE: OKX incomplete - Data Provider proxies to Binance
+NOTE: OKX incomplete for backtest - Data Provider proxies to Binance (Live mode uses real OKX APIs)
 ```
 
 ---
@@ -166,10 +166,10 @@ NOTE: OKX incomplete - Data Provider proxies to Binance
 - minute=0, second=0, UTC timezone
 - Data Provider enforces this!
 
-**OKX Data**: Incomplete
-- Futures OHLCV: Missing for most periods
-- Funding rates: Available
-- **Solution**: Proxy OKX futures to Binance
+**OKX Data**: Mode-dependent
+- **Backtest Mode**: Futures OHLCV incomplete (missing for most periods), Funding rates available
+- **Live Mode**: All data available via real OKX APIs
+- **Backtest Solution**: Proxy OKX futures to Binance data
 
 ---
 

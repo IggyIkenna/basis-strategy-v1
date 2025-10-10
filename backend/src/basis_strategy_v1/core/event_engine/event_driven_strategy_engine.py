@@ -244,10 +244,9 @@ class EventDrivenStrategyEngine:
             self.pnl_calculator = PnLCalculator(
                 config=self.config,
                 share_class=self.share_class,
-                initial_capital=self.initial_capital  # From API request
+                initial_capital=self.initial_capital,  # From API request
+                data_provider=self.data_provider
             )
-            # Inject data provider for funding rate lookups
-            self.pnl_calculator.set_data_provider(self.data_provider)
             # Component health now handled by unified health manager
             initialized_components.append('pnl_calculator')
             logger.info("✅ P&L Calculator initialized successfully")
@@ -302,6 +301,7 @@ class EventDrivenStrategyEngine:
         try:
             logger.info("Initializing Position Update Handler...")
             self.position_update_handler = PositionUpdateHandler(
+                config=self.config,
                 position_monitor=self.position_monitor,
                 exposure_monitor=self.exposure_monitor,
                 risk_monitor=self.risk_monitor,

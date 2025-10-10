@@ -71,6 +71,240 @@ This keeps the architecture simple while maintaining all required functionality.
 
 ---
 
+## 🎨 **Frontend Workflows**
+
+### **1. Authentication Workflow**
+
+**Trigger**: User login/logout actions
+
+```mermaid
+graph TD
+    A[User Login Request] --> B[LoginPage Component]
+    B --> C[Validate Credentials]
+    C --> D{Valid?}
+    D -->|Yes| E[Store JWT Token]
+    D -->|No| F[Show Error Message]
+    E --> G[Update AuthContext]
+    G --> H[Redirect to Dashboard]
+    F --> I[Stay on Login Page]
+    
+    J[User Logout] --> K[Clear JWT Token]
+    K --> L[Update AuthContext]
+    L --> M[Redirect to Login]
+    
+    style A fill:#e3f2fd
+    style E fill:#e8f5e8
+    style F fill:#ffebee
+    style H fill:#e8f5e8
+```
+
+**Frontend Components**:
+- **LoginPage**: Username/password form with validation
+- **AuthContext**: JWT token management and authentication state
+- **ProtectedRoute**: Route guard for authenticated users
+- **LogoutButton**: Logout functionality
+
+### **2. Backtest Configuration Workflow**
+
+**Trigger**: User wizard navigation
+
+```mermaid
+graph TD
+    A[Wizard Start] --> B[ShareClassStep]
+    B --> C[ModeSelectionStep]
+    C --> D[BasicConfigStep]
+    D --> E[StrategyConfigStep]
+    E --> F[ReviewStep]
+    F --> G[Submit Backtest]
+    G --> H[API Call to Backend]
+    H --> I[Redirect to Results]
+    
+    style A fill:#e3f2fd
+    style B fill:#fff3e0
+    style C fill:#fff3e0
+    style D fill:#fff3e0
+    style E fill:#fff3e0
+    style F fill:#fff3e0
+    style G fill:#e8f5e8
+    style I fill:#e8f5e8
+```
+
+**Frontend Components**:
+- **WizardContainer**: Stepper UI with validation
+- **ShareClassStep**: USDT/ETH selection
+- **ModeSelectionStep**: Dynamic mode fetching from API
+- **BasicConfigStep**: Capital amount and date range
+- **StrategyConfigStep**: Mode-specific parameters
+- **ReviewStep**: Configuration summary
+
+### **3. Results Display Workflow**
+
+**Trigger**: Backtest completion or results page navigation
+
+```mermaid
+graph TD
+    A[Results Page Load] --> B[Fetch Backtest Results]
+    B --> C[Display Metric Cards]
+    C --> D[Load Plotly Charts]
+    D --> E[Initialize Event Log]
+    E --> F[User Interaction]
+    F --> G{Action Type?}
+    G -->|View Chart| H[Open Chart Modal]
+    G -->|Export Data| I[Download CSV/HTML]
+    G -->|Filter Events| J[Update Event Log]
+    G -->|Back to Wizard| K[Navigate to Wizard]
+    
+    style A fill:#e3f2fd
+    style C fill:#e8f5e8
+    style D fill:#e8f5e8
+    style E fill:#e8f5e8
+    style H fill:#fff3e0
+    style I fill:#fff3e0
+    style J fill:#fff3e0
+    style K fill:#e3f2fd
+```
+
+**Frontend Components**:
+- **ResultsPage**: Tabbed interface (Overview, Charts, Events)
+- **MetricCardsGrid**: 12 metric cards in responsive grid
+- **ChartsGrid**: 4+ Plotly charts with fullscreen/download
+- **EventLogViewer**: Virtualized event log with filtering
+
+### **4. Live Trading Control Workflow**
+
+**Trigger**: Live trading start/stop actions
+
+```mermaid
+graph TD
+    A[Live Trading Panel] --> B{Current Status?}
+    B -->|Stopped| C[Show Start Button]
+    B -->|Running| D[Show Stop/Emergency Buttons]
+    C --> E[Start Live Trading]
+    D --> F[Stop Live Trading]
+    D --> G[Emergency Stop]
+    E --> H[API Call to Backend]
+    F --> H
+    G --> H
+    H --> I[Update Status Display]
+    I --> J[Real-time Polling]
+    J --> K[Update Performance Metrics]
+    
+    style A fill:#e3f2fd
+    style C fill:#e8f5e8
+    style D fill:#fff3e0
+    style E fill:#e8f5e8
+    style F fill:#ffebee
+    style G fill:#ffebee
+    style J fill:#f3e5f5
+```
+
+**Frontend Components**:
+- **LiveTradingPanel**: Start/stop controls with confirmation dialogs
+- **StatusMonitor**: Real-time status display with 60-second polling
+- **CapitalManagement**: Deposit/withdraw functionality
+
+### **5. Capital Management Workflow**
+
+**Trigger**: Deposit/withdraw requests
+
+```mermaid
+graph TD
+    A[Capital Management] --> B[User Input Amount]
+    B --> C[Validate Amount]
+    C --> D{Valid?}
+    D -->|Yes| E[Show Confirmation]
+    D -->|No| F[Show Validation Error]
+    E --> G{User Confirms?}
+    G -->|Yes| H[API Call to Backend]
+    G -->|No| I[Cancel Operation]
+    H --> J[Update UI State]
+    J --> K[Show Success Message]
+    F --> L[Stay on Form]
+    I --> L
+    
+    style A fill:#e3f2fd
+    style E fill:#fff3e0
+    style F fill:#ffebee
+    style H fill:#e8f5e8
+    style K fill:#e8f5e8
+```
+
+**Frontend Components**:
+- **CapitalManagement**: Deposit/withdraw forms with validation
+- **ConfirmationDialog**: Confirmation dialogs for destructive actions
+
+### **6. Real-time Status Monitoring Workflow**
+
+**Trigger**: 60-second polling interval
+
+```mermaid
+graph TD
+    A[Polling Timer] --> B[Fetch Live Status]
+    B --> C[Update Component Health]
+    C --> D[Update Performance Metrics]
+    D --> E[Update Risk Metrics]
+    E --> F[Check for Alerts]
+    F --> G{Any Alerts?}
+    G -->|Yes| H[Show Alert Notification]
+    G -->|No| I[Continue Normal Display]
+    H --> J[User Acknowledges]
+    J --> I
+    I --> K[Wait for Next Poll]
+    K --> A
+    
+    style A fill:#f3e5f5
+    style B fill:#e3f2fd
+    style C fill:#e8f5e8
+    style D fill:#e8f5e8
+    style E fill:#e8f5e8
+    style H fill:#fff3e0
+    style I fill:#e8f5e8
+```
+
+**Frontend Components**:
+- **StatusMonitor**: Component health display
+- **LivePerformanceDashboard**: Real-time performance metrics
+- **AlertNotification**: Alert system for critical issues
+
+### **7. Error Handling Workflow**
+
+**Trigger**: API errors or network failures
+
+```mermaid
+graph TD
+    A[API Error] --> B[Check Error Type]
+    B --> C{Error Category?}
+    C -->|Network| D[Show Network Error]
+    C -->|Authentication| E[Redirect to Login]
+    C -->|Validation| F[Show Field Errors]
+    C -->|Server| G[Show Server Error]
+    D --> H[Retry Button]
+    E --> I[Clear Auth State]
+    F --> J[Highlight Invalid Fields]
+    G --> K[Contact Support Message]
+    H --> L[Retry API Call]
+    I --> M[Login Page]
+    J --> N[User Fixes Input]
+    K --> O[User Contacts Support]
+    
+    style A fill:#ffebee
+    style D fill:#ffebee
+    style E fill:#ffebee
+    style F fill:#fff3e0
+    style G fill:#ffebee
+    style L fill:#e3f2fd
+    style M fill:#e3f2fd
+    style N fill:#fff3e0
+    style O fill:#fff3e0
+```
+
+**Frontend Components**:
+- **ErrorBoundary**: React error boundary for component errors
+- **ErrorMessage**: Consistent error message display
+- **RetryButton**: Retry functionality for failed operations
+
+---
+
 ## 🚀 **External API Call Workflows**
 
 ### **1. Start Backtest Workflow**

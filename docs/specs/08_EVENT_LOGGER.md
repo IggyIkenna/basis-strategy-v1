@@ -1,5 +1,7 @@
 # Event Logger Component Specification
 
+**Last Reviewed**: October 10, 2025
+
 ## Purpose
 Detailed audit-grade event tracking with balance snapshots for debugging and audit trails.
 
@@ -23,6 +25,24 @@ The following are set once during initialization and NEVER passed as runtime par
 
 These references are stored in __init__ and used throughout component lifecycle.
 Components NEVER receive these as method parameters during runtime.
+
+## Configuration Parameters
+
+**Mode Configuration** (from `configs/modes/*.yaml`):
+- `event_logging_settings`: Event logging settings - used for event logging configuration
+- `log_retention_policy`: Log retention policy - used for log management
+- `event_filtering`: Event filtering settings - used for event filtering
+
+**Venue Configuration** (from `configs/venues/*.yaml`):
+- `logging_requirements`: Venue-specific logging requirements - used for venue-specific logging
+- `event_categories`: Event categories - used for event categorization
+
+**Share Class Configuration** (from `configs/share_classes/*.yaml`):
+- `audit_requirements`: Audit requirements - used for audit logging
+- `compliance_settings`: Compliance settings - used for compliance logging
+
+**Cross-Reference**: [CONFIGURATION.md](CONFIGURATION.md) - Complete configuration hierarchy
+**Cross-Reference**: [ENVIRONMENT_VARIABLES.md](../ENVIRONMENT_VARIABLES.md) - Environment variable definitions
 
 ## Environment Variables
 
@@ -105,7 +125,321 @@ N/A - EventLogger does not query DataProvider
 ### Data NOT Available from DataProvider
 All data - EventLogger does not use DataProvider
 
+## Data Access Pattern
+
+### Query Pattern
+```python
+def log_event(self, timestamp: pd.Timestamp, event_type: str, component: str, data: Dict):
+    # EventLogger does not query external data sources
+    # All data comes from component parameters
+    pass
+```
+
+### Data Dependencies
+- **No external data dependencies** - EventLogger is a pure logging component
+- **All data comes from component parameters** passed to log_event()
+
+## Mode-Aware Behavior
+
+### Backtest Mode
+```python
+def log_event(self, timestamp: pd.Timestamp, event_type: str, component: str, data: Dict):
+    if self.execution_mode == 'backtest':
+        # Store events in memory for CSV export
+        self._store_event_in_memory(timestamp, event_type, component, data)
+```
+
+### Live Mode
+```python
+def log_event(self, timestamp: pd.Timestamp, event_type: str, component: str, data: Dict):
+    elif self.execution_mode == 'live':
+        # Write events immediately to JSONL files
+        self._write_event_to_jsonl(timestamp, event_type, component, data)
+```
+
+## Event Logging Requirements
+
+### Component Event Log File
+**Separate log file** for this component's events:
+- **File**: `logs/events/event_logger_events.jsonl`
+- **Format**: JSON Lines (one event per line)
+- **Rotation**: Daily rotation, keep 30 days
+- **Purpose**: Component-specific audit trail
+
+### Event Logging via EventLogger
+All events logged through centralized EventLogger:
+
+```python
+self.event_logger.log_event(
+    timestamp=timestamp,
+    event_type='[event_type]',
+    component='EventLogger',
+    data={
+        'event_specific_data': value,
+        'state_snapshot': self.get_state_snapshot()  # optional
+    }
+)
+```
+
+### Events to Log
+
+#### 1. Component Initialization
+```python
+self.event_logger.log_event(
+    timestamp=pd.Timestamp.now(),
+    event_type='component_initialization',
+    component='EventLogger',
+    data={
+        'execution_mode': self.execution_mode,
+        'config_hash': hash(str(self.config))
+    }
+)
+```
+
+#### 2. State Updates (Every log_event() Call)
+```python
+self.event_logger.log_event(
+    timestamp=timestamp,
+    event_type='state_update',
+    component='EventLogger',
+    data={
+        'event_type': event_type,
+        'source_component': component,
+        'global_order': self.global_order,
+        'events_count': len(self.events),
+        'processing_time_ms': processing_time
+    }
+)
+```
+
+#### 3. Error Events
+```python
+self.event_logger.log_event(
+    timestamp=timestamp,
+    event_type='error',
+    component='EventLogger',
+    data={
+        'error_code': 'EVT-001',
+        'error_message': str(e),
+        'stack_trace': traceback.format_exc(),
+        'error_severity': 'CRITICAL|HIGH|MEDIUM|LOW'
+    }
+)
+```
+
+#### 4. Component-Specific Critical Events
+- **Event Logging Failed**: When event logging fails
+- **Global Order Assignment Failed**: When order assignment fails
+- **Event Export Failed**: When event export fails
+
+### Event Retention & Output Formats
+
+#### Dual Logging Approach
+**Both formats are used**:
+1. **JSON Lines (Iterative)**: Write events to component-specific JSONL files during execution
+   - **Purpose**: Real-time monitoring during backtest runs
+   - **Location**: `logs/events/event_logger_events.jsonl`
+   - **When**: Events written as they occur (buffered for performance)
+   
+2. **CSV Export (Final)**: Comprehensive CSV export at Results Store stage
+   - **Purpose**: Final analysis, spreadsheet compatibility
+   - **Location**: `results/[backtest_id]/events.csv`
+   - **When**: At backtest completion or on-demand
+
+#### Mode-Specific Behavior
+- **Backtest**: 
+  - Write JSONL iteratively (allows tracking during long runs)
+  - Export CSV at completion to Results Store
+  - Keep all events in memory for final processing
+  
+- **Live**: 
+  - Write JSONL immediately (no buffering)
+  - Rotate daily, keep 30 days
+  - CSV export on-demand for analysis
+
+**Note**: Current implementation stores events in memory and exports to CSV only. Enhanced implementation will add iterative JSONL writing. Reference: `docs/specs/17_HEALTH_ERROR_SYSTEMS.md`
+
+## Error Codes
+
+### Component Error Code Prefix: EVT
+All EventLogger errors use the `EVT` prefix.
+
+### Error Code Registry
+**Source**: `backend/src/basis_strategy_v1/core/error_codes/error_code_registry.py`
+
+All error codes registered with:
+- **code**: Unique error code
+- **component**: Component name
+- **severity**: CRITICAL | HIGH | MEDIUM | LOW
+- **message**: Human-readable error message
+- **resolution**: How to resolve
+
+### Component Error Codes
+
+#### EVT-001: Event Logging Failed (HIGH)
+**Description**: Failed to log event
+**Cause**: Invalid event data, logging system errors, I/O failures
+**Recovery**: Retry logging, check event data validity, verify I/O permissions
+```python
+raise ComponentError(
+    error_code='EVT-001',
+    message='Event logging failed',
+    component='EventLogger',
+    severity='HIGH'
+)
+```
+
+#### EVT-002: Global Order Assignment Failed (CRITICAL)
+**Description**: Failed to assign global order to event
+**Cause**: Lock acquisition failure, order counter overflow, concurrency issues
+**Recovery**: Immediate action required, check lock system, restart if necessary
+```python
+raise ComponentError(
+    error_code='EVT-002',
+    message='Global order assignment failed',
+    component='EventLogger',
+    severity='CRITICAL'
+)
+```
+
+#### EVT-003: Event Export Failed (MEDIUM)
+**Description**: Failed to export events to CSV/JSONL
+**Cause**: File system errors, export format issues, I/O failures
+**Recovery**: Log warning, retry export, check file system permissions
+```python
+raise ComponentError(
+    error_code='EVT-003',
+    message='Event export failed',
+    component='EventLogger',
+    severity='MEDIUM'
+)
+```
+
+### Structured Error Handling Pattern
+
+#### Error Raising
+```python
+from backend.src.basis_strategy_v1.core.error_codes.exceptions import ComponentError
+
+try:
+    result = self._log_event_internal(timestamp, event_type, component, data)
+except Exception as e:
+    # Log error event (if possible)
+    try:
+        self._log_error_event(timestamp, str(e), traceback.format_exc())
+    except:
+        pass  # Avoid infinite recursion
+    
+    # Raise structured error
+    raise ComponentError(
+        error_code='EVT-001',
+        message=f'EventLogger failed: {str(e)}',
+        component='EventLogger',
+        severity='HIGH',
+        original_exception=e
+    )
+```
+
+#### Error Propagation Rules
+- **CRITICAL**: Propagate to health system → trigger app restart
+- **HIGH**: Log and retry with exponential backoff (max 3 retries)
+- **MEDIUM**: Log and continue with degraded functionality
+- **LOW**: Log for monitoring, no action needed
+
+### Component Health Integration
+
+#### Health Check Registration
+```python
+def __init__(self, ..., health_manager: UnifiedHealthManager):
+    # Store health manager reference
+    self.health_manager = health_manager
+    
+    # Register component with health system
+    self.health_manager.register_component(
+        component_name='EventLogger',
+        checker=self._health_check
+    )
+
+def _health_check(self) -> Dict:
+    """Component-specific health check."""
+    return {
+        'status': 'healthy' | 'degraded' | 'unhealthy',
+        'last_update': self.last_log_timestamp,
+        'errors': self.recent_errors[-10:],  # Last 10 errors
+        'metrics': {
+            'update_count': self.update_count,
+            'avg_processing_time_ms': self.avg_processing_time,
+            'error_rate': self.error_count / max(self.update_count, 1),
+            'events_logged': len(self.events),
+            'global_order': self.global_order,
+            'memory_usage_mb': self._get_memory_usage()
+        }
+    }
+```
+
+#### Health Status Definitions
+- **healthy**: No errors in last 100 updates, processing time < threshold
+- **degraded**: Minor errors, slower processing, retries succeeding
+- **unhealthy**: Critical errors, failed retries, unable to process
+
+**Reference**: `docs/specs/17_HEALTH_ERROR_SYSTEMS.md`
+
+## Quality Gates
+
+### Validation Criteria
+- [ ] All 18 sections present and complete
+- [ ] Environment Variables section documents system-level and component-specific variables
+- [ ] Config Fields Used section documents universal and component-specific config
+- [ ] Data Provider Queries section documents N/A (no external data)
+- [ ] Event Logging Requirements section documents component-specific JSONL file
+- [ ] Event Logging Requirements section documents dual logging (JSONL + CSV)
+- [ ] Error Codes section has structured error handling pattern
+- [ ] Error Codes section references health integration
+- [ ] Health integration documented with UnifiedHealthManager
+- [ ] Component-specific log file documented (`logs/events/event_logger_events.jsonl`)
+
+### Section Order Validation
+- [ ] Purpose (section 1)
+- [ ] Responsibilities (section 2)
+- [ ] State (section 3)
+- [ ] Component References (Set at Init) (section 4)
+- [ ] Environment Variables (section 5)
+- [ ] Config Fields Used (section 6)
+- [ ] Data Provider Queries (section 7)
+- [ ] Core Methods (section 8)
+- [ ] Data Access Pattern (section 9)
+- [ ] Mode-Aware Behavior (section 10)
+- [ ] Event Logging Requirements (section 11)
+- [ ] Error Codes (section 12)
+- [ ] Quality Gates (section 13)
+- [ ] Integration Points (section 14)
+- [ ] Code Structure Example (section 15)
+- [ ] Related Documentation (section 16)
+
+### Implementation Status
+- [ ] Backend implementation exists and matches spec
+- [ ] All required methods implemented
+- [ ] Error handling follows structured pattern
+- [ ] Health integration implemented
+- [ ] Event logging implemented
+
 ## Core Methods
+
+### update_state(timestamp: pd.Timestamp, trigger_source: str, **kwargs)
+Standard component update method following canonical architecture:
+```python
+def update_state(self, timestamp: pd.Timestamp, trigger_source: str, **kwargs):
+    """
+    Update component state with new data.
+    
+    Args:
+        timestamp: Current timestamp from EventDrivenStrategyEngine
+        trigger_source: Source component that triggered this update
+        **kwargs: Additional parameters specific to component
+    """
+    # Implementation specific to event logger
+    pass
+```
 
 ### log_event(timestamp: pd.Timestamp, event_type: str, component: str, data: Dict)
 Log an event with global ordering.
@@ -684,7 +1018,7 @@ def test_balance_snapshots_included():
   - None identified
 
 ## Related Documentation
-- [Reference-Based Architecture](../REFERENCE_ARCHITECTURE.md)
+- [Reference-Based Architecture](../REFERENCE_ARCHITECTURE_CANONICAL.md)
 - [Shared Clock Pattern](../SHARED_CLOCK_PATTERN.md)
 - [Request Isolation Pattern](../REQUEST_ISOLATION_PATTERN.md)
 

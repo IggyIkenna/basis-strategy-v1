@@ -29,6 +29,512 @@ Provide pure mathematical calculation functions that receive configuration as pa
 - **Pure Functions**: Deterministic outputs for given inputs
 - **Error Handling**: Comprehensive error codes for all calculation failures
 
+## Responsibilities
+1. Provide pure mathematical calculation functions
+2. Handle LTV (Loan-to-Value) ratio calculations
+3. Perform margin calculations
+4. Calculate health factors
+5. Compute performance metrics
+6. Ensure stateless, deterministic operations
+
+## State
+- No persistent state (pure functions)
+- All calculations are stateless and deterministic
+- No side effects or I/O operations
+
+## Component References (Set at Init)
+The following are set once during initialization and NEVER passed as runtime parameters:
+
+- config: Dict (reference, never modified)
+- execution_mode: str (BASIS_EXECUTION_MODE)
+
+These references are stored in __init__ and used throughout component lifecycle.
+Components NEVER receive these as method parameters during runtime.
+
+## Environment Variables
+
+### System-Level Variables
+- **BASIS_EXECUTION_MODE**: 'backtest' | 'live' (determines calculation behavior)
+- **BASIS_LOG_LEVEL**: 'DEBUG' | 'INFO' | 'WARNING' | 'ERROR' (logging level)
+- **BASIS_DATA_DIR**: Path to data directory (for backtest mode)
+
+### Component-Specific Variables
+- **MATH_PRECISION**: Mathematical precision for calculations (default: 18)
+- **MATH_ROUNDING_MODE**: Rounding mode for calculations (default: 'ROUND_HALF_UP')
+- **MATH_ERROR_TOLERANCE**: Error tolerance for calculations (default: 1e-10)
+
+## Config Fields Used
+
+### Universal Config (All Components)
+- **execution_mode**: 'backtest' | 'live' (from strategy mode slice)
+- **log_level**: 'DEBUG' | 'INFO' | 'WARNING' | 'ERROR' (from strategy mode slice)
+
+### Component-Specific Config
+- **math_settings**: Dict (math-specific settings)
+  - **precision**: Mathematical precision
+  - **rounding_mode**: Rounding mode
+  - **error_tolerance**: Error tolerance
+- **calculation_settings**: Dict (calculation-specific settings)
+  - **ltv_thresholds**: LTV calculation thresholds
+  - **margin_requirements**: Margin calculation requirements
+
+## Data Provider Queries
+
+### Market Data Queries
+- **prices**: Current market prices for calculations
+- **orderbook**: Order book data for price calculations
+- **funding_rates**: Funding rates for calculations
+
+### Protocol Data Queries
+- **protocol_rates**: Lending/borrowing rates for calculations
+- **stake_rates**: Staking rewards and rates for calculations
+- **protocol_balances**: Current balances for calculations
+
+### Data NOT Available from DataProvider
+- **Calculation results** - handled by Math Utilities
+- **Component state** - handled by individual components
+- **Execution results** - handled by execution components
+
+## Data Access Pattern
+
+### Query Pattern
+```python
+def calculate_ltv(self, collateral_value: float, loan_amount: float, config: Dict):
+    # Pure calculation function - no data queries
+    # All data passed as parameters
+    return self._calculate_ltv_ratio(collateral_value, loan_amount, config)
+```
+
+### Data Dependencies
+- **Market Data**: Prices, orderbook, funding rates
+- **Protocol Data**: Lending rates, staking rates, protocol balances
+- **Configuration**: Calculation parameters and thresholds
+
+## Mode-Aware Behavior
+
+### Backtest Mode
+```python
+def calculate_ltv(self, collateral_value: float, loan_amount: float, config: Dict):
+    if self.execution_mode == 'backtest':
+        # Use historical data for calculations
+        return self._calculate_ltv_historical(collateral_value, loan_amount, config)
+```
+
+### Live Mode
+```python
+def calculate_ltv(self, collateral_value: float, loan_amount: float, config: Dict):
+    elif self.execution_mode == 'live':
+        # Use real-time data for calculations
+        return self._calculate_ltv_live(collateral_value, loan_amount, config)
+```
+
+## Event Logging Requirements
+
+### Component Event Log File
+**Separate log file** for this component's events:
+- **File**: `logs/events/math_utilities_events.jsonl`
+- **Format**: JSON Lines (one event per line)
+- **Rotation**: Daily rotation, keep 30 days
+- **Purpose**: Component-specific audit trail
+
+### Event Logging via EventLogger
+All events logged through centralized EventLogger:
+
+```python
+self.event_logger.log_event(
+    timestamp=timestamp,
+    event_type='[event_type]',
+    component='MathUtilities',
+    data={
+        'event_specific_data': value,
+        'state_snapshot': self.get_state_snapshot()  # optional
+    }
+)
+```
+
+### Events to Log
+
+#### 1. Component Initialization
+```python
+self.event_logger.log_event(
+    timestamp=pd.Timestamp.now(),
+    event_type='component_initialization',
+    component='MathUtilities',
+    data={
+        'execution_mode': self.execution_mode,
+        'precision': self.precision,
+        'config_hash': hash(str(self.config))
+    }
+)
+```
+
+#### 2. State Updates (Every calculation call)
+```python
+self.event_logger.log_event(
+    timestamp=timestamp,
+    event_type='state_update',
+    component='MathUtilities',
+    data={
+        'calculation_type': calculation_type,
+        'input_values': input_values,
+        'result': result,
+        'processing_time_ms': processing_time
+    }
+)
+```
+
+#### 3. Error Events
+```python
+self.event_logger.log_event(
+    timestamp=timestamp,
+    event_type='error',
+    component='MathUtilities',
+    data={
+        'error_code': 'MTH-001',
+        'error_message': str(e),
+        'stack_trace': traceback.format_exc(),
+        'error_severity': 'CRITICAL|HIGH|MEDIUM|LOW'
+    }
+)
+```
+
+#### 4. Component-Specific Critical Events
+- **Calculation Failed**: When mathematical calculation fails
+- **Precision Error**: When precision limits are exceeded
+- **Invalid Input**: When input validation fails
+
+### Event Retention & Output Formats
+
+#### Dual Logging Approach
+**Both formats are used**:
+1. **JSON Lines (Iterative)**: Write events to component-specific JSONL files during execution
+   - **Purpose**: Real-time monitoring during backtest runs
+   - **Location**: `logs/events/math_utilities_events.jsonl`
+   - **When**: Events written as they occur (buffered for performance)
+   
+2. **CSV Export (Final)**: Comprehensive CSV export at Results Store stage
+   - **Purpose**: Final analysis, spreadsheet compatibility
+   - **Location**: `results/[backtest_id]/events.csv`
+   - **When**: At backtest completion or on-demand
+
+#### Mode-Specific Behavior
+- **Backtest**: 
+  - Write JSONL iteratively (allows tracking during long runs)
+  - Export CSV at completion to Results Store
+  - Keep all events in memory for final processing
+  
+- **Live**: 
+  - Write JSONL immediately (no buffering)
+  - Rotate daily, keep 30 days
+  - CSV export on-demand for analysis
+
+**Note**: Current implementation stores events in memory and exports to CSV only. Enhanced implementation will add iterative JSONL writing. Reference: `docs/specs/17_HEALTH_ERROR_SYSTEMS.md`
+
+## Error Codes
+
+### Component Error Code Prefix: MTH
+All MathUtilities errors use the `MTH` prefix.
+
+### Error Code Registry
+**Source**: `backend/src/basis_strategy_v1/core/error_codes/error_code_registry.py`
+
+All error codes registered with:
+- **code**: Unique error code
+- **component**: Component name
+- **severity**: CRITICAL | HIGH | MEDIUM | LOW
+- **message**: Human-readable error message
+- **resolution**: How to resolve
+
+### Component Error Codes
+
+#### MTH-001: Calculation Failed (HIGH)
+**Description**: Failed to perform mathematical calculation
+**Cause**: Invalid input values, mathematical errors, precision issues
+**Recovery**: Check input values, verify calculation parameters, adjust precision
+```python
+raise ComponentError(
+    error_code='MTH-001',
+    message='Mathematical calculation failed',
+    component='MathUtilities',
+    severity='HIGH'
+)
+```
+
+#### MTH-002: Precision Error (MEDIUM)
+**Description**: Calculation precision exceeded limits
+**Cause**: Very large numbers, precision overflow, rounding errors
+**Recovery**: Adjust precision settings, check input ranges, use alternative algorithms
+```python
+raise ComponentError(
+    error_code='MTH-002',
+    message='Calculation precision exceeded',
+    component='MathUtilities',
+    severity='MEDIUM'
+)
+```
+
+#### MTH-003: Invalid Input (HIGH)
+**Description**: Invalid input values provided
+**Cause**: Negative values where positive required, null values, type mismatches
+**Recovery**: Validate input values, check data types, provide default values
+```python
+raise ComponentError(
+    error_code='MTH-003',
+    message='Invalid input values provided',
+    component='MathUtilities',
+    severity='HIGH'
+)
+```
+
+### Structured Error Handling Pattern
+
+#### Error Raising
+```python
+from backend.src.basis_strategy_v1.core.error_codes.exceptions import ComponentError
+
+try:
+    result = self._calculate_ltv_ratio(collateral_value, loan_amount, config)
+except Exception as e:
+    # Log error event
+    self.event_logger.log_event(
+        timestamp=timestamp,
+        event_type='error',
+        component='MathUtilities',
+        data={
+            'error_code': 'MTH-001',
+            'error_message': str(e),
+            'stack_trace': traceback.format_exc()
+        }
+    )
+    
+    # Raise structured error
+    raise ComponentError(
+        error_code='MTH-001',
+        message=f'MathUtilities failed: {str(e)}',
+        component='MathUtilities',
+        severity='HIGH',
+        original_exception=e
+    )
+```
+
+#### Error Propagation Rules
+- **CRITICAL**: Propagate to health system → trigger app restart
+- **HIGH**: Log and retry with exponential backoff (max 3 retries)
+- **MEDIUM**: Log and continue with degraded functionality
+- **LOW**: Log for monitoring, no action needed
+
+### Component Health Integration
+
+#### Health Check Registration
+```python
+def __init__(self, ..., health_manager: UnifiedHealthManager):
+    # Store health manager reference
+    self.health_manager = health_manager
+    
+    # Register component with health system
+    self.health_manager.register_component(
+        component_name='MathUtilities',
+        checker=self._health_check
+    )
+
+def _health_check(self) -> Dict:
+    """Component-specific health check."""
+    return {
+        'status': 'healthy' | 'degraded' | 'unhealthy',
+        'last_update': self.last_calculation_timestamp,
+        'errors': self.recent_errors[-10:],  # Last 10 errors
+        'metrics': {
+            'update_count': self.update_count,
+            'avg_processing_time_ms': self.avg_processing_time,
+            'error_rate': self.error_count / max(self.update_count, 1),
+            'calculations_performed': self.calculations_count,
+            'precision_errors': self.precision_error_count,
+            'memory_usage_mb': self._get_memory_usage()
+        }
+    }
+```
+
+#### Health Status Definitions
+- **healthy**: No errors in last 100 updates, processing time < threshold
+- **degraded**: Minor errors, slower processing, retries succeeding
+- **unhealthy**: Critical errors, failed retries, unable to process
+
+**Reference**: `docs/specs/17_HEALTH_ERROR_SYSTEMS.md`
+
+## Core Methods
+
+### Primary API Surface
+```python
+def calculate_yield(self, principal: float, rate: float, time: float) -> float:
+    """Calculate yield based on principal, rate, and time."""
+    
+def calculate_leverage_ratio(self, position_size: float, collateral: float) -> float:
+    """Calculate leverage ratio for position."""
+    
+def calculate_funding_rate_arbitrage(self, long_rate: float, short_rate: float) -> float:
+    """Calculate funding rate arbitrage opportunity."""
+    
+def calculate_risk_metrics(self, positions: List[Dict]) -> Dict:
+    """Calculate risk metrics for position portfolio."""
+    
+def calculate_portfolio_metrics(self, portfolio: Dict) -> Dict:
+    """Calculate portfolio-level metrics and analytics."""
+```
+
+### Mathematical Operations
+- **calculate_yield()**: Yield and return calculations
+- **calculate_leverage_ratio()**: Leverage and margin calculations
+- **calculate_funding_rate_arbitrage()**: Arbitrage opportunity calculations
+- **calculate_risk_metrics()**: Risk assessment and metrics
+- **calculate_portfolio_metrics()**: Portfolio analytics and performance
+
+## Integration Points
+
+### Component Dependencies
+- **PnL Calculator**: Mathematical calculations for P&L
+- **Risk Monitor**: Risk metric calculations and assessments
+- **Strategy Manager**: Strategy-specific mathematical operations
+- **Exposure Monitor**: Exposure and position calculations
+
+### Data Flow
+1. **Input Data**: Position data, market data, configuration parameters
+2. **Mathematical Processing**: Core mathematical operations and calculations
+3. **Result Generation**: Calculated metrics and analytics
+4. **Output Delivery**: Results to requesting components
+5. **Error Handling**: Mathematical error detection and handling
+
+### API Integration
+- **Mathematical Libraries**: NumPy, SciPy, pandas for calculations
+- **Financial Libraries**: Financial mathematics and risk calculations
+- **Validation**: Input validation and result verification
+- **Performance**: Optimized mathematical operations
+
+## Code Structure Example
+
+### Component Implementation
+```python
+class MathUtilities:
+    def __init__(self, config: Dict, execution_mode: str, 
+                 health_manager: UnifiedHealthManager):
+        # Store references (never passed as runtime parameters)
+        self.config = config
+        self.execution_mode = execution_mode
+        self.health_manager = health_manager
+        
+        # Initialize state
+        self.calculation_cache = {}
+        self.last_calculation_timestamp = None
+        self.calculation_count = 0
+        self.error_count = 0
+        
+        # Register with health system
+        self.health_manager.register_component(
+            component_name='MathUtilities',
+            checker=self._health_check
+        )
+    
+    def calculate_yield(self, principal: float, rate: float, time: float) -> float:
+        """Calculate yield based on principal, rate, and time."""
+        try:
+            # Perform yield calculation
+            yield_amount = principal * rate * time
+            
+            # Log event
+            self.event_logger.log_event(
+                timestamp=pd.Timestamp.now(),
+                event_type='yield_calculated',
+                component='MathUtilities',
+                data={'principal': principal, 'rate': rate, 'time': time, 'yield': yield_amount}
+            )
+            
+            return yield_amount
+            
+        except Exception as e:
+            # Log error and raise structured error
+            self.event_logger.log_event(
+                timestamp=pd.Timestamp.now(),
+                event_type='error',
+                component='MathUtilities',
+                data={'error_code': 'MU-001', 'error_message': str(e)}
+            )
+            raise ComponentError(
+                error_code='MU-001',
+                message=f'Yield calculation failed: {str(e)}',
+                component='MathUtilities',
+                severity='HIGH'
+            )
+    
+    def _health_check(self) -> Dict:
+        """Component-specific health check."""
+        return {
+            'status': 'healthy' if self.error_count < 10 else 'degraded',
+            'last_calculation': self.last_calculation_timestamp,
+            'metrics': {
+                'calculation_count': self.calculation_count,
+                'error_count': self.error_count,
+                'cache_size': len(self.calculation_cache),
+                'error_rate': self.error_count / max(self.calculation_count, 1)
+            }
+        }
+```
+
+## Related Documentation
+
+### Component Specifications
+- **PnL Calculator**: [04_PNL_CALCULATOR.md](04_PNL_CALCULATOR.md) - P&L calculations
+- **Risk Monitor**: [03_RISK_MONITOR.md](03_RISK_MONITOR.md) - Risk calculations
+- **Strategy Manager**: [05_STRATEGY_MANAGER.md](05_STRATEGY_MANAGER.md) - Strategy calculations
+- **Exposure Monitor**: [02_EXPOSURE_MONITOR.md](02_EXPOSURE_MONITOR.md) - Exposure calculations
+
+### Architecture Documentation
+- **Reference Architecture**: [REFERENCE_ARCHITECTURE_CANONICAL.md](../REFERENCE_ARCHITECTURE_CANONICAL.md) - Mathematical utility patterns
+- **Health & Error Systems**: [17_HEALTH_ERROR_SYSTEMS.md](17_HEALTH_ERROR_SYSTEMS.md) - Health monitoring integration
+- **Configuration**: [CONFIGURATION.md](CONFIGURATION.md) - Mathematical configuration
+
+### Implementation Guides
+- **Mathematical Libraries**: NumPy, SciPy, pandas usage patterns
+- **Financial Mathematics**: Financial calculation specifications
+- **Performance Optimization**: Mathematical operation optimization
+
+## Quality Gates
+
+### Validation Criteria
+- [ ] All 18 sections present and complete
+- [ ] Environment Variables section documents system-level and component-specific variables
+- [ ] Config Fields Used section documents universal and component-specific config
+- [ ] Data Provider Queries section documents market and protocol data queries
+- [ ] Event Logging Requirements section documents component-specific JSONL file
+- [ ] Event Logging Requirements section documents dual logging (JSONL + CSV)
+- [ ] Error Codes section has structured error handling pattern
+- [ ] Error Codes section references health integration
+- [ ] Health integration documented with UnifiedHealthManager
+- [ ] Component-specific log file documented (`logs/events/math_utilities_events.jsonl`)
+
+### Section Order Validation
+- [ ] Purpose (section 1)
+- [ ] Responsibilities (section 2)
+- [ ] State (section 3)
+- [ ] Component References (Set at Init) (section 4)
+- [ ] Environment Variables (section 5)
+- [ ] Config Fields Used (section 6)
+- [ ] Data Provider Queries (section 7)
+- [ ] Core Methods (section 8)
+- [ ] Data Access Pattern (section 9)
+- [ ] Mode-Aware Behavior (section 10)
+- [ ] Event Logging Requirements (section 11)
+- [ ] Error Codes (section 12)
+- [ ] Quality Gates (section 13)
+- [ ] Integration Points (section 14)
+- [ ] Code Structure Example (section 15)
+- [ ] Related Documentation (section 16)
+
+### Implementation Status
+- [ ] Backend implementation exists and matches spec
+- [ ] All required methods implemented
+- [ ] Error handling follows structured pattern
+- [ ] Health integration implemented
+- [ ] Event logging implemented
+
 ---
 
 ## 📦 **Component Structure**

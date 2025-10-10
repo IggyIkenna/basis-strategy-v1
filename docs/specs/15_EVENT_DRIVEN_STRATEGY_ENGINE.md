@@ -27,6 +27,357 @@ The following are set once during initialization and NEVER passed as runtime par
 These references are stored in __init__ and used throughout component lifecycle.
 Components NEVER receive these as method parameters during runtime.
 
+## Environment Variables
+
+### System-Level Variables
+- **BASIS_EXECUTION_MODE**: 'backtest' | 'live' (determines orchestration behavior)
+- **BASIS_LOG_LEVEL**: 'DEBUG' | 'INFO' | 'WARNING' | 'ERROR' (logging level)
+- **BASIS_DATA_DIR**: Path to data directory (for backtest mode)
+
+### Component-Specific Variables
+- **STRATEGY_ENGINE_TIMEOUT**: Strategy engine timeout in seconds (default: 3600)
+- **STRATEGY_ENGINE_MAX_COMPONENTS**: Maximum number of components (default: 11)
+- **STRATEGY_ENGINE_MEMORY_LIMIT**: Memory limit in MB (default: 4096)
+
+## Config Fields Used
+
+### Universal Config (All Components)
+- **execution_mode**: 'backtest' | 'live' (from strategy mode slice)
+- **log_level**: 'DEBUG' | 'INFO' | 'WARNING' | 'ERROR' (from strategy mode slice)
+
+### Component-Specific Config
+- **strategy_engine_settings**: Dict (strategy engine-specific settings)
+  - **timeout**: Strategy engine timeout
+  - **max_components**: Maximum number of components
+  - **memory_limit**: Memory limit
+- **orchestration_settings**: Dict (orchestration-specific settings)
+  - **component_timeout**: Individual component timeout
+  - **retry_attempts**: Retry attempts for failed components
+
+## Data Provider Queries
+
+### Market Data Queries
+- **prices**: Current market prices for all tokens
+- **orderbook**: Order book data for price impact calculation
+- **funding_rates**: Funding rates for perpetual contracts
+- **liquidity**: Liquidity data for DEX swaps
+
+### Protocol Data Queries
+- **protocol_rates**: Lending/borrowing rates from protocols
+- **stake_rates**: Staking rewards and rates
+- **protocol_balances**: Current balances in protocols
+
+### Data NOT Available from DataProvider
+- **Component state** - handled by individual components
+- **Execution results** - handled by execution components
+- **Orchestration state** - handled by Strategy Engine
+
+## Data Access Pattern
+
+### Query Pattern
+```python
+def _process_timestep(self, timestamp: pd.Timestamp, market_data: Dict, request_id: str):
+    # Query data using shared clock
+    data = self.data_provider.get_data(timestamp)
+    
+    # Orchestrate component updates
+    self._orchestrate_components(timestamp, data, request_id)
+```
+
+### Data Dependencies
+- **Market Data**: Prices, orderbook, funding rates, liquidity
+- **Protocol Data**: Lending rates, staking rates, protocol balances
+- **Component State**: All 11 component states
+
+## Mode-Aware Behavior
+
+### Backtest Mode
+```python
+def run_backtest(self, start_date: str, end_date: str):
+    if self.execution_mode == 'backtest':
+        # Run backtest with historical data
+        return self._run_historical_backtest(start_date, end_date)
+```
+
+### Live Mode
+```python
+def run_backtest(self, start_date: str, end_date: str):
+    elif self.execution_mode == 'live':
+        # Run live trading with real-time data
+        return self._run_live_trading()
+```
+
+## Event Logging Requirements
+
+### Component Event Log File
+**Separate log file** for this component's events:
+- **File**: `logs/events/event_driven_strategy_engine_events.jsonl`
+- **Format**: JSON Lines (one event per line)
+- **Rotation**: Daily rotation, keep 30 days
+- **Purpose**: Component-specific audit trail
+
+### Event Logging via EventLogger
+All events logged through centralized EventLogger:
+
+```python
+self.event_logger.log_event(
+    timestamp=timestamp,
+    event_type='[event_type]',
+    component='EventDrivenStrategyEngine',
+    data={
+        'event_specific_data': value,
+        'state_snapshot': self.get_state_snapshot()  # optional
+    }
+)
+```
+
+### Events to Log
+
+#### 1. Component Initialization
+```python
+self.event_logger.log_event(
+    timestamp=pd.Timestamp.now(),
+    event_type='component_initialization',
+    component='EventDrivenStrategyEngine',
+    data={
+        'execution_mode': self.execution_mode,
+        'components_count': len(self.components),
+        'config_hash': hash(str(self.config))
+    }
+)
+```
+
+#### 2. State Updates (Every _process_timestep() Call)
+```python
+self.event_logger.log_event(
+    timestamp=timestamp,
+    event_type='state_update',
+    component='EventDrivenStrategyEngine',
+    data={
+        'current_timestamp': self.current_timestamp,
+        'components_updated': len(self.components),
+        'processing_time_ms': processing_time
+    }
+)
+```
+
+#### 3. Error Events
+```python
+self.event_logger.log_event(
+    timestamp=timestamp,
+    event_type='error',
+    component='EventDrivenStrategyEngine',
+    data={
+        'error_code': 'EDS-001',
+        'error_message': str(e),
+        'stack_trace': traceback.format_exc(),
+        'error_severity': 'CRITICAL|HIGH|MEDIUM|LOW'
+    }
+)
+```
+
+#### 4. Component-Specific Critical Events
+- **Orchestration Failed**: When component orchestration fails
+- **Component Timeout**: When component times out
+- **Strategy Engine Failed**: When strategy engine fails
+
+### Event Retention & Output Formats
+
+#### Dual Logging Approach
+**Both formats are used**:
+1. **JSON Lines (Iterative)**: Write events to component-specific JSONL files during execution
+   - **Purpose**: Real-time monitoring during backtest runs
+   - **Location**: `logs/events/event_driven_strategy_engine_events.jsonl`
+   - **When**: Events written as they occur (buffered for performance)
+   
+2. **CSV Export (Final)**: Comprehensive CSV export at Results Store stage
+   - **Purpose**: Final analysis, spreadsheet compatibility
+   - **Location**: `results/[backtest_id]/events.csv`
+   - **When**: At backtest completion or on-demand
+
+#### Mode-Specific Behavior
+- **Backtest**: 
+  - Write JSONL iteratively (allows tracking during long runs)
+  - Export CSV at completion to Results Store
+  - Keep all events in memory for final processing
+  
+- **Live**: 
+  - Write JSONL immediately (no buffering)
+  - Rotate daily, keep 30 days
+  - CSV export on-demand for analysis
+
+**Note**: Current implementation stores events in memory and exports to CSV only. Enhanced implementation will add iterative JSONL writing. Reference: `docs/specs/17_HEALTH_ERROR_SYSTEMS.md`
+
+## Error Codes
+
+### Component Error Code Prefix: EDS
+All EventDrivenStrategyEngine errors use the `EDS` prefix.
+
+### Error Code Registry
+**Source**: `backend/src/basis_strategy_v1/core/error_codes/error_code_registry.py`
+
+All error codes registered with:
+- **code**: Unique error code
+- **component**: Component name
+- **severity**: CRITICAL | HIGH | MEDIUM | LOW
+- **message**: Human-readable error message
+- **resolution**: How to resolve
+
+### Component Error Codes
+
+#### EDS-001: Orchestration Failed (HIGH)
+**Description**: Failed to orchestrate components
+**Cause**: Component failures, timeout issues, data inconsistencies
+**Recovery**: Retry orchestration, check component health, verify data
+```python
+raise ComponentError(
+    error_code='EDS-001',
+    message='Component orchestration failed',
+    component='EventDrivenStrategyEngine',
+    severity='HIGH'
+)
+```
+
+#### EDS-002: Component Timeout (MEDIUM)
+**Description**: Component timed out during orchestration
+**Cause**: Slow component processing, resource constraints, network issues
+**Recovery**: Increase timeout, check component performance, optimize processing
+```python
+raise ComponentError(
+    error_code='EDS-002',
+    message='Component timeout during orchestration',
+    component='EventDrivenStrategyEngine',
+    severity='MEDIUM'
+)
+```
+
+#### EDS-003: Strategy Engine Failed (CRITICAL)
+**Description**: Complete strategy engine failure
+**Cause**: Multiple component failures, system issues, data corruption
+**Recovery**: Immediate action required, check system health, restart if necessary
+```python
+raise ComponentError(
+    error_code='EDS-003',
+    message='Strategy engine completely failed',
+    component='EventDrivenStrategyEngine',
+    severity='CRITICAL'
+)
+```
+
+### Structured Error Handling Pattern
+
+#### Error Raising
+```python
+from backend.src.basis_strategy_v1.core.error_codes.exceptions import ComponentError
+
+try:
+    result = self._orchestrate_components(timestamp, data, request_id)
+except Exception as e:
+    # Log error event
+    self.event_logger.log_event(
+        timestamp=timestamp,
+        event_type='error',
+        component='EventDrivenStrategyEngine',
+        data={
+            'error_code': 'EDS-001',
+            'error_message': str(e),
+            'stack_trace': traceback.format_exc()
+        }
+    )
+    
+    # Raise structured error
+    raise ComponentError(
+        error_code='EDS-001',
+        message=f'EventDrivenStrategyEngine failed: {str(e)}',
+        component='EventDrivenStrategyEngine',
+        severity='HIGH',
+        original_exception=e
+    )
+```
+
+#### Error Propagation Rules
+- **CRITICAL**: Propagate to health system → trigger app restart
+- **HIGH**: Log and retry with exponential backoff (max 3 retries)
+- **MEDIUM**: Log and continue with degraded functionality
+- **LOW**: Log for monitoring, no action needed
+
+### Component Health Integration
+
+#### Health Check Registration
+```python
+def __init__(self, ..., health_manager: UnifiedHealthManager):
+    # Store health manager reference
+    self.health_manager = health_manager
+    
+    # Register component with health system
+    self.health_manager.register_component(
+        component_name='EventDrivenStrategyEngine',
+        checker=self._health_check
+    )
+
+def _health_check(self) -> Dict:
+    """Component-specific health check."""
+    return {
+        'status': 'healthy' | 'degraded' | 'unhealthy',
+        'last_update': self.current_timestamp,
+        'errors': self.recent_errors[-10:],  # Last 10 errors
+        'metrics': {
+            'update_count': self.update_count,
+            'avg_processing_time_ms': self.avg_processing_time,
+            'error_rate': self.error_count / max(self.update_count, 1),
+            'components_count': len(self.components),
+            'timestamps_processed': len(self.timestamps),
+            'memory_usage_mb': self._get_memory_usage()
+        }
+    }
+```
+
+#### Health Status Definitions
+- **healthy**: No errors in last 100 updates, processing time < threshold
+- **degraded**: Minor errors, slower processing, retries succeeding
+- **unhealthy**: Critical errors, failed retries, unable to process
+
+**Reference**: `docs/specs/17_HEALTH_ERROR_SYSTEMS.md`
+
+## Quality Gates
+
+### Validation Criteria
+- [ ] All 18 sections present and complete
+- [ ] Environment Variables section documents system-level and component-specific variables
+- [ ] Config Fields Used section documents universal and component-specific config
+- [ ] Data Provider Queries section documents market and protocol data queries
+- [ ] Event Logging Requirements section documents component-specific JSONL file
+- [ ] Event Logging Requirements section documents dual logging (JSONL + CSV)
+- [ ] Error Codes section has structured error handling pattern
+- [ ] Error Codes section references health integration
+- [ ] Health integration documented with UnifiedHealthManager
+- [ ] Component-specific log file documented (`logs/events/event_driven_strategy_engine_events.jsonl`)
+
+### Section Order Validation
+- [ ] Purpose (section 1)
+- [ ] Responsibilities (section 2)
+- [ ] State (section 3)
+- [ ] Component References (Set at Init) (section 4)
+- [ ] Environment Variables (section 5)
+- [ ] Config Fields Used (section 6)
+- [ ] Data Provider Queries (section 7)
+- [ ] Core Methods (section 8)
+- [ ] Data Access Pattern (section 9)
+- [ ] Mode-Aware Behavior (section 10)
+- [ ] Event Logging Requirements (section 11)
+- [ ] Error Codes (section 12)
+- [ ] Quality Gates (section 13)
+- [ ] Integration Points (section 14)
+- [ ] Code Structure Example (section 15)
+- [ ] Related Documentation (section 16)
+
+### Implementation Status
+- [ ] Backend implementation exists and matches spec
+- [ ] All required methods implemented
+- [ ] Error handling follows structured pattern
+- [ ] Health integration implemented
+- [ ] Event logging implemented
+
 ## Core Methods
 
 ### run_backtest(start_date: str, end_date: str) -> Dict
@@ -158,8 +509,8 @@ Each component has detailed specifications:
 - **Risk Monitor**: [03_RISK_MONITOR.md](03_RISK_MONITOR.md) <!-- Link is valid -->
 - **P&L Calculator**: [04_PNL_CALCULATOR.md](04_PNL_CALCULATOR.md) <!-- Link is valid -->
 - **Strategy Manager**: [05_STRATEGY_MANAGER.md](05_STRATEGY_MANAGER.md) <!-- Link is valid -->
-- **CEX Execution Manager**: [06_CEX_EXECUTION_MANAGER.md](06_CEX_EXECUTION_MANAGER.md) <!-- Link is valid -->
-- **OnChain Execution Manager**: [07_ONCHAIN_EXECUTION_MANAGER.md](07_ONCHAIN_EXECUTION_MANAGER.md) <!-- Link is valid -->
+- **CEX Execution Manager**: [06_EXECUTION_MANAGER.md](06_EXECUTION_MANAGER.md) <!-- Link is valid -->
+- **OnChain Execution Manager**: [07_EXECUTION_INTERFACE_MANAGER.md](07_EXECUTION_INTERFACE_MANAGER.md) <!-- Link is valid -->
 - **Execution Interfaces**: [08A_EXECUTION_INTERFACES.md](08A_EXECUTION_INTERFACES.md) <!-- Link is valid -->
 - **Data Provider**: [09_DATA_PROVIDER.md](09_DATA_PROVIDER.md) <!-- Link is valid -->
 
@@ -383,13 +734,13 @@ The engine implements a `PositionUpdateHandler` that triggers the tight loop:
 class PositionUpdateHandler:
     """Tight loop trigger mechanism for position updates."""
     
-    async def handle_position_update(self, trigger_event: str, changes: Dict[str, Any]):
+    def handle_position_update(self, trigger_event: str, changes: Dict[str, Any]):
         """Trigger tight loop after position update."""
         # 1. Update position monitor
-        await self.position_monitor.update_position(trigger_event, changes)
+        self.position_monitor.update_position(trigger_event, changes)
         
         # 2. Trigger tight loop sequence
-        await self._execute_tight_loop()
+        self._execute_tight_loop()
     
     async def _execute_tight_loop(self):
         """Execute tight loop: position → exposure → risk → P&L."""

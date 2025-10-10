@@ -34,10 +34,25 @@
 
 ## 🎯 **Quick Start**
 
+### **Environment Setup**
+```bash
+# Development environment (default)
+./platform.sh backtest
+
+# Staging environment
+BASIS_ENVIRONMENT=staging ./platform.sh backtest
+
+# Production environment
+BASIS_ENVIRONMENT=prod ./platform.sh backtest
+```
+
+### **Documentation**
+- **[Getting Started](docs/GETTING_STARTED.md)** - Complete setup guide
+- **[Deployment Guide](docs/DEPLOYMENT_GUIDE.md)** - Environment and deployment management
+- **[Environment Variables](docs/ENVIRONMENT_VARIABLES.md)** - Configuration reference
 - **[Quality Gates](docs/QUALITY_GATES.md)** - Implementation priorities and quality gates
 - **[Component Specs](docs/specs/)** - Detailed component implementation guides
-- **[Documentation](docs/README.md)** - Complete documentation hub
-- **[Progress](agent-progress.json)** - Real-time progress tracking
+- **[Documentation Hub](docs/README.md)** - Complete documentation index
 
 ---
 

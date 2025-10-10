@@ -16,6 +16,522 @@
 
 ---
 
+## Purpose
+Manage configuration loading, validation, and system restarts for the Basis Strategy platform.
+
+## Responsibilities
+1. Load and validate configuration from YAML files
+2. Manage environment variables and system settings
+3. Provide configuration slicing for strategy modes
+4. Handle configuration updates and system restarts
+5. Validate configuration consistency and integrity
+6. Support configuration hot-reloading and validation
+
+## State
+- global_config: Dict (immutable, validated at startup)
+- config_cache: Dict (cached configuration slices)
+- validation_results: Dict (configuration validation results)
+- last_validation_timestamp: pd.Timestamp
+
+## Component References (Set at Init)
+The following are set once during initialization and NEVER passed as runtime parameters:
+
+- config_paths: Dict (reference, never modified)
+- execution_mode: str (BASIS_EXECUTION_MODE)
+
+These references are stored in __init__ and used throughout component lifecycle.
+Components NEVER receive these as method parameters during runtime.
+
+## Environment Variables
+
+### System-Level Variables
+- **BASIS_EXECUTION_MODE**: 'backtest' | 'live' (determines configuration behavior)
+- **BASIS_LOG_LEVEL**: 'DEBUG' | 'INFO' | 'WARNING' | 'ERROR' (logging level)
+- **BASIS_DATA_DIR**: Path to data directory (for backtest mode)
+
+### Component-Specific Variables
+- **CONFIG_VALIDATION_STRICT**: Strict configuration validation mode (default: true)
+- **CONFIG_CACHE_SIZE**: Configuration cache size (default: 1000)
+- **CONFIG_RELOAD_INTERVAL**: Configuration reload interval in seconds (default: 300)
+
+## Config Fields Used
+
+### Universal Config (All Components)
+- **execution_mode**: 'backtest' | 'live' (from strategy mode slice)
+- **log_level**: 'DEBUG' | 'INFO' | 'WARNING' | 'ERROR' (from strategy mode slice)
+
+### Component-Specific Config
+- **config_settings**: Dict (configuration-specific settings)
+  - **validation_strict**: Strict validation mode
+  - **cache_size**: Configuration cache size
+  - **reload_interval**: Configuration reload interval
+- **system_settings**: Dict (system-specific settings)
+  - **environment**: System environment
+  - **deployment_mode**: Deployment mode
+
+## Data Provider Queries
+
+### Market Data Queries
+- **prices**: Current market prices for configuration validation
+- **orderbook**: Order book data for configuration validation
+- **funding_rates**: Funding rates for configuration validation
+
+### Protocol Data Queries
+- **protocol_rates**: Lending/borrowing rates for configuration validation
+- **stake_rates**: Staking rewards and rates for configuration validation
+- **protocol_balances**: Current balances for configuration validation
+
+### Data NOT Available from DataProvider
+- **Configuration data** - handled by Configuration component
+- **System settings** - handled by Configuration component
+- **Validation results** - handled by Configuration component
+
+## Data Access Pattern
+
+### Query Pattern
+```python
+def load_config(self, config_path: str):
+    # Load configuration from YAML files
+    config = self._load_yaml_config(config_path)
+    
+    # Validate configuration
+    validation_result = self._validate_config(config)
+    
+    return config
+```
+
+### Data Dependencies
+- **Market Data**: Prices, orderbook, funding rates
+- **Protocol Data**: Lending rates, staking rates, protocol balances
+- **Configuration Files**: YAML configuration files
+
+## Mode-Aware Behavior
+
+### Backtest Mode
+```python
+def load_config(self, config_path: str):
+    if self.execution_mode == 'backtest':
+        # Load backtest-specific configuration
+        return self._load_backtest_config(config_path)
+```
+
+### Live Mode
+```python
+def load_config(self, config_path: str):
+    elif self.execution_mode == 'live':
+        # Load live-specific configuration
+        return self._load_live_config(config_path)
+```
+
+## Event Logging Requirements
+
+### Component Event Log File
+**Separate log file** for this component's events:
+- **File**: `logs/events/configuration_events.jsonl`
+- **Format**: JSON Lines (one event per line)
+- **Rotation**: Daily rotation, keep 30 days
+- **Purpose**: Component-specific audit trail
+
+### Event Logging via EventLogger
+All events logged through centralized EventLogger:
+
+```python
+self.event_logger.log_event(
+    timestamp=timestamp,
+    event_type='[event_type]',
+    component='Configuration',
+    data={
+        'event_specific_data': value,
+        'state_snapshot': self.get_state_snapshot()  # optional
+    }
+)
+```
+
+### Events to Log
+
+#### 1. Component Initialization
+```python
+self.event_logger.log_event(
+    timestamp=pd.Timestamp.now(),
+    event_type='component_initialization',
+    component='Configuration',
+    data={
+        'execution_mode': self.execution_mode,
+        'config_paths': list(self.config_paths.keys()),
+        'config_hash': hash(str(self.global_config))
+    }
+)
+```
+
+#### 2. State Updates (Every config load/validation)
+```python
+self.event_logger.log_event(
+    timestamp=timestamp,
+    event_type='state_update',
+    component='Configuration',
+    data={
+        'config_path': config_path,
+        'validation_result': validation_result,
+        'cache_size': len(self.config_cache),
+        'processing_time_ms': processing_time
+    }
+)
+```
+
+#### 3. Error Events
+```python
+self.event_logger.log_event(
+    timestamp=timestamp,
+    event_type='error',
+    component='Configuration',
+    data={
+        'error_code': 'CFG-001',
+        'error_message': str(e),
+        'stack_trace': traceback.format_exc(),
+        'error_severity': 'CRITICAL|HIGH|MEDIUM|LOW'
+    }
+)
+```
+
+#### 4. Component-Specific Critical Events
+- **Config Load Failed**: When configuration loading fails
+- **Config Validation Failed**: When configuration validation fails
+- **Config Cache Full**: When configuration cache is full
+
+### Event Retention & Output Formats
+
+#### Dual Logging Approach
+**Both formats are used**:
+1. **JSON Lines (Iterative)**: Write events to component-specific JSONL files during execution
+   - **Purpose**: Real-time monitoring during backtest runs
+   - **Location**: `logs/events/configuration_events.jsonl`
+   - **When**: Events written as they occur (buffered for performance)
+   
+2. **CSV Export (Final)**: Comprehensive CSV export at Results Store stage
+   - **Purpose**: Final analysis, spreadsheet compatibility
+   - **Location**: `results/[backtest_id]/events.csv`
+   - **When**: At backtest completion or on-demand
+
+#### Mode-Specific Behavior
+- **Backtest**: 
+  - Write JSONL iteratively (allows tracking during long runs)
+  - Export CSV at completion to Results Store
+  - Keep all events in memory for final processing
+  
+- **Live**: 
+  - Write JSONL immediately (no buffering)
+  - Rotate daily, keep 30 days
+  - CSV export on-demand for analysis
+
+**Note**: Current implementation stores events in memory and exports to CSV only. Enhanced implementation will add iterative JSONL writing. Reference: `docs/specs/17_HEALTH_ERROR_SYSTEMS.md`
+
+## Error Codes
+
+### Component Error Code Prefix: CFG
+All Configuration errors use the `CFG` prefix.
+
+### Error Code Registry
+**Source**: `backend/src/basis_strategy_v1/core/error_codes/error_code_registry.py`
+
+All error codes registered with:
+- **code**: Unique error code
+- **component**: Component name
+- **severity**: CRITICAL | HIGH | MEDIUM | LOW
+- **message**: Human-readable error message
+- **resolution**: How to resolve
+
+### Component Error Codes
+
+#### CFG-001: Config Load Failed (HIGH)
+**Description**: Failed to load configuration
+**Cause**: File system errors, YAML parsing errors, missing files
+**Recovery**: Check file paths, verify YAML syntax, ensure files exist
+```python
+raise ComponentError(
+    error_code='CFG-001',
+    message='Configuration loading failed',
+    component='Configuration',
+    severity='HIGH'
+)
+```
+
+#### CFG-002: Config Validation Failed (HIGH)
+**Description**: Configuration validation failed
+**Cause**: Invalid configuration values, missing required fields, type mismatches
+**Recovery**: Check configuration values, verify required fields, fix type issues
+```python
+raise ComponentError(
+    error_code='CFG-002',
+    message='Configuration validation failed',
+    component='Configuration',
+    severity='HIGH'
+)
+```
+
+#### CFG-003: Config Cache Full (MEDIUM)
+**Description**: Configuration cache has reached capacity
+**Cause**: Too many cached configurations, cache size limit reached
+**Recovery**: Clear old cache entries, increase cache size, optimize caching
+```python
+raise ComponentError(
+    error_code='CFG-003',
+    message='Configuration cache full',
+    component='Configuration',
+    severity='MEDIUM'
+)
+```
+
+### Structured Error Handling Pattern
+
+#### Error Raising
+```python
+from backend.src.basis_strategy_v1.core.error_codes.exceptions import ComponentError
+
+try:
+    result = self._load_config_internal(config_path)
+except Exception as e:
+    # Log error event
+    self.event_logger.log_event(
+        timestamp=timestamp,
+        event_type='error',
+        component='Configuration',
+        data={
+            'error_code': 'CFG-001',
+            'error_message': str(e),
+            'stack_trace': traceback.format_exc()
+        }
+    )
+    
+    # Raise structured error
+    raise ComponentError(
+        error_code='CFG-001',
+        message=f'Configuration failed: {str(e)}',
+        component='Configuration',
+        severity='HIGH',
+        original_exception=e
+    )
+```
+
+#### Error Propagation Rules
+- **CRITICAL**: Propagate to health system → trigger app restart
+- **HIGH**: Log and retry with exponential backoff (max 3 retries)
+- **MEDIUM**: Log and continue with degraded functionality
+- **LOW**: Log for monitoring, no action needed
+
+### Component Health Integration
+
+#### Health Check Registration
+```python
+def __init__(self, ..., health_manager: UnifiedHealthManager):
+    # Store health manager reference
+    self.health_manager = health_manager
+    
+    # Register component with health system
+    self.health_manager.register_component(
+        component_name='Configuration',
+        checker=self._health_check
+    )
+
+def _health_check(self) -> Dict:
+    """Component-specific health check."""
+    return {
+        'status': 'healthy' | 'degraded' | 'unhealthy',
+        'last_update': self.last_validation_timestamp,
+        'errors': self.recent_errors[-10:],  # Last 10 errors
+        'metrics': {
+            'update_count': self.update_count,
+            'avg_processing_time_ms': self.avg_processing_time,
+            'error_rate': self.error_count / max(self.update_count, 1),
+            'config_cache_size': len(self.config_cache),
+            'validation_success_rate': self._calculate_validation_success_rate(),
+            'memory_usage_mb': self._get_memory_usage()
+        }
+    }
+```
+
+#### Health Status Definitions
+- **healthy**: No errors in last 100 updates, processing time < threshold
+- **degraded**: Minor errors, slower processing, retries succeeding
+- **unhealthy**: Critical errors, failed retries, unable to process
+
+**Reference**: `docs/specs/17_HEALTH_ERROR_SYSTEMS.md`
+
+## Core Methods
+
+### Primary API Surface
+```python
+def load_config(self, config_path: str) -> Dict:
+    """Load configuration from YAML files."""
+    
+def validate_config(self, config: Dict) -> Dict:
+    """Validate configuration against schema."""
+    
+def get_config_slice(self, mode: str, venue: str) -> Dict:
+    """Get configuration slice for specific mode and venue."""
+    
+def reload_config(self, config_path: str) -> Dict:
+    """Reload configuration and validate."""
+    
+def get_config_status(self) -> Dict:
+    """Get configuration status and health metrics."""
+```
+
+### Configuration Operations
+- **load_config()**: Configuration loading from YAML files
+- **validate_config()**: Configuration validation and schema checking
+- **get_config_slice()**: Mode and venue-specific configuration slicing
+- **reload_config()**: Configuration hot-reloading
+- **get_config_status()**: Configuration health and status
+
+## Integration Points
+
+### Component Dependencies
+- **All Components**: Configuration provider for all system components
+- **Strategy Manager**: Strategy-specific configuration
+- **Execution Manager**: Execution configuration
+- **Data Provider**: Data source configuration
+
+### Data Flow
+1. **Configuration Loading**: YAML file loading and parsing
+2. **Validation**: Configuration schema validation
+3. **Slicing**: Mode and venue-specific configuration extraction
+4. **Distribution**: Configuration distribution to components
+5. **Hot Reloading**: Configuration updates and system restart
+
+### API Integration
+- **YAML Parser**: Configuration file parsing
+- **Schema Validation**: Configuration validation and error detection
+- **Hot Reload**: Configuration update handling
+- **System Restart**: Configuration change propagation
+
+## Code Structure Example
+
+### Component Implementation
+```python
+class ConfigurationManager:
+    def __init__(self, config_paths: Dict, execution_mode: str, 
+                 health_manager: UnifiedHealthManager):
+        # Store references (never passed as runtime parameters)
+        self.config_paths = config_paths
+        self.execution_mode = execution_mode
+        self.health_manager = health_manager
+        
+        # Initialize state
+        self.global_config = {}
+        self.config_cache = {}
+        self.validation_results = {}
+        self.last_validation_timestamp = None
+        
+        # Register with health system
+        self.health_manager.register_component(
+            component_name='ConfigurationManager',
+            checker=self._health_check
+        )
+    
+    def load_config(self, config_path: str) -> Dict:
+        """Load configuration from YAML files."""
+        try:
+            # Load configuration
+            config = self._load_yaml_config(config_path)
+            
+            # Validate configuration
+            validation_result = self._validate_config(config)
+            
+            # Log event
+            self.event_logger.log_event(
+                timestamp=pd.Timestamp.now(),
+                event_type='config_loaded',
+                component='ConfigurationManager',
+                data={'config_path': config_path, 'validation_result': validation_result}
+            )
+            
+            return config
+            
+        except Exception as e:
+            # Log error and raise structured error
+            self.event_logger.log_event(
+                timestamp=pd.Timestamp.now(),
+                event_type='error',
+                component='ConfigurationManager',
+                data={'error_code': 'CFG-001', 'error_message': str(e)}
+            )
+            raise ComponentError(
+                error_code='CFG-001',
+                message=f'Configuration loading failed: {str(e)}',
+                component='ConfigurationManager',
+                severity='HIGH'
+            )
+    
+    def _health_check(self) -> Dict:
+        """Component-specific health check."""
+        return {
+            'status': 'healthy' if len(self.validation_results) == 0 else 'degraded',
+            'last_validation': self.last_validation_timestamp,
+            'metrics': {
+                'config_cache_size': len(self.config_cache),
+                'validation_errors': len(self.validation_results),
+                'global_config_size': len(self.global_config)
+            }
+        }
+```
+
+## Related Documentation
+
+### Component Specifications
+- **Strategy Manager**: [05_STRATEGY_MANAGER.md](05_STRATEGY_MANAGER.md) - Strategy configuration
+- **Execution Manager**: [06_EXECUTION_MANAGER.md](06_EXECUTION_MANAGER.md) - Execution configuration
+- **Data Provider**: [09_DATA_PROVIDER.md](09_DATA_PROVIDER.md) - Data source configuration
+- **Health & Error Systems**: [17_HEALTH_ERROR_SYSTEMS.md](17_HEALTH_ERROR_SYSTEMS.md) - Health monitoring integration
+
+### Architecture Documentation
+- **Reference Architecture**: [REFERENCE_ARCHITECTURE_CANONICAL.md](../REFERENCE_ARCHITECTURE_CANONICAL.md) - Configuration management patterns
+- **YAML Configuration**: YAML-based configuration specifications
+- **Schema Validation**: Configuration validation and error handling
+
+### Implementation Guides
+- **Configuration Loading**: YAML file loading and parsing patterns
+- **Schema Validation**: Configuration validation specifications
+- **Hot Reloading**: Configuration update and system restart patterns
+
+## Quality Gates
+
+### Validation Criteria
+- [ ] All 18 sections present and complete
+- [ ] Environment Variables section documents system-level and component-specific variables
+- [ ] Config Fields Used section documents universal and component-specific config
+- [ ] Data Provider Queries section documents market and protocol data queries
+- [ ] Event Logging Requirements section documents component-specific JSONL file
+- [ ] Event Logging Requirements section documents dual logging (JSONL + CSV)
+- [ ] Error Codes section has structured error handling pattern
+- [ ] Error Codes section references health integration
+- [ ] Health integration documented with UnifiedHealthManager
+- [ ] Component-specific log file documented (`logs/events/configuration_events.jsonl`)
+
+### Section Order Validation
+- [ ] Purpose (section 1)
+- [ ] Responsibilities (section 2)
+- [ ] State (section 3)
+- [ ] Component References (Set at Init) (section 4)
+- [ ] Environment Variables (section 5)
+- [ ] Config Fields Used (section 6)
+- [ ] Data Provider Queries (section 7)
+- [ ] Core Methods (section 8)
+- [ ] Data Access Pattern (section 9)
+- [ ] Mode-Aware Behavior (section 10)
+- [ ] Event Logging Requirements (section 11)
+- [ ] Error Codes (section 12)
+- [ ] Quality Gates (section 13)
+- [ ] Integration Points (section 14)
+- [ ] Code Structure Example (section 15)
+- [ ] Related Documentation (section 16)
+
+### Implementation Status
+- [ ] Backend implementation exists and matches spec
+- [ ] All required methods implemented
+- [ ] Error handling follows structured pattern
+- [ ] Health integration implemented
+- [ ] Event logging implemented
+
 ## ✅ **Current Configuration Status**
 
 **Configuration System**: ✅ **FULLY FUNCTIONAL**

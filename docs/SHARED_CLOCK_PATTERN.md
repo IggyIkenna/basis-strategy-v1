@@ -1,7 +1,17 @@
 # Shared Clock Pattern
 
+## Overview
+This document defines the Shared Clock Pattern - a fundamental architectural pattern that ensures data consistency and prevents forward-looking bias in the trading system. The EventDrivenStrategyEngine owns the current timestamp and passes it to all component method calls, ensuring all components use identical data snapshots.
+
 ## Core Principle
 EventDrivenStrategyEngine owns the current timestamp and passes it to all component method calls. Components NEVER advance time, only receive timestamps.
+
+## 📚 **Canonical Sources**
+
+**This pattern aligns with canonical architectural principles**:
+- **Architectural Principles**: [REFERENCE_ARCHITECTURE_CANONICAL.md](REFERENCE_ARCHITECTURE_CANONICAL.md) - Canonical architectural principles
+- **Component Specifications**: [specs/](specs/) - Detailed component implementation guides
+- **Request Isolation Pattern**: [REQUEST_ISOLATION_PATTERN.md](REQUEST_ISOLATION_PATTERN.md) - Request isolation patterns
 
 ## Data Access Pattern
 All components query data using:

@@ -13,7 +13,7 @@ import uvicorn
 from contextlib import asynccontextmanager
 from typing import Optional
 
-from .routes import backtest, strategies, health, results, charts, live_trading
+from .routes import backtest, strategies, health, results, charts, live_trading, auth, capital
 from .middleware.correlation import CorrelationMiddleware
 from ..infrastructure.config.config_manager import get_settings
 from ..infrastructure.config.config_validator import validate_configuration
@@ -161,6 +161,14 @@ def create_application() -> FastAPI:
                 "description": "Health check endpoints for monitoring"
             },
             {
+                "name": "auth",
+                "description": "Authentication and user management"
+            },
+            {
+                "name": "capital",
+                "description": "Capital management (deposits and withdrawals)"
+            },
+            {
                 "name": "strategies", 
                 "description": "Strategy information and management"
             },
@@ -196,6 +204,16 @@ def create_application() -> FastAPI:
         health.router,
         prefix="/health",
         tags=["health"]
+    )
+    app.include_router(
+        auth.router,
+        prefix="/api/v1/auth",
+        tags=["auth"]
+    )
+    app.include_router(
+        capital.router,
+        prefix="/api/v1/capital",
+        tags=["capital"]
     )
     app.include_router(
         backtest.router,

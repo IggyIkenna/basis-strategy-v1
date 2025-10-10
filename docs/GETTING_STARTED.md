@@ -24,6 +24,33 @@
 
 **Note**: For backtest mode, no venue credentials (API keys) are required - execution is simulated.
 
+## 🔧 **Environment Configuration**
+
+The platform supports multiple environments with different configurations:
+
+### **Environment Files**
+- **`.env.dev`** - Development environment (5s health checks)
+- **`.env.staging`** - Staging environment (35s health checks)  
+- **`.env.production`** - Production environment (configurable)
+
+### **Switching Environments**
+```bash
+# Use development environment (default)
+./platform.sh backtest
+
+# Use staging environment
+BASIS_ENVIRONMENT=staging ./platform.sh backtest
+
+# Use production environment
+BASIS_ENVIRONMENT=prod ./platform.sh backtest
+
+# Set environment for entire session
+export BASIS_ENVIRONMENT=staging
+./platform.sh backtest
+```
+
+**Environment files contain**: Health check intervals, API ports, data sources, and other deployment-specific settings.
+
 ---
 
 ## 🎯 **What We're Building**
@@ -81,12 +108,13 @@ A **live and backtesting framework** for multi-strategy yield generation with:
 
 ## ✅ **Current System Status**
 
-**Backend**: ✅ **Core Components Implemented** | 🔄 **Critical Issues Remain**
+**Backend**: ✅ **Core Components Implemented** | 🔄 **Environment Setup Issues**
 - All API endpoints working
 - Backtest system executing end-to-end
 - 6 strategies available (pure_lending, eth_leveraged, etc.)
 - All data loading successfully
 - 17% test coverage with 43 passing tests
+- **CRITICAL**: Backend server health checks failing (environment setup issue)
 - **CRITICAL**: Pure lending shows 1166% APY (should be 3-8%)
 
 **Frontend**: 🔧 **Backend Integration Complete**

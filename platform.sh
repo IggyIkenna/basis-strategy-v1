@@ -66,6 +66,9 @@ create_directories() {
 load_environment() {
     echo -e "${BLUE}🔧 Loading environment variables...${NC}"
     
+    # Preserve BASIS_ENVIRONMENT if it was set before loading env.unified
+    local original_environment=${BASIS_ENVIRONMENT:-}
+    
     # Load base environment from env.unified
     if [ -f "env.unified" ]; then
         echo -e "${BLUE}📋 Loading base environment from env.unified...${NC}"
@@ -75,6 +78,11 @@ load_environment() {
     else
         echo -e "${RED}❌ env.unified not found${NC}"
         return 1
+    fi
+    
+    # Restore original BASIS_ENVIRONMENT if it was set
+    if [ -n "$original_environment" ]; then
+        export BASIS_ENVIRONMENT="$original_environment"
     fi
     
     # Load environment-specific override file (platform.sh only uses root env files)
@@ -444,6 +452,11 @@ start_health_monitor() {
         echo -e "${YELLOW}⚠️ HEALTH_CHECK_INTERVAL not set, skipping health monitor${NC}"
         return 0
     fi
+    
+    # Export environment variables for health monitor
+    export HEALTH_CHECK_INTERVAL
+    export HEALTH_CHECK_ENDPOINT
+    export BASIS_API_PORT
     
     # Start monitor in background
     ./scripts/health_monitor.sh > logs/health_monitor.log 2>&1 &

@@ -27,6 +27,24 @@ The following are set once during initialization and NEVER passed as runtime par
 These references are stored in __init__ and used throughout component lifecycle.
 Components NEVER receive these as method parameters during runtime.
 
+## Configuration Parameters
+
+**Mode Configuration** (from `configs/modes/*.yaml`):
+- `pnl_calculation_method`: P&L calculation method - used for P&L calculations
+- `attribution_settings`: Attribution settings - used for P&L attribution
+- `performance_metrics`: Performance metrics configuration - used for performance calculations
+
+**Venue Configuration** (from `configs/venues/*.yaml`):
+- `fee_structures`: Fee structures - used for fee calculations
+- `slippage_models`: Slippage models - used for slippage calculations
+
+**Share Class Configuration** (from `configs/share_classes/*.yaml`):
+- `performance_benchmarks`: Performance benchmarks - used for performance comparison
+- `reporting_currency`: Reporting currency - used for P&L reporting
+
+**Cross-Reference**: [CONFIGURATION.md](CONFIGURATION.md) - Complete configuration hierarchy
+**Cross-Reference**: [ENVIRONMENT_VARIABLES.md](../ENVIRONMENT_VARIABLES.md) - Environment variable definitions
+
 ## Environment Variables
 
 ### System-Level Variables (Read at Initialization)
@@ -1008,7 +1026,7 @@ def test_reconciliation():
   - **Generic P&L Attribution**: Uses generic P&L attribution system with share-class awareness
 
 ## Related Documentation
-- [Reference-Based Architecture](../REFERENCE_ARCHITECTURE.md)
+- [Reference-Based Architecture](../REFERENCE_ARCHITECTURE_CANONICAL.md)
 - [Shared Clock Pattern](../SHARED_CLOCK_PATTERN.md)
 - [Request Isolation Pattern](../REQUEST_ISOLATION_PATTERN.md)
 

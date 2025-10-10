@@ -1,5 +1,7 @@
 # Strategy Manager Component Specification
 
+**Last Reviewed**: October 10, 2025
+
 ## Purpose
 Mode-specific strategy brain that decides 5 standardized actions and breaks them down into sequential instruction blocks for Execution Manager.
 
@@ -174,6 +176,107 @@ None - all data comes from DataProvider
 
 **Cross-Reference**: [CONFIGURATION.md](CONFIGURATION.md) - Complete configuration hierarchy
 **Cross-Reference**: [ENVIRONMENT_VARIABLES.md](../ENVIRONMENT_VARIABLES.md) - Environment variable definitions
+
+## 📦 **Component Structure**
+
+### **Core Classes**
+
+#### **StrategyManager**
+Strategy execution and instruction generation system.
+
+```python
+class StrategyManager:
+    def __init__(self, config: Dict, execution_mode: str, health_manager: UnifiedHealthManager):
+        # Store references (never passed as runtime parameters)
+        self.config = config
+        self.execution_mode = execution_mode
+        self.health_manager = health_manager
+        
+        # Initialize state
+        self.strategies = {}
+        self.last_execution_timestamp = None
+        self.execution_count = 0
+        
+        # Register with health system
+        self.health_manager.register_component(
+            component_name='StrategyManager',
+            checker=self._health_check
+        )
+```
+
+## 📊 **Data Structures**
+
+### **Strategy Registry**
+```python
+strategies: Dict[str, Strategy]
+- Type: Dict[str, Strategy]
+- Purpose: Registry of active strategies
+- Keys: Strategy names (e.g., 'pure_lending', 'basis_trading')
+- Values: Strategy instances
+```
+
+### **Execution Statistics**
+```python
+execution_count: int
+- Type: int
+- Purpose: Track number of executions
+- Thread Safety: Atomic operations
+
+last_execution_timestamp: pd.Timestamp
+- Type: pd.Timestamp
+- Purpose: Track last execution time
+- Thread Safety: Single writer
+```
+
+## 🧪 **Testing**
+
+### **Unit Tests**
+- **Test Strategy Execution**: Verify strategy execution logic
+- **Test Instruction Generation**: Verify instruction generation
+- **Test Strategy Management**: Verify strategy management
+- **Test Error Handling**: Verify structured error handling
+- **Test Health Integration**: Verify health monitoring
+
+### **Integration Tests**
+- **Test Backend Integration**: Verify backend integration
+- **Test Event Logging**: Verify event logging integration
+- **Test Health Monitoring**: Verify health system integration
+- **Test Performance**: Verify strategy execution performance
+
+### **Test Coverage**
+- **Target**: 80% minimum unit test coverage
+- **Critical Paths**: 100% coverage for strategy operations
+- **Error Paths**: 100% coverage for error handling
+- **Health Paths**: 100% coverage for health monitoring
+
+## ✅ **Success Criteria**
+
+### **Functional Requirements**
+- [ ] Strategy execution working
+- [ ] Instruction generation operational
+- [ ] Strategy management functional
+- [ ] Error handling complete
+- [ ] Health monitoring integrated
+
+### **Performance Requirements**
+- [ ] Strategy execution < 100ms
+- [ ] Instruction generation < 50ms
+- [ ] Strategy management < 10ms
+- [ ] Memory usage < 100MB for strategies
+- [ ] CPU usage < 10% during normal operations
+
+### **Quality Requirements**
+- [ ] 80% minimum test coverage
+- [ ] All error codes documented
+- [ ] Health integration complete
+- [ ] Event logging operational
+- [ ] Documentation complete
+
+## 📅 **Last Reviewed**
+
+**Last Reviewed**: October 10, 2025  
+**Reviewer**: Component Spec Standardization  
+**Status**: ✅ **18-SECTION FORMAT COMPLETE**
 
 ## Core Methods
 
@@ -1476,9 +1579,17 @@ def test_mode_determines_hedging():
 - **Requirements**: Complete inheritance-based strategy modes implementation
 - **Integration**: Integrates with quality gate system through strategy manager tests
 
+### **Component Integration**
+- [Position Monitor Specification](01_POSITION_MONITOR.md) - Provides position data for strategy decisions
+- [Exposure Monitor Specification](02_EXPOSURE_MONITOR.md) - Provides exposure data for strategy decisions
+- [Risk Monitor Specification](03_RISK_MONITOR.md) - Provides risk metrics for strategy decisions
+- [Execution Manager Specification](06_EXECUTION_MANAGER.md) - Receives instruction blocks for execution
+- [Data Provider Specification](09_DATA_PROVIDER.md) - Provides market data for strategy decisions
+- [Event Logger Specification](08_EVENT_LOGGER.md) - Logs strategy decision events
+
 ### **Task Completion Status**
 - **Related Tasks**: 
-  - [.cursor/tasks/strategy_manager_refactor.md](../../.cursor/tasks/strategy_manager_refactor.md) - Strategy Manager Refactor (80% complete - inheritance-based strategy modes need completion)
+  - [.cursor/tasks/06_strategy_manager_refactor.md](../../.cursor/tasks/06_strategy_manager_refactor.md) - Strategy Manager Refactor (80% complete - inheritance-based strategy modes need completion)
   - [.cursor/tasks/18_generic_vs_mode_specific_architecture.md](../../.cursor/tasks/18_generic_vs_mode_specific_architecture.md) - Generic vs Mode-Specific Architecture (100% complete - config-driven parameters implemented)
 - **Completion**: 85% complete overall
 - **Blockers**: Inheritance-based strategy modes implementation

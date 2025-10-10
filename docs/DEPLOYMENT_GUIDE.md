@@ -151,6 +151,43 @@ def main():
 - **Deployment**: `local` vs `docker` (dependency injection, port forwarding)
 - **Deployment Machine**: `local_mac` vs `gcloud_linux_vm` (deployment target)
 
+### **Environment Switching**
+
+**Non-Docker (platform.sh)**:
+```bash
+# Use development environment (default)
+./platform.sh backtest
+
+# Use staging environment
+BASIS_ENVIRONMENT=staging ./platform.sh backtest
+
+# Use production environment  
+BASIS_ENVIRONMENT=prod ./platform.sh backtest
+
+# Set environment for entire session
+export BASIS_ENVIRONMENT=staging
+./platform.sh backtest
+```
+
+**Docker (deploy.sh)**:
+```bash
+# Use local environment (default)
+cd docker && ./deploy.sh local backend start
+
+# Use staging environment
+cd docker && ./deploy.sh staging backend start
+
+# Use production environment
+cd docker && ./deploy.sh prod backend start
+```
+
+**Environment File Mapping**:
+| Environment | Non-Docker File | Docker File | Health Check Interval |
+|-------------|----------------|-------------|----------------------|
+| `dev` | `.env.dev` | `docker/.env.dev` | 5s |
+| `staging` | `.env.staging` | `docker/.env.staging` | 35s |
+| `prod` | `.env.production` | `docker/.env.prod` | Configurable |
+
 ---
 
 ## 🌐 **Frontend Deployment**
@@ -560,6 +597,33 @@ This is different from environment-based credentials in `env.unified` - it's for
 
 ### **Common Issues**
 
+**Environment Not Switching**:
+```bash
+# Check current environment
+echo $BASIS_ENVIRONMENT
+
+# Verify environment file exists
+ls -la .env.dev .env.staging .env.production
+
+# Check environment file syntax
+cat .env.staging | grep -v "^#" | grep -v "^$"
+
+# Force environment switch
+BASIS_ENVIRONMENT=staging ./platform.sh backtest
+```
+
+**Health Monitor Using Wrong Interval**:
+```bash
+# Check health monitor logs
+cat logs/health_monitor.log | grep "Check Interval"
+
+# Verify environment variables are exported
+env | grep HEALTH_CHECK_INTERVAL
+
+# Restart with correct environment
+./platform.sh stop
+BASIS_ENVIRONMENT=staging ./platform.sh backtest
+```
 
 **Component Initialization Failed**:
 ```bash

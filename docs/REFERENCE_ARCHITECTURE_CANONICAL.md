@@ -21,7 +21,24 @@ This document serves as the single canonical source of truth for all architectur
 
 ## I. Core Architectural Patterns
 
-### 1. Reference-Based Architecture Pattern
+### 1. Component References (Set at Init)
+
+All components follow the **Reference-Based Architecture** pattern where component references are set once during initialization and NEVER passed as runtime parameters:
+
+- **config**: Dict (reference, never modified)
+- **execution_mode**: str (BASIS_EXECUTION_MODE)
+- **event_logger**: EventLogger instance
+- **data_provider**: DataProvider instance
+- **position_monitor**: PositionMonitor instance
+- **exposure_monitor**: ExposureMonitor instance
+- **risk_monitor**: RiskMonitor instance
+- **pnl_calculator**: PnLCalculator instance
+- **strategy_manager**: StrategyManager instance
+- **execution_manager**: ExecutionManager instance
+
+These references are stored in `__init__` and used throughout component lifecycle. Components NEVER receive these as method parameters during runtime.
+
+### 2. Reference-Based Architecture Pattern
 
 **Core Principle**: Components NEVER pass config, data_provider, or other components to each other. All shared resources are set as references during initialization and accessed directly throughout the component lifecycle.
 
@@ -775,10 +792,10 @@ def update_state(self, timestamp: pd.Timestamp, trigger_source: str):
 - **Execution Manager**: [specs/06_EXECUTION_MANAGER.md](specs/06_EXECUTION_MANAGER.md)
 - **Execution Interface Manager**: [specs/07_EXECUTION_INTERFACE_MANAGER.md](specs/07_EXECUTION_INTERFACE_MANAGER.md)
 - **Event Logger**: [specs/08_EVENT_LOGGER.md](specs/08_EVENT_LOGGER.md)
-- **Results Store**: [specs/09_RESULTS_STORE.md](specs/09_RESULTS_STORE.md)
-- **Data Provider**: [specs/10_DATA_PROVIDER.md](specs/10_DATA_PROVIDER.md)
+- **Results Store**: [specs/18_RESULTS_STORE.md](specs/18_RESULTS_STORE.md)
+- **Data Provider**: [specs/09_DATA_PROVIDER.md](specs/09_DATA_PROVIDER.md)
 - **Position Update Handler**: [specs/11_POSITION_UPDATE_HANDLER.md](specs/11_POSITION_UPDATE_HANDLER.md)
-- **Reconciliation Component**: [specs/12_RECONCILIATION_COMPONENT.md](specs/12_RECONCILIATION_COMPONENT.md)
+- **Reconciliation Component**: [specs/10_RECONCILIATION_COMPONENT.md](specs/10_RECONCILIATION_COMPONENT.md)
 - **Configuration**: [specs/CONFIGURATION.md](specs/CONFIGURATION.md)
 - **Health Error Systems**: [specs/17_HEALTH_ERROR_SYSTEMS.md](specs/17_HEALTH_ERROR_SYSTEMS.md)
 
@@ -816,3 +833,52 @@ This canonical reference consolidates all architectural principles, patterns, an
 6. **Guide docs** - Workflow and usage patterns
 
 All architectural conflicts should be resolved using this hierarchy, with this document serving as the ultimate authority for architectural decisions.
+
+---
+
+## VII. Frontend Component Architecture
+
+### Overview
+Frontend follows component-based architecture with clear separation of concerns:
+- **Wizard flow** for configuration
+- **Results display** for analytics
+- **Live trading controls** for execution
+- **Authentication** for security
+
+### Key Patterns
+
+#### 1. Component Isolation
+Each component is self-contained with clear props interface:
+- No global state (except auth context)
+- Props-driven rendering
+- Type safety via TypeScript
+
+#### 2. API Integration
+Centralized API client pattern:
+- Single source of API calls (services/api.ts)
+- Retry logic for 503 errors
+- Error handling and logging
+
+#### 3. Analytics Display
+Results page uses tabbed interface:
+- **Overview**: Metric cards grid
+- **Charts**: Plotly interactive charts
+- **Events**: Virtualized event log
+
+#### 4. Real-time Updates
+Live mode uses polling pattern:
+- 60-second intervals
+- Non-blocking updates
+- Connection status indicator
+
+### Cross-References
+- **ADR-052**: Analytics Precomputation Strategy
+- **ADR-053**: Live Trading Real-time Update Pattern
+- **ADR-054**: Authentication Architecture
+- **ADR-055**: Grafana Integration for Live Mode
+- **ADR-056**: Deposit/Withdraw Triggering Rebalance
+- **ADR-057**: Stop vs Emergency Stop Distinction
+- **ADR-058**: Download Formats Priority
+- **ADR-059**: Chart Rendering Strategy
+
+See [docs/specs/12_FRONTEND_SPEC.md](specs/12_FRONTEND_SPEC.md) for complete implementation details.

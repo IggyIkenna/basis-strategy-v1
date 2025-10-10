@@ -1,10 +1,12 @@
 import React, { useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, Check, TrendingUp } from 'lucide-react';
 import { ShareClassStep } from './ShareClassStep';
 import { ModeSelectionStep } from './ModeSelectionStep';
 import { BasicConfigStep } from './BasicConfigStep';
 import { StrategyConfigStep } from './StrategyConfigStep';
 import { ReviewStep } from './ReviewStep';
+import { apiClient } from '../../services/api';
 
 export interface WizardConfig {
   shareClass: 'USDT' | 'ETH';
@@ -17,8 +19,8 @@ export interface WizardConfig {
 }
 
 interface WizardContainerProps {
-  onComplete: (config: WizardConfig) => void;
-  onCancel: () => void;
+  onComplete?: (config: WizardConfig) => void;
+  onCancel?: () => void;
   onShowResults?: (backtestId: string) => void;
 }
 
@@ -30,7 +32,8 @@ const STEPS = [
   { id: 'review', title: 'Review', description: 'Review and submit' }
 ];
 
-export function WizardContainer({ onComplete, onCancel }: WizardContainerProps) {
+export function WizardContainer({ onComplete, onCancel, onShowResults }: WizardContainerProps) {
+  const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(0);
   const [config, setConfig] = useState<Partial<WizardConfig>>({
     shareClass: 'USDT',
@@ -62,44 +65,31 @@ export function WizardContainer({ onComplete, onCancel }: WizardContainerProps) 
       try {
         // Submit backtest to backend
         const backtestConfig = {
-          mode: config.mode,
-          share_class: config.shareClass,
+          mode_name: config.mode,
+          share_class: config.shareClass.toLowerCase(),
           initial_capital: config.initialCapital,
           start_date: config.startDate,
           end_date: config.endDate,
-          strategy_params: config.strategyParams
+          strategy_config: config.strategyParams
         };
 
-        const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/v1';
-        const response = await fetch(`${API_BASE_URL}/backtest/run`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(backtestConfig)
-        });
-
-        if (!response.ok) {
-          throw new Error(`Backtest failed: ${response.statusText}`);
-        }
-
-        const result = await response.json();
-        if (result.success && result.data.backtest_id) {
-          // Show results page
-          if (onShowResults) {
-            onShowResults(result.data.backtest_id);
-          } else {
-            onComplete(config as WizardConfig);
-          }
-        } else {
-          throw new Error(result.message || 'Backtest failed');
+        const response = await apiClient.runBacktest(backtestConfig);
+        
+        // Navigate to results page
+        navigate(`/results/${response.request_id}`);
+        
+        // Call legacy callback if provided
+        if (onShowResults) {
+          onShowResults(response.request_id);
+        } else if (onComplete) {
+          onComplete(config as WizardConfig);
         }
       } catch (error) {
         console.error('Backtest submission failed:', error);
         alert(`Backtest failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
     }
-  }, [config, onComplete, onShowResults]);
+  }, [config, navigate, onComplete, onShowResults]);
 
   const canProceed = useCallback(() => {
     switch (currentStep) {

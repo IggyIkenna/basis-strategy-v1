@@ -1,40 +1,26 @@
 """
-Centralized Configuration Loader
+Centralized Configuration Loader with Pydantic Validation
 
-TODO-REFACTOR: CONFIGURATION LOADING ARCHITECTURE VIOLATION - See docs/REFERENCE_ARCHITECTURE_CANONICAL.md
-ISSUE: This component may violate configuration loading architecture requirements:
+Implements complete configuration loading from YAML files with full Pydantic validation
+and fail-fast behavior for missing or invalid configuration fields.
 
-1. CONFIGURATION ARCHITECTURE REQUIREMENTS:
-   - Proper YAML-based configuration loading
-   - Environment variable integration
-   - Configuration hierarchy validation
-   - Fail-fast configuration validation
-
-2. REQUIRED VERIFICATION:
-   - Verify proper YAML configuration loading
-   - Check environment variable integration
-   - Validate configuration hierarchy
-   - Ensure fail-fast validation
-
-3. CANONICAL SOURCE:
-   - docs/REFERENCE_ARCHITECTURE_CANONICAL.md - Configuration Architecture
-   - YAML-only configuration system
-
-Loads all configuration from a single place and ensures consistency.
-Config is loaded once at startup and cached. Environment variables
-are loaded once and cached. Changes require a full system restart.
+Reference: docs/REFERENCE_ARCHITECTURE_CANONICAL.md - Section 33 (Fail-Fast Configuration)
+Reference: docs/ARCHITECTURAL_DECISION_RECORDS.md - ADR-040 (Fail-Fast Configuration)
 """
 
 import os
 import yaml
-import json
 from pathlib import Path
-from typing import Dict, List, Any, Optional, Tuple
+from typing import Dict, List, Any, Optional
 from functools import lru_cache
 import logging
 
-from .config_manager import _BASE_DIR, get_environment, load_mode_config, load_venue_config, load_share_class_config, load_scenario_config
+from .config_manager import _BASE_DIR, get_environment
 from .config_validator import validate_configuration, ValidationResult
+from .models import (
+    ModeConfig, VenueConfig, ShareClassConfig, ConfigurationSet,
+    validate_complete_configuration, ConfigurationValidationError
+)
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +40,7 @@ ERROR_CODES = {
 
 
 class ConfigLoader:
-    """Centralized configuration loader with caching."""
+    """Centralized configuration loader with Pydantic validation and fail-fast behavior."""
     
     def __init__(self):
         self.base_dir = _BASE_DIR
@@ -62,34 +48,32 @@ class ConfigLoader:
         self._config_cache: Dict[str, Any] = {}
         self._env_cache: Dict[str, str] = {}
         self._validation_result: Optional[ValidationResult] = None
+        self._pydantic_config: Optional[ConfigurationSet] = None
         
         # Load and validate configuration
         self._load_all_config()
         self._validate_config()
     
     def _load_all_config(self):
-        """Load all configuration files and environment variables."""
+        """Load all configuration files and environment variables with Pydantic validation."""
         logger.info(f"🔄 Loading configuration for {self.environment} environment...")
         
-        # Load base configuration
-        self._config_cache['base'] = self._load_base_config()
-        
-        # Load mode configurations
+        # Load mode configurations with Pydantic validation
         self._config_cache['modes'] = self._load_all_mode_configs()
         
-        # Load venue configurations
+        # Load venue configurations with Pydantic validation
         self._config_cache['venues'] = self._load_all_venue_configs()
         
-        # Load share class configurations
+        # Load share class configurations with Pydantic validation
         self._config_cache['share_classes'] = self._load_all_share_class_configs()
-        
-        # Load scenario configurations
-        self._config_cache['scenarios'] = self._load_all_scenario_configs()
         
         # Load environment variables
         self._env_cache = self._load_environment_variables()
         
-        logger.info("✅ Configuration loaded successfully")
+        # Validate complete configuration set with cross-references
+        self._validate_pydantic_config()
+        
+        logger.info("✅ Configuration loaded and validated successfully")
     
     def _validate_config(self):
         """Validate the loaded configuration."""
@@ -144,53 +128,125 @@ class ConfigLoader:
         
         return config
     
-    def _load_all_mode_configs(self) -> Dict[str, Any]:
-        """Load all mode configurations."""
+    def _load_all_mode_configs(self) -> Dict[str, ModeConfig]:
+        """Load all mode configurations with Pydantic validation."""
         modes = {}
         modes_dir = self.base_dir / "configs" / "modes"
         
-        if modes_dir.exists():
-            for mode_file in modes_dir.glob("*.yaml"):
-                try:
-                    with open(mode_file, 'r') as f:
-                        mode_config = yaml.safe_load(f)
-                        modes[mode_file.stem] = mode_config
-                except Exception as e:
-                    logger.error(f"Failed to load mode config {mode_file}: {e}")
+        if not modes_dir.exists():
+            raise ConfigurationValidationError(f"Missing modes directory: {modes_dir}")
+        
+        for mode_file in modes_dir.glob("*.yaml"):
+            try:
+                with open(mode_file, 'r') as f:
+                    mode_config_dict = yaml.safe_load(f)
+                    if mode_config_dict is None:
+                        raise ConfigurationValidationError(f"Empty mode config file: {mode_file}")
+                    
+                    # Validate with Pydantic model
+                    mode_config = ModeConfig(**mode_config_dict)
+                    modes[mode_file.stem] = mode_config
+                    logger.debug(f"✅ Loaded and validated mode config: {mode_file.stem}")
+                    
+            except Exception as e:
+                error_msg = f"Failed to load mode config {mode_file}: {e}"
+                logger.error(error_msg)
+                raise ConfigurationValidationError(error_msg)
+        
+        if not modes:
+            raise ConfigurationValidationError(f"No mode configurations found in {modes_dir}")
         
         return modes
     
-    def _load_all_venue_configs(self) -> Dict[str, Any]:
-        """Load all venue configurations."""
+    def _load_all_venue_configs(self) -> Dict[str, VenueConfig]:
+        """Load all venue configurations with Pydantic validation."""
         venues = {}
         venues_dir = self.base_dir / "configs" / "venues"
         
-        if venues_dir.exists():
-            for venue_file in venues_dir.glob("*.yaml"):
-                try:
-                    with open(venue_file, 'r') as f:
-                        venue_config = yaml.safe_load(f)
-                        venues[venue_file.stem] = venue_config
-                except Exception as e:
-                    logger.error(f"Failed to load venue config {venue_file}: {e}")
+        if not venues_dir.exists():
+            raise ConfigurationValidationError(f"Missing venues directory: {venues_dir}")
+        
+        for venue_file in venues_dir.glob("*.yaml"):
+            try:
+                with open(venue_file, 'r') as f:
+                    venue_config_dict = yaml.safe_load(f)
+                    if venue_config_dict is None:
+                        raise ConfigurationValidationError(f"Empty venue config file: {venue_file}")
+                    
+                    # Validate with Pydantic model
+                    venue_config = VenueConfig(**venue_config_dict)
+                    venues[venue_file.stem] = venue_config
+                    logger.debug(f"✅ Loaded and validated venue config: {venue_file.stem}")
+                    
+            except Exception as e:
+                error_msg = f"Failed to load venue config {venue_file}: {e}"
+                logger.error(error_msg)
+                raise ConfigurationValidationError(error_msg)
+        
+        if not venues:
+            raise ConfigurationValidationError(f"No venue configurations found in {venues_dir}")
         
         return venues
     
-    def _load_all_share_class_configs(self) -> Dict[str, Any]:
-        """Load all share class configurations."""
+    def _load_all_share_class_configs(self) -> Dict[str, ShareClassConfig]:
+        """Load all share class configurations with Pydantic validation."""
         share_classes = {}
         share_classes_dir = self.base_dir / "configs" / "share_classes"
         
-        if share_classes_dir.exists():
-            for share_class_file in share_classes_dir.glob("*.yaml"):
-                try:
-                    with open(share_class_file, 'r') as f:
-                        share_class_config = yaml.safe_load(f)
-                        share_classes[share_class_file.stem] = share_class_config
-                except Exception as e:
-                    logger.error(f"Failed to load share class config {share_class_file}: {e}")
+        if not share_classes_dir.exists():
+            raise ConfigurationValidationError(f"Missing share_classes directory: {share_classes_dir}")
+        
+        for share_class_file in share_classes_dir.glob("*.yaml"):
+            try:
+                with open(share_class_file, 'r') as f:
+                    share_class_config_dict = yaml.safe_load(f)
+                    if share_class_config_dict is None:
+                        raise ConfigurationValidationError(f"Empty share class config file: {share_class_file}")
+                    
+                    # Validate with Pydantic model
+                    share_class_config = ShareClassConfig(**share_class_config_dict)
+                    share_classes[share_class_file.stem] = share_class_config
+                    logger.debug(f"✅ Loaded and validated share class config: {share_class_file.stem}")
+                    
+            except Exception as e:
+                error_msg = f"Failed to load share class config {share_class_file}: {e}"
+                logger.error(error_msg)
+                raise ConfigurationValidationError(error_msg)
+        
+        if not share_classes:
+            raise ConfigurationValidationError(f"No share class configurations found in {share_classes_dir}")
         
         return share_classes
+    
+    def _validate_pydantic_config(self):
+        """Validate complete configuration set with cross-references."""
+        logger.info("🔍 Validating complete configuration set with Pydantic models...")
+        
+        try:
+            # Convert Pydantic models back to dictionaries for cross-reference validation
+            modes_dict = {}
+            for mode_name, mode_config in self._config_cache['modes'].items():
+                modes_dict[mode_name] = mode_config.dict()
+            
+            venues_dict = {}
+            for venue_name, venue_config in self._config_cache['venues'].items():
+                venues_dict[venue_name] = venue_config.dict()
+            
+            share_classes_dict = {}
+            for share_class_name, share_class_config in self._config_cache['share_classes'].items():
+                share_classes_dict[share_class_name] = share_class_config.dict()
+            
+            # Validate complete configuration set
+            self._pydantic_config = validate_complete_configuration(
+                modes_dict, venues_dict, share_classes_dict
+            )
+            
+            logger.info("✅ Complete configuration set validated successfully")
+            
+        except Exception as e:
+            error_msg = f"Complete configuration validation failed: {e}"
+            logger.error(error_msg)
+            raise ConfigurationValidationError(error_msg)
     
     def _load_all_scenario_configs(self) -> Dict[str, Any]:
         """Load all scenario configurations."""
@@ -251,29 +307,39 @@ class ConfigLoader:
         """Get base configuration."""
         return self._config_cache.get('base', {})
     
-    def get_mode_config(self, mode: str) -> Dict[str, Any]:
-        """Get mode configuration."""
-        return self._config_cache.get('modes', {}).get(mode, {})
+    def get_mode_config(self, mode: str) -> ModeConfig:
+        """Get mode configuration with fail-fast behavior."""
+        if mode not in self._config_cache['modes']:
+            raise KeyError(f"Mode configuration '{mode}' not found. Available modes: {list(self._config_cache['modes'].keys())}")
+        return self._config_cache['modes'][mode]
     
-    def get_venue_config(self, venue: str) -> Dict[str, Any]:
-        """Get venue configuration."""
-        return self._config_cache.get('venues', {}).get(venue, {})
+    def get_venue_config(self, venue: str) -> VenueConfig:
+        """Get venue configuration with fail-fast behavior."""
+        if venue not in self._config_cache['venues']:
+            raise KeyError(f"Venue configuration '{venue}' not found. Available venues: {list(self._config_cache['venues'].keys())}")
+        return self._config_cache['venues'][venue]
     
-    def get_share_class_config(self, share_class: str) -> Dict[str, Any]:
-        """Get share class configuration."""
-        return self._config_cache.get('share_classes', {}).get(share_class, {})
+    def get_share_class_config(self, share_class: str) -> ShareClassConfig:
+        """Get share class configuration with fail-fast behavior."""
+        if share_class not in self._config_cache['share_classes']:
+            raise KeyError(f"Share class configuration '{share_class}' not found. Available share classes: {list(self._config_cache['share_classes'].keys())}")
+        return self._config_cache['share_classes'][share_class]
     
     def get_scenario_config(self, scenario: str, scenario_type: str = 'backtest') -> Dict[str, Any]:
         """Get scenario configuration."""
         return self._config_cache.get('scenarios', {}).get(scenario_type, {}).get(scenario, {})
     
-    def get_all_mode_configs(self) -> Dict[str, Any]:
+    def get_all_mode_configs(self) -> Dict[str, ModeConfig]:
         """Get all mode configurations."""
         return self._config_cache.get('modes', {})
     
-    def get_all_venue_configs(self) -> Dict[str, Any]:
+    def get_all_venue_configs(self) -> Dict[str, VenueConfig]:
         """Get all venue configurations."""
         return self._config_cache.get('venues', {})
+    
+    def get_all_share_class_configs(self) -> Dict[str, ShareClassConfig]:
+        """Get all share class configurations."""
+        return self._config_cache.get('share_classes', {})
     
     def get_all_scenario_configs(self) -> Dict[str, Any]:
         """Get all scenario configurations."""
@@ -287,17 +353,23 @@ class ConfigLoader:
         """Get all environment variables with prefix."""
         return {k: v for k, v in self._env_cache.items() if k.startswith(prefix)}
     
+    def get_pydantic_config(self) -> ConfigurationSet:
+        """Get complete Pydantic configuration set."""
+        if self._pydantic_config is None:
+            raise ConfigurationValidationError("Pydantic configuration not loaded")
+        return self._pydantic_config
+    
     def get_complete_config(self, mode: str = None, venue: str = None, scenario: str = None) -> Dict[str, Any]:
         """Get complete configuration by merging all relevant configs."""
-        config = self.get_base_config().copy()
+        config = {}
         
         if mode:
             mode_config = self.get_mode_config(mode)
-            config = self._deep_merge(config, mode_config)
+            config = self._deep_merge(config, mode_config.dict())
         
         if venue:
             venue_config = self.get_venue_config(venue)
-            config = self._deep_merge(config, venue_config)
+            config = self._deep_merge(config, venue_config.dict())
         
         if scenario:
             scenario_config = self.get_scenario_config(scenario)

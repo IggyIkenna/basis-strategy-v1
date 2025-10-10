@@ -138,13 +138,13 @@ All component specs in **[specs/](specs/) <!-- Directory link to specs folder --
 3. [Risk Monitor](specs/03_RISK_MONITOR.md) - LTV, margin, liquidation
 4. [P&L Calculator](specs/04_PNL_CALCULATOR.md) - Balance & attribution P&L
 5. [Strategy Manager](specs/05_STRATEGY_MANAGER.md) - Mode-specific orchestration
-6. [CEX Execution Manager](specs/06_CEX_EXECUTION_MANAGER.md) - CEX trading
-7. [OnChain Execution Manager](specs/07_ONCHAIN_EXECUTION_MANAGER.md) - Blockchain operations
+6. [Execution Manager](specs/06_EXECUTION_MANAGER.md) - CEX trading
+7. [Execution Interface Manager](specs/07_EXECUTION_INTERFACE_MANAGER.md) - Blockchain operations
 8. [Event Logger](specs/08_EVENT_LOGGER.md) - Audit logging
 9. [Data Provider](specs/09_DATA_PROVIDER.md) - Market data
 
 **Standards**:
-10. [Component Communication](specs/10_COMPONENT_COMMUNICATION_STANDARD.md) - Direct method call patterns
+10. [Component Communication](specs/10_RECONCILIATION_COMPONENT.md) - Direct method call patterns
 11. [Error Logging](specs/17_HEALTH_ERROR_SYSTEMS.md) <!-- Redirected from 11_ERROR_LOGGING_STANDARD.md - error logging is part of health systems --> - Structured logging
 
 **Frontend**:

@@ -32,6 +32,382 @@ Consolidate health monitoring and error handling systems into a single source of
 - **Structured Logging**: Comprehensive error logging with stack traces
 - **Fail-Fast Behavior**: Proper error propagation with error codes
 
+## Responsibilities
+1. Provide unified health monitoring system
+2. Manage centralized error code registry
+3. Monitor component health status
+4. Track error propagation and recovery
+5. Provide real-time health dashboards
+6. Handle fail-fast error behavior
+
+## State
+- component_health_status: Dict[str, Dict] (health status per component)
+- error_registry: Dict[str, Dict] (error codes and metadata)
+- health_check_history: List[Dict] (health check history)
+- last_health_check: pd.Timestamp
+
+## Component References (Set at Init)
+The following are set once during initialization and NEVER passed as runtime parameters:
+
+- config: Dict (reference, never modified)
+- execution_mode: str (BASIS_EXECUTION_MODE)
+
+These references are stored in __init__ and used throughout component lifecycle.
+Components NEVER receive these as method parameters during runtime.
+
+## Environment Variables
+
+### System-Level Variables
+- **BASIS_EXECUTION_MODE**: 'backtest' | 'live' (determines health monitoring behavior)
+- **BASIS_LOG_LEVEL**: 'DEBUG' | 'INFO' | 'WARNING' | 'ERROR' (logging level)
+- **BASIS_DATA_DIR**: Path to data directory (for backtest mode)
+
+### Component-Specific Variables
+- **HEALTH_CHECK_INTERVAL**: Health check interval in seconds (default: 30)
+- **HEALTH_CHECK_TIMEOUT**: Health check timeout in seconds (default: 10)
+- **ERROR_REGISTRY_SIZE**: Maximum error registry size (default: 10000)
+
+## Config Fields Used
+
+### Universal Config (All Components)
+- **execution_mode**: 'backtest' | 'live' (from strategy mode slice)
+- **log_level**: 'DEBUG' | 'INFO' | 'WARNING' | 'ERROR' (from strategy mode slice)
+
+### Component-Specific Config
+- **health_settings**: Dict (health-specific settings)
+  - **check_interval**: Health check interval
+  - **timeout**: Health check timeout
+  - **max_errors**: Maximum errors to track
+- **error_settings**: Dict (error-specific settings)
+  - **registry_size**: Error registry size
+  - **retention_days**: Error retention period
+
+## Data Provider Queries
+
+### Market Data Queries
+- **prices**: Current market prices for health calculations
+- **orderbook**: Order book data for health monitoring
+- **funding_rates**: Funding rates for health checks
+
+### Protocol Data Queries
+- **protocol_rates**: Lending/borrowing rates for health monitoring
+- **stake_rates**: Staking rewards and rates for health checks
+- **protocol_balances**: Current balances for health monitoring
+
+### Data NOT Available from DataProvider
+- **Component health status** - handled by Health & Error Systems
+- **Error registry** - handled by Health & Error Systems
+- **Health check results** - handled by Health & Error Systems
+
+## Data Access Pattern
+
+### Query Pattern
+```python
+def check_component_health(self, component_name: str, timestamp: pd.Timestamp):
+    # Query data using shared clock
+    data = self.data_provider.get_data(timestamp)
+    
+    # Perform health check
+    health_status = self._perform_health_check(component_name, data)
+    
+    return health_status
+```
+
+### Data Dependencies
+- **Market Data**: Prices, orderbook, funding rates
+- **Protocol Data**: Lending rates, staking rates, protocol balances
+- **Component State**: All component states for health monitoring
+
+## Mode-Aware Behavior
+
+### Backtest Mode
+```python
+def check_component_health(self, component_name: str, timestamp: pd.Timestamp):
+    if self.execution_mode == 'backtest':
+        # Use historical data for health checks
+        return self._check_health_historical(component_name, timestamp)
+```
+
+### Live Mode
+```python
+def check_component_health(self, component_name: str, timestamp: pd.Timestamp):
+    elif self.execution_mode == 'live':
+        # Use real-time data for health checks
+        return self._check_health_live(component_name, timestamp)
+```
+
+## Event Logging Requirements
+
+### Component Event Log File
+**Separate log file** for this component's events:
+- **File**: `logs/events/health_error_systems_events.jsonl`
+- **Format**: JSON Lines (one event per line)
+- **Rotation**: Daily rotation, keep 30 days
+- **Purpose**: Component-specific audit trail
+
+### Event Logging via EventLogger
+All events logged through centralized EventLogger:
+
+```python
+self.event_logger.log_event(
+    timestamp=timestamp,
+    event_type='[event_type]',
+    component='HealthErrorSystems',
+    data={
+        'event_specific_data': value,
+        'state_snapshot': self.get_state_snapshot()  # optional
+    }
+)
+```
+
+### Events to Log
+
+#### 1. Component Initialization
+```python
+self.event_logger.log_event(
+    timestamp=pd.Timestamp.now(),
+    event_type='component_initialization',
+    component='HealthErrorSystems',
+    data={
+        'execution_mode': self.execution_mode,
+        'error_registry_size': len(self.error_registry),
+        'config_hash': hash(str(self.config))
+    }
+)
+```
+
+#### 2. State Updates (Every health check)
+```python
+self.event_logger.log_event(
+    timestamp=timestamp,
+    event_type='state_update',
+    component='HealthErrorSystems',
+    data={
+        'component_name': component_name,
+        'health_status': health_status,
+        'error_count': len(self.error_registry),
+        'processing_time_ms': processing_time
+    }
+)
+```
+
+#### 3. Error Events
+```python
+self.event_logger.log_event(
+    timestamp=timestamp,
+    event_type='error',
+    component='HealthErrorSystems',
+    data={
+        'error_code': 'HES-001',
+        'error_message': str(e),
+        'stack_trace': traceback.format_exc(),
+        'error_severity': 'CRITICAL|HIGH|MEDIUM|LOW'
+    }
+)
+```
+
+#### 4. Component-Specific Critical Events
+- **Health Check Failed**: When health check fails
+- **Error Registry Full**: When error registry reaches capacity
+- **Component Unhealthy**: When component becomes unhealthy
+
+### Event Retention & Output Formats
+
+#### Dual Logging Approach
+**Both formats are used**:
+1. **JSON Lines (Iterative)**: Write events to component-specific JSONL files during execution
+   - **Purpose**: Real-time monitoring during backtest runs
+   - **Location**: `logs/events/health_error_systems_events.jsonl`
+   - **When**: Events written as they occur (buffered for performance)
+   
+2. **CSV Export (Final)**: Comprehensive CSV export at Results Store stage
+   - **Purpose**: Final analysis, spreadsheet compatibility
+   - **Location**: `results/[backtest_id]/events.csv`
+   - **When**: At backtest completion or on-demand
+
+#### Mode-Specific Behavior
+- **Backtest**: 
+  - Write JSONL iteratively (allows tracking during long runs)
+  - Export CSV at completion to Results Store
+  - Keep all events in memory for final processing
+  
+- **Live**: 
+  - Write JSONL immediately (no buffering)
+  - Rotate daily, keep 30 days
+  - CSV export on-demand for analysis
+
+**Note**: Current implementation stores events in memory and exports to CSV only. Enhanced implementation will add iterative JSONL writing. Reference: `docs/specs/17_HEALTH_ERROR_SYSTEMS.md`
+
+## Error Codes
+
+### Component Error Code Prefix: HES
+All HealthErrorSystems errors use the `HES` prefix.
+
+### Error Code Registry
+**Source**: `backend/src/basis_strategy_v1/core/error_codes/error_code_registry.py`
+
+All error codes registered with:
+- **code**: Unique error code
+- **component**: Component name
+- **severity**: CRITICAL | HIGH | MEDIUM | LOW
+- **message**: Human-readable error message
+- **resolution**: How to resolve
+
+### Component Error Codes
+
+#### HES-001: Health Check Failed (HIGH)
+**Description**: Failed to perform health check
+**Cause**: Component unresponsive, timeout issues, data inconsistencies
+**Recovery**: Retry health check, check component status, verify data
+```python
+raise ComponentError(
+    error_code='HES-001',
+    message='Health check failed',
+    component='HealthErrorSystems',
+    severity='HIGH'
+)
+```
+
+#### HES-002: Error Registry Full (MEDIUM)
+**Description**: Error registry has reached capacity
+**Cause**: Too many errors, registry size limit reached
+**Recovery**: Clear old errors, increase registry size, check error sources
+```python
+raise ComponentError(
+    error_code='HES-002',
+    message='Error registry full',
+    component='HealthErrorSystems',
+    severity='MEDIUM'
+)
+```
+
+#### HES-003: Component Unhealthy (CRITICAL)
+**Description**: Component has become unhealthy
+**Cause**: Persistent failures, critical errors, system issues
+**Recovery**: Immediate action required, check component health, restart if necessary
+```python
+raise ComponentError(
+    error_code='HES-003',
+    message='Component unhealthy',
+    component='HealthErrorSystems',
+    severity='CRITICAL'
+)
+```
+
+### Structured Error Handling Pattern
+
+#### Error Raising
+```python
+from backend.src.basis_strategy_v1.core.error_codes.exceptions import ComponentError
+
+try:
+    result = self._perform_health_check(component_name, data)
+except Exception as e:
+    # Log error event
+    self.event_logger.log_event(
+        timestamp=timestamp,
+        event_type='error',
+        component='HealthErrorSystems',
+        data={
+            'error_code': 'HES-001',
+            'error_message': str(e),
+            'stack_trace': traceback.format_exc()
+        }
+    )
+    
+    # Raise structured error
+    raise ComponentError(
+        error_code='HES-001',
+        message=f'HealthErrorSystems failed: {str(e)}',
+        component='HealthErrorSystems',
+        severity='HIGH',
+        original_exception=e
+    )
+```
+
+#### Error Propagation Rules
+- **CRITICAL**: Propagate to health system → trigger app restart
+- **HIGH**: Log and retry with exponential backoff (max 3 retries)
+- **MEDIUM**: Log and continue with degraded functionality
+- **LOW**: Log for monitoring, no action needed
+
+### Component Health Integration
+
+#### Health Check Registration
+```python
+def __init__(self, ..., health_manager: UnifiedHealthManager):
+    # Store health manager reference
+    self.health_manager = health_manager
+    
+    # Register component with health system
+    self.health_manager.register_component(
+        component_name='HealthErrorSystems',
+        checker=self._health_check
+    )
+
+def _health_check(self) -> Dict:
+    """Component-specific health check."""
+    return {
+        'status': 'healthy' | 'degraded' | 'unhealthy',
+        'last_update': self.last_health_check,
+        'errors': self.recent_errors[-10:],  # Last 10 errors
+        'metrics': {
+            'update_count': self.update_count,
+            'avg_processing_time_ms': self.avg_processing_time,
+            'error_rate': self.error_count / max(self.update_count, 1),
+            'components_monitored': len(self.component_health_status),
+            'error_registry_size': len(self.error_registry),
+            'memory_usage_mb': self._get_memory_usage()
+        }
+    }
+```
+
+#### Health Status Definitions
+- **healthy**: No errors in last 100 updates, processing time < threshold
+- **degraded**: Minor errors, slower processing, retries succeeding
+- **unhealthy**: Critical errors, failed retries, unable to process
+
+**Reference**: `docs/specs/17_HEALTH_ERROR_SYSTEMS.md`
+
+## Quality Gates
+
+### Validation Criteria
+- [ ] All 18 sections present and complete
+- [ ] Environment Variables section documents system-level and component-specific variables
+- [ ] Config Fields Used section documents universal and component-specific config
+- [ ] Data Provider Queries section documents market and protocol data queries
+- [ ] Event Logging Requirements section documents component-specific JSONL file
+- [ ] Event Logging Requirements section documents dual logging (JSONL + CSV)
+- [ ] Error Codes section has structured error handling pattern
+- [ ] Error Codes section references health integration
+- [ ] Health integration documented with UnifiedHealthManager
+- [ ] Component-specific log file documented (`logs/events/health_error_systems_events.jsonl`)
+
+### Section Order Validation
+- [ ] Purpose (section 1)
+- [ ] Responsibilities (section 2)
+- [ ] State (section 3)
+- [ ] Component References (Set at Init) (section 4)
+- [ ] Environment Variables (section 5)
+- [ ] Config Fields Used (section 6)
+- [ ] Data Provider Queries (section 7)
+- [ ] Core Methods (section 8)
+- [ ] Data Access Pattern (section 9)
+- [ ] Mode-Aware Behavior (section 10)
+- [ ] Event Logging Requirements (section 11)
+- [ ] Error Codes (section 12)
+- [ ] Quality Gates (section 13)
+- [ ] Integration Points (section 14)
+- [ ] Code Structure Example (section 15)
+- [ ] Related Documentation (section 16)
+
+### Implementation Status
+- [ ] Backend implementation exists and matches spec
+- [ ] All required methods implemented
+- [ ] Error handling follows structured pattern
+- [ ] Health integration implemented
+- [ ] Event logging implemented
+
 ---
 
 ## 📦 **Component Structure**

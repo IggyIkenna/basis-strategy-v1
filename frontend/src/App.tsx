@@ -1,50 +1,34 @@
 
-import React, { useState } from 'react';
-import { WizardContainer, WizardConfig } from './components/wizard/WizardContainer';
+import React from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider } from './contexts/AuthContext';
+import { ProtectedRoute } from './components/auth/ProtectedRoute';
+import { LoginPage } from './components/auth/LoginPage';
+import { Layout } from './components/layout/Layout';
+import { WizardContainer } from './components/wizard/WizardContainer';
 import { ResultsPage } from './components/results/ResultsPage';
-
+import { LiveTradingDashboard } from './components/live/LiveTradingDashboard';
 
 function App() {
-  const [currentView, setCurrentView] = useState<'wizard' | 'results'>('wizard');
-  const [backtestId, setBacktestId] = useState<string | null>(null);
-
-  const handleWizardComplete = (config: WizardConfig) => {
-    // This will be handled by the WizardContainer's handleComplete function
-    console.log('Wizard completed with config:', config);
-  };
-
-  const handleShowResults = (id: string) => {
-    setBacktestId(id);
-    setCurrentView('results');
-  };
-
-  const handleBack = () => {
-    setCurrentView('wizard');
-    setBacktestId(null);
-  };
-
   return (
-    <div className="min-h-screen bg-gray-50">
-      {currentView === 'wizard' ? (
-        <WizardContainer
-          onComplete={handleWizardComplete}
-          onCancel={() => setCurrentView('wizard')}
-          onShowResults={handleShowResults}
-        />
-      ) : backtestId ? (
-        <ResultsPage
-          backtestId={backtestId}
-          onBack={handleBack}
-        />
-      ) : (
-        <div className="min-h-screen flex items-center justify-center">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-gray-600">Loading results...</p>
-          </div>
-        </div>
-      )}
-    </div>
+    <BrowserRouter>
+      <AuthProvider>
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/" element={
+            <ProtectedRoute>
+              <Layout />
+            </ProtectedRoute>
+          }>
+            <Route index element={<Navigate to="/wizard" replace />} />
+            <Route path="wizard" element={<WizardContainer />} />
+            <Route path="results/:backtestId" element={<ResultsPage />} />
+            <Route path="live" element={<LiveTradingDashboard />} />
+          </Route>
+          <Route path="*" element={<Navigate to="/wizard" replace />} />
+        </Routes>
+      </AuthProvider>
+    </BrowserRouter>
   );
 }
 

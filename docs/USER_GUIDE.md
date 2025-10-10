@@ -40,7 +40,7 @@
 - **Components** → [COMPONENT_SPECS_INDEX.md](COMPONENT_SPECS_INDEX.md) (11 core components + specs/)
 - **Architecture** → [REFERENCE_ARCHITECTURE_CANONICAL.md](REFERENCE_ARCHITECTURE_CANONICAL.md) (design decisions)
 - **Configuration** → [specs/CONFIGURATION.md](specs/CONFIGURATION.md) (config management)
-- **Data Validation** → [specs/09_DATA_PROVIDER](specs/09_DATA_PROVIDER) (data requirements)
+- **Data Validation** → [specs/09_DATA_PROVIDER.md](specs/09_DATA_PROVIDER.md) (data requirements)
 
 ---
 

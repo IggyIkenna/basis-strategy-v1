@@ -28,6 +28,56 @@
 
 **Core Configuration**: Environment variables control system startup, execution mode, and environment-specific credential routing.
 
+### **Environment File Switching**
+
+The platform supports multiple environment configurations through override files:
+
+**Environment Files**:
+- **`.env.dev`** - Development environment (5s health checks, debug logging)
+- **`.env.staging`** - Staging environment (35s health checks, info logging)
+- **`.env.production`** - Production environment (configurable intervals, production logging)
+
+**Switching Methods**:
+
+**Method 1: Environment Variable Prefix (Recommended)**:
+```bash
+# Use development environment (default)
+./platform.sh backtest
+
+# Use staging environment
+BASIS_ENVIRONMENT=staging ./platform.sh backtest
+
+# Use production environment
+BASIS_ENVIRONMENT=prod ./platform.sh backtest
+```
+
+**Method 2: Export for Session**:
+```bash
+# Set environment for current shell session
+export BASIS_ENVIRONMENT=staging
+
+# Now all platform.sh commands use staging
+./platform.sh backtest
+./platform.sh start
+./platform.sh stop
+```
+
+**Method 3: Built-in Environment Switcher**:
+```bash
+# Use platform.sh's built-in environment switcher
+./platform.sh env dev     # Sets BASIS_ENVIRONMENT=dev
+./platform.sh env prod    # Sets BASIS_ENVIRONMENT=prod
+
+# Then run normally
+./platform.sh backtest
+```
+
+**Environment File Loading Order**:
+1. Load `env.unified` (base configuration with empty values)
+2. Check `BASIS_ENVIRONMENT` variable
+3. Load corresponding override file (`.env.dev`, `.env.staging`, `.env.production`)
+4. Export variables to child processes (health monitor, etc.)
+
 ### **Fundamental Environment Variables**
 | Variable | Values | Component | Purpose |
 |----------|--------|-----------|---------|

@@ -148,7 +148,8 @@ class ConfigValidator:
             'ACME_EMAIL',
             'BASIC_AUTH_HASH',
             'HTTP_PORT',
-            'HTTPS_PORT'
+            'HTTPS_PORT',
+            'VITE_API_MODE'
         ]
         
         
@@ -347,11 +348,7 @@ class ConfigValidator:
         if not (0.0 <= position_deviation_threshold <= 1.0):
             self.errors.append(f"Mode {mode_name}: position_deviation_threshold must be between 0.0 and 1.0, got {position_deviation_threshold}")
         
-        # Validate basis_trade_enabled for ETH share class
-        share_class = config.get('share_class', '')
-        basis_trade_enabled = config.get('basis_trade_enabled', False)
-        if share_class == 'ETH' and basis_trade_enabled:
-            self.errors.append(f"Mode {mode_name}: basis_trade_enabled cannot be true for ETH share class (directional strategy)")
+        # Note: basis_trade_enabled is allowed for ETH share class (eth_basis strategy)
         
         # Check for deprecated parameters
         if 'use_flash_loan' in config:

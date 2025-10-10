@@ -1,5 +1,7 @@
 # Position Monitor Component Specification
 
+**Last Reviewed**: October 10, 2025
+
 ## Purpose
 Track raw ERC-20/token balances and derivative positions with **NO conversions**. This component knows about balances in NATIVE token units only.
 
@@ -34,6 +36,25 @@ The following are set once during initialization and NEVER passed as runtime par
 
 These references are stored in __init__ and used throughout component lifecycle.
 Components NEVER receive these as method parameters during runtime.
+
+## Configuration Parameters
+
+**Mode Configuration** (from `configs/modes/*.yaml`):
+- `position_tracking_settings`: Position tracking settings - used for position tracking configuration
+- `balance_calculation_method`: Balance calculation method - used for balance calculations
+- `index_mechanics`: Index mechanics settings - used for AAVE index calculations
+
+**Venue Configuration** (from `configs/venues/*.yaml`):
+- `supported_assets`: Supported assets - used for asset validation
+- `balance_precision`: Balance precision - used for balance calculations
+- `index_sources`: Index sources - used for index data retrieval
+
+**Share Class Configuration** (from `configs/share_classes/*.yaml`):
+- `base_currency`: Base currency - used for currency conversions
+- `position_limits`: Position limits - used for position validation
+
+**Cross-Reference**: [CONFIGURATION.md](CONFIGURATION.md) - Complete configuration hierarchy
+**Cross-Reference**: [ENVIRONMENT_VARIABLES.md](../ENVIRONMENT_VARIABLES.md) - Environment variable definitions
 
 ## Environment Variables
 
@@ -652,7 +673,7 @@ class PositionMonitor:
 ```
 
 ## Related Documentation
-- [Reference-Based Architecture](../REFERENCE_ARCHITECTURE.md)
+- [Reference-Based Architecture](../REFERENCE_ARCHITECTURE_CANONICAL.md)
 - [Shared Clock Pattern](../SHARED_CLOCK_PATTERN.md)
 - [Request Isolation Pattern](../REQUEST_ISOLATION_PATTERN.md)
 

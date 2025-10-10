@@ -1,7 +1,17 @@
 # Request Isolation Pattern
 
+## Overview
+This document defines the Request Isolation Pattern - a critical architectural pattern that ensures complete isolation between backtest and live trading requests. Each request gets fresh instances of all components, preventing state pollution and enabling concurrent execution.
+
 ## Core Principle
 Each backtest/live request gets completely fresh instances of DataProvider, config slice, and all components. No state pollution between requests.
+
+## 📚 **Canonical Sources**
+
+**This pattern aligns with canonical architectural principles**:
+- **Architectural Principles**: [REFERENCE_ARCHITECTURE_CANONICAL.md](REFERENCE_ARCHITECTURE_CANONICAL.md) - Canonical architectural principles
+- **Component Specifications**: [specs/](specs/) - Detailed component implementation guides
+- **Shared Clock Pattern**: [SHARED_CLOCK_PATTERN.md](SHARED_CLOCK_PATTERN.md) - Time management patterns
 
 ## App Startup (Once)
 1. Load full config for all modes

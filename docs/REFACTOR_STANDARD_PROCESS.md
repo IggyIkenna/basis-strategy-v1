@@ -1,7 +1,7 @@
 # Refactor Standard Process Guide
 
-**Date**: January 2025  
-**Version**: 1.0  
+**Date**: October 10, 2025  
+**Version**: 2.0  
 **Scope**: Small to Medium Complexity Refactors  
 **Status**: Active Standard Process
 
@@ -9,7 +9,9 @@
 
 ## Overview
 
-This document defines the **Refactor Standard Process** - a comprehensive 8-agent chain workflow for handling small to medium complexity refactoring tasks. This process ensures complete traceability from code refactoring needs through tasks to documentation and quality gates, with optimal logical ordering and integration alignment validation.
+This document defines the **Refactor Standard Process** - a comprehensive 9-agent chain workflow for handling small to medium complexity refactoring tasks. This process ensures complete traceability from code refactoring needs through tasks to documentation and quality gates, with optimal logical ordering and integration alignment validation.
+
+**Updated for Component Spec Standardization**: This process now includes validation for the new 18-section component specification format, including Environment Variables, Config Fields Used, Data Provider Queries, Event Logging Requirements, and Error Codes sections.
 
 **Note**: Large refactors may still require bespoke setup and custom agent configurations.
 
@@ -54,7 +56,8 @@ When conflicts arise, the following hierarchy determines canonical sources:
 - Documents architecture compliance violations
 - Extracts TODO items and refactoring needs from codebase
 - Maps implementation gaps to specific refactoring tasks
-- Validates spec structure against canonical format
+- Validates spec structure against 18-section canonical format
+- Ensures all component specs follow the standardized 18-section format
 
 **Output**: Updated `docs/specs/` files with implementation status sections
 
@@ -70,6 +73,8 @@ When conflicts arise, the following hierarchy determines canonical sources:
 - Verifies configuration documentation matches actual files
 - Validates API documentation accuracy
 - **NEW**: Includes integration alignment checks and cross-reference validation
+- **NEW**: Validates 18-section component specification format compliance
+- **NEW**: Ensures Event Logging Requirements and Error Codes sections are properly documented
 
 **Output**: 100% consistent documentation with working links
 
@@ -116,6 +121,8 @@ When conflicts arise, the following hierarchy determines canonical sources:
 - Fixes each failing quality gate
 - Re-runs quality gates after each fix
 - Continues until target pass rates achieved (60%+ overall)
+- **NEW**: Validates 18-section component specification format compliance
+- **NEW**: Ensures all component specs have proper Event Logging Requirements and Error Codes sections
 
 **Output**: Quality gates passing at target rates
 
@@ -131,6 +138,8 @@ When conflicts arise, the following hierarchy determines canonical sources:
 - Validates mode-specific behavior documentation
 - Ensures configuration and environment variable alignment
 - Verifies API documentation integration
+- **NEW**: Validates 18-section component specification format compliance
+- **NEW**: Ensures Event Logging Requirements and Error Codes sections are properly integrated
 - **CRITICAL**: Only runs after quality gates pass (system is stable)
 
 **Output**: 100% integration alignment across all aspects
@@ -208,13 +217,15 @@ When conflicts arise, the following hierarchy determines canonical sources:
 ### **Quality Gate Script**
 - **File**: `scripts/test_integration_alignment_quality_gates.py`
 - **Purpose**: Validates 100% integration alignment across all aspects
-- **Categories**: 6-phase alignment validation
+- **Categories**: 8-phase alignment validation
   1. Component-to-component workflow alignment
   2. Function call and method signature alignment
   3. Links and cross-reference validation
   4. Mode-specific behavior documentation
   5. Configuration and environment variable alignment
   6. API documentation integration
+  7. **NEW**: 18-section component specification format compliance
+  8. **NEW**: Event Logging Requirements and Error Codes integration
 
 ### **Success Criteria**
 - **100% Pass Rate**: All integration alignment checks must pass
@@ -222,6 +233,8 @@ When conflicts arise, the following hierarchy determines canonical sources:
 - **Configuration Documentation**: All config parameters must be documented
 - **API Integration**: All API endpoints must be referenced
 - **Canonical Compliance**: All specs must align with canonical architecture
+- **NEW**: 18-Section Format Compliance: All component specs must follow the standardized 18-section format
+- **NEW**: Event Logging Integration: All components must have proper Event Logging Requirements and Error Codes sections
 
 ### **Trigger Conditions**
 The Integration Alignment Agent should **ONLY** run after:
@@ -404,6 +417,8 @@ Each phase must meet specific success criteria before proceeding:
 - All component specs have comprehensive cross-references
 - All configuration parameters documented
 - All API endpoints referenced
+- **NEW**: All component specs follow 18-section standardized format
+- **NEW**: All components have proper Event Logging Requirements and Error Codes sections
 
 **Phase 4 Success**:
 - All logical inconsistencies identified and resolved
@@ -424,6 +439,9 @@ python scripts/run_quality_gates.py --docs
 
 # Validate integration alignment (NEW)
 python scripts/test_integration_alignment_quality_gates.py
+
+# Validate 18-section component specification format (NEW)
+python scripts/test_docs_structure_validation_quality_gates.py
 
 # Run all quality gates including integration alignment
 python scripts/run_quality_gates.py --category integration
@@ -543,6 +561,8 @@ Before starting any refactor, ensure:
 - **Conflict Resolution**: 0 logical inconsistencies remain
 - **Task Alignment**: 100% of pending work has task coverage
 - **Traceability**: 100% of refactor areas have complete traceability
+- **NEW**: 18-Section Format Compliance: 100% of component specs follow standardized format
+- **NEW**: Event Logging Integration: 100% of components have proper logging and error handling
 
 ### **Quality Improvements**
 - **Architecture Compliance**: Reduced violations over time
@@ -575,6 +595,9 @@ The Refactor Standard Process provides a comprehensive, automated approach to ha
 - **Logical Ordering**: Agents run in optimal sequence for maximum effectiveness
 - **Quality Gate Integration**: Comprehensive validation at each phase
 - **Actionable Task Generation**: Every violation becomes a specific, implementable task
+- **NEW**: 18-Section Standardization: All component specs follow consistent, comprehensive format
+- **NEW**: Enhanced Event Logging: Dual logging approach (JSONL + CSV) for complete audit trails
+- **NEW**: Structured Error Handling: Comprehensive error codes and health integration
 
 **Next Steps**:
 1. **Familiarize** team with this process

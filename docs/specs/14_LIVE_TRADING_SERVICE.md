@@ -24,6 +24,360 @@ The following are set once during initialization and NEVER passed as runtime par
 These references are stored in __init__ and used throughout component lifecycle.
 Components NEVER receive these as method parameters during runtime.
 
+## Environment Variables
+
+### System-Level Variables
+- **BASIS_EXECUTION_MODE**: 'backtest' | 'live' (determines service behavior)
+- **BASIS_LOG_LEVEL**: 'DEBUG' | 'INFO' | 'WARNING' | 'ERROR' (logging level)
+- **BASIS_DATA_DIR**: Path to data directory (for backtest mode)
+
+### Component-Specific Variables
+- **LIVE_TRADING_TIMEOUT**: Live trading execution timeout in seconds (default: 3600)
+- **LIVE_TRADING_MAX_CONCURRENT**: Maximum concurrent live strategies (default: 5)
+- **LIVE_TRADING_MEMORY_LIMIT**: Memory limit per strategy in MB (default: 1024)
+
+## Config Fields Used
+
+### Universal Config (All Components)
+- **execution_mode**: 'backtest' | 'live' (from strategy mode slice)
+- **log_level**: 'DEBUG' | 'INFO' | 'WARNING' | 'ERROR' (from strategy mode slice)
+
+### Component-Specific Config
+- **live_trading_settings**: Dict (live trading-specific settings)
+  - **timeout**: Live trading execution timeout
+  - **max_concurrent**: Maximum concurrent strategies
+  - **memory_limit**: Memory limit per strategy
+- **strategy_settings**: Dict (strategy-specific settings)
+  - **strategy_name**: Strategy mode name
+  - **config_overrides**: Strategy configuration overrides
+
+## Data Provider Queries
+
+### Market Data Queries
+- **prices**: Real-time market prices for all tokens
+- **orderbook**: Real-time order book data
+- **funding_rates**: Real-time funding rates
+- **liquidity**: Real-time liquidity data
+
+### Protocol Data Queries
+- **protocol_rates**: Real-time lending/borrowing rates
+- **stake_rates**: Real-time staking rewards and rates
+- **protocol_balances**: Real-time protocol balances
+
+### Data NOT Available from DataProvider
+- **Live trading results** - handled by Results Store
+- **Component state** - handled by individual components
+- **Execution results** - handled by execution components
+
+## Data Access Pattern
+
+### Query Pattern
+```python
+def start_live_trading(self, request: LiveTradingRequest):
+    # Create fresh DataProvider for live trading
+    data_provider = self._create_data_provider(request)
+    
+    # Load real-time data sources
+    data = data_provider.load_live_data()
+    
+    return data
+```
+
+### Data Dependencies
+- **Real-time Data**: Prices, orderbook, funding rates, liquidity
+- **Protocol Data**: Real-time lending rates, staking rates, protocol balances
+- **Strategy Config**: Strategy mode configuration and overrides
+
+## Mode-Aware Behavior
+
+### Backtest Mode
+```python
+def start_live_trading(self, request: LiveTradingRequest):
+    if self.execution_mode == 'backtest':
+        # Backtest mode not supported for live trading service
+        raise ValueError("Live trading service only supports live mode")
+```
+
+### Live Mode
+```python
+def start_live_trading(self, request: LiveTradingRequest):
+    elif self.execution_mode == 'live':
+        # Start live trading with real-time data
+        return self._start_live_trading_internal(request)
+```
+
+## Event Logging Requirements
+
+### Component Event Log File
+**Separate log file** for this component's events:
+- **File**: `logs/events/live_trading_service_events.jsonl`
+- **Format**: JSON Lines (one event per line)
+- **Rotation**: Daily rotation, keep 30 days
+- **Purpose**: Component-specific audit trail
+
+### Event Logging via EventLogger
+All events logged through centralized EventLogger:
+
+```python
+self.event_logger.log_event(
+    timestamp=timestamp,
+    event_type='[event_type]',
+    component='LiveTradingService',
+    data={
+        'event_specific_data': value,
+        'state_snapshot': self.get_state_snapshot()  # optional
+    }
+)
+```
+
+### Events to Log
+
+#### 1. Component Initialization
+```python
+self.event_logger.log_event(
+    timestamp=pd.Timestamp.now(),
+    event_type='component_initialization',
+    component='LiveTradingService',
+    data={
+        'execution_mode': self.execution_mode,
+        'max_concurrent': self.max_concurrent,
+        'config_hash': hash(str(self.global_config))
+    }
+)
+```
+
+#### 2. State Updates (Every start_live_trading() Call)
+```python
+self.event_logger.log_event(
+    timestamp=timestamp,
+    event_type='state_update',
+    component='LiveTradingService',
+    data={
+        'request_id': request_id,
+        'strategy_name': request.strategy_name,
+        'running_strategies': len(self.running_strategies),
+        'processing_time_ms': processing_time
+    }
+)
+```
+
+#### 3. Error Events
+```python
+self.event_logger.log_event(
+    timestamp=timestamp,
+    event_type='error',
+    component='LiveTradingService',
+    data={
+        'error_code': 'LTS-001',
+        'error_message': str(e),
+        'stack_trace': traceback.format_exc(),
+        'error_severity': 'CRITICAL|HIGH|MEDIUM|LOW'
+    }
+)
+```
+
+#### 4. Component-Specific Critical Events
+- **Live Trading Failed**: When live trading execution fails
+- **Config Slicing Failed**: When config slicing fails
+- **Component Creation Failed**: When component creation fails
+
+### Event Retention & Output Formats
+
+#### Dual Logging Approach
+**Both formats are used**:
+1. **JSON Lines (Iterative)**: Write events to component-specific JSONL files during execution
+   - **Purpose**: Real-time monitoring during live trading
+   - **Location**: `logs/events/live_trading_service_events.jsonl`
+   - **When**: Events written as they occur (buffered for performance)
+   
+2. **CSV Export (Final)**: Comprehensive CSV export at Results Store stage
+   - **Purpose**: Final analysis, spreadsheet compatibility
+   - **Location**: `results/[strategy_id]/events.csv`
+   - **When**: At strategy completion or on-demand
+
+#### Mode-Specific Behavior
+- **Backtest**: 
+  - Write JSONL iteratively (allows tracking during long runs)
+  - Export CSV at completion to Results Store
+  - Keep all events in memory for final processing
+  
+- **Live**: 
+  - Write JSONL immediately (no buffering)
+  - Rotate daily, keep 30 days
+  - CSV export on-demand for analysis
+
+**Note**: Current implementation stores events in memory and exports to CSV only. Enhanced implementation will add iterative JSONL writing. Reference: `docs/specs/17_HEALTH_ERROR_SYSTEMS.md`
+
+## Error Codes
+
+### Component Error Code Prefix: LTS
+All LiveTradingService errors use the `LTS` prefix.
+
+### Error Code Registry
+**Source**: `backend/src/basis_strategy_v1/core/error_codes/error_code_registry.py`
+
+All error codes registered with:
+- **code**: Unique error code
+- **component**: Component name
+- **severity**: CRITICAL | HIGH | MEDIUM | LOW
+- **message**: Human-readable error message
+- **resolution**: How to resolve
+
+### Component Error Codes
+
+#### LTS-001: Live Trading Failed (HIGH)
+**Description**: Failed to execute live trading
+**Cause**: Component failures, API issues, configuration errors
+**Recovery**: Retry live trading, check configuration, verify API connectivity
+```python
+raise ComponentError(
+    error_code='LTS-001',
+    message='Live trading execution failed',
+    component='LiveTradingService',
+    severity='HIGH'
+)
+```
+
+#### LTS-002: Config Slicing Failed (HIGH)
+**Description**: Failed to slice configuration for strategy
+**Cause**: Invalid strategy name, missing config, configuration errors
+**Recovery**: Check strategy name, verify configuration, fix config issues
+```python
+raise ComponentError(
+    error_code='LTS-002',
+    message='Config slicing failed',
+    component='LiveTradingService',
+    severity='HIGH'
+)
+```
+
+#### LTS-003: Component Creation Failed (CRITICAL)
+**Description**: Failed to create component instances
+**Cause**: Component initialization failures, dependency issues, resource constraints
+**Recovery**: Immediate action required, check system resources, restart if necessary
+```python
+raise ComponentError(
+    error_code='LTS-003',
+    message='Component creation failed',
+    component='LiveTradingService',
+    severity='CRITICAL'
+)
+```
+
+### Structured Error Handling Pattern
+
+#### Error Raising
+```python
+from backend.src.basis_strategy_v1.core.error_codes.exceptions import ComponentError
+
+try:
+    result = self._start_live_trading_internal(request)
+except Exception as e:
+    # Log error event
+    self.event_logger.log_event(
+        timestamp=timestamp,
+        event_type='error',
+        component='LiveTradingService',
+        data={
+            'error_code': 'LTS-001',
+            'error_message': str(e),
+            'stack_trace': traceback.format_exc()
+        }
+    )
+    
+    # Raise structured error
+    raise ComponentError(
+        error_code='LTS-001',
+        message=f'LiveTradingService failed: {str(e)}',
+        component='LiveTradingService',
+        severity='HIGH',
+        original_exception=e
+    )
+```
+
+#### Error Propagation Rules
+- **CRITICAL**: Propagate to health system → trigger app restart
+- **HIGH**: Log and retry with exponential backoff (max 3 retries)
+- **MEDIUM**: Log and continue with degraded functionality
+- **LOW**: Log for monitoring, no action needed
+
+### Component Health Integration
+
+#### Health Check Registration
+```python
+def __init__(self, ..., health_manager: UnifiedHealthManager):
+    # Store health manager reference
+    self.health_manager = health_manager
+    
+    # Register component with health system
+    self.health_manager.register_component(
+        component_name='LiveTradingService',
+        checker=self._health_check
+    )
+
+def _health_check(self) -> Dict:
+    """Component-specific health check."""
+    return {
+        'status': 'healthy' | 'degraded' | 'unhealthy',
+        'last_update': self.last_trading_timestamp,
+        'errors': self.recent_errors[-10:],  # Last 10 errors
+        'metrics': {
+            'update_count': self.update_count,
+            'avg_processing_time_ms': self.avg_processing_time,
+            'error_rate': self.error_count / max(self.update_count, 1),
+            'running_strategies': len(self.running_strategies),
+            'strategy_status': self.strategy_status,
+            'memory_usage_mb': self._get_memory_usage()
+        }
+    }
+```
+
+#### Health Status Definitions
+- **healthy**: No errors in last 100 updates, processing time < threshold
+- **degraded**: Minor errors, slower processing, retries succeeding
+- **unhealthy**: Critical errors, failed retries, unable to process
+
+**Reference**: `docs/specs/17_HEALTH_ERROR_SYSTEMS.md`
+
+## Quality Gates
+
+### Validation Criteria
+- [ ] All 18 sections present and complete
+- [ ] Environment Variables section documents system-level and component-specific variables
+- [ ] Config Fields Used section documents universal and component-specific config
+- [ ] Data Provider Queries section documents real-time data queries
+- [ ] Event Logging Requirements section documents component-specific JSONL file
+- [ ] Event Logging Requirements section documents dual logging (JSONL + CSV)
+- [ ] Error Codes section has structured error handling pattern
+- [ ] Error Codes section references health integration
+- [ ] Health integration documented with UnifiedHealthManager
+- [ ] Component-specific log file documented (`logs/events/live_trading_service_events.jsonl`)
+
+### Section Order Validation
+- [ ] Purpose (section 1)
+- [ ] Responsibilities (section 2)
+- [ ] State (section 3)
+- [ ] Component References (Set at Init) (section 4)
+- [ ] Environment Variables (section 5)
+- [ ] Config Fields Used (section 6)
+- [ ] Data Provider Queries (section 7)
+- [ ] Core Methods (section 8)
+- [ ] Data Access Pattern (section 9)
+- [ ] Mode-Aware Behavior (section 10)
+- [ ] Event Logging Requirements (section 11)
+- [ ] Error Codes (section 12)
+- [ ] Quality Gates (section 13)
+- [ ] Integration Points (section 14)
+- [ ] Code Structure Example (section 15)
+- [ ] Related Documentation (section 16)
+
+### Implementation Status
+- [ ] Backend implementation exists and matches spec
+- [ ] All required methods implemented
+- [ ] Error handling follows structured pattern
+- [ ] Health integration implemented
+- [ ] Event logging implemented
+
 ## Core Methods
 
 ### start_live_trading(request: LiveTradingRequest) -> str

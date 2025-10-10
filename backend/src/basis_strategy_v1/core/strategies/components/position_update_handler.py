@@ -79,6 +79,7 @@ class PositionUpdateHandler:
     """
     
     def __init__(self, 
+                 config: Dict[str, Any],
                  position_monitor,
                  exposure_monitor,
                  risk_monitor,
@@ -88,12 +89,14 @@ class PositionUpdateHandler:
         Initialize position update handler.
         
         Args:
+            config: Strategy configuration
             position_monitor: Position monitor instance
             exposure_monitor: Exposure monitor instance
             risk_monitor: Risk monitor instance
             pnl_calculator: P&L calculator instance
             execution_mode: 'backtest' or 'live'
         """
+        self.config = config
         self.position_monitor = position_monitor
         self.exposure_monitor = exposure_monitor
         self.risk_monitor = risk_monitor
@@ -102,7 +105,7 @@ class PositionUpdateHandler:
         
         position_update_logger.info(f"Position Update Handler initialized in {execution_mode} mode")
     
-    async def handle_position_update(self, 
+    def handle_position_update(self, 
                                    changes: Dict[str, Any], 
                                    timestamp: pd.Timestamp,
                                    market_data: Dict[str, Any] = None,
@@ -135,11 +138,11 @@ class PositionUpdateHandler:
                 # Ensure timestamp is in the correct format for position monitor
                 if 'timestamp' in changes and not isinstance(changes['timestamp'], pd.Timestamp):
                     changes['timestamp'] = pd.Timestamp(changes['timestamp'])
-                updated_snapshot = await self.position_monitor.update(changes)
+                updated_snapshot =  self.position_monitor.update(changes)
             else:
                 # Live mode: Refresh from actual exchange connections
                 position_update_logger.info(f"Position Update Handler: Refreshing position from exchanges in live mode")
-                updated_snapshot = await self.position_monitor.refresh_from_exchanges()
+                updated_snapshot =  self.position_monitor.refresh_from_exchanges()
             
             # Step 2: Recalculate exposure
             position_update_logger.info(f"Position Update Handler: Recalculating exposure")
@@ -152,7 +155,7 @@ class PositionUpdateHandler:
             
             # Step 3: Reassess risk
             position_update_logger.info(f"Position Update Handler: Reassessing risk")
-            updated_risk = await self.risk_monitor.assess_risk(
+            updated_risk =  self.risk_monitor.assess_risk(
                 exposure_data=updated_exposure,
                 market_data=market_data or {}
             )
@@ -161,7 +164,7 @@ class PositionUpdateHandler:
             # Step 4: Recalculate P&L
             position_update_logger.info(f"Position Update Handler: Recalculating P&L")
             try:
-                updated_pnl = await self.pnl_calculator.calculate_pnl(
+                updated_pnl =  self.pnl_calculator.calculate_pnl(
                     current_exposure=updated_exposure,
                     timestamp=timestamp
                 )
@@ -191,7 +194,7 @@ class PositionUpdateHandler:
             position_update_logger.error(f"Position Update Handler: Tight loop failed: {e}")
             raise
     
-    async def handle_atomic_position_update(self,
+    def handle_atomic_position_update(self,
                                           changes: Dict[str, Any],
                                           timestamp: pd.Timestamp,
                                           market_data: Dict[str, Any] = None,
@@ -219,9 +222,9 @@ class PositionUpdateHandler:
                 # Ensure timestamp is in the correct format for position monitor
                 if 'timestamp' in changes and not isinstance(changes['timestamp'], pd.Timestamp):
                     changes['timestamp'] = pd.Timestamp(changes['timestamp'])
-                updated_snapshot = await self.position_monitor.update(changes)
+                updated_snapshot =  self.position_monitor.update(changes)
             else:
-                updated_snapshot = await self.position_monitor.refresh_from_exchanges()
+                updated_snapshot =  self.position_monitor.refresh_from_exchanges()
             
             position_update_logger.info(f"Position Update Handler: Atomic position update completed")
             
@@ -237,7 +240,7 @@ class PositionUpdateHandler:
             position_update_logger.error(f"Position Update Handler: Atomic update failed: {e}")
             raise
     
-    async def trigger_tight_loop_after_atomic(self,
+    def trigger_tight_loop_after_atomic(self,
                                             timestamp: pd.Timestamp,
                                             market_data: Dict[str, Any] = None) -> Dict[str, Any]:
         """
@@ -267,14 +270,14 @@ class PositionUpdateHandler:
             )
             
             # Reassess risk
-            updated_risk = await self.risk_monitor.assess_risk(
+            updated_risk =  self.risk_monitor.assess_risk(
                 exposure_data=updated_exposure,
                 market_data=market_data or {}
             )
             
             # Recalculate P&L
             try:
-                updated_pnl = await self.pnl_calculator.calculate_pnl(
+                updated_pnl =  self.pnl_calculator.calculate_pnl(
                     current_exposure=updated_exposure,
                     timestamp=timestamp
                 )

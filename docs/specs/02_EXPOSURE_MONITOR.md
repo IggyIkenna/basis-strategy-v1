@@ -1,5 +1,7 @@
 # Exposure Monitor Component Specification
 
+**Last Reviewed**: October 10, 2025
+
 ## Purpose
 Convert all balances to share class currency and calculate net delta exposure across all venues.
 
@@ -32,6 +34,24 @@ The following are set once during initialization and NEVER passed as runtime par
 
 These references are stored in __init__ and used throughout component lifecycle.
 Components NEVER receive these as method parameters during runtime.
+
+## Configuration Parameters
+
+**Mode Configuration** (from `configs/modes/*.yaml`):
+- `exposure_limits`: Exposure limits - used for exposure calculations
+- `asset_filters`: Asset filters - used for asset filtering
+- `underlying_balance_settings`: Underlying balance settings - used for balance calculations
+
+**Venue Configuration** (from `configs/venues/*.yaml`):
+- `supported_assets`: Supported assets - used for asset validation
+- `exposure_calculation_method`: Exposure calculation method - used for exposure calculations
+
+**Share Class Configuration** (from `configs/share_classes/*.yaml`):
+- `base_currency`: Base currency - used for currency conversions
+- `exposure_tolerance`: Exposure tolerance - used for exposure validation
+
+**Cross-Reference**: [CONFIGURATION.md](CONFIGURATION.md) - Complete configuration hierarchy
+**Cross-Reference**: [ENVIRONMENT_VARIABLES.md](../ENVIRONMENT_VARIABLES.md) - Environment variable definitions
 
 ## Environment Variables
 
@@ -577,7 +597,7 @@ class ExposureMonitor:
 ```
 
 ## Related Documentation
-- [Reference-Based Architecture](../REFERENCE_ARCHITECTURE.md)
+- [Reference-Based Architecture](../REFERENCE_ARCHITECTURE_CANONICAL.md)
 - [Shared Clock Pattern](../SHARED_CLOCK_PATTERN.md)
 - [Request Isolation Pattern](../REQUEST_ISOLATION_PATTERN.md)
 

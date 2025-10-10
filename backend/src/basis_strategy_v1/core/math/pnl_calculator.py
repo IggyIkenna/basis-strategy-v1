@@ -147,7 +147,8 @@ class PnLCalculator:
     def __init__(self, 
                  config: Dict[str, Any],
                  share_class: str, 
-                 initial_capital: float):
+                 initial_capital: float,
+                 data_provider=None):
         """
         Initialize P&L calculator with injected config and parameters.
         
@@ -157,11 +158,12 @@ class PnLCalculator:
             config: Strategy configuration from validated config manager
             share_class: Share class ('ETH' or 'USDT')
             initial_capital: Initial capital from API request
+            data_provider: Data provider instance for funding rate lookups
         """
         self.config = config
         self.share_class = share_class
         self.initial_capital = initial_capital
-        self.data_provider = None  # Will be injected by event engine
+        self.data_provider = data_provider
         
         # Track cumulative attribution components
         self.cumulative = {
@@ -187,11 +189,7 @@ class PnLCalculator:
         logger.info(f"P&L Calculator initialized for {share_class} share class with ${initial_capital:,.2f} initial capital")
         pnl_logger.info(f"P&L Calculator initialized: share_class={share_class}, initial_capital=${initial_capital:,.2f}")
     
-    def set_data_provider(self, data_provider):
-        """Set the data provider for funding rate lookups."""
-        self.data_provider = data_provider
-    
-    async def calculate_pnl(
+    def calculate_pnl(
         self,
         current_exposure: Dict,
         previous_exposure: Optional[Dict] = None,
@@ -873,8 +871,3 @@ class PnLCalculator:
         
         return transaction_costs
 
-
-# Convenience function for creating P&L Calculator
-def create_pnl_calculator(share_class: str, initial_capital: float) -> PnLCalculator:
-    """Create a new P&L Calculator instance."""
-    return PnLCalculator(share_class=share_class, initial_capital=initial_capital)

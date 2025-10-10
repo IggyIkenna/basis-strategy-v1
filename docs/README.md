@@ -2,9 +2,10 @@
 
 **Purpose**: Complete specifications for component-based service architecture  
 **Status**: ✅ Core components implemented | 🔄 Critical issues remain | ❌ Not production ready  
-**Updated**: October 3, 2025 - Documentation cleanup & streamlining  
-**Last Reviewed**: October 8, 2025  
-**Status**: ✅ Aligned with canonical architectural principles
+**Updated**: October 10, 2025 - Component spec standardization complete  
+**Last Reviewed**: October 10, 2025  
+**Status**: ✅ Aligned with canonical architectural principles  
+**Component Specs**: ✅ **18-SECTION FORMAT COMPLETE** - All 20 component specs updated to standardized format
 
 ---
 
@@ -21,6 +22,33 @@
 ## 💼 **Business Case Context**
 
 This project builds a **live and backtesting framework for multi-strategy yield generation** - think Ethena-style strategy enhanced with share classes, fast withdrawals, and dynamic rebalancing.
+
+## 🔧 **Environment Configuration**
+
+The platform supports multiple environments with different configurations:
+
+### **Environment Files**
+- **`.env.dev`** - Development environment (5s health checks, debug logging)
+- **`.env.staging`** - Staging environment (35s health checks, info logging)  
+- **`.env.production`** - Production environment (configurable intervals, production logging)
+
+### **Switching Environments**
+```bash
+# Use development environment (default)
+./platform.sh backtest
+
+# Use staging environment
+BASIS_ENVIRONMENT=staging ./platform.sh backtest
+
+# Use production environment
+BASIS_ENVIRONMENT=prod ./platform.sh backtest
+
+# Set environment for entire session
+export BASIS_ENVIRONMENT=staging
+./platform.sh backtest
+```
+
+**Environment files contain**: Health check intervals, API ports, data sources, logging levels, and other deployment-specific settings.
 
 ### **Product Overview**
 - **Client Investment**: USDT or ETH share classes
@@ -185,7 +213,7 @@ For complete details, see individual component specs:
 - **AAVE Mechanics**: [specs/02_EXPOSURE_MONITOR.md](specs/02_EXPOSURE_MONITOR.md) - Index-dependent conversions (NOT 1:1!)
 - **Timing Model**: [REFERENCE_ARCHITECTURE_CANONICAL.md](REFERENCE_ARCHITECTURE_CANONICAL.md) - Hourly alignment, atomic events
 - **Mode Logic**: [specs/05_STRATEGY_MANAGER.md](specs/05_STRATEGY_MANAGER.md) - Mode-specific desired positions
-- **Execution**: [specs/06_CEX_EXECUTION_MANAGER.md](specs/06_CEX_EXECUTION_MANAGER.md), [specs/07_ONCHAIN_EXECUTION_MANAGER.md](specs/07_ONCHAIN_EXECUTION_MANAGER.md)
+- **Execution**: [specs/06_EXECUTION_MANAGER.md](specs/06_EXECUTION_MANAGER.md), [specs/07_EXECUTION_INTERFACE_MANAGER.md](specs/07_EXECUTION_INTERFACE_MANAGER.md)
 
 ---
 

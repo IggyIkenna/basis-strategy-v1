@@ -25,10 +25,10 @@ Thumbs.db
 logs/
 backend/logs/
 
-# Data files (large datasets)
-# data/
-# *.csv
-# *.json
+# Data files (large datasets) - EXCLUDED FOR CURSOR AGENTS
+data/
+*.csv
+*.json
 *.zip
 
 # Large result files and package-lock files
@@ -41,9 +41,10 @@ build/
 dist/
 *.egg-info/
 
-# Node modules (including nested ones)
+# Node modules (including nested ones) - EXCLUDED FOR CURSOR AGENTS
 **/node_modules/
 node_modules/
+frontend/node_modules/
 
 # Configuration directories (runtime configs, not source code)
 # configs/
@@ -57,13 +58,24 @@ scripts/utilities/
 
 # Environment files (sensitive will remove later)
 #.env
-#.env.dev
-#.env.production
-#.env.staging
+
+# Explicitly include these environment files (override global ignore)
+!.env.dev
+!.env.dev.backup
+!.env.production
+!.env.staging
+!docker/.env.dev
+!docker/.env.local
+!docker/.env.prod
+!docker/.env.staging
 
 # Coverage reports
 htmlcov/
 .coverage
 coverage.json
+
+# Results and large output files - EXCLUDED FOR CURSOR AGENTS
+results/
+*.tar.gz
 
  

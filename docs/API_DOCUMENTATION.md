@@ -548,13 +548,75 @@ The `performance_attribution` field breaks down the total return into specific s
 
 ---
 
-## 💰 **Capital Management Endpoints**
+## 🔐 **Authentication Endpoints**
 
-**⚠️ Note**: These endpoints are documented but not yet implemented in the current codebase.
+### **1. User Login**
+
+**Endpoint**: `POST /api/v1/auth/login`
+
+**Purpose**: Authenticate user with username and password
+
+**Request**:
+```json
+{
+  "username": "admin",
+  "password": "admin123"
+}
+```
+
+**Response**:
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "token_type": "bearer",
+  "expires_in": 1800
+}
+```
+
+### **2. User Logout**
+
+**Endpoint**: `POST /api/v1/auth/logout`
+
+**Purpose**: Logout user and invalidate token
+
+**Headers**:
+```
+Authorization: Bearer <access_token>
+```
+
+**Response**:
+```json
+{
+  "message": "Successfully logged out"
+}
+```
+
+### **3. Get Current User**
+
+**Endpoint**: `GET /api/v1/auth/me`
+
+**Purpose**: Get current authenticated user information
+
+**Headers**:
+```
+Authorization: Bearer <access_token>
+```
+
+**Response**:
+```json
+{
+  "username": "admin",
+  "authenticated": true
+}
+```
+
+---
+
+## 💰 **Capital Management Endpoints**
 
 ### **1. Deposit Capital**
 
-**Endpoint**: `POST /capital/deposit`
+**Endpoint**: `POST /api/v1/capital/deposit`
 
 **Purpose**: Add capital to the strategy
 
@@ -583,7 +645,7 @@ The `performance_attribution` field breaks down the total return into specific s
 
 ### **2. Withdraw Capital**
 
-**Endpoint**: `POST /capital/withdraw`
+**Endpoint**: `POST /api/v1/capital/withdraw`
 
 **Purpose**: Withdraw capital from the strategy
 
@@ -619,11 +681,9 @@ The `performance_attribution` field breaks down the total return into specific s
 
 ## 📊 **Position Management Endpoints**
 
-**⚠️ Note**: These endpoints are documented but not yet implemented in the current codebase.
-
 ### **1. Get Current Positions**
 
-**Endpoint**: `GET /positions/current`
+**Endpoint**: `GET /api/v1/positions/current`
 
 **Purpose**: Get current position snapshot across all venues
 
@@ -668,7 +728,7 @@ The `performance_attribution` field breaks down the total return into specific s
 
 ### **2. Update Position**
 
-**Endpoint**: `POST /positions/update`
+**Endpoint**: `POST /api/v1/positions/update`
 
 **Purpose**: Manually update position (for external changes)
 
@@ -1186,16 +1246,17 @@ curl -X POST https://api.basis-strategy.com/api/v1/backtest/start \
 
 **API Endpoints**:
 - **Health**: 2 endpoints (basic + detailed)
+- **Authentication**: 3 endpoints (login, logout, me)
 - **Backtest**: 4 endpoints (start, status, result, cancel)
 - **Live Trading**: 7 endpoints (start, status, performance, stop, emergency-stop, strategies, rebalance)
+- **Capital Management**: 2 endpoints (deposit, withdraw)
+- **Position Management**: 2 endpoints (current, update)
 - **Strategies**: 5 endpoints (list, details, merged config, mode config, list modes)
 - **Results**: 3 endpoints (events, export, list)
 - **Charts**: 1 endpoint (charts)
 - **Root**: 1 endpoint (API info)
 
-**Total**: 23 endpoints covering all system functionality
-
-**Note**: Capital Management and Position Management endpoints are documented but not yet implemented in the current codebase.
+**Total**: 30 endpoints covering all system functionality
 
 ---
 

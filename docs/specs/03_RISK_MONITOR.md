@@ -1,5 +1,7 @@
 # Risk Monitor Component Specification
 
+**Last Reviewed**: October 10, 2025
+
 ## Purpose
 Calculate risk metrics from exposure data and trigger alerts for risk management.
 
@@ -26,6 +28,24 @@ The following are set once during initialization and NEVER passed as runtime par
 
 These references are stored in __init__ and used throughout component lifecycle.
 Components NEVER receive these as method parameters during runtime.
+
+## Configuration Parameters
+
+**Mode Configuration** (from `configs/modes/*.yaml`):
+- `risk_limits`: Risk limit configurations - used for risk calculations
+- `max_leverage`: Maximum leverage allowed - used for leverage validation
+- `liquidation_threshold`: Liquidation threshold - used for risk monitoring
+
+**Venue Configuration** (from `configs/venues/*.yaml`):
+- `risk_parameters`: Venue-specific risk parameters - used for venue risk calculations
+- `collateral_requirements`: Collateral requirements - used for risk assessment
+
+**Share Class Configuration** (from `configs/share_classes/*.yaml`):
+- `risk_tolerance`: Risk tolerance level - used for risk limit calculations
+- `max_exposure`: Maximum exposure limits - used for exposure validation
+
+**Cross-Reference**: [CONFIGURATION.md](CONFIGURATION.md) - Complete configuration hierarchy
+**Cross-Reference**: [ENVIRONMENT_VARIABLES.md](../ENVIRONMENT_VARIABLES.md) - Environment variable definitions
 
 ## Environment Variables
 
@@ -1131,7 +1151,7 @@ def test_margin_ratio_warning():
 - 🔄 **Refactoring Needed**: Minor config integration
 
 ## Related Documentation
-- [Reference-Based Architecture](../REFERENCE_ARCHITECTURE.md)
+- [Reference-Based Architecture](../REFERENCE_ARCHITECTURE_CANONICAL.md)
 - [Shared Clock Pattern](../SHARED_CLOCK_PATTERN.md)
 - [Request Isolation Pattern](../REQUEST_ISOLATION_PATTERN.md)
 

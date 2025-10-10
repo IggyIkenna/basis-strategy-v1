@@ -1,6 +1,6 @@
 """Route package for API endpoints."""
 
-from . import backtest, health, results, strategies, charts, live_trading, component_health
+from . import backtest, health, results, strategies, charts, live_trading, auth, capital
 
 __all__ = [
     "backtest",
@@ -9,7 +9,8 @@ __all__ = [
     "strategies",
     "charts",
     "live_trading",
-    "component_health",
+    "auth",
+    "capital",
 ]
 
 

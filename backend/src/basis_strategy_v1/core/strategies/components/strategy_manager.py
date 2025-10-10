@@ -489,7 +489,7 @@ class StrategyManager:
         else:
             return 'MAINTAIN_NEUTRAL'
 
-    async def handle_position_change(
+    def handle_position_change(
         self,
         change_type: str,
         params: Dict,
@@ -1058,7 +1058,7 @@ class StrategyManager:
         # No rebalancing needed
         return None
 
-    async def _on_risk_update(self, message):
+    def _on_risk_update(self, message):
         """Handle risk update from Redis."""
         try:
             risk_data = json.loads(message['data'])
@@ -1068,7 +1068,7 @@ class StrategyManager:
                 logger.info(f"Rebalancing triggered: {trigger}")
                 # Get current exposure and generate instructions
                 current_exposure = self.exposure_monitor.get_snapshot()
-                instructions = await self.handle_position_change(
+                instructions =  self.handle_position_change(
                     'REBALANCE',
                     {'trigger': trigger},
                     current_exposure,
@@ -1082,7 +1082,7 @@ class StrategyManager:
 
     # Redis publishing removed - components use direct method calls
 
-    async def handle_king_token_management(
+    def handle_king_token_management(
         self,
         position_snapshot: Dict,
         timestamp: pd.Timestamp
@@ -1157,7 +1157,7 @@ class StrategyManager:
             logger.error(f"Error in KING token management: {e}")
             return None
 
-    async def execute_decision(self, decision: Dict, timestamp: pd.Timestamp, execution_interfaces: Dict, market_data: Dict = None) -> Dict:
+    def execute_decision(self, decision: Dict, timestamp: pd.Timestamp, execution_interfaces: Dict, market_data: Dict = None) -> Dict:
         """
         Execute a strategy decision using the new instruction-based architecture.
         
@@ -1178,7 +1178,7 @@ class StrategyManager:
             instruction_blocks = self._generate_instruction_blocks(decision)
             
             # Execute instruction blocks in sequence
-            results = await self._execute_instruction_blocks(instruction_blocks, timestamp, execution_interfaces, market_data)
+            results =  self._execute_instruction_blocks(instruction_blocks, timestamp, execution_interfaces, market_data)
             
             strategy_logger.info(f"Strategy Manager: Decision execution completed - {len(instruction_blocks)} blocks executed")
             
@@ -1216,7 +1216,7 @@ class StrategyManager:
             strategy_logger.warning(f"No instruction generator for action: {action}, mode: {self.mode}")
             return []
 
-    async def _execute_instruction_blocks(self, instruction_blocks: List[InstructionBlock], timestamp: pd.Timestamp, execution_interfaces: Dict, market_data: Dict = None) -> List[Dict]:
+    def _execute_instruction_blocks(self, instruction_blocks: List[InstructionBlock], timestamp: pd.Timestamp, execution_interfaces: Dict, market_data: Dict = None) -> List[Dict]:
         """Execute instruction blocks in sequence with proper routing and position monitor updates."""
         results = []
         
@@ -1237,18 +1237,18 @@ class StrategyManager:
             try:
                 if block.block_type == 'wallet_transfers':
                     strategy_logger.info(f"Strategy Manager: Routing to WalletTransferExecutor for {len(block.instructions)} transfers")
-                    result = await wallet_transfer_executor.execute_transfer_block(block, timestamp)
+                    result =  wallet_transfer_executor.execute_transfer_block(block, timestamp)
                     strategy_logger.info(f"Strategy Manager: WalletTransferExecutor completed: {result.get('success')}")
                     
                     # Note: Position monitor is already updated by WalletTransferExecutor
                         
                 elif block.block_type == 'cex_trades':
-                    result = await self._execute_cex_trade_block(block, timestamp, execution_interfaces, market_data)
+                    result =  self._execute_cex_trade_block(block, timestamp, execution_interfaces, market_data)
                     
                     # Note: Position monitor is already updated by CEX execution interface
                         
                 elif block.block_type == 'smart_contracts':
-                    result = await self._execute_smart_contract_block(block, timestamp, execution_interfaces)
+                    result =  self._execute_smart_contract_block(block, timestamp, execution_interfaces)
                     
                     # Note: Position monitor is already updated by OnChain execution interface
                         
@@ -1268,7 +1268,7 @@ class StrategyManager:
         
         return results
 
-    async def _execute_cex_trade_block(self, trade_block: InstructionBlock, timestamp: pd.Timestamp, execution_interfaces: Dict, market_data: Dict = None) -> Dict:
+    def _execute_cex_trade_block(self, trade_block: InstructionBlock, timestamp: pd.Timestamp, execution_interfaces: Dict, market_data: Dict = None) -> Dict:
         """Execute a block of CEX trade instructions."""
         cex_interface = execution_interfaces.get('cex')
         if not cex_interface:
@@ -1279,7 +1279,7 @@ class StrategyManager:
             # Convert CEXTradeInstruction to interface format
             interface_instruction = instruction.to_dict()
             strategy_logger.info(f"Strategy Manager: Sending instruction to CEX interface: {interface_instruction}")
-            result = await cex_interface.execute_trade(interface_instruction, market_data or {})
+            result =  cex_interface.execute_trade(interface_instruction, market_data or {})
             results.append(result)
             strategy_logger.info(f"Strategy Manager: CEX trade result: {result}")
             
@@ -1295,7 +1295,7 @@ class StrategyManager:
             'results': results
         }
 
-    async def _execute_smart_contract_block(self, contract_block: InstructionBlock, timestamp: pd.Timestamp, execution_interfaces: Dict) -> Dict:
+    def _execute_smart_contract_block(self, contract_block: InstructionBlock, timestamp: pd.Timestamp, execution_interfaces: Dict) -> Dict:
         """Execute a block of smart contract instructions."""
         onchain_interface = execution_interfaces.get('onchain')
         if not onchain_interface:
@@ -1303,12 +1303,12 @@ class StrategyManager:
         
         if contract_block.execution_mode == ExecutionMode.ATOMIC.value:
             # Atomic execution - single transaction
-            return await self._execute_atomic_contract_operations(contract_block, timestamp, onchain_interface, market_data)
+            return  self._execute_atomic_contract_operations(contract_block, timestamp, onchain_interface, market_data)
         else:
             # Sequential execution - multiple transactions
-            return await self._execute_sequential_contract_operations(contract_block, timestamp, onchain_interface, market_data)
+            return  self._execute_sequential_contract_operations(contract_block, timestamp, onchain_interface, market_data)
 
-    async def _execute_atomic_contract_operations(self, contract_block: InstructionBlock, timestamp: pd.Timestamp, onchain_interface, market_data: Dict = None) -> Dict:
+    def _execute_atomic_contract_operations(self, contract_block: InstructionBlock, timestamp: pd.Timestamp, onchain_interface, market_data: Dict = None) -> Dict:
         """Execute atomic smart contract operations (single transaction)."""
         strategy_logger.info(f"Strategy Manager: Executing atomic smart contract block: {contract_block.timestamp_group}")
         
@@ -1321,12 +1321,12 @@ class StrategyManager:
             'gas_cost_type': contract_block.instructions[0].gas_cost_type if contract_block.instructions else 'ATOMIC_ENTRY'
         }
         
-        result = await onchain_interface.execute_trade(atomic_instruction, market_data or {})
+        result =  onchain_interface.execute_trade(atomic_instruction, market_data or {})
         
         # For atomic operations, trigger tight loop after all operations complete
         if hasattr(self, 'position_update_handler') and self.position_update_handler:
             strategy_logger.info(f"Strategy Manager: Triggering tight loop after atomic operations complete")
-            await self.position_update_handler.trigger_tight_loop_after_atomic(
+            self.position_update_handler.trigger_tight_loop_after_atomic(
                 timestamp=timestamp,
                 market_data={}  # Smart contract operations don't need market data
             )
@@ -1340,14 +1340,14 @@ class StrategyManager:
             'result': result
         }
 
-    async def _execute_sequential_contract_operations(self, contract_block: InstructionBlock, timestamp: pd.Timestamp, onchain_interface, market_data: Dict = None) -> Dict:
+    def _execute_sequential_contract_operations(self, contract_block: InstructionBlock, timestamp: pd.Timestamp, onchain_interface, market_data: Dict = None) -> Dict:
         """Execute sequential smart contract operations (multiple transactions)."""
         strategy_logger.info(f"Strategy Manager: Executing sequential smart contract block: {contract_block.timestamp_group}")
         
         results = []
         for instruction in contract_block.instructions:
             interface_instruction = instruction.to_dict()
-            result = await onchain_interface.execute_trade(interface_instruction, market_data or {})
+            result =  onchain_interface.execute_trade(interface_instruction, market_data or {})
             results.append(result)
             
             # NOTE: Strategy Manager is READ-ONLY - it never updates position monitor
