@@ -240,7 +240,7 @@ class EventDrivenStrategyEngine:
             self.pnl_calculator = PnLCalculator(
                 config=self.config,
                 share_class=self.share_class,
-                initial_capital=self.initial_capital,  # From API request
+                initial_capital=self.initial_capital,
                 data_provider=self.data_provider
             )
             # Component health now handled by unified health manager
