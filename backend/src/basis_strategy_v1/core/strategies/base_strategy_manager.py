@@ -12,13 +12,11 @@ Reference: docs/specs/05_STRATEGY_MANAGER.md - Component specification
 from abc import ABC, abstractmethod
 from typing import Dict, List, Any, Optional
 from pydantic import BaseModel
-from dataclasses import dataclass
 
 from ...infrastructure.logging.structured_logger import get_strategy_manager_logger
 
 
-@dataclass
-class StrategyAction:
+class StrategyAction(BaseModel):
     """Standardized strategy action wrapper"""
     action_type: str  # entry_full, entry_partial, exit_full, exit_partial, sell_dust
     target_amount: float
