@@ -123,9 +123,11 @@ class EventDrivenStrategyEngine:
         self.data_provider = data_provider  # Pre-loaded data provider
         self.debug_mode = debug_mode
         
-        # Initialize global market data utils with data provider
-        from ..utils.market_data_utils import set_global_data_provider
-        set_global_data_provider(data_provider)
+        # Data provider is already available as self.data_provider
+        
+        # Initialize utility manager
+        from ..utilities.utility_manager import UtilityManager
+        self.utility_manager = UtilityManager(config, data_provider)
         
         # Initialize async results store
         results_dir = os.getenv('BASIS_RESULTS_DIR', 'results')
@@ -169,11 +171,8 @@ class EventDrivenStrategyEngine:
             logger.info("Initializing Position Monitor...")
             self.position_monitor = PositionMonitor(
                 config=self.config,
-                execution_mode=self.execution_mode,
-                initial_capital=self.initial_capital,  # From API request
-                share_class=self.share_class,  # From API request
                 data_provider=self.data_provider,
-                debug_mode=self.debug_mode
+                utility_manager=self.utility_manager
             )
             # Component health now handled by unified health manager
             initialized_components.append('position_monitor')
@@ -188,7 +187,9 @@ class EventDrivenStrategyEngine:
             # Component 2: Event Logger
             logger.info("Initializing Event Logger...")
             self.event_logger = EventLogger(
-                execution_mode=self.execution_mode
+                config=self.config,
+                data_provider=self.data_provider,
+                utility_manager=self.utility_manager
             )
             # Component health now handled by unified health manager
             initialized_components.append('event_logger')
@@ -204,10 +205,8 @@ class EventDrivenStrategyEngine:
             logger.info("Initializing Exposure Monitor...")
             self.exposure_monitor = ExposureMonitor(
                 config=self.config,
-                share_class=self.share_class,
-                position_monitor=self.position_monitor,
                 data_provider=self.data_provider,
-                debug_mode=self.debug_mode
+                utility_manager=self.utility_manager
             )
             # Component health now handled by unified health manager
             initialized_components.append('exposure_monitor')
@@ -223,11 +222,8 @@ class EventDrivenStrategyEngine:
             logger.info("Initializing Risk Monitor...")
             self.risk_monitor = RiskMonitor(
                 config=self.config,
-                position_monitor=self.position_monitor,
-                exposure_monitor=self.exposure_monitor,
                 data_provider=self.data_provider,
-                share_class=self.share_class,
-                debug_mode=self.debug_mode
+                utility_manager=self.utility_manager
             )
             # Component health now handled by unified health manager
             initialized_components.append('risk_monitor')

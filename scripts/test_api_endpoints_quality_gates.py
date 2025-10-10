@@ -24,13 +24,13 @@ def test_strategy_selection_endpoints():
     """Test strategy selection endpoints."""
     print("Testing strategy selection endpoints...")
     
-    base_url = "http://localhost:8000"
+    base_url = "http://localhost:8001"
     endpoints = [
-        "/api/strategies",
-        "/api/strategies/pure_lending",
-        "/api/strategies/btc_basis",
-        "/api/strategies/eth_basis",
-        "/api/strategies/usdt_market_neutral",
+        "/api/v1/strategies",
+        "/api/v1/strategies/pure_lending",
+        "/api/v1/strategies/btc_basis",
+        "/api/v1/strategies/eth_basis",
+        "/api/v1/strategies/usdt_market_neutral",
     ]
     
     failed_endpoints = []
@@ -58,7 +58,7 @@ def test_backtest_execution_endpoints():
     """Test backtest execution endpoints."""
     print("Testing backtest execution endpoints...")
     
-    base_url = "http://localhost:8000"
+    base_url = "http://localhost:8001"
     
     # Test start backtest endpoint
     try:
@@ -69,7 +69,7 @@ def test_backtest_execution_endpoints():
             "initial_capital": 100000
         }
         response = requests.post(
-            f"{base_url}/api/backtest/start",
+            f"{base_url}/api/v1/backtest/",
             json=backtest_request,
             timeout=5
         )
@@ -82,7 +82,7 @@ def test_backtest_execution_endpoints():
     
     # Test other backtest endpoints
     endpoints = [
-        "/api/backtest/list",
+        "/api/v1/backtest/list",
     ]
     
     for endpoint in endpoints:
@@ -102,10 +102,10 @@ def test_live_trading_endpoints():
     """Test live trading endpoints."""
     print("Testing live trading endpoints...")
     
-    base_url = "http://localhost:8000"
+    base_url = "http://localhost:8001"
     endpoints = [
-        "/api/live/status",
-        "/api/live/positions",
+        "/api/v1/live/status",
+        "/api/v1/live/positions",
     ]
     
     for endpoint in endpoints:
@@ -125,15 +125,15 @@ def test_results_retrieval_endpoints():
     """Test results retrieval endpoints."""
     print("Testing results retrieval endpoints...")
     
-    base_url = "http://localhost:8000"
+    base_url = "http://localhost:8001"
     
     # Test with a mock backtest ID
     backtest_id = "test_backtest_123"
     endpoints = [
-        f"/api/backtest/{backtest_id}/results",
-        f"/api/backtest/{backtest_id}/metrics",
-        f"/api/backtest/{backtest_id}/equity",
-        f"/api/backtest/{backtest_id}/events",
+        f"/api/v1/backtest/{backtest_id}/result",
+        f"/api/v1/backtest/{backtest_id}/metrics",
+        f"/api/v1/backtest/{backtest_id}/equity",
+        f"/api/v1/backtest/{backtest_id}/events",
     ]
     
     for endpoint in endpoints:
@@ -154,11 +154,11 @@ def test_configuration_endpoints():
     """Test configuration endpoints."""
     print("Testing configuration endpoints...")
     
-    base_url = "http://localhost:8000"
+    base_url = "http://localhost:8001"
     endpoints = [
-        "/api/config",
-        "/api/environment",
-        "/api/status",
+        "/api/v1/config",
+        "/api/v1/environment",
+        "/api/v1/status",
     ]
     
     for endpoint in endpoints:
@@ -178,10 +178,10 @@ def test_api_response_formats():
     """Test API response formats are consistent."""
     print("Testing API response formats...")
     
-    base_url = "http://localhost:8000"
+    base_url = "http://localhost:8001"
     
     try:
-        response = requests.get(f"{base_url}/api/strategies", timeout=5)
+        response = requests.get(f"{base_url}/api/v1/strategies", timeout=5)
         if response.status_code == 200:
             try:
                 data = response.json()
@@ -202,11 +202,11 @@ def test_api_error_handling():
     """Test API error handling."""
     print("Testing API error handling...")
     
-    base_url = "http://localhost:8000"
+    base_url = "http://localhost:8001"
     
     # Test with invalid endpoint
     try:
-        response = requests.get(f"{base_url}/api/invalid", timeout=5)
+        response = requests.get(f"{base_url}/api/v1/invalid", timeout=5)
         if response.status_code not in [404, 405]:
             print(f"❌ Error handling failed: {response.status_code}")
             return False
