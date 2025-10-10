@@ -117,15 +117,22 @@ class StrategyManager:
         # Detect strategy mode from config
         self.mode = self.detect_strategy_mode()
 
-        # Initial capital (for delta calculations)
-        self.initial_capital = config.get(
-            'backtest', {}).get(
-            'initial_capital', 100000.0)
+        # Validate required configuration at startup (fail-fast)
+        required_keys = ['share_class', 'asset', 'lst_type']
+        for key in required_keys:
+            if key not in config:
+                raise KeyError(f"Missing required configuration: {key}")
         
-        # Get config values from top level (not strategy section)
-        self.share_class = config.get('share_class', 'USDT')
-        self.asset = config.get('asset', 'ETH')
-        self.lst_type = config.get('lst_type', 'weeth')
+        # Initial capital (for delta calculations) - optional with fail-fast
+        if 'backtest' in config and 'initial_capital' in config['backtest']:
+            self.initial_capital = config['backtest']['initial_capital']
+        else:
+            self.initial_capital = 100000.0  # Default only for backtest config
+        
+        # Get config values from top level (fail-fast access)
+        self.share_class = config['share_class']
+        self.asset = config['asset']
+        self.lst_type = config['lst_type']
         
         logger.info(f"Strategy Manager: share_class = {self.share_class}, asset = {self.asset}")
 

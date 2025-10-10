@@ -37,10 +37,21 @@ class EventLogger:
         self.event_history = []
         self.logged_events = {}
         
-        # Logging configuration
-        self.log_path = config.get('log_path', './logs')
-        self.log_format = config.get('log_format', 'json')
-        self.log_level = config.get('log_level', 'INFO')
+        # Logging configuration (optional with fail-fast)
+        if 'log_path' in config:
+            self.log_path = config['log_path']
+        else:
+            self.log_path = './logs'  # Default only if not specified
+            
+        if 'log_format' in config:
+            self.log_format = config['log_format']
+        else:
+            self.log_format = 'json'  # Default only if not specified
+            
+        if 'log_level' in config:
+            self.log_level = config['log_level']
+        else:
+            self.log_level = 'INFO'  # Default only if not specified
         
         logger.info("EventLogger initialized (mode-agnostic)")
     

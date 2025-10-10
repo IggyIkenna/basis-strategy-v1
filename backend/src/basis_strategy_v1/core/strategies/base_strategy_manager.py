@@ -38,17 +38,30 @@ class BaseStrategyManager(ABC):
             position_monitor: Position monitor instance
             event_engine: Event engine instance
         """
+        # Validate required configuration at startup (fail-fast)
+        required_keys = ['share_class', 'asset', 'mode']
+        for key in required_keys:
+            if key not in config:
+                raise KeyError(f"Missing required configuration: {key}")
+        
         self.config = config
         self.risk_monitor = risk_monitor
         self.position_monitor = position_monitor
         self.event_engine = event_engine
-        self.share_class = config.get('share_class', 'USDT')
-        self.asset = config.get('asset', 'ETH')
-        self.mode = config.get('mode', 'unknown')
+        self.share_class = config['share_class']
+        self.asset = config['asset']
+        self.mode = config['mode']
         
-        # Reserve management
-        self.reserve_ratio = config.get('reserve_ratio', 0.05)  # 5% default
-        self.dust_delta = config.get('dust_delta', 0.002)  # 0.2% default
+        # Reserve management (optional with fail-fast)
+        if 'reserve_ratio' in config:
+            self.reserve_ratio = config['reserve_ratio']
+        else:
+            self.reserve_ratio = 0.05  # 5% default only if not specified
+            
+        if 'dust_delta' in config:
+            self.dust_delta = config['dust_delta']
+        else:
+            self.dust_delta = 0.002  # 0.2% default only if not specified
         
         logger.info(f"BaseStrategyManager initialized for {self.mode} mode, {self.share_class} share class")
     

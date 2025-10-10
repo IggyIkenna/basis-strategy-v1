@@ -39,13 +39,19 @@ class USDTMarketNeutralStrategy(BaseStrategyManager):
         """
         super().__init__(config, risk_monitor, position_monitor, event_engine)
         
-        # USDT market neutral-specific configuration
-        self.usdt_allocation = config.get('usdt_allocation', 0.7)  # 70% to USDT lending
-        self.eth_allocation = config.get('eth_allocation', 0.2)  # 20% to ETH staking
-        self.leverage_multiplier = config.get('leverage_multiplier', 2.0)  # 2x leverage
-        self.lst_type = config.get('lst_type', 'wstETH')  # Default LST type
-        self.lending_protocol = config.get('lending_protocol', 'aave')  # Default lending protocol
-        self.staking_protocol = config.get('staking_protocol', 'lido')  # Default staking protocol
+        # Validate required configuration at startup (fail-fast)
+        required_keys = ['usdt_allocation', 'eth_allocation', 'leverage_multiplier', 'lst_type', 'lending_protocol', 'staking_protocol']
+        for key in required_keys:
+            if key not in config:
+                raise KeyError(f"Missing required configuration: {key}")
+        
+        # USDT market neutral-specific configuration (fail-fast access)
+        self.usdt_allocation = config['usdt_allocation']  # 70% to USDT lending
+        self.eth_allocation = config['eth_allocation']  # 20% to ETH staking
+        self.leverage_multiplier = config['leverage_multiplier']  # 2x leverage
+        self.lst_type = config['lst_type']  # Default LST type
+        self.lending_protocol = config['lending_protocol']  # Default lending protocol
+        self.staking_protocol = config['staking_protocol']  # Default staking protocol
         
         logger.info(f"USDTMarketNeutralStrategy initialized with {self.usdt_allocation*100}% USDT lending, {self.eth_allocation*100}% ETH staking, {self.leverage_multiplier}x leverage")
     

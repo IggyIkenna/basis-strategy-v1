@@ -29,9 +29,15 @@ class PureLendingStrategy(BaseStrategyManager):
         """
         super().__init__(config, risk_monitor, position_monitor, event_engine)
         
-        # Pure lending specific configuration
-        self.lending_venue = config.get('lending_venue', 'aave')
-        self.target_apy = config.get('target_apy', 0.05)  # 5% default
+        # Validate required configuration at startup (fail-fast)
+        required_keys = ['lending_venue', 'target_apy']
+        for key in required_keys:
+            if key not in config:
+                raise KeyError(f"Missing required configuration: {key}")
+        
+        # Pure lending specific configuration (fail-fast access)
+        self.lending_venue = config['lending_venue']
+        self.target_apy = config['target_apy']
         
         logger.info(f"PureLendingStrategy initialized for {self.lending_venue} venue")
     

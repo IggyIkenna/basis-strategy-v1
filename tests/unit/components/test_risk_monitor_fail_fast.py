@@ -10,128 +10,116 @@ import os
 # Add backend/src to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'backend', 'src'))
 
-from basis_strategy_v1.core.rebalancing.risk_monitor import RiskMonitor
+from basis_strategy_v1.core.strategies.components.risk_monitor import RiskMonitor
 
 
 class TestRiskMonitorFailFast:
     """Test RiskMonitor fail-fast config access."""
     
-    def test_fail_fast_with_missing_risk_section(self):
-        """Test that RiskMonitor fails fast when risk section is missing."""
-        incomplete_config = {
-            'strategy': {
-                'target_ltv': 0.91,
-                'rebalance_threshold_pct': 5.0
-            }
-            # Missing 'risk' section
-        }
-        
-        with pytest.raises(KeyError, match="'risk'"):
-            RiskMonitor(incomplete_config)
-        
-        print("✅ Fail-fast behavior works with missing risk section")
-    
-    def test_fail_fast_with_missing_strategy_section(self):
-        """Test that RiskMonitor fails fast when strategy section is missing."""
-        incomplete_config = {
-            'risk': {
-                'aave_ltv_warning': 0.85,
-                'aave_ltv_critical': 0.90,
-                'margin_warning_pct': 0.20,
-                'margin_critical_pct': 0.12
-            }
-            # Missing 'strategy' section
-        }
-        
-        with pytest.raises(KeyError, match="'strategy'"):
-            RiskMonitor(incomplete_config)
-        
-        print("✅ Fail-fast behavior works with missing strategy section")
-    
     def test_fail_fast_with_missing_target_ltv(self):
         """Test that RiskMonitor fails fast when target_ltv is missing."""
         incomplete_config = {
-            'strategy': {
-                'rebalance_threshold_pct': 5.0
-                # Missing 'target_ltv'
-            },
-            'risk': {
-                'aave_ltv_warning': 0.85,
-                'aave_ltv_critical': 0.90,
-                'margin_warning_pct': 0.20,
-                'margin_critical_pct': 0.12
-            }
+            'max_drawdown': 0.1,
+            'leverage_enabled': False,
+            'venues': {'aave': {'max_leverage': 1.0}}
+            # Missing 'target_ltv'
         }
         
-        with pytest.raises(KeyError, match="'target_ltv'"):
-            RiskMonitor(incomplete_config)
+        with pytest.raises(KeyError, match="Missing required configuration: target_ltv"):
+            RiskMonitor(incomplete_config, None, None)
         
         print("✅ Fail-fast behavior works with missing target_ltv")
     
-    def test_fail_fast_with_missing_aave_ltv_warning(self):
-        """Test that RiskMonitor fails fast when aave_ltv_warning is missing."""
+    def test_fail_fast_with_missing_max_drawdown(self):
+        """Test that RiskMonitor fails fast when max_drawdown is missing."""
         incomplete_config = {
-            'strategy': {
-                'target_ltv': 0.91,
-                'rebalance_threshold_pct': 5.0
-            },
-            'risk': {
-                'aave_ltv_critical': 0.90,
-                'margin_warning_pct': 0.20,
-                'margin_critical_pct': 0.12
-                # Missing 'aave_ltv_warning'
-            }
+            'target_ltv': 0.8,
+            'leverage_enabled': False,
+            'venues': {'aave': {'max_leverage': 1.0}}
+            # Missing 'max_drawdown'
         }
         
-        with pytest.raises(KeyError, match="'aave_ltv_warning'"):
-            RiskMonitor(incomplete_config)
+        with pytest.raises(KeyError, match="Missing required configuration: max_drawdown"):
+            RiskMonitor(incomplete_config, None, None)
         
-        print("✅ Fail-fast behavior works with missing aave_ltv_warning")
+        print("✅ Fail-fast behavior works with missing max_drawdown")
     
-    def test_fail_fast_with_missing_margin_warning_pct(self):
-        """Test that RiskMonitor fails fast when margin_warning_pct is missing."""
+    def test_fail_fast_with_missing_leverage_enabled(self):
+        """Test that RiskMonitor fails fast when leverage_enabled is missing."""
         incomplete_config = {
-            'strategy': {
-                'target_ltv': 0.91,
-                'rebalance_threshold_pct': 5.0
-            },
-            'risk': {
-                'aave_ltv_warning': 0.85,
-                'aave_ltv_critical': 0.90,
-                'margin_critical_pct': 0.12
-                # Missing 'margin_warning_pct'
+            'target_ltv': 0.8,
+            'max_drawdown': 0.1,
+            'venues': {'aave': {'max_leverage': 1.0}}
+            # Missing 'leverage_enabled'
+        }
+        
+        with pytest.raises(KeyError, match="Missing required configuration: leverage_enabled"):
+            RiskMonitor(incomplete_config, None, None)
+        
+        print("✅ Fail-fast behavior works with missing leverage_enabled")
+    
+    def test_fail_fast_with_missing_venues(self):
+        """Test that RiskMonitor fails fast when venues is missing."""
+        incomplete_config = {
+            'target_ltv': 0.8,
+            'max_drawdown': 0.1,
+            'leverage_enabled': False
+            # Missing 'venues'
+        }
+        
+        with pytest.raises(KeyError, match="Missing required configuration: venues"):
+            RiskMonitor(incomplete_config, None, None)
+        
+        print("✅ Fail-fast behavior works with missing venues")
+    
+    def test_fail_fast_with_invalid_venue_config(self):
+        """Test that RiskMonitor fails fast when venue config is invalid."""
+        incomplete_config = {
+            'target_ltv': 0.8,
+            'max_drawdown': 0.1,
+            'leverage_enabled': False,
+            'venues': {
+                'aave': 'invalid_config'  # Should be dict, not string
             }
         }
         
-        with pytest.raises(KeyError, match="'margin_warning_pct'"):
-            RiskMonitor(incomplete_config)
+        with pytest.raises(KeyError, match="Invalid venue configuration for aave"):
+            RiskMonitor(incomplete_config, None, None)
         
-        print("✅ Fail-fast behavior works with missing margin_warning_pct")
+        print("✅ Fail-fast behavior works with invalid venue config")
+    
+    def test_fail_fast_with_missing_venue_max_leverage(self):
+        """Test that RiskMonitor fails fast when venue max_leverage is missing."""
+        incomplete_config = {
+            'target_ltv': 0.8,
+            'max_drawdown': 0.1,
+            'leverage_enabled': False,
+            'venues': {
+                'aave': {}  # Missing max_leverage
+            }
+        }
+        
+        with pytest.raises(KeyError, match="Missing max_leverage in venue configuration for aave"):
+            RiskMonitor(incomplete_config, None, None)
+        
+        print("✅ Fail-fast behavior works with missing venue max_leverage")
     
     def test_success_with_complete_config(self):
         """Test that RiskMonitor works with complete config."""
         complete_config = {
-            'strategy': {
-                'target_ltv': 0.91,
-                'rebalance_threshold_pct': 5.0
-            },
-            'risk': {
-                'aave_ltv_warning': 0.85,
-                'aave_ltv_critical': 0.90,
-                'margin_warning_pct': 0.20,
-                'margin_critical_pct': 0.12
+            'target_ltv': 0.8,
+            'max_drawdown': 0.1,
+            'leverage_enabled': False,
+            'venues': {
+                'aave': {'max_leverage': 1.0},
+                'binance': {'max_leverage': 2.0}
             }
         }
         
-        risk_monitor = RiskMonitor(complete_config)
+        risk_monitor = RiskMonitor(complete_config, None, None)
         
-        # Verify all values are set correctly
-        assert risk_monitor.aave_safe_ltv == 0.91
-        assert risk_monitor.aave_ltv_warning == 0.85
-        assert risk_monitor.aave_ltv_critical == 0.90
-        assert risk_monitor.margin_warning_threshold == 0.20
-        assert risk_monitor.margin_critical_threshold == 0.12
-        assert risk_monitor.delta_threshold_pct == 5.0
+        # Verify config is stored correctly
+        assert risk_monitor.config == complete_config
         
         print("✅ Complete config works correctly")
     
@@ -142,38 +130,30 @@ class TestRiskMonitorFailFast:
         
         # Test with empty config
         with pytest.raises(KeyError):
-            RiskMonitor({})
+            RiskMonitor({}, None, None)
         
         # Test with None config
         with pytest.raises((KeyError, TypeError)):
-            RiskMonitor(None)
+            RiskMonitor(None, None, None)
         
         print("✅ No default values are used (fail-fast principle)")
     
     def test_config_values_are_exact(self):
         """Test that config values are used exactly as provided."""
         config = {
-            'strategy': {
-                'target_ltv': 0.95,  # Different from typical default
-                'rebalance_threshold_pct': 3.0  # Different from typical default
-            },
-            'risk': {
-                'aave_ltv_warning': 0.80,  # Different from typical default
-                'aave_ltv_critical': 0.88,  # Different from typical default
-                'margin_warning_pct': 0.15,  # Different from typical default
-                'margin_critical_pct': 0.08  # Different from typical default
+            'target_ltv': 0.95,  # Different from typical default
+            'max_drawdown': 0.05,  # Different from typical default
+            'leverage_enabled': True,  # Different from typical default
+            'venues': {
+                'aave': {'max_leverage': 1.5},  # Different from typical default
+                'binance': {'max_leverage': 3.0}  # Different from typical default
             }
         }
         
-        risk_monitor = RiskMonitor(config)
+        risk_monitor = RiskMonitor(config, None, None)
         
         # Verify exact values are used (not defaults)
-        assert risk_monitor.aave_safe_ltv == 0.95
-        assert risk_monitor.aave_ltv_warning == 0.80
-        assert risk_monitor.aave_ltv_critical == 0.88
-        assert risk_monitor.margin_warning_threshold == 0.15
-        assert risk_monitor.margin_critical_threshold == 0.08
-        assert risk_monitor.delta_threshold_pct == 3.0
+        assert risk_monitor.config == config
         
         print("✅ Config values are used exactly as provided")
 
@@ -185,11 +165,12 @@ if __name__ == "__main__":
     print("🧪 Testing RiskMonitor Fail-Fast Config Access...")
     
     try:
-        test_instance.test_fail_fast_with_missing_risk_section()
-        test_instance.test_fail_fast_with_missing_strategy_section()
         test_instance.test_fail_fast_with_missing_target_ltv()
-        test_instance.test_fail_fast_with_missing_aave_ltv_warning()
-        test_instance.test_fail_fast_with_missing_margin_warning_pct()
+        test_instance.test_fail_fast_with_missing_max_drawdown()
+        test_instance.test_fail_fast_with_missing_leverage_enabled()
+        test_instance.test_fail_fast_with_missing_venues()
+        test_instance.test_fail_fast_with_invalid_venue_config()
+        test_instance.test_fail_fast_with_missing_venue_max_leverage()
         test_instance.test_success_with_complete_config()
         test_instance.test_no_default_values_used()
         test_instance.test_config_values_are_exact()

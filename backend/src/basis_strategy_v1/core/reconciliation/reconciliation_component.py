@@ -42,13 +42,19 @@ class ReconciliationComponent:
         self.event_logger = event_logger
         self.health_manager = health_manager
         
+        # Validate required configuration at startup (fail-fast)
+        required_keys = ['max_retry_attempts', 'reconciliation_tolerance']
+        for key in required_keys:
+            if key not in config:
+                raise KeyError(f"Missing required configuration: {key}")
+        
         # Initialize component-specific state
         self.reconciliation_status = 'pending'
         self.last_reconciliation_timestamp = None
         self.reconciliation_history: List[Dict] = []
         self.retry_count = 0
-        self.max_retries = config.get('max_retry_attempts', 3)
-        self.tolerance = config.get('reconciliation_tolerance', 0.01)
+        self.max_retries = config['max_retry_attempts']
+        self.tolerance = config['reconciliation_tolerance']
         
         # Register with health system if available
         if self.health_manager:
