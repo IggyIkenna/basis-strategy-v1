@@ -29,7 +29,6 @@ class StrategyAction(BaseModel):
 class BaseStrategyManager(ABC):
     """Base strategy manager with standardized interface"""
     
-<<<<<<< HEAD
     def __init__(
         self,
         config: Dict[str, Any],
@@ -38,8 +37,6 @@ class BaseStrategyManager(ABC):
         event_engine,
         utility_manager=None
     ):
-=======
-    def __init__(self, config: Dict[str, Any], risk_monitor, position_monitor, event_engine):
         """
         Initialize base strategy manager.
         
@@ -48,6 +45,7 @@ class BaseStrategyManager(ABC):
             risk_monitor: Risk monitor instance
             position_monitor: Position monitor instance
             event_engine: Event engine instance
+            utility_manager: Utility manager instance (optional)
         """
         # Validate required configuration at startup (fail-fast)
         required_keys = ['share_class', 'asset', 'mode']
@@ -55,21 +53,13 @@ class BaseStrategyManager(ABC):
             if key not in config:
                 raise KeyError(f"Missing required configuration: {key}")
         
->>>>>>> cursor/implement-fail-fast-configuration-access-0d63
         self.config = config
         self.risk_monitor = risk_monitor
         self.position_monitor = position_monitor
         self.event_engine = event_engine
-<<<<<<< HEAD
         self.utility_manager = utility_manager
         
-        # Strategy configuration
-        self.share_class = config.get('share_class')
-        self.asset = config.get('asset')
-        self.mode = config.get('mode')
-        self.reserve_ratio = config.get('reserve_ratio', 0.1)
-        self.dust_delta = config.get('dust_delta', 0.002)
-=======
+        # Strategy configuration (fail-fast access)
         self.share_class = config['share_class']
         self.asset = config['asset']
         self.mode = config['mode']
@@ -84,7 +74,6 @@ class BaseStrategyManager(ABC):
             self.dust_delta = config['dust_delta']
         else:
             self.dust_delta = 0.002  # 0.2% default only if not specified
->>>>>>> cursor/implement-fail-fast-configuration-access-0d63
         
         # Logging
         self.logger = get_strategy_manager_logger()
