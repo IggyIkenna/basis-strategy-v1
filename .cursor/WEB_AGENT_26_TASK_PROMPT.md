@@ -13,6 +13,21 @@ You are an autonomous web-based background agent executing the 26-step Basis Str
 
 ## Immediate Actions Required
 
+### 0. Install Dependencies (Fresh Machine Setup)
+**CRITICAL**: `./platform.sh backtest` does NOT install dependencies. For fresh machines:
+
+```bash
+# Install Python dependencies
+pip3 install -r requirements.txt
+
+# Install frontend dependencies  
+cd frontend && npm install && cd ..
+
+# Verify system requirements
+python3 --version  # Requires Python 3.8+
+node --version     # Requires Node.js 16+
+```
+
 ### 1. Start Backend
 ```bash
 ./platform.sh backtest
@@ -239,6 +254,17 @@ Start with Task 01: Environment file switching & fail-fast validation.
 
 ## Key Commands
 
+### Fresh Machine Setup
+```bash
+# Install dependencies (REQUIRED for fresh machines)
+pip3 install -r requirements.txt
+cd frontend && npm install && cd ..
+
+# Verify system requirements
+python3 --version  # Requires Python 3.8+
+node --version     # Requires Node.js 16+
+```
+
 ### Environment Management
 ```bash
 # Start backend in backtest mode
@@ -311,9 +337,14 @@ python scripts/analyze_test_coverage.py
 
 ## Current Critical Issues
 
+### Dependencies Not Installed (Fresh Machine)
+- **Issue**: `./platform.sh backtest` fails if dependencies not installed
+- **Action**: Install dependencies first: `pip3 install -r requirements.txt && cd frontend && npm install && cd ..`
+- **Verify**: Check Python/Node versions and package installation
+
 ### Backend Not Running
 - **Issue**: Connection timeout on localhost:8001
-- **Action**: Start backend with `./platform.sh backtest`
+- **Action**: Start backend with `./platform.sh backtest` (after dependencies installed)
 - **Verify**: `curl -s http://localhost:8001/health/`
 
 ### Quality Gates Failing
