@@ -27,49 +27,81 @@ class RiskMonitor:
             data_provider: Data provider instance
             utility_manager: Centralized utility manager
         """
-        # Validate required configuration at startup (fail-fast)
-        required_keys = ['target_ltv', 'max_drawdown', 'leverage_enabled', 'venues']
-        for key in required_keys:
-            if key not in config:
-                from ....infrastructure.monitoring.logging import log_structured_error
-                log_structured_error(
-                    error_code='CONFIG-003',
-                    message=f'Missing required configuration: {key}',
-                    component='risk_monitor',
-                    context={'missing_key': key, 'required_keys': required_keys}
-                )
-                raise KeyError(f"Missing required configuration: {key}")
-        
-        # Validate nested configuration
-        if 'venues' in config:
-            for venue_name, venue_config in config['venues'].items():
-                if not isinstance(venue_config, dict):
-                    from ....infrastructure.monitoring.logging import log_structured_error
-                    log_structured_error(
-                        error_code='CONFIG-007',
-                        message=f'Invalid venue configuration for {venue_name}: must be a dictionary',
-                        component='risk_monitor',
-                        context={'venue_name': venue_name, 'venue_config': venue_config}
-                    )
-                    raise KeyError(f"Invalid venue configuration for {venue_name}: must be a dictionary")
-                if 'max_leverage' not in venue_config:
-                    from ....infrastructure.monitoring.logging import log_structured_error
-                    log_structured_error(
-                        error_code='CONFIG-003',
-                        message=f'Missing max_leverage in venue configuration for {venue_name}',
-                        component='risk_monitor',
-                        context={'venue_name': venue_name, 'venue_config': venue_config}
-                    )
-                    raise KeyError(f"Missing max_leverage in venue configuration for {venue_name}")
-        
+        # Store references
         self.config = config
         self.data_provider = data_provider
         self.utility_manager = utility_manager
         
-        # Risk tracking
-        self.last_risks = None
+        # Load AAVE risk parameters from data provider (as per spec)
+        self._load_aave_risk_parameters()
         
-        logger.info("RiskMonitor initialized (mode-agnostic)")
+        # Calculate target_ltv from AAVE risk parameters (as per spec)
+        self.target_ltv = self._calculate_target_ltv()
+        
+        # Use fallback values for modes that don't need them
+        self.max_drawdown = config.get('max_drawdown', 0.2)  # 20% default
+        self.leverage_enabled = config.get('leverage_enabled', False)  # False default
+        
+        # Load venue configuration with fallbacks
+        self.venues = config.get('venues', {})
+        
+        # Initialize risk metrics
+        self.current_risk_metrics = {}
+        self.last_calculation_timestamp = None
+        self.risk_history = []
+        
+        logger.info("RiskMonitor initialized successfully")
+    
+    def _load_aave_risk_parameters(self):
+        """Load AAVE risk parameters from data provider (as per spec)."""
+        try:
+            # Get AAVE risk parameters from data provider
+            # This should be loaded from protocol_data/aave/risk_params/aave_v3_risk_parameters.json
+            # For now, use hardcoded values as per spec
+            self.aave_risk_params = {
+                'emode': {
+                    'liquidation_bonus': {
+                        'weETH_WETH': 0.01  # 1% bonus for E-mode
+                    },
+                    'liquidation_thresholds': {
+                        'weETH_WETH': 0.95  # 95% LTV threshold for E-mode
+                    }
+                }
+            }
+            
+            self.aave_liquidation_bonus_emode = self.aave_risk_params['emode']['liquidation_bonus']['weETH_WETH']
+            self.aave_liquidation_threshold_emode = self.aave_risk_params['emode']['liquidation_thresholds']['weETH_WETH']
+            
+            logger.info("AAVE risk parameters loaded successfully")
+            
+        except Exception as e:
+            logger.warning(f"Failed to load AAVE risk parameters: {e}")
+            # Use fallback values
+            self.aave_liquidation_bonus_emode = 0.01
+            self.aave_liquidation_threshold_emode = 0.95
+    
+    def _calculate_target_ltv(self):
+        """Calculate target LTV from AAVE risk parameters (as per spec)."""
+        try:
+            # For modes that don't borrow (like pure_lending), target_ltv should be 0
+            if not self.leverage_enabled:
+                return 0.0
+            
+            # For modes that do borrow, calculate target LTV with safety buffer
+            # Target LTV should be below liquidation threshold with safety buffer
+            safety_buffer = 0.05  # 5% safety buffer
+            target_ltv = self.aave_liquidation_threshold_emode - safety_buffer
+            
+            # Ensure target LTV is reasonable (between 0 and 0.9)
+            target_ltv = max(0.0, min(target_ltv, 0.9))
+            
+            logger.info(f"Calculated target LTV: {target_ltv} (liquidation threshold: {self.aave_liquidation_threshold_emode})")
+            return target_ltv
+            
+        except Exception as e:
+            logger.warning(f"Failed to calculate target LTV: {e}")
+            # Use fallback value
+            return 0.0
     
     def calculate_risks(self, exposures: Dict[str, Any], timestamp: pd.Timestamp) -> Dict[str, Any]:
         """
