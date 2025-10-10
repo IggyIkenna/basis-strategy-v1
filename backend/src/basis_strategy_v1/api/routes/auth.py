@@ -147,3 +147,4 @@ async def get_current_user(token_payload: Dict[str, Any] = Depends(verify_token)
         ),
         message="User information retrieved successfully"
     )
+

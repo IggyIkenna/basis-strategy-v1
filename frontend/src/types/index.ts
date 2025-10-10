@@ -286,3 +286,4 @@ export const BACKTEST_STATUS = {
   FAILED: 'failed',
   CANCELLED: 'cancelled',
 } as const;
+

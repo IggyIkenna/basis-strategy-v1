@@ -373,3 +373,4 @@ def is_environment_loaded() -> bool:
         True if environment is loaded, False otherwise
     """
     return _environment_loader is not None
+

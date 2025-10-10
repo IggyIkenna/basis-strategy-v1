@@ -320,3 +320,4 @@ class BaseStrategyManager(ABC):
                     'dust_delta': self.dust_delta
                 }
             }
+

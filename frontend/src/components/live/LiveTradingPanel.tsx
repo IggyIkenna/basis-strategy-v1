@@ -353,3 +353,4 @@ export const LiveTradingPanel: React.FC<LiveTradingPanelProps> = ({ className = 
     </div>
   );
 };
+

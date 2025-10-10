@@ -18,7 +18,7 @@ from ...infrastructure.config.config_manager import (
     get_strategy_file_path,
     validate_strategy_name
 )
-from ...core.config import load_and_validate_config
+from ...infrastructure.config.config_validator import load_and_validate_config
 
 logger = structlog.get_logger()
 router = APIRouter()

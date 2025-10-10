@@ -89,3 +89,4 @@ export const formatUptime = (uptimeSeconds: number): string => {
     return `${minutes}m`;
   }
 };
+

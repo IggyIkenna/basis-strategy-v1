@@ -158,3 +158,4 @@ async def withdraw_capital(
         ),
         message=f"Withdrawal of {request.amount} {request.currency} queued successfully"
     )
+

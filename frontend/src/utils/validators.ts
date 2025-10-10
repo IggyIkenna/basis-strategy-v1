@@ -92,3 +92,4 @@ export const validateShareClass = (shareClass: string): { valid: boolean; messag
   }
   return { valid: true };
 };
+

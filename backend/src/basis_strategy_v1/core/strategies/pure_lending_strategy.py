@@ -337,3 +337,4 @@ class PureLendingStrategy(BaseStrategyManager):
                 atomic=False,
                 metadata={'error': str(e)}
             )
+

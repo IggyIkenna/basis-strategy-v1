@@ -551,3 +551,4 @@ class DataSubscriptions:
                 'success': False,
                 'error': str(e)
             }
+

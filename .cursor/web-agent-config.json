@@ -1,0 +1,73 @@
+{
+  "agent_name": "Basis Strategy Web Agent",
+  "background_mode": true,
+  "web_browser_mode": true,
+  "repository_context": {
+    "name": "basis-strategy-v1",
+    "type": "trading_strategy_framework",
+    "description": "Live and backtesting framework for multiple web3 and CEX trading strategies focused on yield generation through staking and funding rates with optional leverage"
+  },
+  "focus_areas": [
+    "backend/src/basis_strategy_v1/",
+    "docs/",
+    "configs/",
+    "scripts/",
+    "tests/"
+  ],
+  "excluded_areas": [
+    "data/",
+    "node_modules/",
+    "frontend/node_modules/",
+    "results/",
+    "logs/",
+    "*.csv",
+    "*.json",
+    "*.zip"
+  ],
+  "context_files": [
+    "docs/README.md",
+    "docs/REFERENCE_ARCHITECTURE_CANONICAL.md",
+    "docs/QUALITY_GATES.md",
+    "docs/WORKFLOW_GUIDE.md",
+    ".cursor/rules.json",
+    "requirements.txt",
+    "platform.sh"
+  ],
+  "primary_mission": "Help develop and maintain the Basis Strategy trading framework with focus on architecture compliance, quality gates, and documentation consistency",
+  "capabilities": [
+    "Code analysis and refactoring",
+    "Architecture compliance validation",
+    "Quality gate execution and fixes",
+    "Documentation consistency checks",
+    "Configuration management",
+    "Testing and validation",
+    "Frontend development support"
+  ],
+  "environment_setup": {
+    "python_version": "3.11+",
+    "node_version": "18+",
+    "required_packages": [
+      "requirements.txt",
+      "frontend/package.json"
+    ],
+    "setup_commands": [
+      "pip install -r requirements.txt",
+      "cd frontend && npm install && cd ..",
+      "python validate_config.py",
+      "python validate_docs.py"
+    ]
+  },
+  "quality_standards": {
+    "test_coverage": "80%+",
+    "quality_gates": "15/24 passing (60%+)",
+    "architecture_compliance": "100%",
+    "documentation_consistency": "100%"
+  },
+  "workflow_priorities": [
+    "1. Architecture compliance validation",
+    "2. Quality gate execution and fixes", 
+    "3. Documentation consistency",
+    "4. Code refactoring and improvements",
+    "5. Testing and validation"
+  ]
+}

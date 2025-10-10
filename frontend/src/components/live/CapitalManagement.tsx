@@ -389,3 +389,4 @@ export const CapitalManagement: React.FC<CapitalManagementProps> = ({ className 
     </div>
   );
 };
+
