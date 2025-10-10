@@ -16,6 +16,8 @@
 - **Strategy Specifications**: [MODES.md](MODES.md) - Canonical strategy mode definitions
 - **Design Decisions**: [REFERENCE_ARCHITECTURE_CANONICAL.md](REFERENCE_ARCHITECTURE_CANONICAL.md) - Core design decisions
 - **Component Specifications**: [specs/](specs/) - Detailed component implementation guides
+- **Target Repository Structure**: [TARGET_REPOSITORY_STRUCTURE.md](TARGET_REPOSITORY_STRUCTURE.md) - Reference for agents completing cursor tasks
+- **Agent Quick Reference**: [AGENT_QUICK_REFERENCE.md](AGENT_QUICK_REFERENCE.md) - Quick reference card for agents
 
 ---
 

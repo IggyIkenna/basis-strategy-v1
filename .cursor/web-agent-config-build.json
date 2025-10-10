@@ -1,0 +1,174 @@
+{
+  "agent_name": "Basis Strategy Build Executor",
+  "background_mode": true,
+  "web_browser_mode": true,
+  "autonomous_execution": true,
+  "repository_context": {
+    "name": "basis-strategy-v1",
+    "type": "trading_strategy_framework",
+    "description": "Live and backtesting framework for multiple web3 and CEX trading strategies focused on yield generation through staking and funding rates with optional leverage",
+    "current_goal": "100% working, tested, and deployed backtesting system",
+    "build_plan": "26-step implementation across 6 days"
+  },
+  "build_plan_context": {
+    "plan_file": ".cursor/plans/26-step-agent-build-f5075160.plan.md",
+    "master_sequence": ".cursor/tasks/00_master_task_sequence.md",
+    "total_tasks": 26,
+    "timeline_days": 6,
+    "current_status": "1/16 quality gates passing (6.2%) - CRITICAL FAILURE",
+    "target_status": "20/24 quality gates passing (83%)",
+    "target_coverage": "80% unit test coverage"
+  },
+  "focus_areas": [
+    "backend/src/basis_strategy_v1/",
+    "docs/",
+    "configs/",
+    "scripts/",
+    "tests/",
+    ".cursor/tasks/",
+    ".cursor/plans/"
+  ],
+  "excluded_areas": [
+    "data/",
+    "node_modules/",
+    "frontend/node_modules/",
+    "results/",
+    "logs/",
+    "*.csv",
+    "*.json",
+    "*.zip",
+    "venv/"
+  ],
+  "context_files": [
+    "docs/README.md",
+    "docs/REFERENCE_ARCHITECTURE_CANONICAL.md",
+    "docs/QUALITY_GATES.md",
+    "docs/WORKFLOW_GUIDE.md",
+    "docs/ARCHITECTURAL_DECISION_RECORDS.md",
+    "docs/DEVIATIONS_AND_CORRECTIONS.md",
+    ".cursor/rules.json",
+    ".cursor/web-agent-build-executor.md",
+    ".cursor/plans/26-step-agent-build-f5075160.plan.md",
+    ".cursor/tasks/00_master_task_sequence.md",
+    "requirements.txt",
+    "platform.sh"
+  ],
+  "primary_mission": "Execute the 26-step build plan autonomously to achieve 20/24 quality gates passing (83%) and 80% unit test coverage across 6 days",
+  "capabilities": [
+    "Autonomous task execution",
+    "Quality gate management and fixes",
+    "Architecture compliance validation",
+    "Code refactoring and improvements",
+    "Configuration management",
+    "Testing and validation",
+    "Server management",
+    "Progress tracking and reporting"
+  ],
+  "execution_phases": {
+    "day_1": {
+      "focus": "Foundation - Environment, Config, Data Loading",
+      "tasks": ["01_environment_file_switching", "02_config_loading_validation", "03_data_loading_quality_gate"],
+      "duration": "8 hours",
+      "success_criteria": "Environment switching, config validation, data loading working"
+    },
+    "day_2": {
+      "focus": "Core Architecture Refactors",
+      "tasks": ["07_fix_async_await_violations", "10_reference_based_architecture", "11_singleton_pattern", "06_strategy_manager_refactor", "08_mode_agnostic_architecture", "09_fail_fast_configuration"],
+      "duration": "12-16 hours",
+      "success_criteria": "All architectural violations fixed, components follow canonical patterns"
+    },
+    "day_3": {
+      "focus": "Component Integration & Quality Gates",
+      "tasks": ["12_tight_loop_architecture", "13_consolidate_duplicate_risk_monitors", "14_component_data_flow_architecture", "04_complete_api_endpoints", "05_health_logging_structure"],
+      "duration": "12-16 hours",
+      "success_criteria": "Component integration complete, APIs working, health system unified"
+    },
+    "day_4": {
+      "focus": "Strategy Mode Validation - Simple to Complex",
+      "tasks": ["15_pure_lending_quality_gates", "16_btc_basis_quality_gates", "17_eth_basis_quality_gates"],
+      "duration": "12-16 hours",
+      "success_criteria": "3 strategy modes E2E passing, APY fixed (3-8% not 1166%)"
+    },
+    "day_5": {
+      "focus": "Complex Modes & Component Unit Tests",
+      "tasks": ["18_usdt_market_neutral_quality_gates", "19_position_monitor_unit_tests", "20_exposure_monitor_unit_tests", "21_risk_monitor_unit_tests", "22_strategy_manager_unit_tests", "23_pnl_calculator_unit_tests"],
+      "duration": "12-16 hours",
+      "success_criteria": "Complex strategy working, 80% unit test coverage achieved"
+    },
+    "day_6": {
+      "focus": "Frontend & Live Mode Completion",
+      "tasks": ["24_frontend_implementation", "25_live_mode_quality_gates", "26_comprehensive_quality_gates"],
+      "duration": "12-16 hours",
+      "success_criteria": "Frontend complete, live mode ready, 20/24 quality gates passing"
+    }
+  },
+  "environment_setup": {
+    "python_version": "3.11+",
+    "node_version": "18+",
+    "required_packages": [
+      "requirements.txt",
+      "frontend/package.json"
+    ],
+    "setup_commands": [
+      "pip install -r requirements.txt",
+      "cd frontend && npm install && cd ..",
+      "python validate_config.py",
+      "python validate_docs.py"
+    ],
+    "server_management": {
+      "start_backend": "./platform.sh backtest",
+      "stop_services": "./platform.sh stop-local",
+      "check_status": "./platform.sh status",
+      "health_check": "curl -s http://localhost:8001/health/"
+    }
+  },
+  "quality_standards": {
+    "test_coverage": "80%+",
+    "quality_gates": "20/24 passing (83%)",
+    "architecture_compliance": "100%",
+    "documentation_consistency": "100%",
+    "current_baseline": "1/16 passing (6.2%) - CRITICAL FAILURE"
+  },
+  "workflow_priorities": [
+    "1. Start backend and verify health",
+    "2. Execute Day 1 foundation tasks (environment, config, data)",
+    "3. Execute Day 2 core architecture refactors",
+    "4. Execute Day 3 component integration",
+    "5. Execute Day 4 strategy validation",
+    "6. Execute Day 5 complex modes and unit tests",
+    "7. Execute Day 6 frontend and live mode",
+    "8. Validate final quality gate status"
+  ],
+  "critical_rules": {
+    "canonical_patterns": "Reference sections are law - never violate patterns in task Reference sections",
+    "adr_compliance": "All fixes must follow Architectural Decision Records",
+    "no_backward_compatibility": "Break cleanly, update all references",
+    "autonomous_execution": "No approval requests between tasks, quality gates are checkpoints",
+    "server_management": "Use ./platform.sh backtest to start, ./platform.sh stop-local to stop",
+    "error_handling": "10-minute timeout per command, max 3 retries, restart backend if needed"
+  },
+  "success_metrics": {
+    "daily_targets": {
+      "day_1": "Environment + config + data foundation ✅",
+      "day_2": "Core architecture violations fixed ✅",
+      "day_3": "Component integration complete ✅",
+      "day_4": "3 strategy modes E2E passing ✅",
+      "day_5": "Complex strategy + 80% unit coverage ✅",
+      "day_6": "Frontend + live mode + 20/24 gates passing ✅"
+    },
+    "final_target": {
+      "tasks_completed": "26/26 (100%)",
+      "quality_gates": "20/24 passing (83%)",
+      "test_coverage": "80%",
+      "strategy_modes": "4/4 E2E working",
+      "deployment_ready": "System ready for staging deployment"
+    }
+  },
+  "monitoring": {
+    "progress_tracking": "Log completion after each task",
+    "quality_gate_reporting": "Report quality gate results",
+    "issue_documentation": "Document any issues encountered",
+    "success_validation": "Validate progress after each task",
+    "autonomous_operation": "Continue until all 26 tasks complete"
+  }
+}
