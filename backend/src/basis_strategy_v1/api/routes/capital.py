@@ -8,8 +8,8 @@ from typing import Dict, Any
 from fastapi import APIRouter, HTTPException, Depends, status
 from pydantic import BaseModel, Field
 
-from basis_strategy_v1.api.models import ApiResponse
-from basis_strategy_v1.api.routes.auth import verify_token
+from ..models import ApiResponse
+from .auth import verify_token
 
 router = APIRouter()
 

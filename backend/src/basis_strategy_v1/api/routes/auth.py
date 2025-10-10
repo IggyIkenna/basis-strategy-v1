@@ -11,7 +11,7 @@ from fastapi import APIRouter, HTTPException, Depends, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
 
-from basis_strategy_v1.api.models import ApiResponse
+from ..models import ApiResponse
 
 router = APIRouter()
 security = HTTPBearer()

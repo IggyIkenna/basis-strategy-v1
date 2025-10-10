@@ -21,6 +21,9 @@ from .responses import (
     ResponseStatus
 )
 
+# Alias for backward compatibility
+ApiResponse = StandardResponse
+
 __all__ = [
     # Request models
     "BacktestRequest",
@@ -29,6 +32,7 @@ __all__ = [
     "ShareClass",
     # Response models
     "StandardResponse",
+    "ApiResponse",
     "BacktestResponse",
     "BacktestStatusResponse", 
     "BacktestResultResponse",
