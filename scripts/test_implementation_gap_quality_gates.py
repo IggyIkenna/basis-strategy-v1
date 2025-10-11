@@ -20,13 +20,33 @@ def find_component_specs(specs_dir: str = "docs/specs/") -> List[str]:
             specs.append(os.path.join(specs_dir, file))
     return sorted(specs)
 
-def find_component_implementations(backend_dir: str = "backend/src/basis_strategy_v1/core/strategies/components/") -> List[str]:
+def find_component_implementations(backend_dir: str = "backend/src/basis_strategy_v1/") -> List[str]:
     """Find all component implementation files."""
     implementations = []
-    if os.path.exists(backend_dir):
-        for file in os.listdir(backend_dir):
-            if file.endswith('.py') and not file.startswith('__'):
-                implementations.append(os.path.join(backend_dir, file))
+    
+    # Search in multiple directories for component implementations
+    search_dirs = [
+        "core/strategies/components/",
+        "core/math/",
+        "core/interfaces/",
+        "core/services/",
+        "core/event_engine/",
+        "core/execution/",
+        "core/utilities/",
+        "infrastructure/config/",
+        "infrastructure/logging/",
+        "infrastructure/persistence/",
+        "infrastructure/monitoring/",
+        "data_provider/"
+    ]
+    
+    for search_dir in search_dirs:
+        full_path = os.path.join(backend_dir, search_dir)
+        if os.path.exists(full_path):
+            for file in os.listdir(full_path):
+                if file.endswith('.py') and not file.startswith('__'):
+                    implementations.append(os.path.join(full_path, file))
+    
     return sorted(implementations)
 
 def extract_spec_methods(spec_file: str) -> Dict[str, List[str]]:
@@ -39,12 +59,23 @@ def extract_spec_methods(spec_file: str) -> Dict[str, List[str]]:
         config_params = []
         
         # Extract methods from "Core Methods" section
-        core_methods_match = re.search(r'## Core Methods(.*?)(?=## |$)', content, re.DOTALL)
+        core_methods_match = re.search(r'## Core Methods(.*?)(?=## |$)', content, re.DOTALL | re.MULTILINE)
         if core_methods_match:
             methods_text = core_methods_match.group(1)
-            # Find method signatures
-            method_matches = re.findall(r'### (\w+)\([^)]*\)', methods_text)
+            # Find method signatures - be more flexible with whitespace
+            method_matches = re.findall(r'###\s+(\w+)\s*\([^)]*\)', methods_text)
             methods.extend(method_matches)
+        else:
+            pass  # No Core Methods section found
+        
+        # Also try to find all method patterns in the entire file as fallback
+        all_method_matches = re.findall(r'###\s+(\w+)\s*\([^)]*\)', content)
+        if all_method_matches:
+            # Only add methods that look like actual method definitions (not headers)
+            for method in all_method_matches:
+                if method not in ['Config-Driven', 'Tracked', 'System-Level', 'Component-Specific', 'Environment', 'Universal', 'Component-Specific', 'Config', 'Input', 'Output', 'Data', 'Behavior', 'Data', 'Position', 'Backtest', 'Live', 'Complete', 'Key', 'ComponentFactory', 'Component-Specific', 'Event', 'Event', 'Structured', 'POS-001', 'POS-002', 'POS-003', 'POS-004', 'Unit', 'Integration', 'End-to-End', 'Provides', 'Receives', 'Tight', 'Architecture', 'Completed', 'TODO', 'Quality', 'Task', 'Component', 'Architecture', 'Configuration']:
+                    if method not in methods:  # Avoid duplicates
+                        methods.append(method)
         
         # Extract config parameters from "Configuration Parameters" section
         config_match = re.search(r'## Configuration Parameters(.*?)(?=## |$)', content, re.DOTALL)
@@ -168,7 +199,19 @@ def generate_gap_report(specs: List[str], implementations: List[str]) -> Dict[st
             'executionmanager': 'execution_manager.py',
             'eventlogger': 'event_logger.py',
             'dataprovider': 'data_provider.py',
-            'positionupdatehandler': 'position_update_handler.py'
+            'positionupdatehandler': 'position_update_handler.py',
+            'executioninterfaces': 'cex_execution_interface.py',
+            'executioninterfacefactory': 'execution_interface_factory.py',
+            'executioninterfacemanager': 'execution_interface_manager.py',
+            'reconciliationcomponent': 'reconciliation_manager.py',
+            'frontendspec': 'frontend_spec.py',
+            'backtestservice': 'backtest_service.py',
+            'livetradingservice': 'live_trading_service.py',
+            'eventdrivenstrategyengine': 'event_driven_strategy_engine.py',
+            'mathutilities': 'utility_manager.py',
+            'healtherrorsystems': 'health_monitor.py',
+            'resultsstore': 'results_store.py',
+            'configuration': 'config_manager.py'
         }
         
         if spec_name_clean in component_mapping:

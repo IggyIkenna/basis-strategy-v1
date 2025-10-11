@@ -8,6 +8,7 @@ lending_enabled: false
 staking_enabled: false
 basis_trade_enabled: true
 borrowing_enabled: false
+leverage_enabled: false
 # No borrowing/leverage loops
 enable_market_impact: true
 
@@ -16,6 +17,7 @@ share_class: "USDT"
 asset: "BTC"
 lst_type: null
 rewards_mode: "base_only"
+btc_allocation: 1.0  # 100% allocation to BTC basis strategy
 
 # Execution parameters
 hedge_venues: ["binance", "bybit", "okx"]
@@ -28,6 +30,21 @@ position_deviation_threshold: 0.02  # 2% deviation from target triggers rebalanc
 # Risk parameters
 margin_ratio_target: 0.8  # Target CEX margin ratio for futures (80% conservative)
 # NOTE: No AAVE in this mode, so no max_ltv/liquidation_threshold/max_stake_spread_move
+
+# Venue configuration
+venues:
+  binance:
+    enabled: true
+    spot_enabled: true
+    perp_enabled: true
+  bybit:
+    enabled: true
+    spot_enabled: true
+    perp_enabled: true
+  okx:
+    enabled: true
+    spot_enabled: true
+    perp_enabled: true
 
 # Delta neutrality parameters
 delta_tolerance: 0.005  # 0.5% tolerance of gross exposure for delta neutrality
