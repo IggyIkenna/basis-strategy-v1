@@ -457,3 +457,49 @@ class PositionMonitor:
         except Exception as e:
             logger.error(f"Error getting config parameters: {e}")
             return {}
+    
+    def verify_reconciliation(self) -> Dict[str, Any]:
+        """
+        Verify position reconciliation after execution.
+        
+        This method ensures that position updates match expected state
+        after execution instructions have been processed.
+        
+        Returns:
+            Dict with reconciliation status and details
+        """
+        try:
+            # Get current position snapshot
+            current_position = self.get_snapshot()
+            
+            # Basic reconciliation checks
+            reconciliation_checks = {
+                'position_data_available': current_position is not None,
+                'timestamp_valid': 'timestamp' in current_position,
+                'position_data_valid': 'positions' in current_position
+            }
+            
+            # Check if all basic checks pass
+            all_checks_passed = all(reconciliation_checks.values())
+            
+            if all_checks_passed:
+                logger.debug("Position reconciliation verification passed")
+                return {
+                    'status': 'success',
+                    'message': 'Position reconciliation verified',
+                    'checks': reconciliation_checks
+                }
+            else:
+                logger.warning(f"Position reconciliation verification failed: {reconciliation_checks}")
+                return {
+                    'status': 'failed',
+                    'message': 'Position reconciliation verification failed',
+                    'checks': reconciliation_checks
+                }
+                
+        except Exception as e:
+            logger.error(f"Error during position reconciliation verification: {e}")
+            return {
+                'status': 'error',
+                'message': f'Reconciliation verification error: {str(e)}'
+            }

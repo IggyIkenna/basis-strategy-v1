@@ -23,6 +23,8 @@ position_deviation_threshold: 0.02  # 2% deviation from target triggers rebalanc
 
 # Risk parameters
 margin_ratio_target: 1.0  # Not applicable (no CEX margin, no borrowing)
+leverage_enabled: false  # No leverage in pure lending
+max_drawdown: 0.005  # 0.5% max drawdown (only gas/conversion costs)
 # NOTE: No AAVE borrowing in this mode, so no max_ltv/liquidation_threshold/max_stake_spread_move
 
 # Data requirements
@@ -39,7 +41,6 @@ time_throttle_interval: 60
 
 # Performance targets
 target_apy: 0.05  # 5% APY target
-max_drawdown: 0.005  # 0.5% max drawdown (only gas/conversion costs)
 
 # Component configuration
 component_config:

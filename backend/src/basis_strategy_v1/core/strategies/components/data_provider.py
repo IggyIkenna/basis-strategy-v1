@@ -22,6 +22,12 @@ from ...infrastructure.logging.structured_logger import get_data_provider_logger
 
 class DataProvider:
     """Provides data access for strategy components."""
+    _instance = None
+    
+    def __new__(cls, *args, **kwargs):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
     
     def __init__(self, config: Dict[str, Any]):
         self.config = config

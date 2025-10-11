@@ -161,6 +161,23 @@ def __init__(self, config: Dict, ...):
     self.conversion_methods = self.exposure_config.get('conversion_methods', {})
 ```
 
+## Data Flow Pattern
+
+### Input Parameters
+- `positions`: Position data from position monitor
+- `market_data`: Market data from data provider
+- `timestamp`: Current timestamp for data consistency
+
+### Output Data
+- `exposure_data`: Calculated exposure data
+- `exposure_history`: Historical exposure data
+
+### Data Flow
+```
+Position Monitor → positions → Exposure Monitor → exposure_data → Risk Monitor
+Data Provider → market_data → Exposure Monitor → exposure_data → Risk Monitor
+```
+
 ### Behavior NOT Determinable from Config
 - AAVE index conversion formulas (hard-coded algorithms)
 - Data structure expectations (hard-coded field names)

@@ -111,9 +111,14 @@ class BaseStrategyManager(ABC):
             return 0.0
     
     def trigger_tight_loop(self):
-        """Trigger tight loop component chain after position updates"""
-        # Position updates trigger sequential component chain:
-        # position_monitor → exposure_monitor → risk_monitor → pnl_monitor
+        """
+        Trigger tight loop execution reconciliation pattern.
+        
+        The tight loop ensures that each execution instruction is followed by
+        position reconciliation before proceeding to the next instruction.
+        
+        Tight Loop = execution → position_monitor → reconciliation → next instruction
+        """
         try:
             self.event_engine.trigger_tight_loop()
         except Exception as e:

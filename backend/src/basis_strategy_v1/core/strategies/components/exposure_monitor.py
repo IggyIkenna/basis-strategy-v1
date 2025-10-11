@@ -38,11 +38,11 @@ class ExposureMonitor:
         self.utility_manager = utility_manager
         
         # Load component-specific configuration
-        component_config = config.get('component_config', {})
-        exposure_monitor_config = component_config.get('exposure_monitor', {})
-        self.exposure_currency = exposure_monitor_config.get('exposure_currency', 'USDT')
-        self.track_assets = exposure_monitor_config.get('track_assets', [])
-        self.conversion_methods = exposure_monitor_config.get('conversion_methods', {})
+        component_config = config['component_config']
+        exposure_monitor_config = component_config['exposure_monitor']
+        self.exposure_currency = exposure_monitor_config['exposure_currency']
+        self.track_assets = exposure_monitor_config['track_assets']
+        self.conversion_methods = exposure_monitor_config['conversion_methods']
         
         # Exposure tracking
         self.last_exposures = None
@@ -89,8 +89,8 @@ class ExposureMonitor:
             
             return {
                 'timestamp': timestamp,
-                'total_value_usd': exposure_metrics.get('total_usdt_exposure', 0.0),  # Use total_value_usd for PnL calculator
-                'total_exposure': exposure_metrics.get('total_usdt_exposure', 0.0),  # Keep total_exposure for compatibility
+                'total_value_usd': exposure_metrics['total_usdt_exposure'],  # Use total_value_usd for PnL calculator
+                'total_exposure': exposure_metrics['total_usdt_exposure'],  # Keep total_exposure for compatibility
                 'total_exposures': total_exposures,
                 'exposure_metrics': exposure_metrics,
                 'exposure_by_category': exposure_by_category,
@@ -121,7 +121,7 @@ class ExposureMonitor:
             wallet_positions = {}
             
             # Extract wallet positions from positions
-            wallet_data = positions.get('wallet_positions', {})
+            wallet_data = positions['wallet_positions']
             
             for venue, balances in wallet_data.items():
                 for token, amount in balances.items():
@@ -139,7 +139,7 @@ class ExposureMonitor:
             smart_contract_positions = {}
             
             # Extract smart contract positions from positions
-            smart_contract_data = positions.get('smart_contract_positions', {})
+            smart_contract_data = positions['smart_contract_positions']
             
             for protocol, balances in smart_contract_data.items():
                 for token, amount in balances.items():
@@ -157,7 +157,7 @@ class ExposureMonitor:
             cex_spot_positions = {}
             
             # Extract CEX spot positions from positions
-            cex_spot_data = positions.get('cex_spot_positions', {})
+            cex_spot_data = positions['cex_spot_positions']
             
             for exchange, balances in cex_spot_data.items():
                 for token, amount in balances.items():
@@ -175,7 +175,7 @@ class ExposureMonitor:
             cex_derivatives_positions = {}
             
             # Extract CEX derivatives positions from positions
-            cex_derivatives_data = positions.get('cex_derivatives_positions', {})
+            cex_derivatives_data = positions['cex_derivatives_positions']
             
             for exchange, balances in cex_derivatives_data.items():
                 for token, amount in balances.items():
