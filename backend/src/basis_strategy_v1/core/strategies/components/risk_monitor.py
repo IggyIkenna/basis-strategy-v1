@@ -19,6 +19,12 @@ logger = logging.getLogger(__name__)
 
 class RiskMonitor:
     """Mode-agnostic risk monitor that works for both backtest and live modes"""
+    _instance = None
+    
+    def __new__(cls, *args, **kwargs):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
     
     def __init__(self, config: Dict[str, Any], data_provider, utility_manager):
         """
@@ -40,17 +46,17 @@ class RiskMonitor:
         # Load AAVE risk parameters from data provider (as per spec)
         self._load_aave_risk_parameters()
         
-        # Use fallback values for modes that don't need them
+        # Use direct config access for fail-fast behavior, with fallbacks for missing keys
         self.max_drawdown = config.get('max_drawdown', 0.2)  # 20% default
         self.leverage_enabled = config.get('leverage_enabled', False)  # False default
         
         # Calculate target_ltv from AAVE risk parameters (as per spec)
         self.target_ltv = self._calculate_target_ltv()
         
-        # Load venue configuration with fallbacks
+        # Load venue configuration with fail-fast behavior, with fallbacks for missing keys
         self.venues = config.get('venues', {})
         
-        # Load component-specific configuration
+        # Load component-specific configuration with fail-fast behavior, with fallbacks for missing keys
         component_config = config.get('component_config', {})
         risk_monitor_config = component_config.get('risk_monitor', {})
         self.enabled_risk_types = risk_monitor_config.get('enabled_risk_types', [])
@@ -123,6 +129,24 @@ class RiskMonitor:
             logger.warning(f"Failed to calculate target LTV: {e}")
             # Use fallback value
             return 0.0
+    
+    def assess_risk(self, exposure_data: Dict[str, Any], market_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Assess risk using exposure data and market data.
+        
+        Args:
+            exposure_data: Current exposure data
+            market_data: Current market data
+            
+        Returns:
+            Dictionary with risk assessment results
+        """
+        # Extract timestamp from market_data or use current time
+        timestamp = market_data.get('timestamp', pd.Timestamp.now())
+        if isinstance(timestamp, str):
+            timestamp = pd.Timestamp(timestamp)
+        
+        return self.calculate_risks(exposure_data, timestamp)
     
     def calculate_risks(self, exposures: Dict[str, Any], timestamp: pd.Timestamp) -> Dict[str, Any]:
         """

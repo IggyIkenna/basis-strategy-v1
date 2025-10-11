@@ -111,6 +111,38 @@ async def start_live_trading(
 
 
 @router.get(
+    "/status",
+    response_model=StandardResponse[Dict[str, Any]],
+    summary="Get live trading system status",
+    description="Get the overall live trading system status"
+)
+async def get_live_trading_system_status(
+    http_request: Request,
+    service: LiveTradingService = Depends(get_live_trading_service)
+) -> StandardResponse[Dict[str, Any]]:
+    """Get the overall live trading system status."""
+    correlation_id = getattr(http_request.state, "correlation_id", "unknown")
+    
+    try:
+        system_status = await service.get_system_status()
+        
+        return StandardResponse(
+            success=True,
+            data=system_status,
+            correlation_id=correlation_id
+        )
+        
+    except Exception as e:
+        logger.error(
+            "Failed to get live trading system status",
+            correlation_id=correlation_id,
+            error=str(e),
+            exc_info=True
+        )
+        raise HTTPException(status_code=500, detail=f"Failed to get system status: {str(e)}")
+
+
+@router.get(
     "/status/{request_id}",
     response_model=StandardResponse[LiveTradingStatusResponse],
     summary="Get live trading status",

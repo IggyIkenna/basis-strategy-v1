@@ -83,10 +83,9 @@ class PositionUpdateHandler:
                  position_monitor,
                  exposure_monitor,
                  risk_monitor,
-                 pnl_calculator,
-                 execution_mode: str = 'backtest'):
+                 pnl_calculator):
         """
-        Initialize position update handler.
+        Initialize position update handler (mode-agnostic).
         
         Args:
             config: Strategy configuration
@@ -94,16 +93,14 @@ class PositionUpdateHandler:
             exposure_monitor: Exposure monitor instance
             risk_monitor: Risk monitor instance
             pnl_calculator: P&L calculator instance
-            execution_mode: 'backtest' or 'live'
         """
         self.config = config
         self.position_monitor = position_monitor
         self.exposure_monitor = exposure_monitor
         self.risk_monitor = risk_monitor
         self.pnl_calculator = pnl_calculator
-        self.execution_mode = execution_mode
         
-        position_update_logger.info(f"Position Update Handler initialized in {execution_mode} mode")
+        position_update_logger.info(f"Position Update Handler initialized (mode-agnostic)")
     
     def handle_position_update(self, 
                                    changes: Dict[str, Any], 
@@ -131,17 +128,20 @@ class PositionUpdateHandler:
         try:
             position_update_logger.info(f"Position Update Handler: Handling update from {trigger_component}")
             
-            # Step 1: Update position monitor
-            if self.execution_mode == 'backtest':
-                # Backtest mode: Apply simulated changes
-                position_update_logger.info(f"Position Update Handler: Applying simulated changes in backtest mode")
+            # Step 1: Update position monitor (mode-agnostic)
+            # Use configuration to determine behavior instead of mode checks
+            use_simulated_changes = self.config.get('use_simulated_changes', True)
+            
+            if use_simulated_changes:
+                # Apply simulated changes (backtest behavior)
+                position_update_logger.info(f"Position Update Handler: Applying simulated changes")
                 # Ensure timestamp is in the correct format for position monitor
                 if 'timestamp' in changes and not isinstance(changes['timestamp'], pd.Timestamp):
                     changes['timestamp'] = pd.Timestamp(changes['timestamp'])
                 updated_snapshot =  self.position_monitor.update(changes)
             else:
-                # Live mode: Refresh from actual exchange connections
-                position_update_logger.info(f"Position Update Handler: Refreshing position from exchanges in live mode")
+                # Refresh from actual exchange connections (live behavior)
+                position_update_logger.info(f"Position Update Handler: Refreshing position from exchanges")
                 updated_snapshot =  self.position_monitor.refresh_from_exchanges()
             
             # Step 2: Recalculate exposure
@@ -187,7 +187,7 @@ class PositionUpdateHandler:
                 'risk': updated_risk,
                 'pnl': updated_pnl,
                 'trigger_component': trigger_component,
-                'execution_mode': self.execution_mode
+                'mode_agnostic': True
             }
             
         except Exception as e:
@@ -217,8 +217,11 @@ class PositionUpdateHandler:
         try:
             position_update_logger.info(f"Position Update Handler: Handling atomic update from {trigger_component}")
             
-            # For atomic operations, only update position monitor
-            if self.execution_mode == 'backtest':
+            # For atomic operations, only update position monitor (mode-agnostic)
+            # Use configuration to determine behavior instead of mode checks
+            use_simulated_changes = self.config.get('use_simulated_changes', True)
+            
+            if use_simulated_changes:
                 # Ensure timestamp is in the correct format for position monitor
                 if 'timestamp' in changes and not isinstance(changes['timestamp'], pd.Timestamp):
                     changes['timestamp'] = pd.Timestamp(changes['timestamp'])
@@ -232,7 +235,7 @@ class PositionUpdateHandler:
                 'success': True,
                 'position_snapshot': updated_snapshot,
                 'trigger_component': trigger_component,
-                'execution_mode': self.execution_mode,
+                'mode_agnostic': True,
                 'atomic_mode': True
             }
             
@@ -296,7 +299,7 @@ class PositionUpdateHandler:
                 'exposure': updated_exposure,
                 'risk': updated_risk,
                 'pnl': updated_pnl,
-                'execution_mode': self.execution_mode,
+                'mode_agnostic': True,
                 'post_atomic': True
             }
             

@@ -17,6 +17,12 @@ logger = logging.getLogger(__name__)
 
 class ExposureMonitor:
     """Mode-agnostic exposure monitor that works for both backtest and live modes"""
+    _instance = None
+    
+    def __new__(cls, *args, **kwargs):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
     
     def __init__(self, config: Dict[str, Any], data_provider, utility_manager):
         """
@@ -83,7 +89,8 @@ class ExposureMonitor:
             
             return {
                 'timestamp': timestamp,
-                'total_exposure': exposure_metrics.get('total_usdt_exposure', 0.0),  # Add missing total_exposure field
+                'total_value_usd': exposure_metrics.get('total_usdt_exposure', 0.0),  # Use total_value_usd for PnL calculator
+                'total_exposure': exposure_metrics.get('total_usdt_exposure', 0.0),  # Keep total_exposure for compatibility
                 'total_exposures': total_exposures,
                 'exposure_metrics': exposure_metrics,
                 'exposure_by_category': exposure_by_category,
@@ -99,6 +106,8 @@ class ExposureMonitor:
             logger.error(f"Error calculating exposures: {e}")
             return {
                 'timestamp': timestamp,
+                'total_value_usd': 0.0,  # Add total_value_usd for PnL calculator
+                'total_exposure': 0.0,  # Keep total_exposure for compatibility
                 'total_exposures': {},
                 'exposure_metrics': {},
                 'exposure_by_category': {},

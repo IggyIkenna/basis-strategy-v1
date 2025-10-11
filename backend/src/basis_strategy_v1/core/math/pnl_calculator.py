@@ -143,6 +143,12 @@ class PnLCalculatorError(Exception):
 
 class PnLCalculator:
     """Calculate P&L using balance-based and attribution methods."""
+    _instance = None
+    
+    def __new__(cls, *args, **kwargs):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
     
     def __init__(self, 
                  config: Dict[str, Any],
@@ -309,6 +315,10 @@ class PnLCalculator:
             pnl_cumulative = current_value - self.initial_total_value
             pnl_logger.info(f"P&L Calculator: Balance-based P&L - current_value: ${current_value:,.2f}, initial_total_value: ${self.initial_total_value:,.2f}, pnl_cumulative: ${pnl_cumulative:,.2f}")
             
+            # Add empty exposures key for compatibility with existing code
+            if 'exposures' not in current_exposure:
+                current_exposure['exposures'] = {}
+            
             # Calculate hourly P&L if we have previous exposure
             if self.previous_exposure:
                 if 'total_value_usd' not in self.previous_exposure:
@@ -350,6 +360,11 @@ class PnLCalculator:
         """Calculate P&L from component breakdown."""
         if previous_exposure is None:
             # First hour, no P&L yet
+            return self._zero_attribution()
+        
+        # Ensure previous_exposure is a dictionary, not a Timestamp
+        if not isinstance(previous_exposure, dict):
+            pnl_logger.warning(f"Previous exposure is not a dict: {type(previous_exposure)}, returning zero attribution")
             return self._zero_attribution()
         
         # Mode-specific attribution calculation
@@ -495,6 +510,11 @@ class PnLCalculator:
         """Calculate AAVE supply yield from index growth."""
         supply_pnl = 0.0
         
+        # Ensure both parameters are dictionaries
+        if not isinstance(current, dict) or not isinstance(previous, dict):
+            pnl_logger.warning(f"Supply PnL calculation: current type: {type(current)}, previous type: {type(previous)}")
+            return 0.0
+        
         # Calculate aWeETH supply P&L (for ETH-based strategies)
         current_aweeth = current['exposures'].get('aWeETH', {})
         previous_aweeth = previous['exposures'].get('aWeETH', {})
@@ -536,6 +556,11 @@ class PnLCalculator:
     
     def _calc_staking_pnl(self, current: Dict, previous: Dict) -> float:
         """Calculate staking yield from oracle price changes."""
+        # Ensure both parameters are dictionaries
+        if not isinstance(current, dict) or not isinstance(previous, dict):
+            pnl_logger.warning(f"Staking PnL calculation: current type: {type(current)}, previous type: {type(previous)}")
+            return 0.0
+        
         # This captures the weETH/ETH oracle price appreciation
         # (base staking yield, not seasonal rewards)
         
@@ -562,6 +587,10 @@ class PnLCalculator:
     
     def _calc_price_change_pnl(self, current: Dict, previous: Dict) -> float:
         """Calculate P&L from ETH price changes on net exposure."""
+        # Ensure both parameters are dictionaries
+        if not isinstance(current, dict) or not isinstance(previous, dict):
+            pnl_logger.warning(f"Price change PnL calculation: current type: {type(current)}, previous type: {type(previous)}")
+            return 0.0
         # This captures the effect of ETH price changes on the net delta
         current_eth_price = current['exposures'].get('aWeETH', {}).get('eth_usd_price', 3000.0)
         previous_eth_price = previous['exposures'].get('aWeETH', {}).get('eth_usd_price', 3000.0)
@@ -579,6 +608,11 @@ class PnLCalculator:
     
     def _calc_borrow_cost(self, current: Dict, previous: Dict) -> float:
         """Calculate AAVE borrow costs from debt index growth."""
+        # Ensure both parameters are dictionaries
+        if not isinstance(current, dict) or not isinstance(previous, dict):
+            pnl_logger.warning(f"Borrow cost calculation: current type: {type(current)}, previous type: {type(previous)}")
+            return 0.0
+        
         # Get debt exposure
         current_debt = current['exposures'].get('variableDebtWETH', {})
         previous_debt = previous['exposures'].get('variableDebtWETH', {})
@@ -758,6 +792,11 @@ class PnLCalculator:
     
     def _calc_delta_pnl(self, current: Dict, previous: Dict) -> float:
         """Calculate P&L from delta drift."""
+        # Ensure both parameters are dictionaries
+        if not isinstance(current, dict) or not isinstance(previous, dict):
+            pnl_logger.warning(f"Delta PnL calculation: current type: {type(current)}, previous type: {type(previous)}")
+            return 0.0
+        
         # Delta P&L = (current_delta - previous_delta) × price_change
         current_delta = current.get('net_delta_eth', 0)
         previous_delta = previous.get('net_delta_eth', 0)

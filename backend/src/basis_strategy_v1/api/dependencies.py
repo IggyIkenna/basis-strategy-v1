@@ -10,7 +10,7 @@ from pathlib import Path
 from datetime import datetime
 import structlog
 
-from ..infrastructure.config.config_manager import get_settings
+from ..infrastructure.config.config_manager import get_settings, ConfigManager
 from ..infrastructure.data.data_provider_factory import create_data_provider
 from ..core.event_engine.event_driven_strategy_engine import EventDrivenStrategyEngine
 
@@ -23,6 +23,16 @@ logger = structlog.get_logger()
 class DependencyError(Exception):
     """Raised when dependency injection fails."""
     pass
+
+
+@lru_cache()
+def get_config_manager():
+    """Get config manager instance."""
+    try:
+        return ConfigManager()
+    except Exception as e:
+        logger.error(f"Failed to create config manager: {e}")
+        raise DependencyError(f"Config manager creation failed: {e}")
 
 
 @lru_cache()

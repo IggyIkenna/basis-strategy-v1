@@ -1,0 +1,275 @@
+{
+  "config_validation": {
+    "base_config": {
+      "status": "missing"
+    },
+    "scenario_configs": {
+      "eth_basis": {
+        "status": "loaded",
+        "mode": "eth_basis",
+        "share_class": "ETH",
+        "data_requirements": [
+          "eth_prices",
+          "eth_futures",
+          "funding_rates",
+          "gas_costs",
+          "execution_costs"
+        ],
+        "has_target_apy": true,
+        "has_max_drawdown": true
+      },
+      "eth_leveraged": {
+        "status": "loaded",
+        "mode": "eth_leveraged",
+        "share_class": "ETH",
+        "data_requirements": [
+          "eth_prices",
+          "weeth_prices",
+          "aave_lending_rates",
+          "staking_rewards",
+          "eigen_rewards",
+          "gas_costs",
+          "execution_costs",
+          "aave_risk_params"
+        ],
+        "has_target_apy": true,
+        "has_max_drawdown": true
+      },
+      "eth_staking_only": {
+        "status": "loaded",
+        "mode": "eth_staking_only",
+        "share_class": "ETH",
+        "data_requirements": [
+          "eth_prices",
+          "weeth_prices",
+          "aave_lending_rates",
+          "staking_rewards",
+          "eigen_rewards",
+          "gas_costs",
+          "execution_costs",
+          "aave_risk_params"
+        ],
+        "has_target_apy": true,
+        "has_max_drawdown": true
+      },
+      "pure_lending": {
+        "status": "loaded",
+        "mode": "pure_lending",
+        "share_class": "USDT",
+        "data_requirements": [
+          "usdt_prices",
+          "aave_lending_rates",
+          "gas_costs",
+          "execution_costs"
+        ],
+        "has_target_apy": true,
+        "has_max_drawdown": true
+      },
+      "usdt_market_neutral_no_leverage": {
+        "status": "loaded",
+        "mode": "usdt_market_neutral_no_leverage",
+        "share_class": "USDT",
+        "data_requirements": [
+          "eth_prices",
+          "weeth_prices",
+          "aave_lending_rates",
+          "staking_rewards",
+          "eigen_rewards",
+          "ethfi_rewards",
+          "funding_rates",
+          "gas_costs",
+          "execution_costs",
+          "aave_risk_params",
+          "lst_market_prices"
+        ],
+        "has_target_apy": true,
+        "has_max_drawdown": true
+      },
+      "usdt_market_neutral": {
+        "status": "loaded",
+        "mode": "usdt_market_neutral",
+        "share_class": "USDT",
+        "data_requirements": [
+          "eth_prices",
+          "weeth_prices",
+          "aave_lending_rates",
+          "staking_rewards",
+          "eigen_rewards",
+          "ethfi_rewards",
+          "funding_rates",
+          "gas_costs",
+          "execution_costs",
+          "aave_risk_params",
+          "lst_market_prices"
+        ],
+        "has_target_apy": true,
+        "has_max_drawdown": true
+      },
+      "btc_basis": {
+        "status": "loaded",
+        "mode": "btc_basis",
+        "share_class": "USDT",
+        "data_requirements": [
+          "btc_prices",
+          "btc_futures",
+          "funding_rates",
+          "gas_costs",
+          "execution_costs"
+        ],
+        "has_target_apy": true,
+        "has_max_drawdown": true
+      }
+    },
+    "venue_configs": {
+      "aave_v3": {
+        "status": "loaded",
+        "venue_type": null,
+        "has_api_config": false
+      },
+      "binance": {
+        "status": "loaded",
+        "venue_type": null,
+        "has_api_config": false
+      },
+      "morpho": {
+        "status": "loaded",
+        "venue_type": null,
+        "has_api_config": false
+      },
+      "okx": {
+        "status": "loaded",
+        "venue_type": null,
+        "has_api_config": false
+      },
+      "instadapp": {
+        "status": "loaded",
+        "venue_type": null,
+        "has_api_config": false
+      },
+      "etherfi": {
+        "status": "loaded",
+        "venue_type": null,
+        "has_api_config": false
+      },
+      "lido": {
+        "status": "loaded",
+        "venue_type": null,
+        "has_api_config": false
+      },
+      "alchemy": {
+        "status": "loaded",
+        "venue_type": null,
+        "has_api_config": false
+      },
+      "bybit": {
+        "status": "loaded",
+        "venue_type": null,
+        "has_api_config": false
+      }
+    }
+  },
+  "data_validation": {
+    "data_structure": {
+      "market_data": {
+        "exists": true,
+        "file_count": 518,
+        "sample_files": [
+          "cex_data_orchestrator_report_2024-05-01_2025-09-01.json",
+          "cex_data_orchestrator_report_2020-01-01_2025-09-26.json",
+          "spot_prices",
+          "cex_data_orchestrator_report_2024-06-01_2024-07-01.json",
+          "cex_data_orchestrator_report_2025-09-01_2025-09-18.json"
+        ]
+      },
+      "protocol_data": {
+        "exists": true,
+        "file_count": 51,
+        "sample_files": [
+          "aave",
+          "staking",
+          "aave_pipeline_report_2024-01-01_2025-09-29_20250929_1219.json",
+          "aave_calibration_report_20250929_1219.json",
+          "risk_params"
+        ]
+      },
+      "blockchain_data": {
+        "exists": true,
+        "file_count": 7,
+        "sample_files": [
+          "gas_prices",
+          "onchain_gas_data_report_2024-01-01_2025-09-26.json",
+          "gas_data_orchestrator_report_2024-01-01_2025-09-26.json",
+          "ethereum_gas_prices_enhanced_2024-01-01_2025-09-26.csv",
+          "ethereum_gas_prices_2024-01-01_2025-09-26.csv"
+        ]
+      },
+      "execution_costs": {
+        "exists": true,
+        "file_count": 5,
+        "sample_files": [
+          "execution_cost_summary.json",
+          "execution_cost_simulation_results.csv",
+          "execution_cost_orchestrator_report_2024-01-01_2025-09-18.json",
+          "lookup_tables",
+          "execution_costs_lookup.json"
+        ]
+      },
+      "manual_sources": {
+        "exists": true,
+        "file_count": 10,
+        "sample_files": [
+          "aave_params",
+          "etherfi_distributions",
+          "benchmark_data",
+          "aave_current_v3_prams_etherum_mainnet.csv",
+          "seasonal_drops.md"
+        ]
+      }
+    },
+    "data_loading": {
+      "pure_lending": {
+        "status": "error",
+        "error": "DataProvider.__init__() got an unexpected keyword argument 'execution_mode'"
+      },
+      "btc_basis": {
+        "status": "error",
+        "error": "DataProvider.__init__() got an unexpected keyword argument 'execution_mode'"
+      },
+      "eth_leveraged": {
+        "status": "error",
+        "error": "DataProvider.__init__() got an unexpected keyword argument 'execution_mode'"
+      },
+      "usdt_market_neutral": {
+        "status": "error",
+        "error": "DataProvider.__init__() got an unexpected keyword argument 'execution_mode'"
+      }
+    }
+  },
+  "integration_tests": {
+    "engine_tests": {
+      "pure_lending": {
+        "status": "error",
+        "error": "EventDrivenStrategyEngine.__init__() missing 4 required positional arguments: 'execution_mode', 'data_provider', 'initial_capital', and 'share_class'"
+      },
+      "btc_basis": {
+        "status": "error",
+        "error": "EventDrivenStrategyEngine.__init__() missing 4 required positional arguments: 'execution_mode', 'data_provider', 'initial_capital', and 'share_class'"
+      },
+      "eth_leveraged": {
+        "status": "error",
+        "error": "EventDrivenStrategyEngine.__init__() missing 4 required positional arguments: 'execution_mode', 'data_provider', 'initial_capital', and 'share_class'"
+      }
+    }
+  },
+  "errors": [
+    "Base config not found: configs/local.json",
+    "Data loading failed for pure_lending: DataProvider.__init__() got an unexpected keyword argument 'execution_mode'",
+    "Data loading failed for btc_basis: DataProvider.__init__() got an unexpected keyword argument 'execution_mode'",
+    "Data loading failed for eth_leveraged: DataProvider.__init__() got an unexpected keyword argument 'execution_mode'",
+    "Data loading failed for usdt_market_neutral: DataProvider.__init__() got an unexpected keyword argument 'execution_mode'",
+    "Engine initialization failed for pure_lending: EventDrivenStrategyEngine.__init__() missing 4 required positional arguments: 'execution_mode', 'data_provider', 'initial_capital', and 'share_class'",
+    "Engine initialization failed for btc_basis: EventDrivenStrategyEngine.__init__() missing 4 required positional arguments: 'execution_mode', 'data_provider', 'initial_capital', and 'share_class'",
+    "Engine initialization failed for eth_leveraged: EventDrivenStrategyEngine.__init__() missing 4 required positional arguments: 'execution_mode', 'data_provider', 'initial_capital', and 'share_class'"
+  ],
+  "warnings": []
+}

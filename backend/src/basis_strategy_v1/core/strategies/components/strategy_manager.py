@@ -20,18 +20,28 @@ logger = logging.getLogger(__name__)
 
 class StrategyManager:
     """Factory-based strategy manager implementation."""
+    _instance = None
     
-    def __init__(self, config: Dict[str, Any], exposure_monitor=None, risk_monitor=None, event_engine=None):
+    def __new__(cls, *args, **kwargs):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+    
+    def __init__(self, config: Dict[str, Any], data_provider, utility_manager, exposure_monitor=None, risk_monitor=None, event_engine=None):
         """
         Initialize strategy manager.
         
         Args:
             config: Strategy configuration
+            data_provider: Data provider instance
+            utility_manager: Centralized utility manager
             exposure_monitor: Exposure monitor instance
             risk_monitor: Risk monitor instance
             event_engine: Event engine instance
         """
         self.config = config
+        self.data_provider = data_provider
+        self.utility_manager = utility_manager
         self.exposure_monitor = exposure_monitor
         self.risk_monitor = risk_monitor
         self.event_engine = event_engine
@@ -75,6 +85,58 @@ class StrategyManager:
                 mode=self.mode
             )
             self.strategy = None
+    
+    def entry_full(self, equity: float):
+        """Enter full position (initial setup or large deposits)"""
+        if self.strategy:
+            return self.strategy.entry_full(equity)
+        return None
+    
+    def entry_partial(self, equity_delta: float):
+        """Scale up position (small deposits or PnL gains)"""
+        if self.strategy:
+            return self.strategy.entry_partial(equity_delta)
+        return None
+    
+    def exit_full(self, equity: float):
+        """Exit entire position (withdrawals or risk override)"""
+        if self.strategy:
+            return self.strategy.exit_full(equity)
+        return None
+    
+    def exit_partial(self, equity_delta: float):
+        """Scale down position (small withdrawals or risk reduction)"""
+        if self.strategy:
+            return self.strategy.exit_partial(equity_delta)
+        return None
+    
+    def sell_dust(self, dust_tokens: Dict[str, float]):
+        """Convert non-share-class tokens to share class currency"""
+        if self.strategy:
+            return self.strategy.sell_dust(dust_tokens)
+        return None
+    
+    def make_strategy_decision(self, current_exposure: Dict, risk_assessment: Dict, config: Dict, market_data: Dict) -> Dict:
+        """Make strategy decision based on current exposure and risk assessment."""
+        try:
+            # For now, return a simple decision
+            # TODO: Implement proper strategy decision logic
+            return {
+                'action': 'hold',
+                'reason': 'No strategy decision logic implemented yet',
+                'timestamp': market_data.get('timestamp', pd.Timestamp.now()),
+                'exposure': current_exposure,
+                'risk': risk_assessment
+            }
+        except Exception as e:
+            logger.error(f"Error making strategy decision: {e}")
+            return {
+                'action': 'hold',
+                'reason': f'Error: {str(e)}',
+                'timestamp': market_data.get('timestamp', pd.Timestamp.now()),
+                'exposure': current_exposure,
+                'risk': risk_assessment
+            }
     
     def calculate_strategy_actions(self, timestamp: pd.Timestamp) -> Dict[str, Any]:
         """

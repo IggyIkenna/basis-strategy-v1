@@ -111,11 +111,9 @@ class BacktestService:
             # Get data provider (on-demand loading with date validation)
             import os
             data_provider = create_data_provider(
-                data_dir=config_manager.get_data_directory(),
                 execution_mode=os.getenv('BASIS_EXECUTION_MODE'),
-                data_mode=os.getenv('BASIS_DATA_MODE'),
                 config=config,
-                mode=request.strategy_name,
+                data_dir=config_manager.get_data_directory(),
                 backtest_start_date=request.start_date.strftime('%Y-%m-%d'),
                 backtest_end_date=request.end_date.strftime('%Y-%m-%d')
             )

@@ -90,3 +90,47 @@ async def detailed_health(request: Request) -> HealthResponse:
 
 
 
+
+
+@router.get(
+    "/components",
+    response_model=HealthResponse,
+    summary="Component health check",
+    description="Component-specific health check - no authentication required"
+)
+async def component_health(request: Request) -> HealthResponse:
+    """
+    Component-specific health check - no authentication required.
+    Returns health status of individual components.
+    """
+    correlation_id = getattr(request.state, "correlation_id", "unknown")
+    try:
+        logger.info(
+            "Component health check requested",
+            correlation_id=correlation_id
+        )
+        
+        health_data = await unified_health_manager.check_detailed_health()
+        
+        return HealthResponse(
+            status=health_data["status"],
+            timestamp=datetime.fromisoformat(health_data["timestamp"].replace('Z', '+00:00')),
+            service="basis-strategy-v1",
+            execution_mode=health_data.get("execution_mode"),
+            uptime_seconds=health_data.get("system", {}).get("uptime_seconds"),
+            system=health_data.get("system"),
+            components=health_data.get("components"),
+            summary=health_data.get("summary")
+        )
+    except Exception as e:
+        logger.error(
+            "Component health check failed",
+            correlation_id=correlation_id,
+            error=str(e)
+        )
+        return HealthResponse(
+            status="unhealthy",
+            timestamp=datetime.utcnow(),
+            service="basis-strategy-v1",
+            error=str(e)
+        )

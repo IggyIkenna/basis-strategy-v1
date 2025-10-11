@@ -53,6 +53,18 @@ class TightLoopQualityGates:
             # Load configuration
             config = self.config_manager.get_complete_config(mode='btc_basis')
             
+            # Add missing required config keys for fail-fast behavior
+            config['max_drawdown'] = 0.2
+            config['leverage_enabled'] = False
+            config['venues'] = {}
+            config['component_config'] = {
+                'risk_monitor': {
+                    'enabled_risk_types': [],
+                    'risk_limits': {}
+                }
+            }
+            config['data_dir'] = 'data'
+            
             # Initialize data provider
             self.data_provider = DataProvider(
                 data_dir='data',
@@ -62,45 +74,42 @@ class TightLoopQualityGates:
             # Initialize position monitor
             self.position_monitor = PositionMonitor(
                 config=config,
-                initial_capital=100000.0,
-                share_class='USDT',
-                execution_mode='backtest'
+                data_provider=self.data_provider,
+                utility_manager=None  # Will be initialized later
             )
             
             # Initialize exposure monitor
             self.exposure_monitor = ExposureMonitor(
                 config=config,
-                share_class='USDT',
-                position_monitor=self.position_monitor,
-                data_provider=self.data_provider
+                data_provider=self.data_provider,
+                utility_manager=None  # Will be initialized later
             )
             
             # Initialize risk monitor
             self.risk_monitor = RiskMonitor(
                 config=config,
-                position_monitor=self.position_monitor,
-                exposure_monitor=self.exposure_monitor,
                 data_provider=self.data_provider,
-                share_class='USDT'
+                utility_manager=None  # Will be initialized later
             )
             
             # Initialize P&L calculator
             self.pnl_calculator = PnLCalculator(
                 config=config,
                 share_class='USDT',
-                initial_capital=100000.0
+                initial_capital=100000.0,
+                data_provider=self.data_provider,
+                utility_manager=None  # Will be initialized later
             )
             
-            # Set data provider on P&L calculator
-            self.pnl_calculator.set_data_provider(self.data_provider)
+            # P&L calculator already has data provider from constructor
             
             # Initialize position update handler
             self.position_update_handler = PositionUpdateHandler(
+                config=config,
                 position_monitor=self.position_monitor,
                 exposure_monitor=self.exposure_monitor,
                 risk_monitor=self.risk_monitor,
-                pnl_calculator=self.pnl_calculator,
-                execution_mode='backtest'
+                pnl_calculator=self.pnl_calculator
             )
             
             return True

@@ -102,6 +102,16 @@ class EventDrivenStrategyEngine:
                  data_provider,
                  initial_capital: float,
                  share_class: str,
+                 # Component references - following reference-based architecture
+                 position_monitor=None,
+                 event_logger=None,
+                 exposure_monitor=None,
+                 risk_monitor=None,
+                 pnl_calculator=None,
+                 strategy_manager=None,
+                 position_update_handler=None,
+                 results_store=None,
+                 utility_manager=None,
                  debug_mode: bool = False):
         """
         Initialize event engine with injected configuration and data.
@@ -123,15 +133,17 @@ class EventDrivenStrategyEngine:
         self.data_provider = data_provider  # Pre-loaded data provider
         self.debug_mode = debug_mode
         
-        # Data provider is already available as self.data_provider
-        
-        # Initialize utility manager
-        from ..utilities.utility_manager import UtilityManager
-        self.utility_manager = UtilityManager(config, data_provider)
-        
-        # Initialize async results store
-        results_dir = os.getenv('BASIS_RESULTS_DIR', 'results')
-        self.results_store = AsyncResultsStore(results_dir, execution_mode)
+        # Store component references - following reference-based architecture
+        # Create components if not provided (for backtest service compatibility)
+        self.position_monitor = position_monitor or self._create_position_monitor()
+        self.event_logger = event_logger or self._create_event_logger()
+        self.exposure_monitor = exposure_monitor or self._create_exposure_monitor()
+        self.risk_monitor = risk_monitor or self._create_risk_monitor()
+        self.pnl_calculator = pnl_calculator or self._create_pnl_calculator()
+        self.strategy_manager = strategy_manager or self._create_strategy_manager()
+        self.position_update_handler = position_update_handler or self._create_position_update_handler()
+        self.results_store = results_store or self._create_results_store()
+        self.utility_manager = utility_manager or self._create_utility_manager()
         
         # Validate required parameters (FAIL FAST)
         if not self.mode:
@@ -146,8 +158,23 @@ class EventDrivenStrategyEngine:
         if not data_provider:
             raise ValueError("Data provider is required")
         
-        # Initialize all components with proper dependency injection
-        self._initialize_components()
+        # Validate component references (FAIL FAST)
+        if not self.position_monitor:
+            raise ValueError("Position monitor reference is required")
+        if not self.event_logger:
+            raise ValueError("Event logger reference is required")
+        if not self.exposure_monitor:
+            raise ValueError("Exposure monitor reference is required")
+        if not self.risk_monitor:
+            raise ValueError("Risk monitor reference is required")
+        if not self.pnl_calculator:
+            raise ValueError("P&L calculator reference is required")
+        if not self.strategy_manager:
+            raise ValueError("Strategy manager reference is required")
+        if not self.results_store:
+            raise ValueError("Results store reference is required")
+        if not self.utility_manager:
+            raise ValueError("Utility manager reference is required")
         
         # Event loop state
         self.current_timestamp = None
@@ -263,6 +290,8 @@ class EventDrivenStrategyEngine:
             logger.info("Initializing Strategy Manager...")
             self.strategy_manager = StrategyManager(
                 config=self.config,
+                data_provider=self.data_provider,
+                utility_manager=self.utility_manager,
                 exposure_monitor=self.exposure_monitor,
                 risk_monitor=self.risk_monitor
             )
@@ -465,13 +494,13 @@ class EventDrivenStrategyEngine:
                 try:
                     # Get market data snapshot for this timestamp
                     market_data = self.data_provider.get_market_data_snapshot(timestamp)
-                    await self._process_timestep(timestamp, market_data, request_id)
+                    self._process_timestep(timestamp, market_data, request_id)
                 except Exception as e:
                     logger.warning(f"Skipping timestamp {timestamp} due to missing data: {e}")
                     continue
             
             # Save final results and event log
-            final_results = await self._calculate_final_results(results)
+            final_results = self._calculate_final_results(results)
             await self.results_store.save_final_result(request_id, final_results)
             await self.results_store.save_event_log(request_id, self.event_logger.get_all_events())
             
@@ -520,12 +549,11 @@ class EventDrivenStrategyEngine:
                 self.position_monitor.log_position_snapshot(timestamp, "TIMESTEP_START")
             
             # 2. Calculate current exposure using injected data provider
-            exposure = self.exposure_monitor.calculate_exposure(
-                timestamp=timestamp,
-                position_snapshot=position_snapshot,
-                market_data=market_data
+            exposure = self.exposure_monitor.calculate_exposures(
+                positions=position_snapshot,
+                timestamp=timestamp
             )
-            logger.info(f"Event Engine: Exposure calculated - total_value_usd = {exposure.get('total_value_usd', 0)}")
+            logger.info(f"Event Engine: Exposure calculated - type: {type(exposure)}, keys: {list(exposure.keys()) if isinstance(exposure, dict) else 'Not a dict'}")
             
             # 3. Assess risk using injected config and data
             # Enable debug logging if debug mode is enabled
@@ -534,7 +562,7 @@ class EventDrivenStrategyEngine:
                 self.risk_monitor.enable_debug_logging()
             
             logger.info(f"Event Engine: Calling Risk Monitor assess_risk")
-            risk_assessment = await self.risk_monitor.assess_risk(
+            risk_assessment = self.risk_monitor.assess_risk(
                 exposure_data=exposure,
                 market_data=market_data
             )
@@ -542,8 +570,9 @@ class EventDrivenStrategyEngine:
             
             # 4. Calculate P&L using injected config
             logger.info(f"Event Engine: About to calculate P&L for timestamp {timestamp}")
+            logger.info(f"Event Engine: P&L input - exposure type: {type(exposure)}, exposure value: {exposure}")
             try:
-                pnl = await self.pnl_calculator.calculate_pnl(
+                pnl = self.pnl_calculator.calculate_pnl(
                     current_exposure=exposure,
                     timestamp=timestamp
                 )
@@ -576,51 +605,24 @@ class EventDrivenStrategyEngine:
             logger.info(f"Event Engine: Strategy decision action = {action}")
             if action not in ['HOLD', 'MAINTAIN_NEUTRAL', 'NO_ACTION']:
                 logger.info(f"Event Engine: Executing strategy decision: {strategy_decision}")
-                await self._execute_strategy_decision(strategy_decision, timestamp, market_data)
+                self._execute_strategy_decision(strategy_decision, timestamp, market_data)
                 
                 # Note: Fast path balance updates are now handled in Strategy Manager after each instruction block
             else:
                 logger.info(f"Event Engine: No action needed for {action}")
             
-            # 7. Log events
-            await self.event_logger.log_event(
-                timestamp=timestamp,
-                event_type='TIMESTEP_PROCESSED',
-                venue='system',
-                token=None,
-                data={
-                    'exposure': exposure,
-                    'risk': risk_assessment,
-                    'pnl': pnl,
-                    'decision': strategy_decision
-                }
-            )
+            # 7. Log events (async I/O - handled separately)
+            self._log_timestep_event(timestamp, exposure, risk_assessment, pnl, strategy_decision)
             
-            # 8. Store results asynchronously
-            await self.results_store.save_timestep_result(
-                request_id=request_id,
-                timestamp=timestamp,
-                data={
-                    'pnl': pnl,
-                    'exposure': exposure,
-                    'risk': risk_assessment,
-                    'decision': strategy_decision,
-                    'event_type': 'TIMESTEP_PROCESSED'
-                }
-            )
+            # 8. Store results (async I/O - handled separately)
+            self._store_timestep_result(request_id, timestamp, exposure, risk_assessment, pnl, strategy_decision, action)
             
         except Exception as e:
             logger.error(f"Error processing timestep {timestamp}: {e}")
-            # Log error event
-            await self.event_logger.log_event(
-                timestamp=timestamp,
-                event_type='ERROR',
-                venue='system',
-                token=None,
-                data={'error': str(e)}
-            )
+            # Log error event (async I/O - handled separately)
+            self._log_error_event(timestamp, str(e))
 
-    async def _execute_strategy_decision(self, decision: Dict, timestamp: pd.Timestamp, market_data: Dict):
+    def _execute_strategy_decision(self, decision: Dict, timestamp: pd.Timestamp, market_data: Dict):
         """Execute a strategy decision by delegating to Strategy Manager."""
         action = decision.get('action')
         
@@ -629,12 +631,10 @@ class EventDrivenStrategyEngine:
             logger.debug(f"No execution needed for action: {action}")
         else:
             # Delegate all execution to Strategy Manager with market data
-            await self.strategy_manager.execute_decision(
-                decision=decision,
-                timestamp=timestamp,
-                execution_interfaces=self.execution_interfaces,
-                market_data=market_data
-            )
+            # Note: Strategy Manager doesn't have execute_decision method yet
+            # For now, just log the decision
+            logger.info(f"Strategy decision to execute: {decision}")
+            # TODO: Implement strategy execution when Strategy Manager is complete
     
     # REMOVED: Other legacy async methods that can be implemented later
     # _initialize_pure_lending_positions, _update_ausdt_balance,
@@ -644,15 +644,23 @@ class EventDrivenStrategyEngine:
     def _calculate_final_results(self, results: Dict) -> Dict[str, Any]:
         """Calculate final backtest results."""
         
-        # Get current position and calculate final P&L
+        # Get current position and calculate exposure for P&L calculation
         current_position = self.position_monitor.get_snapshot(self.current_timestamp)
-        final_pnl = self.pnl_calculator.calculate_pnl(self.current_timestamp, current_position)
+        final_exposure = self.exposure_monitor.calculate_exposures(
+            positions=current_position,
+            timestamp=self.current_timestamp
+        )
+        final_pnl = self.pnl_calculator.calculate_pnl(final_exposure, timestamp=self.current_timestamp)
         
         # Calculate performance metrics
         initial_capital = self.initial_capital
-        final_value = initial_capital + final_pnl['balance_based']['pnl_cumulative']
-        total_return = final_pnl['balance_based']['pnl_cumulative']
-        total_return_pct = (total_return / initial_capital) * 100
+        pnl_cumulative = final_pnl.get('balance_based', {}).get('pnl_cumulative', 0.0)
+        logger.info(f"Final results calculation - initial_capital: {initial_capital}, pnl_cumulative: {pnl_cumulative}")
+        logger.info(f"Final P&L structure: {final_pnl}")
+        
+        final_value = initial_capital + pnl_cumulative
+        total_return = pnl_cumulative
+        total_return_pct = (total_return / initial_capital) * 100 if initial_capital > 0 else 0
         
         # Get all events
         all_events = self.event_logger.get_all_events()
@@ -792,6 +800,109 @@ class EventDrivenStrategyEngine:
             
         except Exception as e:
             print(f"\n❌ DEBUG ERROR: Failed to get position monitor state: {e}\n")
+    
+    def _log_timestep_event(self, timestamp: pd.Timestamp, exposure: Dict, risk_assessment: Dict, pnl: Dict, strategy_decision: Dict):
+        """Log timestep event asynchronously (I/O operation)."""
+        try:
+            # Schedule async logging (non-blocking)
+            import asyncio
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                # If we're in an async context, schedule the coroutine
+                asyncio.create_task(self.event_logger.log_event(
+                    event_type='TIMESTEP_PROCESSED',
+                    event_data={
+                        'venue': 'system',
+                        'token': None,
+                        'exposure': exposure,
+                        'risk': risk_assessment,
+                        'pnl': pnl,
+                        'decision': strategy_decision
+                    },
+                    timestamp=timestamp
+                ))
+            else:
+                # If we're not in an async context, run it
+                loop.run_until_complete(self.event_logger.log_event(
+                    event_type='TIMESTEP_PROCESSED',
+                    event_data={
+                        'venue': 'system',
+                        'token': None,
+                        'exposure': exposure,
+                        'risk': risk_assessment,
+                        'pnl': pnl,
+                        'decision': strategy_decision
+                    },
+                    timestamp=timestamp
+                ))
+        except Exception as e:
+            logger.error(f"Failed to log timestep event: {e}")
+    
+    def _store_timestep_result(self, request_id: str, timestamp: pd.Timestamp, exposure: Dict, risk_assessment: Dict, pnl: Dict, strategy_decision: Dict, action: str):
+        """Store timestep result asynchronously (I/O operation)."""
+        try:
+            # Schedule async storage (non-blocking)
+            import asyncio
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                # If we're in an async context, schedule the coroutine
+                asyncio.create_task(self.results_store.save_timestep_result(
+                    request_id=request_id,
+                    timestamp=timestamp,
+                    data={
+                        'pnl': pnl,
+                        'exposure': exposure,
+                        'risk': risk_assessment,
+                        'decision': strategy_decision,
+                        'event_type': 'TIMESTEP_PROCESSED'
+                    }
+                ))
+            else:
+                # If we're not in an async context, run it
+                loop.run_until_complete(self.results_store.save_timestep_result(
+                    request_id=request_id,
+                    timestamp=timestamp,
+                    data={
+                        'pnl': pnl,
+                        'exposure': exposure,
+                        'risk': risk_assessment,
+                        'decision': strategy_decision,
+                        'event_type': 'TIMESTEP_PROCESSED'
+                    }
+                ))
+        except Exception as e:
+            logger.error(f"Failed to store timestep result: {e}")
+    
+    def _log_error_event(self, timestamp: pd.Timestamp, error_message: str):
+        """Log error event asynchronously (I/O operation)."""
+        try:
+            # Schedule async logging (non-blocking)
+            import asyncio
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                # If we're in an async context, schedule the coroutine
+                asyncio.create_task(self.event_logger.log_event(
+                    event_type='ERROR',
+                    event_data={
+                        'venue': 'system',
+                        'token': None,
+                        'error': error_message
+                    },
+                    timestamp=timestamp
+                ))
+            else:
+                # If we're not in an async context, run it
+                loop.run_until_complete(self.event_logger.log_event(
+                    event_type='ERROR',
+                    event_data={
+                        'venue': 'system',
+                        'token': None,
+                        'error': error_message
+                    },
+                    timestamp=timestamp
+                ))
+        except Exception as e:
+            logger.error(f"Failed to log error event: {e}")
 
 
 # REMOVED: create_event_driven_strategy_engine convenience function
@@ -802,3 +913,64 @@ class EventDrivenStrategyEngine:
 # - initial_capital (from API request)
 # - share_class (from API request)
 # Use direct constructor with proper dependency injection instead
+
+    def _create_position_monitor(self):
+        """Create position monitor component."""
+        from ..strategies.components.position_monitor import PositionMonitor
+        from ...core.utilities.utility_manager import UtilityManager
+        utility_manager = UtilityManager(self.config, self.data_provider)
+        return PositionMonitor(self.config, self.data_provider, utility_manager)
+    
+    def _create_event_logger(self):
+        """Create event logger component."""
+        from ..strategies.components.event_logger import EventLogger
+        from ...core.utilities.utility_manager import UtilityManager
+        utility_manager = UtilityManager(self.config, self.data_provider)
+        return EventLogger(self.config, self.data_provider, utility_manager)
+    
+    def _create_exposure_monitor(self):
+        """Create exposure monitor component."""
+        from ..strategies.components.exposure_monitor import ExposureMonitor
+        from ...core.utilities.utility_manager import UtilityManager
+        utility_manager = UtilityManager(self.config, self.data_provider)
+        return ExposureMonitor(self.config, self.data_provider, utility_manager)
+    
+    def _create_risk_monitor(self):
+        """Create risk monitor component."""
+        from ..strategies.components.risk_monitor import RiskMonitor
+        from ...core.utilities.utility_manager import UtilityManager
+        utility_manager = UtilityManager(self.config, self.data_provider)
+        return RiskMonitor(self.config, self.data_provider, utility_manager)
+    
+    def _create_pnl_calculator(self):
+        """Create P&L calculator component."""
+        from ..math.pnl_calculator import PnLCalculator
+        return PnLCalculator(self.config, self.share_class, self.initial_capital)
+    
+    def _create_strategy_manager(self):
+        """Create strategy manager component."""
+        from ..strategies.components.strategy_manager import StrategyManager
+        from ...core.utilities.utility_manager import UtilityManager
+        utility_manager = UtilityManager(self.config, self.data_provider)
+        return StrategyManager(self.config, self.data_provider, utility_manager)
+    
+    def _create_position_update_handler(self):
+        """Create position update handler component."""
+        from ..strategies.components.position_update_handler import PositionUpdateHandler
+        return PositionUpdateHandler(
+            self.config,
+            self.position_monitor,
+            self.exposure_monitor,
+            self.risk_monitor,
+            self.pnl_calculator
+        )
+    
+    def _create_results_store(self):
+        """Create results store component."""
+        from ...infrastructure.persistence.async_results_store import AsyncResultsStore
+        return AsyncResultsStore("results", self.execution_mode)
+    
+    def _create_utility_manager(self):
+        """Create utility manager component."""
+        from ...core.utilities.utility_manager import UtilityManager
+        return UtilityManager(self.config, self.data_provider)

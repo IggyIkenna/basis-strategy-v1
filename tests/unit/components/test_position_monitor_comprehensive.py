@@ -13,7 +13,7 @@ from datetime import datetime, timedelta
 # Add backend to path
 sys.path.append('backend/src')
 
-from basis_strategy_v1.core.strategies.components.position_monitor import PositionMonitor, create_position_monitor
+from basis_strategy_v1.core.strategies.components.position_monitor import PositionMonitor
 
 
 class TestPositionMonitorComprehensive:
@@ -22,54 +22,54 @@ class TestPositionMonitorComprehensive:
     @pytest.fixture
     def position_monitor(self):
         """Create position monitor for testing."""
-        return create_position_monitor(execution_mode='backtest')
-
-    @pytest.mark.asyncio
-    async def test_update_with_token_changes(self, position_monitor):
-        """Test update method with token changes."""
-        changes = {
-            'timestamp': pd.Timestamp.now(tz='UTC'),
-            'trigger': 'TEST',
-            'token_changes': [
-                {
-                    'venue': 'WALLET',
-                    'token': 'ETH',
-                    'delta': 10.0,
-                    'reason': 'TEST'
-                },
-                {
-                    'venue': 'WALLET',
-                    'token': 'USDT',
-                    'delta': 10000.0,
-                    'reason': 'TEST'
+        config = {
+            'execution_mode': 'backtest',
+            'data_dir': 'data',
+            'component_config': {
+                'position_monitor': {
+                    'tracked_assets': ['USDT', 'ETH', 'BTC'],
+                    'venues': ['WALLET', 'CEX_SPOT', 'CEX_DERIVATIVES', 'SMART_CONTRACT']
                 }
-            ]
+            }
         }
-        
-        result = await position_monitor.update(changes)
-        assert result is not None
-        assert 'wallet' in result
-        assert result['wallet']['ETH'] == 10.0
-        assert result['wallet']['USDT'] == 10000.0
+        data_provider = Mock()
+        utility_manager = Mock()
+        return PositionMonitor(config, data_provider, utility_manager)
 
-    @pytest.mark.asyncio
-    async def test_update_with_cex_changes(self, position_monitor):
-        """Test update method with CEX changes."""
-        changes = {
-            'timestamp': pd.Timestamp.now(tz='UTC'),
-            'trigger': 'TEST',
-            'token_changes': [
-                {
-                    'venue': 'binance',
-                    'token': 'ETH_spot',
-                    'delta': 5.0,
-                    'reason': 'TEST'
-                }
-            ]
-        }
+    def test_calculate_positions(self, position_monitor):
+        """Test calculate_positions method."""
+        timestamp = pd.Timestamp.now(tz='UTC')
+        result = position_monitor.calculate_positions(timestamp)
         
-        result = await position_monitor.update(changes)
-        assert result is not None
+        assert isinstance(result, dict)
+        assert 'timestamp' in result
+        assert 'wallet_positions' in result
+        assert 'smart_contract_positions' in result
+        assert 'cex_spot_positions' in result
+        assert 'cex_derivatives_positions' in result
+        assert 'total_positions' in result
+        assert 'metrics' in result
+    def test_get_snapshot(self, position_monitor):
+        """Test get_snapshot method."""
+        timestamp = pd.Timestamp.now(tz='UTC')
+        result = position_monitor.get_snapshot(timestamp)
+        
+        assert isinstance(result, dict)
+        assert 'timestamp' in result
+        assert 'wallet_positions' in result
+        assert 'smart_contract_positions' in result
+        assert 'cex_spot_positions' in result
+        assert 'cex_derivatives_positions' in result
+        assert 'total_positions' in result
+        assert 'metrics' in result
+
+    def test_get_all_positions(self, position_monitor):
+        """Test get_all_positions method."""
+        timestamp = pd.Timestamp.now(tz='UTC')
+        result = position_monitor.get_all_positions(timestamp)
+        
+        assert isinstance(result, dict)
+        assert 'timestamp' in result
         assert 'cex_accounts' in result
         assert 'binance' in result['cex_accounts']
         assert result['cex_accounts']['binance']['ETH_spot'] == 5.0

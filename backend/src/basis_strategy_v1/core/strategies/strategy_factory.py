@@ -13,6 +13,12 @@ import logging
 
 from .base_strategy_manager import BaseStrategyManager
 from .pure_lending_strategy import PureLendingStrategy
+from .btc_basis_strategy import BTCBasisStrategy
+from .eth_basis_strategy import ETHBasisStrategy
+from .eth_staking_only_strategy import ETHStakingOnlyStrategy
+from .eth_leveraged_strategy import ETHLeveragedStrategy
+from .usdt_market_neutral_no_leverage_strategy import USDTMarketNeutralNoLeverageStrategy
+from .usdt_market_neutral_strategy import USDTMarketNeutralStrategy
 from ...infrastructure.logging.structured_logger import get_strategy_manager_logger
 
 logger = logging.getLogger(__name__)
@@ -21,15 +27,15 @@ logger = logging.getLogger(__name__)
 class StrategyFactory:
     """Factory for creating strategy instances based on mode."""
     
-    # Strategy class mapping - will be populated as strategies are implemented
+    # Strategy class mapping - all strategies implemented
     STRATEGY_MAP = {
-        'pure_lending': PureLendingStrategy,  # Implemented
-        'btc_basis': None,     # Will be implemented
-        'eth_basis': None,     # Will be implemented
-        'eth_staking_only': None,  # Will be implemented
-        'eth_leveraged': None,     # Will be implemented
-        'usdt_market_neutral_no_leverage': None,  # Will be implemented
-        'usdt_market_neutral': None,  # Will be implemented
+        'pure_lending': PureLendingStrategy,
+        'btc_basis': BTCBasisStrategy,
+        'eth_basis': ETHBasisStrategy,
+        'eth_staking_only': ETHStakingOnlyStrategy,
+        'eth_leveraged': ETHLeveragedStrategy,
+        'usdt_market_neutral_no_leverage': USDTMarketNeutralNoLeverageStrategy,
+        'usdt_market_neutral': USDTMarketNeutralStrategy,
     }
     
     @classmethod
