@@ -102,6 +102,16 @@ class EventDrivenStrategyEngine:
                  data_provider,
                  initial_capital: float,
                  share_class: str,
+                 # Component references - following reference-based architecture
+                 position_monitor=None,
+                 event_logger=None,
+                 exposure_monitor=None,
+                 risk_monitor=None,
+                 pnl_calculator=None,
+                 strategy_manager=None,
+                 position_update_handler=None,
+                 results_store=None,
+                 utility_manager=None,
                  debug_mode: bool = False):
         """
         Initialize event engine with injected configuration and data.
@@ -123,15 +133,16 @@ class EventDrivenStrategyEngine:
         self.data_provider = data_provider  # Pre-loaded data provider
         self.debug_mode = debug_mode
         
-        # Data provider is already available as self.data_provider
-        
-        # Initialize utility manager
-        from ..utilities.utility_manager import UtilityManager
-        self.utility_manager = UtilityManager(config, data_provider)
-        
-        # Initialize async results store
-        results_dir = os.getenv('BASIS_RESULTS_DIR', 'results')
-        self.results_store = AsyncResultsStore(results_dir, execution_mode)
+        # Store component references - following reference-based architecture
+        self.position_monitor = position_monitor
+        self.event_logger = event_logger
+        self.exposure_monitor = exposure_monitor
+        self.risk_monitor = risk_monitor
+        self.pnl_calculator = pnl_calculator
+        self.strategy_manager = strategy_manager
+        self.position_update_handler = position_update_handler
+        self.results_store = results_store
+        self.utility_manager = utility_manager
         
         # Validate required parameters (FAIL FAST)
         if not self.mode:
@@ -146,8 +157,23 @@ class EventDrivenStrategyEngine:
         if not data_provider:
             raise ValueError("Data provider is required")
         
-        # Initialize all components with proper dependency injection
-        self._initialize_components()
+        # Validate component references (FAIL FAST)
+        if not self.position_monitor:
+            raise ValueError("Position monitor reference is required")
+        if not self.event_logger:
+            raise ValueError("Event logger reference is required")
+        if not self.exposure_monitor:
+            raise ValueError("Exposure monitor reference is required")
+        if not self.risk_monitor:
+            raise ValueError("Risk monitor reference is required")
+        if not self.pnl_calculator:
+            raise ValueError("P&L calculator reference is required")
+        if not self.strategy_manager:
+            raise ValueError("Strategy manager reference is required")
+        if not self.results_store:
+            raise ValueError("Results store reference is required")
+        if not self.utility_manager:
+            raise ValueError("Utility manager reference is required")
         
         # Event loop state
         self.current_timestamp = None
