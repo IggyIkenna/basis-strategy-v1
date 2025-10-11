@@ -268,7 +268,57 @@ class PositionMonitor:
             return metrics
         except Exception as e:
             logger.error(f"Error calculating position metrics: {e}")
-        return {}
+            return {}
+    
+    def get_snapshot(self, timestamp: pd.Timestamp = None) -> Dict[str, Any]:
+        """Get current position snapshot."""
+        if timestamp is None:
+            timestamp = pd.Timestamp.now()
+        
+        try:
+            # Get current positions
+            wallet_positions = self._get_wallet_positions(timestamp)
+            smart_contract_positions = self._get_smart_contract_positions(timestamp)
+            cex_spot_positions = self._get_cex_spot_positions(timestamp)
+            cex_derivatives_positions = self._get_cex_derivatives_positions(timestamp)
+            
+            # Calculate totals
+            total_positions = self._calculate_total_positions(
+                wallet_positions, smart_contract_positions, 
+                cex_spot_positions, cex_derivatives_positions, timestamp
+            )
+            
+            # Calculate metrics
+            metrics = self._calculate_position_metrics(total_positions, timestamp)
+            
+            return {
+                'timestamp': timestamp,
+                'wallet_positions': wallet_positions,
+                'smart_contract_positions': smart_contract_positions,
+                'cex_spot_positions': cex_spot_positions,
+                'cex_derivatives_positions': cex_derivatives_positions,
+                'total_positions': total_positions,
+                'metrics': metrics
+            }
+        except Exception as e:
+            logger.error(f"Error getting position snapshot: {e}")
+            return {
+                'timestamp': timestamp,
+                'wallet_positions': {},
+                'smart_contract_positions': {},
+                'cex_spot_positions': {},
+                'cex_derivatives_positions': {},
+                'total_positions': {},
+                'metrics': {}
+            }
+    
+    def log_position_snapshot(self, timestamp: pd.Timestamp, event_type: str) -> None:
+        """Log position snapshot for debugging."""
+        try:
+            snapshot = self.get_snapshot(timestamp)
+            logger.info(f"Position Snapshot [{event_type}] at {timestamp}: {snapshot}")
+        except Exception as e:
+            logger.error(f"Error logging position snapshot: {e}")
     
     def _calculate_position_by_category(self, wallet_positions: Dict[str, float], 
                                       smart_contract_positions: Dict[str, float],

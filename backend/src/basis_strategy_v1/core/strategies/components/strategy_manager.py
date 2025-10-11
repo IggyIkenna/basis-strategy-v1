@@ -116,6 +116,28 @@ class StrategyManager:
             return self.strategy.sell_dust(dust_tokens)
         return None
     
+    def make_strategy_decision(self, current_exposure: Dict, risk_assessment: Dict, config: Dict, market_data: Dict) -> Dict:
+        """Make strategy decision based on current exposure and risk assessment."""
+        try:
+            # For now, return a simple decision
+            # TODO: Implement proper strategy decision logic
+            return {
+                'action': 'hold',
+                'reason': 'No strategy decision logic implemented yet',
+                'timestamp': market_data.get('timestamp', pd.Timestamp.now()),
+                'exposure': current_exposure,
+                'risk': risk_assessment
+            }
+        except Exception as e:
+            logger.error(f"Error making strategy decision: {e}")
+            return {
+                'action': 'hold',
+                'reason': f'Error: {str(e)}',
+                'timestamp': market_data.get('timestamp', pd.Timestamp.now()),
+                'exposure': current_exposure,
+                'risk': risk_assessment
+            }
+    
     def calculate_strategy_actions(self, timestamp: pd.Timestamp) -> Dict[str, Any]:
         """
         Calculate strategy actions using the strategy instance.

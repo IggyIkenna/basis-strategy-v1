@@ -549,12 +549,11 @@ class EventDrivenStrategyEngine:
                 self.position_monitor.log_position_snapshot(timestamp, "TIMESTEP_START")
             
             # 2. Calculate current exposure using injected data provider
-            exposure = self.exposure_monitor.calculate_exposure(
-                timestamp=timestamp,
-                position_snapshot=position_snapshot,
-                market_data=market_data
+            exposure = self.exposure_monitor.calculate_exposures(
+                positions=position_snapshot,
+                timestamp=timestamp
             )
-            logger.info(f"Event Engine: Exposure calculated - total_value_usd = {exposure.get('total_value_usd', 0)}")
+            logger.info(f"Event Engine: Exposure calculated - type: {type(exposure)}, keys: {list(exposure.keys()) if isinstance(exposure, dict) else 'Not a dict'}")
             
             # 3. Assess risk using injected config and data
             # Enable debug logging if debug mode is enabled
@@ -571,6 +570,7 @@ class EventDrivenStrategyEngine:
             
             # 4. Calculate P&L using injected config
             logger.info(f"Event Engine: About to calculate P&L for timestamp {timestamp}")
+            logger.info(f"Event Engine: P&L input - exposure type: {type(exposure)}, exposure value: {exposure}")
             try:
                 pnl = self.pnl_calculator.calculate_pnl(
                     current_exposure=exposure,
@@ -955,8 +955,8 @@ class EventDrivenStrategyEngine:
     
     def _create_results_store(self):
         """Create results store component."""
-        from ...infrastructure.persistence.result_store import ResultStore
-        return ResultStore(self.config, self.data_provider)
+        from ...infrastructure.persistence.async_results_store import AsyncResultsStore
+        return AsyncResultsStore("results", self.execution_mode)
     
     def _create_utility_manager(self):
         """Create utility manager component."""

@@ -315,6 +315,10 @@ class PnLCalculator:
             pnl_cumulative = current_value - self.initial_total_value
             pnl_logger.info(f"P&L Calculator: Balance-based P&L - current_value: ${current_value:,.2f}, initial_total_value: ${self.initial_total_value:,.2f}, pnl_cumulative: ${pnl_cumulative:,.2f}")
             
+            # Add empty exposures key for compatibility with existing code
+            if 'exposures' not in current_exposure:
+                current_exposure['exposures'] = {}
+            
             # Calculate hourly P&L if we have previous exposure
             if self.previous_exposure:
                 if 'total_value_usd' not in self.previous_exposure:
