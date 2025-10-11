@@ -490,7 +490,7 @@ class EventDrivenStrategyEngine:
                 logger.error(f"Error stopping results store: {stop_error}")
             raise
     
-    def _process_timestep(self, timestamp: pd.Timestamp, market_data: Dict, request_id: str):
+    async def _process_timestep(self, timestamp: pd.Timestamp, market_data: Dict, request_id: str):
         """
         Process a single timestep in the backtest - CORE EVENT BEHAVIOR.
         

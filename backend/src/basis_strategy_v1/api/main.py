@@ -313,7 +313,7 @@ def run(host: Optional[str] = None, port: Optional[int] = None):
     log_level = os.getenv('BASIS_LOG_LEVEL')
     
     uvicorn.run(
-        "basis_strategy_v1_v1.api.main:app",
+        "basis_strategy_v1.api.main:app",
         host=host or api_host,
         port=port or api_port,
         reload=debug_mode,
