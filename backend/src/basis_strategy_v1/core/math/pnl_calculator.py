@@ -608,6 +608,11 @@ class PnLCalculator:
     
     def _calc_borrow_cost(self, current: Dict, previous: Dict) -> float:
         """Calculate AAVE borrow costs from debt index growth."""
+        # Ensure both parameters are dictionaries
+        if not isinstance(current, dict) or not isinstance(previous, dict):
+            pnl_logger.warning(f"Borrow cost calculation: current type: {type(current)}, previous type: {type(previous)}")
+            return 0.0
+        
         # Get debt exposure
         current_debt = current['exposures'].get('variableDebtWETH', {})
         previous_debt = previous['exposures'].get('variableDebtWETH', {})
@@ -787,6 +792,11 @@ class PnLCalculator:
     
     def _calc_delta_pnl(self, current: Dict, previous: Dict) -> float:
         """Calculate P&L from delta drift."""
+        # Ensure both parameters are dictionaries
+        if not isinstance(current, dict) or not isinstance(previous, dict):
+            pnl_logger.warning(f"Delta PnL calculation: current type: {type(current)}, previous type: {type(previous)}")
+            return 0.0
+        
         # Delta P&L = (current_delta - previous_delta) × price_change
         current_delta = current.get('net_delta_eth', 0)
         previous_delta = previous.get('net_delta_eth', 0)

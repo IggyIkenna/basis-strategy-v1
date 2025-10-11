@@ -13,7 +13,7 @@ import pytest
 # Add the backend src to Python path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'backend', 'src'))
 
-from basis_strategy_v1.core.strategies.components.position_monitor import PositionMonitor, create_position_monitor
+from basis_strategy_v1.core.strategies.components.position_monitor import PositionMonitor
 
 
 @pytest.mark.asyncio
