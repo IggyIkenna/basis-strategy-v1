@@ -134,15 +134,16 @@ class EventDrivenStrategyEngine:
         self.debug_mode = debug_mode
         
         # Store component references - following reference-based architecture
-        self.position_monitor = position_monitor
-        self.event_logger = event_logger
-        self.exposure_monitor = exposure_monitor
-        self.risk_monitor = risk_monitor
-        self.pnl_calculator = pnl_calculator
-        self.strategy_manager = strategy_manager
-        self.position_update_handler = position_update_handler
-        self.results_store = results_store
-        self.utility_manager = utility_manager
+        # Create components if not provided (for backtest service compatibility)
+        self.position_monitor = position_monitor or self._create_position_monitor()
+        self.event_logger = event_logger or self._create_event_logger()
+        self.exposure_monitor = exposure_monitor or self._create_exposure_monitor()
+        self.risk_monitor = risk_monitor or self._create_risk_monitor()
+        self.pnl_calculator = pnl_calculator or self._create_pnl_calculator()
+        self.strategy_manager = strategy_manager or self._create_strategy_manager()
+        self.position_update_handler = position_update_handler or self._create_position_update_handler()
+        self.results_store = results_store or self._create_results_store()
+        self.utility_manager = utility_manager or self._create_utility_manager()
         
         # Validate required parameters (FAIL FAST)
         if not self.mode:
@@ -900,3 +901,64 @@ class EventDrivenStrategyEngine:
 # - initial_capital (from API request)
 # - share_class (from API request)
 # Use direct constructor with proper dependency injection instead
+
+    def _create_position_monitor(self):
+        """Create position monitor component."""
+        from ..strategies.components.position_monitor import PositionMonitor
+        from ...core.utilities.utility_manager import UtilityManager
+        utility_manager = UtilityManager(self.config, self.data_provider)
+        return PositionMonitor(self.config, self.data_provider, utility_manager)
+    
+    def _create_event_logger(self):
+        """Create event logger component."""
+        from ..strategies.components.event_logger import EventLogger
+        from ...core.utilities.utility_manager import UtilityManager
+        utility_manager = UtilityManager(self.config, self.data_provider)
+        return EventLogger(self.config, self.data_provider, utility_manager)
+    
+    def _create_exposure_monitor(self):
+        """Create exposure monitor component."""
+        from ..strategies.components.exposure_monitor import ExposureMonitor
+        from ...core.utilities.utility_manager import UtilityManager
+        utility_manager = UtilityManager(self.config, self.data_provider)
+        return ExposureMonitor(self.config, self.data_provider, utility_manager)
+    
+    def _create_risk_monitor(self):
+        """Create risk monitor component."""
+        from ..strategies.components.risk_monitor import RiskMonitor
+        from ...core.utilities.utility_manager import UtilityManager
+        utility_manager = UtilityManager(self.config, self.data_provider)
+        return RiskMonitor(self.config, self.data_provider, utility_manager)
+    
+    def _create_pnl_calculator(self):
+        """Create P&L calculator component."""
+        from ..math.pnl_calculator import PnLCalculator
+        return PnLCalculator(self.config, self.share_class, self.initial_capital)
+    
+    def _create_strategy_manager(self):
+        """Create strategy manager component."""
+        from ..strategies.components.strategy_manager import StrategyManager
+        from ...core.utilities.utility_manager import UtilityManager
+        utility_manager = UtilityManager(self.config, self.data_provider)
+        return StrategyManager(self.config, self.data_provider, utility_manager)
+    
+    def _create_position_update_handler(self):
+        """Create position update handler component."""
+        from ..strategies.components.position_update_handler import PositionUpdateHandler
+        return PositionUpdateHandler(
+            self.config,
+            self.position_monitor,
+            self.exposure_monitor,
+            self.risk_monitor,
+            self.pnl_calculator
+        )
+    
+    def _create_results_store(self):
+        """Create results store component."""
+        from ...infrastructure.persistence.result_store import ResultStore
+        return ResultStore(self.config, self.data_provider)
+    
+    def _create_utility_manager(self):
+        """Create utility manager component."""
+        from ...core.utilities.utility_manager import UtilityManager
+        return UtilityManager(self.config, self.data_provider)
