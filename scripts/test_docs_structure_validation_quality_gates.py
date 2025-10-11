@@ -12,23 +12,26 @@ import sys
 from pathlib import Path
 from typing import List, Tuple, Dict, Set
 
-# 18-Section Standard Format for Component Specs
+# 19-Section Standard Format for Component Specs (from COMPONENT_SPEC_TEMPLATE.md)
 REQUIRED_SECTIONS = [
     "Purpose",
+    "📚 **Canonical Sources**",  # NEW section name
     "Responsibilities", 
     "State",
     "Component References (Set at Init)",
-    "Environment Variables",  # NEW
-    "Config Fields Used",  # NEW
-    "Data Provider Queries",  # NEW
+    "Configuration Parameters",
+    "Environment Variables",
+    "Config Fields Used",
+    "Data Provider Queries",
     "Core Methods",
     "Data Access Pattern",
     "Mode-Aware Behavior",
-    "Event Logging Requirements",  # Check for component-specific log files
-    "Error Codes",  # Check for structured error handling
+    "**MODE-AGNOSTIC IMPLEMENTATION EXAMPLE**",  # NEW section
+    "Event Logging Requirements",
+    "Error Codes",
     "Quality Gates",
     "Integration Points",
-    "Code Structure Example",
+    "Current Implementation Status",
     "Related Documentation"
 ]
 
@@ -78,8 +81,8 @@ def validate_docs_structure(file_path: str) -> Dict:
             'structure_score': 0
         }
 
-def validate_18_section_format(file_path: str) -> Dict:
-    """Validate that a docs/specs/ file has all 18 required sections in correct order."""
+def validate_19_section_format(file_path: str) -> Dict:
+    """Validate that a docs/specs/ file has all 19 required sections in correct order."""
     try:
         with open(file_path, 'r', encoding='utf-8') as f:
             content = f.read()
@@ -186,16 +189,17 @@ def validate_specs_implementation_status(file_path: str) -> Dict:
         # Check for last reviewed date
         has_last_reviewed = bool(re.search(r'[Ll]ast\s+[Rr]eviewed', content))
         
-        # Check for required spec structure sections
-        has_title_with_emoji = bool(re.search(r'^#\s+.*📊|🎯|🔧|📦|🔄|💻|🧪|⚡|🎯', content, re.MULTILINE))
-        has_component_metadata = bool(re.search(r'\*\*Component\*\*:', content))
+        # Check for 19-section format elements (new format)
         has_purpose_section = bool(re.search(r'##\s+.*[Pp]urpose', content, re.MULTILINE))
-        has_component_structure = bool(re.search(r'##\s+.*[Cc]omponent\s+[Ss]tructure', content, re.MULTILINE))
-        has_data_structures = bool(re.search(r'##\s+.*[Dd]ata\s+[Ss]tructures', content, re.MULTILINE))
+        has_canonical_sources_section = bool(re.search(r'##\s+.*[Cc]anonical\s+[Ss]ources', content, re.MULTILINE))
+        has_responsibilities_section = bool(re.search(r'##\s+.*[Rr]esponsibilities', content, re.MULTILINE))
+        has_state_section = bool(re.search(r'##\s+.*[Ss]tate', content, re.MULTILINE))
+        has_config_params_section = bool(re.search(r'##\s+.*[Cc]onfiguration\s+[Pp]arameters', content, re.MULTILINE))
+        has_env_vars_section = bool(re.search(r'##\s+.*[Ee]nvironment\s+[Vv]ariables', content, re.MULTILINE))
+        has_core_methods_section = bool(re.search(r'##\s+.*[Cc]ore\s+[Mm]ethods', content, re.MULTILINE))
+        has_mode_aware_section = bool(re.search(r'##\s+.*[Mm]ode.*[Aa]ware', content, re.MULTILINE))
         has_integration_section = bool(re.search(r'##\s+.*[Ii]ntegration', content, re.MULTILINE))
-        has_implementation_section = bool(re.search(r'##\s+.*[Ii]mplementation', content, re.MULTILINE))
-        has_testing_section = bool(re.search(r'##\s+.*[Tt]esting', content, re.MULTILINE))
-        has_success_criteria = bool(re.search(r'##\s+.*[Ss]uccess\s+[Cc]riteria', content, re.MULTILINE))
+        has_related_docs_section = bool(re.search(r'##\s+.*[Rr]elated\s+[Dd]ocumentation', content, re.MULTILINE))
         
         implementation_elements = [
             has_implementation_status,
@@ -207,17 +211,18 @@ def validate_specs_implementation_status(file_path: str) -> Dict:
         ]
         
         structure_elements = [
-            has_title_with_emoji,
-            has_component_metadata,
             has_canonical_sources,
+            has_last_reviewed,
             has_purpose_section,
-            has_component_structure,
-            has_data_structures,
+            has_canonical_sources_section,
+            has_responsibilities_section,
+            has_state_section,
+            has_config_params_section,
+            has_env_vars_section,
+            has_core_methods_section,
+            has_mode_aware_section,
             has_integration_section,
-            has_implementation_section,
-            has_testing_section,
-            has_success_criteria,
-            has_last_reviewed
+            has_related_docs_section
         ]
         
         return {
@@ -230,15 +235,16 @@ def validate_specs_implementation_status(file_path: str) -> Dict:
             'has_task_completion': has_task_completion,
             'has_canonical_sources': has_canonical_sources,
             'has_last_reviewed': has_last_reviewed,
-            'has_title_with_emoji': has_title_with_emoji,
-            'has_component_metadata': has_component_metadata,
             'has_purpose_section': has_purpose_section,
-            'has_component_structure': has_component_structure,
-            'has_data_structures': has_data_structures,
+            'has_canonical_sources_section': has_canonical_sources_section,
+            'has_responsibilities_section': has_responsibilities_section,
+            'has_state_section': has_state_section,
+            'has_config_params_section': has_config_params_section,
+            'has_env_vars_section': has_env_vars_section,
+            'has_core_methods_section': has_core_methods_section,
+            'has_mode_aware_section': has_mode_aware_section,
             'has_integration_section': has_integration_section,
-            'has_implementation_section': has_implementation_section,
-            'has_testing_section': has_testing_section,
-            'has_success_criteria': has_success_criteria,
+            'has_related_docs_section': has_related_docs_section,
             'implementation_score': sum(implementation_elements),
             'structure_score': sum(structure_elements),
             'total_implementation_elements': len(implementation_elements),
@@ -296,20 +302,20 @@ def run_quality_gate() -> Dict:
         if result.get('implementation_score', 0) >= 4:  # At least 4/6 elements
             specs_implementation_passed += 1
             
-        if result.get('structure_score', 0) >= 8:  # At least 8/11 elements
+        if result.get('structure_score', 0) >= 10:  # At least 10/12 elements
             specs_structure_passed += 1
     
     print(f"Specs implementation status validation complete: {specs_implementation_passed}/{len(specs_docs)} passed")
     print(f"Specs structure validation complete: {specs_structure_passed}/{len(specs_docs)} passed")
     print()
     
-    # Validate 18-section format for component specs
-    print("4. Validating 18-section standard format for component specs:")
+    # Validate 19-section format for component specs
+    print("4. Validating 19-section standard format for component specs:")
     section_format_results = []
     section_format_passed = 0
     
     for file_path in specs_docs:
-        result = validate_18_section_format(file_path)
+        result = validate_19_section_format(file_path)
         section_format_results.append(result)
         
         if result.get('structure_score', 0) >= 0.8:  # At least 80% compliance
@@ -385,8 +391,8 @@ def run_quality_gate() -> Dict:
         if specs_structure_passed < len(specs_docs):
             print("Docs/specs/ files missing required structure sections:")
             for result in specs_results:
-                if result.get('structure_score', 0) < 8:
-                    print(f"  {result['file']}: {result.get('structure_score', 0)}/11 elements")
+                if result.get('structure_score', 0) < 10:
+                    print(f"  {result['file']}: {result.get('structure_score', 0)}/12 elements")
             print()
         
         # Show failing specs/ files - 18-section format

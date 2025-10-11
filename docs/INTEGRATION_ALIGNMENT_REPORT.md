@@ -310,7 +310,7 @@ All core components (01-11) properly align with canonical architecture:
 - ✅ Component specs now document all relevant config parameters
 - ✅ Environment variables documented with usage context
 - ✅ YAML configuration structure fully documented
-- ✅ Cross-references to CONFIGURATION.md and ENVIRONMENT_VARIABLES.md added
+- ✅ Cross-references to 19_CONFIGURATION.md and ENVIRONMENT_VARIABLES.md added
 - ✅ Configuration parameter usage clearly explained
 
 **YAML Config Structure Validation**:
@@ -329,7 +329,7 @@ All core components (01-11) properly align with canonical architecture:
 
 **Cross-Reference Validation**:
 - ✅ ENVIRONMENT_VARIABLES.md definitions match component usage
-- ✅ CONFIGURATION.md hierarchy aligns with component references
+- ✅ 19_CONFIGURATION.md hierarchy aligns with component references
 - ✅ Environment variable patterns are consistent
 - ✅ Cross-references to configuration documentation added
 

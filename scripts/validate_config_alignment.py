@@ -201,17 +201,17 @@ class ConfigAlignmentValidator:
                 with open(mode_file, 'r') as f:
                     mode_configs[mode_file.stem] = yaml.safe_load(f)
         
-        strategy_model_fields = self.get_pydantic_model_fields(StrategyConfig)
+        model_fields = self.get_pydantic_model_fields(StrategyConfig)
         all_mode_config_fields = set()
         for config_data in mode_configs.values():
             all_mode_config_fields.update(self.get_nested_fields(config_data))
         
-        strategy_orphaned_config = all_mode_config_fields - strategy_model_fields
-        strategy_orphaned_model = strategy_model_fields - all_mode_config_fields
+        strategy_orphaned_config = all_mode_config_fields - model_fields
+        strategy_orphaned_model = model_fields - all_mode_config_fields
         
         alignment_results['strategy'] = {
             'config_fields': len(all_mode_config_fields),
-            'model_fields': len(strategy_model_fields),
+            'model_fields': len(model_fields),
             'orphaned_config': list(strategy_orphaned_config),
             'orphaned_model': list(strategy_orphaned_model),
             'coverage': (len(all_mode_config_fields - strategy_orphaned_config) / len(all_mode_config_fields)) * 100 if all_mode_config_fields else 100
@@ -219,7 +219,7 @@ class ConfigAlignmentValidator:
         total_orphaned_config += len(strategy_orphaned_config)
         total_orphaned_model += len(strategy_orphaned_model)
         strategy_status = "✅ PASS" if len(strategy_orphaned_config) == 0 and len(strategy_orphaned_model) == 0 else "❌ FAIL"
-        print(f"    Strategy: {len(all_mode_config_fields)} config fields, {len(strategy_model_fields)} model fields - {strategy_status}")
+        print(f"    Strategy: {len(all_mode_config_fields)} config fields, {len(model_fields)} model fields - {strategy_status}")
         if strategy_orphaned_config:
             print(f"    ⚠️  {len(strategy_orphaned_config)} orphaned config fields: {list(strategy_orphaned_config)[:5]}...")
         if strategy_orphaned_model:

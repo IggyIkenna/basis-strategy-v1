@@ -1,38 +1,42 @@
-# P&L CALCULATOR UNIT TESTS
+# P&L CALCULATOR ALIGNMENT & UNIT TESTS
 
 ## OVERVIEW
-This task implements comprehensive unit tests for the P&L Calculator component to validate mode-agnostic P&L calculations, attribution logic, and integration with other components. This ensures the P&L Calculator component is fully tested and validated according to specifications.
+This task aligns the existing P&L Calculator implementation with canonical specifications and implements comprehensive unit tests. The component exists at `backend/src/basis_strategy_v1/core/math/pnl_calculator.py` but needs alignment with mode-agnostic design patterns, generic attribution system, and proper error codes.
 
-**Reference**: `docs/specs/04_PNL_CALCULATOR.md` - P&L Calculator specification  
-**Reference**: `docs/REFERENCE_ARCHITECTURE_CANONICAL.md` - Section 7 (Generic vs Mode-Specific)  
-**Reference**: `docs/ARCHITECTURAL_DECISION_RECORDS.md` - ADR-003 (Reference-Based Architecture)  
+**Reference**: `docs/specs/04_PNL_CALCULATOR.md` - Generic attribution system specification  
+**Reference**: `docs/REFERENCE_ARCHITECTURE_CANONICAL.md` - Section II (Config-Driven Mode-Agnostic Architecture)  
+**Reference**: `docs/CODE_STRUCTURE_PATTERNS.md` - Sections 2-4 (Mode-agnostic patterns)  
+**Reference**: `docs/IMPLEMENTATION_GAP_REPORT.md` - Component gap analysis  
 **Reference**: `tests/unit/` - Existing unit test structure
 
 ## CRITICAL REQUIREMENTS
 
-### 1. Mode-Agnostic P&L Calculation Testing
-- **P&L calculations**: Test P&L calculations for all strategy modes
-- **Mode-agnostic behavior**: Test mode-agnostic behavior with config-driven parameters
-- **Calculation accuracy**: Test calculation accuracy and precision
-- **Calculation validation**: Test calculation validation logic and error handling
+### 1. Mode-Agnostic Architecture Alignment
+- **Generic P&L calculation**: Implement generic P&L calculation per spec
+- **Config-driven attribution types**: Use `attribution_types` from component config
+- **Universal balance calculation**: Calculate balances across all venues
+- **Mode-agnostic behavior**: Ensure same logic for all strategy modes
+- **Error codes**: Add missing error codes PNL-001 through PNL-013
 
-### 2. Attribution Logic Testing
-- **P&L attribution**: Test P&L attribution across venues and protocols
-- **Attribution accuracy**: Test attribution accuracy and precision
-- **Attribution validation**: Test attribution validation logic
-- **Attribution reporting**: Test attribution reporting functionality
+### 2. Implementation Alignment
+- **Reference-based architecture**: Verify component references set at init
+- **Shared clock pattern**: Ensure timestamp-based data queries
+- **Exposure monitor integration**: Validate integration with exposure monitor
+- **Centralized utility methods**: Use centralized utility manager for conversions
+- **Share class reporting**: Report P&L in share class currency
 
-### 3. Integration Testing
-- **Position monitor integration**: Test integration with position monitor
-- **Risk monitor integration**: Test integration with risk monitor
-- **Data provider integration**: Test integration with data provider
-- **Event logger integration**: Test integration with event logger
+### 3. Unit Test Implementation
+- **Mode-agnostic tests**: Test behavior across all strategy modes
+- **Config-driven tests**: Test config parameter usage and validation
+- **Error code tests**: Test all error codes and graceful degradation
+- **Integration tests**: Test with exposure monitor, data provider, other components
+- **Coverage target**: Achieve 80% test coverage
 
-### 4. Component Functionality Testing
-- **P&L tracking**: Test P&L tracking functionality
-- **P&L updates**: Test P&L update mechanisms
-- **P&L persistence**: Test P&L persistence mechanisms
-- **P&L reporting**: Test P&L reporting functionality
+### 4. Quality Gate Validation
+- **Architecture compliance**: Validate against canonical architecture
+- **Spec compliance**: Validate against component specification
+- **Integration validation**: Validate component integration patterns
+- **Performance validation**: Validate performance requirements
 
 ## FORBIDDEN PRACTICES
 

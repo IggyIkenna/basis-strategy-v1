@@ -180,7 +180,7 @@ def __init__(self, ...):
 From `self.config` (strategy mode slice):
 
 #### Universal Config (All Components)
-- `strategy_mode`: str - e.g., 'eth_basis', 'pure_lending'
+- `mode`: str - e.g., 'eth_basis', 'pure_lending'
 - `share_class`: str - 'usdt_stable' | 'eth_directional'
 - `initial_capital`: float - Starting capital
 

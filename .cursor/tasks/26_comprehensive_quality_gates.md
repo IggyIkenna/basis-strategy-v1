@@ -1,26 +1,47 @@
-# TASK: Run Comprehensive Quality Gates Suite
+# SERVICE LAYER & ENGINE VALIDATION
+
+## OVERVIEW
+This task validates the existing service layer implementations against canonical specifications and ensures comprehensive quality gates coverage. The services exist but need validation against specs, request isolation pattern compliance, and comprehensive quality gate implementation.
+
+**Reference**: `docs/specs/13_BACKTEST_SERVICE.md` - Backtest orchestration specification  
+**Reference**: `docs/specs/14_LIVE_TRADING_SERVICE.md` - Live trading orchestration specification  
+**Reference**: `docs/specs/15_EVENT_DRIVEN_STRATEGY_ENGINE.md` - Event loop management specification  
+**Reference**: `docs/REFERENCE_ARCHITECTURE_CANONICAL.md` - ADR-005 (Request Isolation)  
+**Reference**: `docs/QUALITY_GATES.md` - Validation requirements  
+**Reference**: `docs/IMPLEMENTATION_GAP_REPORT.md` - Component gap analysis
 
 ## CONTEXT
-Overall quality gates: 8/24 tests passing (33.3%). Need to improve to 15/24 tests passing (60%+). This covers multiple tasks from REMAINING_TASKS.md.
+Current quality gates: 12/24 tests passing (50%). Need to improve to 20/24 tests passing (80%+) through service layer validation and comprehensive quality gate implementation.
 
-## REQUIREMENTS FROM DOCS
-1) Read docs/REMAINING_TASKS.md sections for Tasks 1-8 completely
-2) Run comprehensive quality gates validation
-3) Fix any remaining issues
-4) Target 15/24 tests passing (60%+)
+## CRITICAL REQUIREMENTS
 
-## EXECUTION STEPS
-1) Health check: curl -s http://localhost:8001/health/
-2) Run: python scripts/run_quality_gates.py
-3) Analyze results and identify failing tests
-4) Run individual strategy tests:
-   - python scripts/test_pure_lending_quality_gates.py
-   - python scripts/test_btc_basis_quality_gates.py
-   - python scripts/test_tight_loop_quality_gates.py
-   - python scripts/test_position_monitor_persistence_quality_gates.py
-5) Fix any remaining issues
-6) Re-run: python scripts/run_quality_gates.py
-7) Verify 15/24 tests pass
+### 1. Backtest Service Validation
+- **Request isolation**: Validate fresh component instantiation per request
+- **Config slicing**: Validate config slicing and override application
+- **Data provider creation**: Validate fresh DataProvider creation per request
+- **Component initialization**: Validate fresh component creation per request
+- **Error codes**: Add missing error codes BT-001 through BT-013
+
+### 2. Live Trading Service Validation
+- **Request isolation**: Validate fresh component instantiation per request
+- **Live execution**: Validate live execution patterns
+- **Real-time monitoring**: Validate real-time monitoring capabilities
+- **Error handling**: Validate live trading error handling
+- **Error codes**: Add missing error codes LT-001 through LT-013
+
+### 3. Event Engine Validation
+- **Event loop management**: Validate event loop management per spec
+- **Component orchestration**: Validate component orchestration
+- **Timestamp management**: Validate shared clock pattern
+- **Error handling**: Validate event engine error handling
+- **Error codes**: Add missing error codes EE-001 through EE-013
+
+### 4. Quality Gates Implementation
+- **Service layer gates**: Add quality gates for all service components
+- **Integration gates**: Add integration quality gates
+- **Performance gates**: Add performance quality gates
+- **Error handling gates**: Add error handling quality gates
+- **Coverage gates**: Add test coverage quality gates
 
 ## SUCCESS CRITERIA
 - 15/24 tests passing (60%+)

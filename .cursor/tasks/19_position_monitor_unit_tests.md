@@ -1,38 +1,42 @@
-# POSITION MONITOR UNIT TESTS
+# POSITION MONITOR ALIGNMENT & UNIT TESTS
 
 ## OVERVIEW
-This task implements comprehensive unit tests for the Position Monitor component to validate component signatures match specifications, integration with execution interfaces works correctly, and reconciliation patterns are implemented properly. This ensures the Position Monitor component is fully tested and validated.
+This task aligns the existing Position Monitor implementation with canonical specifications and implements comprehensive unit tests. The component exists at `backend/src/basis_strategy_v1/core/strategies/components/position_monitor.py` but needs alignment with config-driven architecture, mode-agnostic design patterns, and proper error codes.
 
-**Reference**: `docs/specs/01_POSITION_MONITOR.md` - Position Monitor specification  
-**Reference**: `docs/REFERENCE_ARCHITECTURE_CANONICAL.md` - Section 1 (Reference-Based Architecture)  
-**Reference**: `docs/ARCHITECTURAL_DECISION_RECORDS.md` - ADR-001 (Tight Loop Architecture)  
+**Reference**: `docs/specs/01_POSITION_MONITOR.md` - Config-driven asset tracking specification  
+**Reference**: `docs/REFERENCE_ARCHITECTURE_CANONICAL.md` - Section II (Config-Driven Mode-Agnostic Architecture)  
+**Reference**: `docs/CODE_STRUCTURE_PATTERNS.md` - Sections 2-4 (Mode-agnostic patterns)  
+**Reference**: `docs/IMPLEMENTATION_GAP_REPORT.md` - Component gap analysis  
 **Reference**: `tests/unit/` - Existing unit test structure
 
 ## CRITICAL REQUIREMENTS
 
-### 1. Component Signature Validation
-- **Method signatures**: Validate all method signatures match the specification
-- **Parameter validation**: Validate all parameters are correctly typed and validated
-- **Return type validation**: Validate all return types match the specification
-- **Interface compliance**: Validate component implements required interfaces
+### 1. Config-Driven Architecture Alignment
+- **Component config usage**: Verify `component_config.position_monitor` usage per spec
+- **Track assets configuration**: Implement config-driven asset tracking per mode
+- **Fail-fast validation**: Implement fail-fast for unknown assets (safeguard)
+- **Mode-agnostic design**: Ensure same logic for all strategy modes
+- **Error codes**: Add missing error codes POS-001 through POS-013
 
-### 2. Integration Testing
-- **Execution interface integration**: Test integration with execution interfaces
-- **Data provider integration**: Test integration with data provider
-- **Risk monitor integration**: Test integration with risk monitor
-- **Event logger integration**: Test integration with event logger
+### 2. Implementation Alignment
+- **Reference-based architecture**: Verify component references set at init
+- **Shared clock pattern**: Ensure timestamp-based data queries
+- **Data provider integration**: Validate integration with data provider factory
+- **Execution delta processing**: Implement execution delta handling for backtest mode
+- **Live position sync**: Implement live position synchronization
 
-### 3. Reconciliation Pattern Testing
-- **Position reconciliation**: Test position reconciliation mechanisms
-- **Reconciliation handshake**: Test reconciliation handshake with execution manager
-- **Reconciliation validation**: Test reconciliation validation logic
-- **Reconciliation error handling**: Test reconciliation error handling
+### 3. Unit Test Implementation
+- **Config-driven tests**: Test config parameter usage and validation
+- **Mode-agnostic tests**: Test behavior across all strategy modes
+- **Error code tests**: Test all error codes and fail-fast scenarios
+- **Integration tests**: Test with data provider, event logger, other components
+- **Coverage target**: Achieve 80% test coverage
 
-### 4. Component Functionality Testing
-- **Position tracking**: Test position tracking functionality
-- **Position updates**: Test position update mechanisms
-- **Position validation**: Test position validation logic
-- **Position persistence**: Test position persistence mechanisms
+### 4. Quality Gate Validation
+- **Architecture compliance**: Validate against canonical architecture
+- **Spec compliance**: Validate against component specification
+- **Integration validation**: Validate component integration patterns
+- **Performance validation**: Validate performance requirements
 
 ## FORBIDDEN PRACTICES
 

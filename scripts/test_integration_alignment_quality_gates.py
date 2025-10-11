@@ -182,7 +182,7 @@ class IntegrationAlignmentQualityGates:
         
         # Check YAML configuration references
         self._check_file_contains(
-            "docs/specs/CONFIGURATION.md",
+            "docs/specs/19_CONFIGURATION.md",
             "YAML Configuration",
             "YAML configuration documentation"
         )

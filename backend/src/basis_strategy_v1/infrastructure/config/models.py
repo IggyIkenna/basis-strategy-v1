@@ -91,6 +91,9 @@ class ModeConfig(BaseModel):
     hedge_allocation_bybit: Optional[float] = Field(None, ge=0.0, le=1.0, description="Bybit hedge allocation")
     hedge_allocation_okx: Optional[float] = Field(None, ge=0.0, le=1.0, description="OKX hedge allocation")
     
+    # Component configuration
+    component_config: Optional[Dict[str, Any]] = Field(None, description="Component-specific configuration")
+    
     @field_validator('share_class')
     @classmethod
     def validate_share_class(cls, v):
@@ -124,6 +127,14 @@ class ModeConfig(BaseModel):
         if self.leverage_enabled and not self.borrowing_enabled:
             raise ValueError(f"Mode {self.mode}: leverage_enabled requires borrowing_enabled")
         
+        # Staking requires lst_type
+        if self.staking_enabled and not self.lst_type:
+            raise ValueError(f"Mode {self.mode}: staking_enabled requires lst_type")
+        
+        # Borrowing requires max_ltv
+        if self.borrowing_enabled and not self.max_ltv:
+            raise ValueError(f"Mode {self.mode}: borrowing_enabled requires max_ltv")
+        
         # Validate hedge configuration
         if self.hedge_venues and not self.hedge_allocation and not any([self.hedge_allocation_binance, self.hedge_allocation_bybit, self.hedge_allocation_okx]):
             raise ValueError(f"Mode {self.mode}: hedge_venues specified but no hedge_allocation or individual allocation fields")
@@ -145,6 +156,63 @@ class ModeConfig(BaseModel):
                 raise ValueError(f"Mode {self.mode}: individual hedge allocations sum to {total_individual}, expected 1.0")
         
         return self
+
+
+class RiskMonitorConfig(BaseModel):
+    """Risk monitor configuration model."""
+    
+    enabled_risk_types: List[str] = Field(..., description="Enabled risk types")
+    risk_limits: Dict[str, Any] = Field(..., description="Risk limits configuration")
+
+
+class ExposureMonitorConfig(BaseModel):
+    """Exposure monitor configuration model."""
+    
+    exposure_currency: str = Field(..., description="Exposure reporting currency")
+    track_assets: List[str] = Field(..., description="Assets to track")
+    conversion_methods: Dict[str, str] = Field(..., description="Asset conversion methods")
+
+
+class PnLCalculatorConfig(BaseModel):
+    """PnL calculator configuration model."""
+    
+    attribution_types: List[str] = Field(..., description="PnL attribution types")
+    reporting_currency: str = Field(..., description="PnL reporting currency")
+    reconciliation_tolerance: float = Field(..., ge=0.0, description="Reconciliation tolerance")
+
+
+class StrategyManagerConfig(BaseModel):
+    """Strategy manager configuration model."""
+    
+    strategy_type: str = Field(..., description="Strategy type")
+    actions: List[str] = Field(..., description="Available actions")
+    rebalancing_triggers: List[str] = Field(..., description="Rebalancing triggers")
+    position_calculation: Dict[str, Any] = Field(..., description="Position calculation config")
+
+
+class ExecutionManagerConfig(BaseModel):
+    """Execution manager configuration model."""
+    
+    supported_actions: List[str] = Field(..., description="Supported execution actions")
+    action_mapping: Dict[str, List[str]] = Field(..., description="Action to execution mapping")
+
+
+class ResultsStoreConfig(BaseModel):
+    """Results store configuration model."""
+    
+    result_types: List[str] = Field(..., description="Result types to store")
+    balance_sheet_assets: List[str] = Field(..., description="Balance sheet assets")
+    pnl_attribution_types: List[str] = Field(..., description="PnL attribution types")
+    leverage_tracking: Optional[bool] = Field(None, description="Whether to track leverage")
+    dust_tracking_tokens: Optional[List[str]] = Field(None, description="Dust tracking tokens")
+
+
+class StrategyFactoryConfig(BaseModel):
+    """Strategy factory configuration model."""
+    
+    timeout: int = Field(..., ge=1, description="Timeout in seconds")
+    max_retries: int = Field(..., ge=0, description="Maximum retry attempts")
+    validation_strict: bool = Field(..., description="Whether to use strict validation")
 
 
 class VenueConfig(BaseModel):

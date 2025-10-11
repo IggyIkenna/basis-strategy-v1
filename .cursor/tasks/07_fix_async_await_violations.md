@@ -1,11 +1,11 @@
-# Fix Async/Await Violations
+# FIX ASYNC/AWAIT VIOLATIONS
 
-## Overview
+## OVERVIEW
 Remove async/await from all internal component methods to comply with ADR-006 Synchronous Component Execution. Keep async ONLY for Event Logger, Results Store, and API entry points.
 
-**Reference**: `docs/ARCHITECTURAL_DECISION_RECORDS.md` - ADR-006 Synchronous Component Execution  
 **Reference**: `docs/REFERENCE_ARCHITECTURE_CANONICAL.md` - Section 6 (Async I/O for Non-Critical Path)  
-**Reference**: `docs/DEVIATIONS_AND_CORRECTIONS.md` - Lines 38-54 (Async/Await in Component Methods)
+**Reference**: `docs/ARCHITECTURAL_DECISION_RECORDS.md` - ADR-006 (Synchronous Component Execution)  
+**Reference**: `docs/IMPLEMENTATION_GAP_REPORT.md` - Component gap analysis
 
 ## CRITICAL REQUIREMENTS
 
@@ -21,32 +21,21 @@ Remove async/await from all internal component methods to comply with ADR-006 Sy
 - **Results Store**: Keep async for database/file operations
 - **API Entry Points**: Keep async for BacktestService.run_backtest, LiveTradingService.start_live_trading
 
-## AFFECTED FILES
+## AFFECTED COMPONENTS
 
-### Position Monitor
-- `backend/src/basis_strategy_v1/core/strategies/components/position_monitor.py:239`
-- **Issue**: `async def update()` should be synchronous
-- **Fix**: Remove `async` keyword, make method synchronous
+### Core Strategy Components
+- **Position Monitor**: Remove async from internal methods
+- **Risk Monitor**: Remove async from 18 internal methods
+- **Strategy Manager**: Remove async from 9 internal methods
+- **P&L Calculator**: Remove async from calculation methods
+- **Position Update Handler**: Remove async from 3 internal methods
 
-### Risk Monitor
-- `backend/src/basis_strategy_v1/core/strategies/components/risk_monitor.py`
-- **Issue**: 18 async internal methods (lines 485,498,598,666,721,742,781,846,887,932,972,1033,1037,1057,1229,1338,1472,1485)
-- **Fix**: Remove `async` keyword from all internal methods
+### Keep Async For
+- **Event Logger**: File I/O operations
+- **Results Store**: Database/file operations
+- **API Entry Points**: BacktestService.run_backtest, LiveTradingService.start_live_trading
 
-### Strategy Manager
-- `backend/src/basis_strategy_v1/core/strategies/components/strategy_manager.py`
-- **Issue**: 9 async internal methods (lines 492,1061,1085,1160,1219,1271,1298,1311,1343)
-- **Fix**: Remove `async` keyword from all internal methods
-
-### P&L Calculator
-- `backend/src/basis_strategy_v1/core/math/pnl_calculator.py:194`
-- **Issue**: `async def calculate_pnl()` should be synchronous
-- **Fix**: Remove `async` keyword, make method synchronous
-
-### Position Update Handler
-- `backend/src/basis_strategy_v1/core/strategies/components/position_update_handler.py`
-- **Issue**: 3 async internal methods (lines 105,194,240)
-- **Fix**: Remove `async` keyword from all internal methods
+**Implementation Details**: See `docs/REFERENCE_ARCHITECTURE_CANONICAL.md` Section 6 for complete async/await patterns and component-specific requirements.
 
 ## IMPLEMENTATION REQUIREMENTS
 

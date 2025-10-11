@@ -107,7 +107,7 @@
 **Required Fix**: Use direct config access and let KeyError raise if missing
 
 **Status**: No TODO comments present  
-**Task File**: **NEW TASK NEEDED** - `.cursor/tasks/24_implement_fail_fast_configuration.md`
+**Task File**: **NEW TASK NEEDED** - `.cursor/tasks/24_implement_fail_fast_19_CONFIGURATION.md`
 
 #### 5. Singleton Pattern Not Enforced ❌ MEDIUM PRIORITY
 **Violation**: Canonical Principles Section 2  
@@ -230,7 +230,7 @@
 
 ### New Tasks Required
 - `.cursor/tasks/23_fix_async_await_violations.md` - Violation #1 (Async/Await)
-- `.cursor/tasks/24_implement_fail_fast_configuration.md` - Violation #4 (Fail-Fast Config)
+- `.cursor/tasks/24_implement_fail_fast_19_CONFIGURATION.md` - Violation #4 (Fail-Fast Config)
 - `.cursor/tasks/25_fix_reference_based_architecture_gaps.md` - Violation #9 (Reference-Based Architecture)
 - `.cursor/tasks/26_fix_component_data_flow_architecture.md` - Violation #10 (Component Data Flow)
 - `.cursor/tasks/27_complete_frontend_implementation.md` - Violation #11 (Frontend Implementation)

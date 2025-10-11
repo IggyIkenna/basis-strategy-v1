@@ -12,31 +12,21 @@ This document provides comprehensive specifications for all strategy modes in th
 
 ## Core Principles
 
-### Share Class Risk Profile
-**Strategy risk profiles are determined by share class configuration**:
-- **USDT Share Class** (`market_neutral: true`): Market neutral strategies that hedge all directional exposure
-- **ETH Share Class** (`market_neutral: false`): Directional strategies that take ETH price exposure without hedging
-
-**Key Config Constraints**:
-- When `share_class != asset`: Must hedge directional exposure (USDT share class with ETH asset)
-- When `share_class == asset`: No hedging required (ETH share class with ETH asset, or USDT share class with USDT asset)
-- `market_neutral: true` in share class config enforces hedging requirements
-- `market_neutral: false` in share class config allows directional exposure
-
-The delta to market may grow from P&L if the share class is not USDT (e.g., we gain ETH from P&L that we convert to ETH for ETH share class strategies where ETH is our configured asset).
-
 ### Share Class Architecture
-- **USDT Share Class**: All strategies report P&L in USDT terms and maintain USDT neutrality
-- **ETH Share Class**: All strategies report P&L in ETH terms and maintain ETH neutrality. Sitting on USDT cash (wallet.USDT or any non ETH undelrying token) on an ETH share class is being effectively short ETH.
-- **Dynamic Rebalancing**: As P&L accumulates, strategies expand or contract their overall trade size depending on the pnl direction
+- **USDT Share Class**: Market-neutral strategies, P&L in USDT
+- **ETH Share Class**: Directional strategies, P&L in ETH
+- Config field: `market_neutral: true/false` in share class config
 
-### Execution Architecture
-- **Mode-Agnostic Components**: Position monitor, exposure monitor, risk monitor, P&L monitor work across all modes
-- **Mode-Specific Logic**: Strategy manager and data subscriptions are strategy mode specific by nature
-- **Config-Driven Parameters**: Components use config parameters (share_class, asset, lst_type, hedge_allocation) instead of strategy mode logic
-- **Tight Loop Architecture**: MANDATORY execution reconciliation pattern (execution → position_monitor → verify reconciliation → next instruction) for both backtest and live modes
-- **Centralized Utility Manager**: All utility methods (liquidity index, market prices, conversions) centralized in single utility manager
-- **Event Engine Integration**: All components properly integrated with EventDrivenStrategyEngine for consistent event handling
+### Config-Driven Component Architecture
+Components use `component_config` to determine behavior:
+- **Mode-Agnostic**: Position/Exposure/Risk/PnL monitors work across all modes
+- **Mode-Specific**: Strategy Manager has mode-specific logic via inheritance
+- **Data Requirements**: Each mode specifies `data_requirements` list
+- **Component Configs**: Each mode has `component_config` dict for all components
+
+See: 19_CONFIGURATION.md for complete mode configs, REFERENCE_ARCHITECTURE_CANONICAL.md for architecture patterns.
+
+**ADR References**: ADR-052 (config-driven components), ADR-056 (component architecture)
 
 ### Execution Venue Mapping
 **Venue Selection Rules**:
@@ -470,7 +460,7 @@ The delta to market may grow from P&L if the share class is not USDT (e.g., we g
 
 **Reserve Balance Management**:
 - **Fast Withdrawals**: Maintain ETH reserve for immediate client redemptions
-- **Reserve Threshold**: If reserve < 10% of total ETH, slow down withdrawals
+- **Reserve Threshold**: If reserve < `reserve_ratio` of total ETH, publish reserve_low event
 - **Unwinding**: If too many withdrawals, unwind leveraged position (slow, requires multiple AAVE transactions)
 
 **Risk Profile**:

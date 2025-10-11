@@ -47,4 +47,49 @@ data_requirements:
 # Live time throttling 
 time_throttle_interval: 60
 
+# Component configuration
+component_config:
+  risk_monitor:
+    enabled_risk_types: []  # No liquidation risk for unleveraged staking
+    risk_limits: {}
+  
+  exposure_monitor:
+    exposure_currency: "ETH"
+    track_assets: ["ETH", "weETH", "EIGEN", "KING"]
+    conversion_methods:
+      ETH: "direct"
+      weETH: "oracle_price"
+      EIGEN: "usd_price"
+      KING: "unwrap"
+  
+  pnl_calculator:
+    attribution_types: ["staking_yield_oracle", "staking_yield_rewards", "transaction_costs"]
+    reporting_currency: "ETH"
+    reconciliation_tolerance: 0.02
+  
+  strategy_manager:
+    strategy_type: "eth_staking_only"
+    actions: ["entry_full", "exit_full"]
+    rebalancing_triggers: ["deposit", "withdrawal"]
+    position_calculation:
+      target_position: "eth_staking"
+      lst_type: "weeth"
+  
+  execution_manager:
+    supported_actions: ["etherfi_stake", "etherfi_unstake"]
+    action_mapping:
+      entry_full: ["etherfi_stake"]
+      exit_full: ["etherfi_unstake"]
+  
+  results_store:
+    result_types: ["balance_sheet", "pnl_attribution", "execution_log", "dust_tracking"]
+    balance_sheet_assets: ["ETH", "weETH", "EIGEN", "KING"]
+    pnl_attribution_types: ["staking_yield_oracle", "staking_yield_rewards", "transaction_costs"]
+    dust_tracking_tokens: ["EIGEN", "ETHFI", "KING"]
+  
+  strategy_factory:
+    timeout: 30
+    max_retries: 3
+    validation_strict: true
+
 

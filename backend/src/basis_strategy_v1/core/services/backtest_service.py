@@ -115,7 +115,7 @@ class BacktestService:
                 execution_mode=os.getenv('BASIS_EXECUTION_MODE'),
                 data_mode=os.getenv('BASIS_DATA_MODE'),
                 config=config,
-                strategy_mode=request.strategy_name,
+                mode=request.strategy_name,
                 backtest_start_date=request.start_date.strftime('%Y-%m-%d'),
                 backtest_end_date=request.end_date.strftime('%Y-%m-%d')
             )
@@ -281,7 +281,7 @@ class BacktestService:
     
     def _map_strategy_to_mode(self, strategy_name: str) -> str:
         """Map strategy name to mode."""
-        strategy_mode_map = {
+        mode_map = {
             'pure_lending': 'pure_lending',
             'btc_basis': 'btc_basis',
             'eth_leveraged': 'eth_leveraged',
@@ -289,7 +289,7 @@ class BacktestService:
             'usdt_market_neutral_no_leverage': 'usdt_market_neutral_no_leverage',
             'eth_staking_only': 'eth_staking_only'
         }
-        return strategy_mode_map.get(strategy_name, 'pure_lending')
+        return mode_map.get(strategy_name, 'pure_lending')
     
     def _deep_merge(self, base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]:
         """Deep merge two dictionaries."""

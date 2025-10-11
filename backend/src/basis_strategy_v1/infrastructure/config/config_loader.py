@@ -99,7 +99,7 @@ class ConfigLoader:
         #   2. Database configuration should be in env.unified (deployment-specific)
         #   3. Strategy/venue configuration should be in YAML files (static configs)
         #   4. Environment variables should handle deployment-specific overrides
-        # Reference: docs/specs/CONFIGURATION.md - Separation of Concerns section
+        # Reference: docs/specs/19_CONFIGURATION.md - Separation of Concerns section
         # Reference: docs/ENVIRONMENT_VARIABLES.md - Configuration Separation of Concerns section
         # Status: PENDING
         

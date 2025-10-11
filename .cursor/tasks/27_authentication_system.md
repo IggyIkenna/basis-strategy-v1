@@ -1,12 +1,18 @@
-# Task 27: Authentication System Implementation
+# AUTHENTICATION SYSTEM IMPLEMENTATION
+
+## OVERVIEW
+This task implements the authentication system per frontend specifications. The system provides secure authentication for the frontend with username/password authentication, JWT tokens, and protected routes.
+
+**Reference**: `docs/specs/12_FRONTEND_SPEC.md` - Frontend specification (authentication section)  
+**Reference**: `docs/REFERENCE_ARCHITECTURE_CANONICAL.md` - Section VII (Frontend Component Architecture)  
+**Reference**: `docs/API_DOCUMENTATION.md` - Backend API integration  
+**Reference**: `docs/USER_GUIDE.md` - User interface requirements  
+**Reference**: `docs/IMPLEMENTATION_GAP_REPORT.md` - Component gap analysis
 
 **Priority**: HIGH  
 **Estimated Time**: 4-6 hours  
-**Dependencies**: None  
+**Dependencies**: Frontend core components  
 **Day**: 6 (Frontend & Live Mode Completion)
-
-## Overview
-Implement basic username/password authentication system for the frontend with username "admin" and password-based authentication.
 
 ## Requirements
 

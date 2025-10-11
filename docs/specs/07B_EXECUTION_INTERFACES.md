@@ -5,9 +5,12 @@ Venue-specific execution clients that handle actual trade execution, order manag
 
 ## 📚 **Canonical Sources**
 
+**This component spec aligns with canonical architectural principles**:
 - **Architectural Principles**: [REFERENCE_ARCHITECTURE_CANONICAL.md](../REFERENCE_ARCHITECTURE_CANONICAL.md) - Canonical architectural principles
 - **Strategy Specifications**: [MODES.md](../MODES.md) - Canonical strategy mode definitions
 - **Component Specifications**: [specs/](specs/) - Detailed component implementation guides
+- **Config-Driven Architecture**: [REFERENCE_ARCHITECTURE_CANONICAL.md](../REFERENCE_ARCHITECTURE_CANONICAL.md) - Mode-agnostic architecture guide
+- **Code Structures**: [CODE_STRUCTURE_PATTERNS.md](../CODE_STRUCTURE_PATTERNS.md) - Complete implementation patterns
 
 ## Responsibilities
 1. Execute venue-specific API calls (live) or simulations (backtest)
@@ -15,6 +18,68 @@ Venue-specific execution clients that handle actual trade execution, order manag
 3. Parse venue responses into standardized format
 4. Return execution deltas (net position changes)
 5. MODE-AWARE: Real execution (live) vs simulated (backtest)
+
+## Config-Driven Behavior
+
+The Execution Interfaces are **mode-agnostic** by design - they execute venue-specific actions without mode-specific logic:
+
+**Component Configuration** (from `component_config.execution_interfaces`):
+```yaml
+component_config:
+  execution_interfaces:
+    # Execution Interfaces are inherently mode-agnostic
+    # Execute venue-specific actions regardless of strategy mode
+    # No mode-specific configuration needed
+    venue_timeout: 15        # Venue API timeout in seconds
+    max_retries: 3          # Maximum retry attempts
+    retry_delay: 1          # Retry delay in seconds
+```
+
+**Mode-Agnostic Venue Execution**:
+- Execute venue-specific actions based on instruction type
+- Same execution logic for all strategy modes
+- No mode-specific if statements in execution logic
+- Venue interfaces handle mode-specific execution behavior
+
+**Venue Execution by Type**:
+
+**CEX Execution Interfaces**:
+- Execute: spot trades, perp trades, order management, balance queries
+- Handles: Binance, Bybit, OKX venue-specific logic
+- Same execution logic regardless of strategy mode
+
+**DEX Execution Interfaces**:
+- Execute: token swaps, liquidity management, price impact calculation
+- Handles: Uniswap, Curve venue-specific logic
+- Same execution logic regardless of strategy mode
+
+**OnChain Execution Interfaces**:
+- Execute: supply, borrow, stake, atomic transactions
+- Handles: AAVE, Morpho, Lido, EtherFi venue-specific logic
+- Same execution logic regardless of strategy mode
+
+**Key Principle**: Execution Interfaces are **purely execution** - they do NOT:
+- Make mode-specific decisions about which venues to use
+- Handle strategy-specific execution logic
+- Convert or transform instructions
+- Make business logic decisions
+
+All execution logic is venue-specific - each interface handles the specific API calls and response parsing for its venue, regardless of which strategy mode is using it.
+
+### Mode-Agnostic Execution Logic
+The execution interfaces operate identically across all strategy modes:
+
+| Strategy Mode | Execution Behavior | Venue Selection | Order Management |
+|---------------|-------------------|-----------------|------------------|
+| `pure_lending` | Execute lending instructions | Based on venue config | Standard order flow |
+| `btc_basis` | Execute basis trading instructions | Based on venue config | Standard order flow |
+| `eth_basis` | Execute basis trading instructions | Based on venue config | Standard order flow |
+| `eth_staking_only` | Execute staking instructions | Based on venue config | Standard order flow |
+| `eth_leveraged` | Execute leveraged instructions | Based on venue config | Standard order flow |
+| `usdt_market_neutral_no_leverage` | Execute market neutral instructions | Based on venue config | Standard order flow |
+| `usdt_market_neutral` | Execute market neutral instructions | Based on venue config | Standard order flow |
+
+**All modes use identical execution logic** - the only difference is the instruction content, not the execution process.
 
 ## Interface Types
 
@@ -49,7 +114,7 @@ AAVE, Morpho, Lido, EigenLayer (supply, borrow, stake)
 ## Component References (Set at Init)
 The following are set once during initialization and NEVER passed as runtime parameters:
 
-- data_provider: DataProvider (reference, uses shared clock for pricing)
+- data_provider: BaseDataProvider (reference, uses shared clock for pricing)
 - config: Dict (reference, venue-specific settings)
 - execution_mode: str (BASIS_EXECUTION_MODE)
 
@@ -67,6 +132,91 @@ Components NEVER receive these as method parameters during runtime.
 - **VENUE_API_TIMEOUT**: API timeout in seconds (default: 30)
 - **VENUE_RETRY_ATTEMPTS**: Number of retry attempts for failed API calls (default: 3)
 - **VENUE_RATE_LIMIT_DELAY**: Delay between API calls in milliseconds (default: 100)
+
+## Environment-Specific Credential Usage
+
+### Credential Routing Pattern
+
+Execution interfaces use environment-specific credential routing based on `BASIS_ENVIRONMENT` to select the appropriate credential set for each venue. This ensures proper separation between development, staging, and production environments.
+
+**Environment Detection**:
+```python
+def _get_venue_credentials(self, venue: str) -> Dict:
+    """Get environment-specific credentials for venue."""
+    environment = os.getenv('BASIS_ENVIRONMENT', 'dev')
+    credential_prefix = f"BASIS_{environment.upper()}__"
+    
+    if venue == 'binance':
+        return {
+            'spot_api_key': os.getenv(f'{credential_prefix}CEX__BINANCE_SPOT_API_KEY'),
+            'spot_secret': os.getenv(f'{credential_prefix}CEX__BINANCE_SPOT_SECRET'),
+            'futures_api_key': os.getenv(f'{credential_prefix}CEX__BINANCE_FUTURES_API_KEY'),
+            'futures_secret': os.getenv(f'{credential_prefix}CEX__BINANCE_FUTURES_SECRET'),
+        }
+    elif venue == 'bybit':
+        return {
+            'api_key': os.getenv(f'{credential_prefix}CEX__BYBIT_API_KEY'),
+            'secret': os.getenv(f'{credential_prefix}CEX__BYBIT_SECRET'),
+        }
+    elif venue == 'okx':
+        return {
+            'api_key': os.getenv(f'{credential_prefix}CEX__OKX_API_KEY'),
+            'secret': os.getenv(f'{credential_prefix}CEX__OKX_SECRET'),
+            'passphrase': os.getenv(f'{credential_prefix}CEX__OKX_PASSPHRASE'),
+        }
+    elif venue == 'alchemy':
+        return {
+            'private_key': os.getenv(f'{credential_prefix}ALCHEMY__PRIVATE_KEY'),
+            'rpc_url': os.getenv(f'{credential_prefix}ALCHEMY__RPC_URL'),
+            'wallet_address': os.getenv(f'{credential_prefix}ALCHEMY__WALLET_ADDRESS'),
+            'network': os.getenv(f'{credential_prefix}ALCHEMY__NETWORK'),
+            'chain_id': os.getenv(f'{credential_prefix}ALCHEMY__CHAIN_ID'),
+        }
+    else:
+        raise ValueError(f"Unknown venue: {venue}")
+```
+
+### Venue-Specific Credential Mapping
+
+**CEX Venues**:
+- **Binance**: `BASIS_{ENV}__CEX__BINANCE_SPOT_API_KEY`, `BASIS_{ENV}__CEX__BINANCE_SPOT_SECRET`, `BASIS_{ENV}__CEX__BINANCE_FUTURES_API_KEY`, `BASIS_{ENV}__CEX__BINANCE_FUTURES_SECRET`
+- **Bybit**: `BASIS_{ENV}__CEX__BYBIT_API_KEY`, `BASIS_{ENV}__CEX__BYBIT_SECRET`
+- **OKX**: `BASIS_{ENV}__CEX__OKX_API_KEY`, `BASIS_{ENV}__CEX__OKX_SECRET`, `BASIS_{ENV}__CEX__OKX_PASSPHRASE`
+
+**OnChain Venues**:
+- **Alchemy**: `BASIS_{ENV}__ALCHEMY__PRIVATE_KEY`, `BASIS_{ENV}__ALCHEMY__RPC_URL`, `BASIS_{ENV}__ALCHEMY__WALLET_ADDRESS`, `BASIS_{ENV}__ALCHEMY__NETWORK`, `BASIS_{ENV}__ALCHEMY__CHAIN_ID`
+
+**Environment Values**:
+- **Development**: `BASIS_DEV__*` (testnet APIs, Sepolia network)
+- **Staging**: `BASIS_STAGING__*` (mainnet APIs, staging wallet)
+- **Production**: `BASIS_PROD__*` (mainnet APIs, production wallet)
+
+### Credential Validation
+
+All credentials must be validated before use to ensure they are present and contain valid values (not placeholder values).
+
+```python
+def _validate_credentials(self, credentials: Dict) -> bool:
+    """Validate that required credentials are present and non-empty."""
+    for key, value in credentials.items():
+        if not value or value.startswith('your_') or value == '0x...':
+            raise ComponentError(
+                error_code='EXI-004',
+                message=f'Invalid or missing credential: {key}',
+                component='ExecutionInterfaces',
+                severity='CRITICAL'
+            )
+    return True
+```
+
+**Validation Requirements**:
+- All credential values must be non-empty strings
+- No placeholder values (starting with 'your_' or '0x...')
+- Environment-specific credentials must be set for the current environment
+- Credential validation occurs during interface initialization
+
+**Reference**: [VENUE_ARCHITECTURE.md](../VENUE_ARCHITECTURE.md) - Environment Variables section
+**Reference**: [ENVIRONMENT_VARIABLES.md](../ENVIRONMENT_VARIABLES.md) - Environment-Specific Credential Routing section
 
 ## Config Fields Used
 
@@ -97,7 +247,7 @@ Components NEVER receive these as method parameters during runtime.
 - **stake_rates**: Staking rewards and rates
 - **protocol_balances**: Current balances in protocols
 
-### Data NOT Available from DataProvider
+### Data NOT Available from BaseDataProvider
 - **Order execution results** - handled by venue APIs
 - **Transaction confirmations** - handled by blockchain networks
 - **Real-time balance updates** - handled by venue APIs
@@ -298,6 +448,19 @@ raise ComponentError(
     message='Venue unavailable',
     component='ExecutionInterfaces',
     severity='HIGH'
+)
+```
+
+#### EXI-004: Invalid or Missing Credentials (CRITICAL)
+**Description**: Environment-specific credentials are missing or invalid
+**Cause**: Missing environment variables, placeholder values, invalid credential format
+**Recovery**: Set proper environment-specific credentials, verify BASIS_ENVIRONMENT setting
+```python
+raise ComponentError(
+    error_code='EXI-004',
+    message='Invalid or missing credential',
+    component='ExecutionInterfaces',
+    severity='CRITICAL'
 )
 ```
 
@@ -700,7 +863,7 @@ def _execute_live_trade(self, instruction: Dict, price: float) -> Dict:
 
 ### Calls TO
 - External venue APIs (live): Real API calls to venues
-- DataProvider (backtest): data_provider.get_data(timestamp) for simulations
+- BaseDataProvider (backtest): data_provider.get_data(timestamp) for simulations
 
 ### Communication
 - Direct method calls ONLY
@@ -726,19 +889,30 @@ def _execute_live_trade(self, instruction: Dict, price: float) -> Dict:
 
 ### From Config
 - venue_configs: Dict (venue-specific settings)
-- api_keys: Dict (API credentials for live mode)
 - rate_limits: Dict (rate limiting settings)
 - max_retry_attempts: int = 3
 - retry_delay_seconds: float = 0.1
 
 ### Environment Variables
 - BASIS_EXECUTION_MODE: 'backtest' | 'live' (controls execution behavior)
+- BASIS_ENVIRONMENT: 'dev' | 'staging' | 'prod' (controls credential routing)
+
+### Environment-Specific Credentials
+- **Development**: `BASIS_DEV__*` credentials (testnet APIs, Sepolia network)
+- **Staging**: `BASIS_STAGING__*` credentials (mainnet APIs, staging wallet)
+- **Production**: `BASIS_PROD__*` credentials (mainnet APIs, production wallet)
+
+**Credential Usage**:
+- Credentials are loaded via `_get_venue_credentials(venue)` method
+- Environment-specific routing based on `BASIS_ENVIRONMENT`
+- Validation occurs during interface initialization
+- No hardcoded API keys in configuration files
 
 ## Code Structure Example
 
 ```python
 class CEXExecutionInterface:
-    def __init__(self, venue: str, config: Dict, data_provider: DataProvider, execution_mode: str):
+    def __init__(self, venue: str, config: Dict, data_provider: BaseDataProvider, execution_mode: str):
         # Store references (NEVER modified)
         self.venue = venue
         self.config = config
@@ -752,8 +926,10 @@ class CEXExecutionInterface:
         self.orders_failed = 0
         self.last_execution_timestamp = None
         
-        # Initialize API client for live mode
+        # Initialize environment-specific credentials
         if self.execution_mode == 'live':
+            self.credentials = self._get_venue_credentials(venue)
+            self._validate_credentials(self.credentials)
             self.api_client = self._initialize_api_client()
     
     def execute_spot_trade(self, timestamp: pd.Timestamp, instruction: Dict) -> Dict:
@@ -837,14 +1013,64 @@ class CEXExecutionInterface:
         return deltas
     
     def _initialize_api_client(self):
-        """Initialize API client for live mode."""
-        # Initialize venue-specific API client
+        """Initialize API client for live mode using environment-specific credentials."""
+        # Initialize venue-specific API client with environment-specific credentials
         if self.venue == 'binance':
-            return BinanceClient(self.config['api_key'], self.config['api_secret'])
-        elif self.venue == 'hyperliquid':
-            return HyperliquidClient(self.config['api_key'])
+            return BinanceClient(
+                self.credentials['spot_api_key'], 
+                self.credentials['spot_secret']
+            )
+        elif self.venue == 'bybit':
+            return BybitClient(
+                self.credentials['api_key'], 
+                self.credentials['secret']
+            )
+        elif self.venue == 'okx':
+            return OKXClient(
+                self.credentials['api_key'], 
+                self.credentials['secret'],
+                self.credentials['passphrase']
+            )
         else:
             raise ValueError(f"Unknown venue: {self.venue}")
+    
+    def _get_venue_credentials(self, venue: str) -> Dict:
+        """Get environment-specific credentials for venue."""
+        environment = os.getenv('BASIS_ENVIRONMENT', 'dev')
+        credential_prefix = f"BASIS_{environment.upper()}__"
+        
+        if venue == 'binance':
+            return {
+                'spot_api_key': os.getenv(f'{credential_prefix}CEX__BINANCE_SPOT_API_KEY'),
+                'spot_secret': os.getenv(f'{credential_prefix}CEX__BINANCE_SPOT_SECRET'),
+                'futures_api_key': os.getenv(f'{credential_prefix}CEX__BINANCE_FUTURES_API_KEY'),
+                'futures_secret': os.getenv(f'{credential_prefix}CEX__BINANCE_FUTURES_SECRET'),
+            }
+        elif venue == 'bybit':
+            return {
+                'api_key': os.getenv(f'{credential_prefix}CEX__BYBIT_API_KEY'),
+                'secret': os.getenv(f'{credential_prefix}CEX__BYBIT_SECRET'),
+            }
+        elif venue == 'okx':
+            return {
+                'api_key': os.getenv(f'{credential_prefix}CEX__OKX_API_KEY'),
+                'secret': os.getenv(f'{credential_prefix}CEX__OKX_SECRET'),
+                'passphrase': os.getenv(f'{credential_prefix}CEX__OKX_PASSPHRASE'),
+            }
+        else:
+            raise ValueError(f"Unknown venue: {venue}")
+    
+    def _validate_credentials(self, credentials: Dict) -> bool:
+        """Validate that required credentials are present and non-empty."""
+        for key, value in credentials.items():
+            if not value or value.startswith('your_') or value == '0x...':
+                raise ComponentError(
+                    error_code='EXI-004',
+                    message=f'Invalid or missing credential: {key}',
+                    component='ExecutionInterfaces',
+                    severity='CRITICAL'
+                )
+        return True
     
     def _parse_order_response(self, order_response: Dict) -> Dict:
         """Parse order response into execution deltas."""

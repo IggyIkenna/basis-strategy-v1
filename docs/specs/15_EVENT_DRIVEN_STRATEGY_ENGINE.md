@@ -1,5 +1,7 @@
 # Event-Driven Strategy Engine Component Specification
 
+**Last Reviewed**: October 11, 2025
+
 ## Purpose
 Orchestrate all 11 components in dependency order with tight loop architecture and shared clock management.
 
@@ -21,7 +23,7 @@ Orchestrate all 11 components in dependency order with tight loop architecture a
 The following are set once during initialization and NEVER passed as runtime parameters:
 
 - config: Dict (reference, never modified)
-- data_provider: DataProvider (reference, query with timestamps)
+- data_provider: BaseDataProvider (reference, query with timestamps)
 - execution_mode: str (BASIS_EXECUTION_MODE)
 
 These references are stored in __init__ and used throughout component lifecycle.
@@ -39,6 +41,31 @@ Components NEVER receive these as method parameters during runtime.
 - **STRATEGY_ENGINE_MAX_COMPONENTS**: Maximum number of components (default: 11)
 - **STRATEGY_ENGINE_MEMORY_LIMIT**: Memory limit in MB (default: 4096)
 
+## Configuration Parameters
+
+### **Config-Driven Architecture**
+
+The Event-Driven Strategy Engine is **mode-agnostic** and uses configuration from the strategy mode:
+
+```yaml
+# From strategy mode configuration
+strategy_engine:
+  timeout_seconds: 3600
+  max_components: 11
+  memory_limit_mb: 4096
+  tight_loop_enabled: true
+  component_initialization_timeout: 30
+  execution_timeout: 300
+```
+
+### **Parameter Definitions**
+- **timeout_seconds**: Maximum execution time for strategy engine
+- **max_components**: Maximum number of components to manage
+- **memory_limit_mb**: Memory limit for component execution
+- **tight_loop_enabled**: Enable tight loop architecture
+- **component_initialization_timeout**: Timeout for component initialization
+- **execution_timeout**: Timeout for execution sequences
+
 ## Config Fields Used
 
 ### Universal Config (All Components)
@@ -54,6 +81,242 @@ Components NEVER receive these as method parameters during runtime.
   - **component_timeout**: Individual component timeout
   - **retry_attempts**: Retry attempts for failed components
 
+## Config-Driven Behavior
+
+The Event Driven Strategy Engine is **mode-agnostic** by design - it orchestrates components without mode-specific logic:
+
+**Component Configuration** (from `component_config.event_driven_strategy_engine`):
+```yaml
+component_config:
+  event_driven_strategy_engine:
+    # Event Driven Strategy Engine is inherently mode-agnostic
+    # Orchestrates components regardless of strategy mode
+    # No mode-specific configuration needed
+    timeout: 3600           # Strategy engine timeout in seconds
+    max_components: 11      # Maximum number of components
+    memory_limit: 4096      # Memory limit in MB
+    component_timeout: 30   # Individual component timeout
+    retry_attempts: 3       # Retry attempts for failed components
+```
+
+**Mode-Agnostic Component Orchestration**:
+- Orchestrates all 11 components in dependency order
+- Same orchestration logic for all strategy modes
+- No mode-specific if statements in orchestration logic
+- Uses config-driven timeout and retry settings
+
+**Component Orchestration by Mode**:
+
+**Pure Lending Mode**:
+- Orchestrates: position_monitor → exposure_monitor → risk_monitor → strategy_manager → execution_manager → pnl_calculator → results_store
+- Simple component chain
+- Same orchestration logic as other modes
+
+**BTC Basis Mode**:
+- Orchestrates: position_monitor → exposure_monitor → risk_monitor → strategy_manager → execution_manager → pnl_calculator → results_store
+- Multi-venue component chain
+- Same orchestration logic as other modes
+
+**ETH Leveraged Mode**:
+- Orchestrates: position_monitor → exposure_monitor → risk_monitor → strategy_manager → execution_manager → pnl_calculator → results_store
+- Complex AAVE component chain
+- Same orchestration logic as other modes
+
+**Key Principle**: Event Driven Strategy Engine is **purely orchestration** - it does NOT:
+- Make mode-specific decisions about which components to orchestrate
+- Handle strategy-specific orchestration logic
+- Convert or transform data between components
+- Make business logic decisions
+
+All orchestration logic is generic - it calls the same component sequence regardless of strategy mode, with each component handling mode-specific logic internally using config-driven behavior.
+
+## Component Orchestration Sequences
+
+The EventDrivenStrategyEngine supports two distinct orchestration sequences:
+
+### **Full Loop Sequence** (Complete Orchestration)
+**Trigger**: Time-based triggers, manual triggers, system initialization
+**Purpose**: Complete system state update and strategy decision making
+**Components**: All components in dependency order
+
+```python
+def _orchestrate_components(self, timestamp: pd.Timestamp, market_data: Dict, request_id: str):
+    """
+    Full loop orchestration sequence:
+    1. Position Monitor (no dependencies)
+    2. Exposure Monitor (depends on position_monitor)
+    3. Risk Monitor (depends on exposure_monitor)
+    4. Strategy Manager (depends on risk_monitor)
+    5. Execution Manager (depends on strategy_manager)
+    6. PnL Calculator (depends on execution_manager)
+    """
+    # 1. Position Monitor (no dependencies)
+    self.components['position_monitor'].update_state(timestamp, 'orchestration', market_data=market_data)
+    
+    # 2. Exposure Monitor (depends on position_monitor)
+    self.components['exposure_monitor'].update_state(timestamp, 'orchestration', market_data=market_data)
+    
+    # 3. Risk Monitor (depends on exposure_monitor)
+    self.components['risk_monitor'].update_state(timestamp, 'orchestration', market_data=market_data)
+    
+    # 4. Strategy Manager (depends on risk_monitor)
+    instruction_blocks = self.components['strategy_manager'].update_state(timestamp, 'orchestration', market_data=market_data)
+    
+    # 5. Execution Manager (depends on strategy_manager)
+    if instruction_blocks:
+        self.components['execution_manager'].update_state(timestamp, 'orchestration', instruction_blocks=instruction_blocks)
+    
+    # 6. PnL Calculator (depends on execution_manager)
+    self.components['pnl_calculator'].update_state(timestamp, 'orchestration', market_data=market_data)
+```
+
+### **Tight Loop Sequence** (Monitoring Components Only)
+**Trigger**: Execution Manager after position updates
+**Purpose**: Fast monitoring updates without strategy decisions
+**Components**: Position → Exposure → Risk → PnL (monitoring chain only)
+
+```python
+async def execute_tight_loop(self, timestamp: pd.Timestamp, market_data: Dict[str, Any]):
+    """
+    Tight loop sequence (monitoring components only):
+    1. Position Monitor (with execution deltas)
+    2. Exposure Monitor (depends on position_monitor)
+    3. Risk Monitor (depends on exposure_monitor)
+    4. PnL Calculator (depends on risk_monitor)
+    
+    Note: Strategy Manager and Execution Manager are NOT called in tight loop
+    """
+    # 1. Get position snapshot with execution deltas
+    position_snapshot = self.components['position_monitor'].get_current_positions()
+    
+    # 2. Update exposure based on new positions
+    self.components['exposure_monitor'].calculate_exposure(timestamp, position_snapshot, market_data)
+    
+    # 3. Update risk assessment based on new exposure
+    self.components['risk_monitor'].calculate_risk(timestamp, market_data)
+    
+    # 4. Update P&L based on new positions and market data
+    self.components['pnl_calculator'].calculate_pnl(timestamp, 'tight_loop', market_data)
+```
+
+### **Sequence Selection Logic**
+- **Full Loop**: Used for time-based triggers, manual triggers, system initialization
+- **Tight Loop**: Used after execution updates for fast monitoring without strategy decisions
+- **Both sequences**: Use the same component references and config-driven behavior
+
+## Factory Orchestration Integration
+
+The Event-Driven Strategy Engine integrates with factory patterns for component initialization:
+
+### Factory-Based Component Creation
+
+```python
+class EventDrivenStrategyEngine:
+    """Orchestrates all components using factory-based initialization"""
+    
+    def __init__(self, config: Dict[str, Any], execution_mode: str, data_provider: BaseBaseDataProvider, **components):
+        # Store references (NEVER modified)
+        self.config = config
+        self.data_provider = data_provider
+        self.execution_mode = execution_mode
+        
+        # Initialize components using factory pattern
+        self.components = self._initialize_components(components)
+        
+        # Initialize orchestration state
+        self.current_timestamp = None
+        self.timestamps = []
+        self.results_store = AsyncResultsStore()
+        
+        logging.info("EventDrivenStrategyEngine initialized with factory-based components")
+    
+    def _initialize_components(self, components: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Initialize all components using factory pattern.
+        
+        Parameters:
+        - components: Dictionary of component instances created by factories
+        
+        Returns:
+        - Dict[str, Any]: Dictionary of initialized components
+        """
+        # Validate all required components are present
+        required_components = [
+            'position_monitor', 'exposure_monitor', 'risk_monitor', 
+            'strategy_manager', 'execution_manager', 'pnl_calculator',
+            'event_logger', 'data_provider', 'reconciliation_component',
+            'position_update_handler', 'math_utilities'
+        ]
+        
+        for component_name in required_components:
+            if component_name not in components:
+                raise ValueError(f"Required component {component_name} not provided")
+        
+        # Store component references
+        self.components = components
+        
+        logging.info(f"Initialized {len(components)} components using factory pattern")
+        return components
+    
+    def _orchestrate_components(self, timestamp: pd.Timestamp, market_data: Dict, request_id: str):
+        """
+        Orchestrate component execution in dependency order.
+        Uses factory-created components with config-driven behavior.
+        """
+        # 1. Position Monitor (no dependencies)
+        self.components['position_monitor'].update_state(timestamp, 'orchestration', market_data=market_data)
+        
+        # 2. Exposure Monitor (depends on position_monitor)
+        self.components['exposure_monitor'].update_state(timestamp, 'orchestration', market_data=market_data)
+        
+        # 3. Risk Monitor (depends on exposure_monitor)
+        self.components['risk_monitor'].update_state(timestamp, 'orchestration', market_data=market_data)
+        
+        # 4. Strategy Manager (depends on risk_monitor)
+        instruction_blocks = self.components['strategy_manager'].update_state(timestamp, 'orchestration', market_data=market_data)
+        
+        # 5. Execution Manager (depends on strategy_manager)
+        if instruction_blocks:
+            self.components['execution_manager'].execute_instructions(instruction_blocks, timestamp)
+        
+        # 6. PnL Calculator (depends on execution_manager)
+        self.components['pnl_calculator'].update_state(timestamp, 'orchestration', market_data=market_data)
+        
+        # 7. Results Store (depends on pnl_calculator)
+        self.components['results_store'].store_results(timestamp, request_id, market_data=market_data)
+```
+
+### Factory Integration Benefits
+
+1. **Dependency Injection**: All components receive their dependencies through factory creation
+2. **Config-Driven Behavior**: Components use config parameters instead of hardcoded logic
+3. **Mode-Agnostic Orchestration**: Same orchestration logic works for all strategy modes
+4. **Component Isolation**: Each component handles its own mode-specific logic internally
+5. **Factory Validation**: Factories ensure all required components are created and validated
+
+### Component Factory Usage
+
+```python
+# Example usage in services
+class BacktestService:
+    def _create_components(self, config: Dict[str, Any], data_provider: BaseBaseDataProvider) -> Dict[str, Any]:
+        """Create components using factory pattern"""
+        return ComponentFactory.create_all(
+            config=config,
+            execution_mode='backtest',
+            data_provider=data_provider
+        )
+
+class LiveTradingService:
+    def _create_components(self, config: Dict[str, Any], data_provider: BaseBaseDataProvider) -> Dict[str, Any]:
+        """Create components using factory pattern"""
+        return ComponentFactory.create_all(
+            config=config,
+            execution_mode='live',
+            data_provider=data_provider
+        )
+```
+
 ## Data Provider Queries
 
 ### Market Data Queries
@@ -67,7 +330,7 @@ Components NEVER receive these as method parameters during runtime.
 - **stake_rates**: Staking rewards and rates
 - **protocol_balances**: Current balances in protocols
 
-### Data NOT Available from DataProvider
+### Data NOT Available from BaseDataProvider
 - **Component state** - handled by individual components
 - **Execution results** - handled by execution components
 - **Orchestration state** - handled by Strategy Engine
@@ -432,7 +695,7 @@ The EventDrivenStrategyEngine integrates with AsyncResultsStore for non-blocking
 - Queue-based processing handles variable write times
 - Critical path execution not affected by storage operations
 
-### initialize_engine(config: Dict, execution_mode: str, data_provider: DataProvider) -> Dict
+### initialize_engine(config: Dict, execution_mode: str, data_provider: BaseDataProvider) -> Dict
 Initialize all components in dependency order.
 
 Parameters:
@@ -511,7 +774,7 @@ Each component has detailed specifications:
 - **Strategy Manager**: [05_STRATEGY_MANAGER.md](05_STRATEGY_MANAGER.md) <!-- Link is valid -->
 - **CEX Execution Manager**: [06_EXECUTION_MANAGER.md](06_EXECUTION_MANAGER.md) <!-- Link is valid -->
 - **OnChain Execution Manager**: [07_EXECUTION_INTERFACE_MANAGER.md](07_EXECUTION_INTERFACE_MANAGER.md) <!-- Link is valid -->
-- **Execution Interfaces**: [08A_EXECUTION_INTERFACES.md](08A_EXECUTION_INTERFACES.md) <!-- Link is valid -->
+- **Execution Interfaces**: [07B_EXECUTION_INTERFACES.md](07B_EXECUTION_INTERFACES.md) <!-- Link is valid -->
 - **Data Provider**: [09_DATA_PROVIDER.md](09_DATA_PROVIDER.md) <!-- Link is valid -->
 
 ---
@@ -538,7 +801,7 @@ Manages component lifecycle and dependency injection.
 {
     'execution_mode': 'backtest' | 'live',
     'config': Dict[str, Any],
-    'data_provider': DataProvider,
+    'data_provider': BaseDataProvider,
     'components': {
         'position_monitor': PositionMonitor,
         'exposure_monitor': ExposureMonitor,
@@ -593,7 +856,7 @@ Position Update → Tight Loop → Strategy Decision → Execution → Event Log
 async def initialize_engine(config: Dict[str, Any], execution_mode: str):
     """Initialize all components in dependency order."""
     # 1. Initialize Data Provider (shared)
-    data_provider = DataProviderFactory.create(execution_mode, config)
+    data_provider = BaseDataProviderFactory.create(execution_mode, config)
     
     # 2. Initialize Position Monitor (foundation)
     position_monitor = PositionMonitor(config, execution_mode, ...)
@@ -1016,7 +1279,7 @@ def _register_health_checkers(self):
     )
     unified_health_manager.register_component(
         "data_provider", 
-        DataProviderHealthChecker(self.data_provider)
+        BaseDataProviderHealthChecker(self.data_provider)
     )
     # ... register all other components
 ```
@@ -1263,5 +1526,24 @@ Following [Quality Gate Validation](QUALITY_GATES.md) <!-- Redirected from 17_qu
 ---
 
 **Status**: Event-Driven Strategy Engine is complete and fully operational! 🎉
+
+## Related Documentation
+
+### Component Specifications
+- [01_POSITION_MONITOR.md](01_POSITION_MONITOR.md) - Position tracking component
+- [02_EXPOSURE_MONITOR.md](02_EXPOSURE_MONITOR.md) - Exposure monitoring component
+- [03_RISK_MONITOR.md](03_RISK_MONITOR.md) - Risk monitoring component
+- [04_PNL_CALCULATOR.md](04_PNL_CALCULATOR.md) - P&L calculation component
+- [05_STRATEGY_MANAGER.md](05_STRATEGY_MANAGER.md) - Strategy management component
+- [06_EXECUTION_MANAGER.md](06_EXECUTION_MANAGER.md) - Execution management component
+
+### Architecture Documentation
+- [../REFERENCE_ARCHITECTURE_CANONICAL.md](../REFERENCE_ARCHITECTURE_CANONICAL.md) - Canonical principles
+- [../CODE_STRUCTURE_PATTERNS.md](../CODE_STRUCTURE_PATTERNS.md) - Implementation patterns
+- [../ARCHITECTURAL_DECISION_RECORDS.md](../ARCHITECTURAL_DECISION_RECORDS.md) - ADR-001 tight loop
+
+### Configuration Documentation
+- [19_CONFIGURATION.md](19_CONFIGURATION.md) - Complete config schemas
+- [../MODES.md](../MODES.md) - Strategy mode definitions
 
 *Last Updated: January 6, 2025*

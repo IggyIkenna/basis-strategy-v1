@@ -172,7 +172,7 @@ class TestDataProviderFactory:
                 data_dir="./data",
                 startup_mode="live",
                 config={'test': 'config'},
-                strategy_mode="pure_lending"
+                mode="pure_lending"
             )
             
             # Should create live provider with mode and config
@@ -246,7 +246,7 @@ class TestDataProviderIntegration:
                 data_dir="./data",
                 startup_mode="live",
                 config=config,
-                strategy_mode="btc_basis"
+                mode="btc_basis"
             )
             
             # Should create live provider with mode-specific config

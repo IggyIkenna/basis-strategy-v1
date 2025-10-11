@@ -1,97 +1,130 @@
 """
 Data Provider Factory
 
-Creates the appropriate data provider based on execution_mode and data_mode:
-- execution_mode='backtest' + data_mode='csv': HistoricalDataProvider (loads from CSV files)
-- execution_mode='backtest' + data_mode='db': DatabaseDataProvider (queries from database) - FUTURE IMPLEMENTATION
-- execution_mode='live': LiveDataProvider (queries real-time APIs)
+Creates the appropriate data provider based on execution_mode and config-driven mode selection.
 
 Architecture:
-- HistoricalDataProvider: Mode-specific data loading from CSV files (on-demand)
-- LiveDataProvider: Mode-specific real-time data from APIs
-- DatabaseDataProvider: Mode-specific data from database (future)
+- Config-driven provider selection based on mode field in config
+- Mode-specific data providers for each strategy type
+- Standardized data structure across all providers
+- Comprehensive data validation with error codes
+
+Reference: docs/specs/09_DATA_PROVIDER.md - DataProvider Factory
+Reference: docs/REFERENCE_ARCHITECTURE_CANONICAL.md - Section 8 (Data Provider Architecture)
 """
 
 from typing import Dict, Any, Union, Optional
 from pathlib import Path
 import logging
+import os
 
 logger = logging.getLogger(__name__)
 
 
 def create_data_provider(
-    data_dir: str,
     execution_mode: str,
-    data_mode: str,
     config: Dict[str, Any],
-    strategy_mode: Optional[str] = None,
+    data_dir: Optional[str] = None,
     backtest_start_date: Optional[str] = None,
     backtest_end_date: Optional[str] = None
-) -> Union['HistoricalDataProvider', 'LiveDataProvider', 'DatabaseDataProvider']:
+) -> 'BaseDataProvider':
     """
-    Create the appropriate data provider based on execution_mode and data_mode.
+    Create the appropriate data provider based on execution_mode and config.
     
     Args:
-        data_dir: Path to data directory
         execution_mode: 'backtest' or 'live' (from BASIS_EXECUTION_MODE)
-        data_mode: 'csv' or 'db' (from BASIS_DATA_MODE)
-        config: Configuration dictionary
-        strategy_mode: Strategy mode for mode-specific data loading
+        config: Configuration dictionary with mode and data_requirements
+        data_dir: Path to data directory (optional, uses config or env var)
         backtest_start_date: Start date for backtest validation (YYYY-MM-DD format)
         backtest_end_date: End date for backtest validation (YYYY-MM-DD format)
         
     Returns:
         Appropriate data provider instance
         
-    Architecture:
-    - execution_mode='backtest' + data_mode='csv': HistoricalDataProvider with on-demand CSV loading
-    - execution_mode='backtest' + data_mode='db': DatabaseDataProvider with on-demand DB queries (future)
-    - execution_mode='live': LiveDataProvider with real-time API queries (data_mode ignored)
-        
-    # TODO-REFACTOR: MISSING VENUE FACTORY - See docs/VENUE_ARCHITECTURE.md
-    # ISSUE: Data provider factory doesn't handle venue client initialization
-    # Canonical: docs/VENUE_ARCHITECTURE.md - Venue-Based Execution
-    # Required Changes:
-    #   1. Add venue client initialization based on strategy mode requirements
-    #   2. Route to environment-specific credentials (dev/staging/prod)
-    #   3. Initialize venue clients via VenueFactory pattern
-    #   4. Handle venue selection logic based on strategy configuration
-    #   5. Implement VenueClientFactory and EnvironmentManager
-    # Reference: docs/DEPLOYMENT_GUIDE.md - Venue Client Initialization section
-    # Reference: docs/VENUE_ARCHITECTURE.md - Venue-Based Execution
-    # Status: PENDING
+    Raises:
+        ValueError: If config is invalid or provider cannot be created
     """
-    if execution_mode == 'backtest':
-        if data_mode == 'csv':
-            from .historical_data_provider import DataProvider as HistoricalDataProvider
-            logger.info(f"Creating HistoricalDataProvider for mode: {strategy_mode or 'all_data'}")
-            # HistoricalDataProvider now loads data on-demand, not at initialization
-            return HistoricalDataProvider(
-                data_dir=data_dir,
-                mode=strategy_mode or 'all_data',
-                config=config,
-                backtest_start_date=backtest_start_date,
-                backtest_end_date=backtest_end_date
-            )
-        elif data_mode == 'db':
-            # TODO: [DATABASE_DATA_PROVIDER] - Implement DatabaseDataProvider for future database storage
-            # Future Implementation:
-            # from .database_data_provider import DatabaseDataProvider
-            # logger.info(f"Creating DatabaseDataProvider for mode: {strategy_mode or 'dynamic'}")
-            # return DatabaseDataProvider(config=config, mode=strategy_mode)
-            raise NotImplementedError(
-                "DatabaseDataProvider not yet implemented. "
-                "This will be the future data provider for database-backed storage. "
-                "Use data_mode='csv' for now."
-            )
-        else:
-            raise ValueError(f"Invalid data_mode for backtest: {data_mode}. Must be 'csv' or 'db'")
+    # Validate required config fields (fail-fast)
+    if 'mode' not in config:
+        raise ValueError("Config must contain 'mode' field")
     
-    elif execution_mode == 'live':
-        from .live_data_provider import LiveDataProvider
-        logger.info(f"Creating LiveDataProvider for mode: {strategy_mode or 'dynamic'}")
-        # data_mode is ignored for live mode (always uses real-time APIs)
-        return LiveDataProvider(config=config, mode=strategy_mode)
+    if 'data_requirements' not in config:
+        raise ValueError("Config must contain 'data_requirements' field")
+    
+    mode = config['mode']
+    data_requirements = config['data_requirements']
+    
+    # Set data_dir from config or environment variable
+    if data_dir is None:
+        data_dir = config.get('data_dir', os.getenv('BASIS_DATA_DIR', 'data'))
+    
+    # Add data_dir to config for providers
+    config['data_dir'] = data_dir
+    
+    # Validate environment variables for backtest mode
+    if execution_mode == 'backtest':
+        if not os.getenv('BASIS_DATA_START_DATE'):
+            raise ValueError("BASIS_DATA_START_DATE environment variable must be set for backtest mode")
+        if not os.getenv('BASIS_DATA_END_DATE'):
+            raise ValueError("BASIS_DATA_END_DATE environment variable must be set for backtest mode")
+    
+    # Create mode-specific provider
+    provider = _create_mode_specific_provider(execution_mode, config)
+    
+    # Validate that provider can satisfy data requirements
+    provider.validate_data_requirements(data_requirements)
+    
+    # Load data for backtest mode
+    if execution_mode == 'backtest':
+        provider.load_data()
+    
+    logger.info(f"✅ Created {provider.__class__.__name__} for mode: {mode}")
+    logger.info(f"📊 Data requirements: {data_requirements}")
+    
+    return provider
+
+
+def _create_mode_specific_provider(execution_mode: str, config: Dict[str, Any]) -> 'BaseDataProvider':
+    """
+    Create mode-specific data provider.
+    
+    Args:
+        execution_mode: 'backtest' or 'live'
+        config: Configuration dictionary
+        
+    Returns:
+        Mode-specific data provider instance
+    """
+    mode = config['mode']
+    
+    # Import mode-specific providers
+    if mode == 'pure_lending':
+        from ...data_provider.pure_lending_data_provider import PureLendingDataProvider
+        return PureLendingDataProvider(execution_mode, config)
+    
+    elif mode == 'btc_basis':
+        from ...data_provider.btc_basis_data_provider import BTCBasisDataProvider
+        return BTCBasisDataProvider(execution_mode, config)
+    
+    elif mode == 'eth_basis':
+        from ...data_provider.eth_basis_data_provider import ETHBasisDataProvider
+        return ETHBasisDataProvider(execution_mode, config)
+    
+    elif mode == 'eth_leveraged':
+        from ...data_provider.eth_leveraged_data_provider import ETHLeveragedDataProvider
+        return ETHLeveragedDataProvider(execution_mode, config)
+    
+    elif mode == 'eth_staking_only':
+        from ...data_provider.eth_staking_only_data_provider import ETHStakingOnlyDataProvider
+        return ETHStakingOnlyDataProvider(execution_mode, config)
+    
+    elif mode == 'usdt_market_neutral_no_leverage':
+        from ...data_provider.usdt_market_neutral_no_leverage_data_provider import USDTMarketNeutralNoLeverageDataProvider
+        return USDTMarketNeutralNoLeverageDataProvider(execution_mode, config)
+    
+    elif mode == 'usdt_market_neutral':
+        from ...data_provider.usdt_market_neutral_data_provider import USDTMarketNeutralDataProvider
+        return USDTMarketNeutralDataProvider(execution_mode, config)
     
     else:
-        raise ValueError(f"Unknown execution_mode: {execution_mode}. Must be 'backtest' or 'live'")
+        raise ValueError(f"Unknown mode: {mode}. Supported modes: pure_lending, btc_basis, eth_basis, eth_leveraged, eth_staking_only, usdt_market_neutral_no_leverage, usdt_market_neutral")

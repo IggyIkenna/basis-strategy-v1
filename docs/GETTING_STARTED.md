@@ -17,6 +17,31 @@
 
 ---
 
+## Architecture Overview
+
+The platform uses a **config-driven, mode-agnostic architecture**:
+
+### Component Organization
+- **11 Core Components**: Runtime execution (Position/Exposure/Risk/PnL monitors, Strategy/Execution managers, etc.)
+- **9 Supporting Components**: Services, utilities, infrastructure
+- See: COMPONENT_SPECS_INDEX.md for complete list
+
+### Configuration System
+Each strategy mode is defined in YAML:
+- `data_requirements`: What data the mode needs
+- `component_config`: How each component behaves for this mode
+- See: 19_CONFIGURATION.md for complete schemas
+
+### Key Architectural Patterns
+- **Reference-Based**: Components store references at init, never pass as params (ADR-003)
+- **Shared Clock**: EventDrivenStrategyEngine owns timestamp (ADR-004)
+- **Request Isolation**: Fresh instances per request (ADR-005)
+- **Config-Driven**: Components use config, not mode checks (ADR-052)
+
+See: REFERENCE_ARCHITECTURE_CANONICAL.md for complete architectural principles.
+
+---
+
 ## ⚡ **Prerequisites** (Required before starting)
 
 - **Python 3.8+**: Backend requirements
@@ -430,7 +455,7 @@ aave_weeth_supply_usd       # × ETH price
 **Learn More**:
 - **USER_GUIDE.md** - Complete user manual
 - **COMPONENT_SPECS_INDEX.md** - Component overview
-- **specs/CONFIGURATION.md** - Configuration management
+- **specs/19_CONFIGURATION.md** - Configuration management
 - **API_REFERENCE.md** - Complete API documentation
 
 **Advanced**:
@@ -447,7 +472,7 @@ aave_weeth_supply_usd       # × ETH price
 - **Components** → [specs/](specs/) <!-- Directory link to specs folder --> (implementation details)
 - **Implementation** → [README.md](README.md) <!-- Redirected from IMPLEMENTATION_ROADMAP.md - implementation status is documented here -->
 - **Tasks** → [COMPONENT_SPECS_INDEX.md](COMPONENT_SPECS_INDEX.md) <!-- Redirected from REQUIREMENTS.md - requirements are component specifications -->
-- **Configuration** → [specs/CONFIGURATION.md](specs/CONFIGURATION.md)
+- **Configuration** → [specs/19_CONFIGURATION.md](specs/19_CONFIGURATION.md)
 - **API/Events** → [API_DOCUMENTATION.md](API_DOCUMENTATION.md) <!-- Redirected from REFERENCE.md - reference documentation is API docs -->
 
 **See**: [INDEX.md](INDEX.md) for complete navigation

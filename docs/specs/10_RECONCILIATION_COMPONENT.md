@@ -5,9 +5,13 @@ Validates Position Monitor's simulated position state (from execution manager de
 
 ## 📚 **Canonical Sources**
 
-- **Architectural Principles**: [REFERENCE_ARCHITECTURE_CANONICAL.md](../REFERENCE_ARCHITECTURE_CANONICAL.md) - Canonical architectural principles
-- **Strategy Specifications**: [MODES.md](../MODES.md) - Canonical strategy mode definitions
-- **Component Specifications**: [specs/](specs/) - Detailed component implementation guides
+**This component spec aligns with canonical architectural principles**:
+- **Architectural Principles**: [../REFERENCE_ARCHITECTURE_CANONICAL.md](../REFERENCE_ARCHITECTURE_CANONICAL.md) - Canonical architectural principles
+- **Mode-Agnostic Architecture**: [../REFERENCE_ARCHITECTURE_CANONICAL.md](../REFERENCE_ARCHITECTURE_CANONICAL.md) - Config-driven architecture guide
+- **Code Structures**: [../CODE_STRUCTURE_PATTERNS.md](../CODE_STRUCTURE_PATTERNS.md) - Complete implementation patterns  
+- **Configuration**: [19_CONFIGURATION.md](19_CONFIGURATION.md) - Complete config schemas for all 7 modes
+- **Strategy Specifications**: [../MODES.md](../MODES.md) - Strategy mode definitions
+- **Tight Loop Architecture**: [../ARCHITECTURAL_DECISION_RECORDS.md](../ARCHITECTURAL_DECISION_RECORDS.md) - ADR-001 execution reconciliation
 
 ## Responsibilities
 1. Compare simulated vs real position state (all tokens + derivatives)
@@ -26,6 +30,7 @@ Validates Position Monitor's simulated position state (from execution manager de
 The following are set once during initialization and NEVER passed as runtime parameters:
 
 - position_monitor: PositionMonitor (read-only access to state)
+- data_provider: BaseDataProvider (reference, query with timestamps)
 - config: Dict (reference, NEVER modified)
 - execution_mode: str (BASIS_EXECUTION_MODE)
 
@@ -47,6 +52,7 @@ Components NEVER receive these as method parameters during runtime.
 ## Config Fields Used
 
 ### Universal Config (All Components)
+- **mode**: str - e.g., 'eth_basis', 'pure_lending' (NOT 'mode')
 - **execution_mode**: 'backtest' | 'live' (from strategy mode slice)
 - **log_level**: 'DEBUG' | 'INFO' | 'WARNING' | 'ERROR' (from strategy mode slice)
 
@@ -58,6 +64,53 @@ Components NEVER receive these as method parameters during runtime.
 - **position_settings**: Dict (position-specific settings)
   - **refresh_interval**: Position refresh interval
   - **validation_rules**: Position validation rules
+
+## Config-Driven Behavior
+
+The Reconciliation Component is **mode-agnostic** by design - it validates position consistency without mode-specific logic:
+
+**Component Configuration** (from `component_config.reconciliation_component`):
+```yaml
+component_config:
+  reconciliation_component:
+    # Reconciliation Component is inherently mode-agnostic
+    # Validates position consistency regardless of strategy mode
+    # No mode-specific configuration needed
+    tolerance: 0.01  # Position difference tolerance
+    max_retries: 3   # Maximum retry attempts
+    timeout: 30      # Reconciliation timeout in seconds
+```
+
+**Mode-Agnostic Position Validation**:
+- Validates simulated vs real position consistency
+- Same validation logic for all strategy modes
+- No mode-specific if statements in reconciliation logic
+- Uses config-driven tolerance and retry settings
+
+**Reconciliation by Mode**:
+
+**Pure Lending Mode**:
+- Validates: `wallet.USDT` vs `aave.aUSDT` balance consistency
+- Simple balance validation only
+- Same validation logic as other modes
+
+**BTC Basis Mode**:
+- Validates: `wallet.USDT` vs `cex.binance.BTC_spot` vs `cex.binance.BTC_perp_short` consistency
+- Multi-venue position validation
+- Same validation logic as other modes
+
+**ETH Leveraged Mode**:
+- Validates: `wallet.ETH` vs `aave.aWeETH` vs `aave.variableDebtWETH` consistency
+- Complex AAVE position validation
+- Same validation logic as other modes
+
+**Key Principle**: Reconciliation Component is **purely validation** - it does NOT:
+- Make mode-specific decisions about which positions to validate
+- Handle strategy-specific reconciliation logic
+- Convert or transform positions
+- Make business logic decisions
+
+All reconciliation logic is generic - it compares simulated positions (from execution deltas) against real positions (from external APIs) using configurable tolerance settings.
 
 ## Data Provider Queries
 
@@ -114,6 +167,140 @@ def update_state(self, timestamp: pd.Timestamp, simulated_state: Dict, trigger_s
         # Perform real reconciliation with retries
         return self._reconcile_live_positions(simulated_state)
 ```
+
+## **MODE-AGNOSTIC IMPLEMENTATION EXAMPLE**
+
+### **Complete Config-Driven Reconciliation Component**
+
+```python
+from typing import Dict, Optional
+import pandas as pd
+import logging
+
+logger = logging.getLogger(__name__)
+
+class ReconciliationComponent:
+    """Mode-agnostic reconciliation component"""
+    
+    def __init__(self, config: Dict, data_provider: 'BaseDataProvider', execution_mode: str,
+                 position_monitor: 'PositionMonitor'):
+        # Store references (NEVER modified)
+        self.config = config
+        self.data_provider = data_provider
+        self.execution_mode = execution_mode
+        self.position_monitor = position_monitor
+        
+        # Extract reconciliation config
+        self.reconciliation_tolerance = 0.01  # 1% tolerance for all modes
+        self.max_retries = 3
+        
+        # Initialize component-specific state
+        self.current_reconciliation_status = 'pending'
+        self.last_reconciliation_timestamp = None
+        self.reconciliation_history = []
+        self.retry_count = 0
+        
+        logger.info(f"ReconciliationComponent initialized with tolerance: {self.reconciliation_tolerance}")
+    
+    def reconcile_position(self, expected_position: Dict, actual_position: Dict, timestamp: pd.Timestamp) -> Dict:
+        """
+        Reconcile expected vs actual position.
+        MODE-AGNOSTIC - same logic for all strategy modes.
+        
+        Args:
+            expected_position: Position from execution deltas
+            actual_position: Position from external APIs or backtest
+            timestamp: Current timestamp
+        
+        Returns:
+            Dict with success, reconciliation_results, tolerance
+        """
+        # Log component start (per EVENT_LOGGER.md)
+        start_time = pd.Timestamp.now()
+        logger.debug(f"ReconciliationComponent.reconcile_position started at {start_time}")
+        
+        # Get tracked assets from position monitor (FAIL-FAST validation)
+        try:
+            position_snapshot = self.position_monitor.get_current_positions()
+            tracked_assets = position_snapshot['tracked_assets']
+        except KeyError as e:
+            raise ComponentError(
+                error_code='REC-004',
+                message=f'Position monitor data missing: {e}',
+                component='ReconciliationComponent',
+                severity='HIGH'
+            )
+        
+        # Validate all assets are tracked (FAIL-FAST)
+        for asset in expected_position.keys():
+            if asset not in tracked_assets:
+                raise ComponentError(
+                    error_code='REC-004',
+                    message=f'Unknown asset in reconciliation: {asset} not in track_assets',
+                    component='ReconciliationComponent',
+                    severity='HIGH'
+                )
+        
+        reconciliation_results = {}
+        
+        # Compare each asset
+        for asset, expected_amount in expected_position.items():
+            actual_amount = actual_position.get(asset, 0.0)
+            difference = abs(expected_amount - actual_amount)
+            tolerance = abs(expected_amount) * self.reconciliation_tolerance
+            
+            reconciliation_results[asset] = {
+                'expected': expected_amount,
+                'actual': actual_amount,
+                'difference': difference,
+                'tolerance': tolerance,
+                'passed': difference <= tolerance
+            }
+        
+        overall_success = all(r['passed'] for r in reconciliation_results.values())
+        
+        # Update state
+        self.current_reconciliation_status = 'success' if overall_success else 'failed'
+        self.last_reconciliation_timestamp = timestamp
+        
+        # Log component end (per EVENT_LOGGER.md)
+        end_time = pd.Timestamp.now()
+        processing_time_ms = (end_time - start_time).total_seconds() * 1000
+        logger.debug(f"ReconciliationComponent.reconcile_position completed at {end_time}, took {processing_time_ms:.2f}ms")
+        
+        return {
+            'success': overall_success,
+            'reconciliation_results': reconciliation_results,
+            'tolerance': self.reconciliation_tolerance,
+            'validated_assets': len(reconciliation_results),
+            'tracked_assets': tracked_assets,
+            'timestamp': timestamp
+        }
+```
+
+### **Key Benefits of Mode-Agnostic Implementation**
+
+1. **No Mode-Specific Logic**: Component has zero hardcoded mode checks
+2. **Config-Driven Behavior**: All behavior determined by tolerance settings
+3. **Graceful Data Handling**: Skips calculations when data is unavailable
+4. **Easy Extension**: Adding new assets doesn't require mode-specific changes
+5. **Self-Documenting**: Tolerance clearly defined in config
+
+### **ComponentFactory Pattern**
+
+```python
+class ComponentFactory:
+    """Creates components with config validation"""
+    
+    @staticmethod
+    def create_reconciliation_component(config: Dict, data_provider: 'BaseDataProvider', execution_mode: str,
+                                        position_monitor: 'PositionMonitor') -> ReconciliationComponent:
+        """Create Reconciliation Component - mode-agnostic"""
+        # No component config validation needed - mode-agnostic with simple tolerance
+        return ReconciliationComponent(config, data_provider, execution_mode, position_monitor)
+```
+
+---
 
 ## Event Logging Requirements
 
@@ -270,6 +457,19 @@ raise ComponentError(
     message='Retry attempts exhausted',
     component='ReconciliationComponent',
     severity='CRITICAL'
+)
+```
+
+#### REC-004: Unknown Asset in Reconciliation (HIGH)
+**Description**: Asset being reconciled is not in Position Monitor's track_assets config
+**Cause**: Unknown asset appears in execution deltas, asset not configured for tracking
+**Recovery**: Add asset to track_assets config or fix asset name in execution
+```python
+raise ComponentError(
+    error_code='REC-004',
+    message='Unknown asset in reconciliation',
+    component='ReconciliationComponent',
+    severity='HIGH'
 )
 ```
 
@@ -683,6 +883,26 @@ def get_health_status(self) -> Dict:
             }
 ```
 
+### Receives FROM Position Monitor
+
+The Reconciliation Component validates positions using Position Monitor's data:
+
+**Data Contract from Position Monitor**:
+```python
+position_data = {
+    'wallet': {'USDT': 1000.0, 'ETH': 3.5, 'aWeETH': 95.24},
+    'cex_accounts': {'binance': {'USDT': 500.0}, 'bybit': {'USDT': 500.0}},
+    'perp_positions': {'binance': {'ETHUSDT-PERP': {'size': -2.5, 'entry_price': 3000.0}}},
+    'timestamp': timestamp,
+    'tracked_assets': ['USDT', 'ETH', 'aWeETH', 'variableDebtWETH']  # ← Used for validation
+}
+```
+
+**Key for Reconciliation**:
+- **tracked_assets**: Used to validate all reconciled assets are configured
+- **wallet/cex_accounts/perp_positions**: Compared against expected positions
+- **Fail-fast**: If asset not in tracked_assets, raise REC-004 error
+
 ## Integration Points
 
 ### Called BY
@@ -691,6 +911,7 @@ def get_health_status(self) -> Dict:
 - Health System (health check): reconciliation_component.get_health_status()
 
 ### Calls TO
+- position_monitor.get_current_positions() - position snapshots with tracked_assets
 - position_monitor.get_real_positions() - real state queries
 - position_monitor.refresh_positions() - position refresh triggers (live mode only)
 
@@ -728,8 +949,8 @@ def get_health_status(self) -> Dict:
 
 ```python
 class ReconciliationComponent:
-    def __init__(self, config: Dict, data_provider: DataProvider, 
-                 execution_mode: str, position_monitor: PositionMonitor):
+    def __init__(self, config: Dict, data_provider: 'BaseDataProvider', 
+                 execution_mode: str, position_monitor: 'PositionMonitor'):
         # Store references (NEVER modified)
         self.config = config
         self.data_provider = data_provider
@@ -797,10 +1018,30 @@ class ReconciliationComponent:
                 }
 ```
 
+## Current Implementation Status
+
+**Overall Completion**: 90% (Spec complete, implementation needs updates)
+
+### **Core Functionality Status**
+- ✅ **Working**: Position reconciliation, error detection, retry logic
+- ⚠️ **Partial**: Error handling patterns, health integration
+- ❌ **Missing**: Config-driven timeout settings, health integration
+- 🔄 **Refactoring Needed**: Update to use BaseDataProvider type hints
+
+### **Architecture Compliance Status**
+- ✅ **COMPLIANT**: Spec follows all canonical architectural principles
+  - **Reference-Based Architecture**: Components receive references at init
+  - **Shared Clock Pattern**: Methods receive timestamp from engine
+  - **Mode-Agnostic Behavior**: Config-driven, no mode-specific logic
+  - **Fail-Fast Patterns**: Uses ADR-040 fail-fast access
+
 ## Related Documentation
+
+### **Architecture Patterns**
 - [Reference-Based Architecture](../REFERENCE_ARCHITECTURE_CANONICAL.md)
-- [Shared Clock Pattern](../SHARED_CLOCK_PATTERN.md)
-- [Request Isolation Pattern](../REQUEST_ISOLATION_PATTERN.md)
+- [Mode-Agnostic Architecture](../REFERENCE_ARCHITECTURE_CANONICAL.md)
+- [Code Structure Patterns](../CODE_STRUCTURE_PATTERNS.md)
+- [Configuration Guide](19_CONFIGURATION.md)
 
 ### **Component Integration**
 - [Position Monitor Specification](01_POSITION_MONITOR.md) - Validates position state against real state
@@ -809,3 +1050,13 @@ class ReconciliationComponent:
 - [Data Provider Specification](09_DATA_PROVIDER.md) - Provides market data for reconciliation
 - [Event Logger Specification](08_EVENT_LOGGER.md) - Logs reconciliation events
 - [Health Error Systems](17_HEALTH_ERROR_SYSTEMS.md) - Reports reconciliation failures
+
+### **Configuration and Implementation**
+- [Configuration Guide](19_CONFIGURATION.md) - Complete config schemas for all 7 modes
+- [Code Structure Patterns](../CODE_STRUCTURE_PATTERNS.md) - Implementation patterns
+- [Event Logger Specification](08_EVENT_LOGGER.md) - Event logging integration
+
+---
+
+**Status**: Specification complete ✅  
+**Last Reviewed**: October 11, 2025

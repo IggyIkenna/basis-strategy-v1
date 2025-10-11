@@ -77,6 +77,54 @@
 - AAVE position naming, hedge logic
 - Single source of truth for all design choices
 
+→ **[REFERENCE_ARCHITECTURE_CANONICAL.md](REFERENCE_ARCHITECTURE_CANONICAL.md)** ⭐ **MODE-AGNOSTIC ARCHITECTURE**
+- Resolves mode-agnostic vs mode-specific confusion
+- Config-driven component behavior
+- DataProvider abstraction layer
+- Complete implementation guide
+
+→ **[CODE_STRUCTURE_PATTERNS.md](CODE_STRUCTURE_PATTERNS.md)** ⭐ **IMPLEMENTATION PATTERNS**
+- Complete code structures for all components
+- Class signatures and __init__ patterns
+- Config validation patterns
+- DataProvider factory patterns
+- ComponentFactory patterns
+
+→ **[COMPONENT_SPEC_TEMPLATE.md](COMPONENT_SPEC_TEMPLATE.md)** ⭐ **STANDARDIZED SPEC FORMAT**
+- Exact spec structure (19 sections in order)
+- Prevents hallucination in spec updates
+- Standardized headers and formatting
+- Complete section templates with placeholders
+- Validation checklist for each section
+
+→ **[DOCUMENTATION_AUDIT_FINAL_SUMMARY.md](DOCUMENTATION_AUDIT_FINAL_SUMMARY.md)** ⭐ **COMPLETE AUDIT SUMMARY**
+- All 22 docs audited (20 specs + API + workflow)
+- Overall grade: A (91%) - Excellent!
+- Integration: 100% aligned
+- Config/naming: 100% aligned
+- Only 3 critical fixes needed (15 min)
+- Production-ready documentation
+
+→ **[AUDIT_QUICK_REFERENCE.md](AUDIT_QUICK_REFERENCE.md)** 📋 **QUICK FIX GUIDE**
+- The 3 critical fixes (15 min)
+- Optional updates (3 hours)
+- What's already perfect
+- Your choice: 95% now or 100% later
+
+→ **[API_WORKFLOW_ALIGNMENT_AUDIT.md](API_WORKFLOW_ALIGNMENT_AUDIT.md)** 📊 **API & WORKFLOW AUDIT**
+- API_DOCUMENTATION.md: 98% aligned
+- WORKFLOW_GUIDE.md: 99% aligned
+- Component method signatures verified
+- Config-driven patterns documented
+- Only 2 minor enhancement opportunities
+
+→ **[AGENT_TASK_SPEC_COMPLETION_PHASE3.md](AGENT_TASK_SPEC_COMPLETION_PHASE3.md)** 🤖 **PHASE 3 TASK DOC**
+- Complete missing sections (11 specs)
+- Add component logging examples (8 specs)
+- Add config-driven clarifications (5 docs)
+- Detailed templates and examples
+- Estimated time: 3 hours for 100% compliance
+
 → **[WORKFLOW_GUIDE.md](WORKFLOW_GUIDE.md)** ⭐ **VISUAL ROADMAP**
 - Complete system workflows with Mermaid diagrams
 - Environment & configuration flows
@@ -101,7 +149,7 @@
 - Integration testing requirements
 
 ### **Configuration**
-→ **[specs/CONFIGURATION.md](specs/CONFIGURATION.md)**
+→ **[specs/19_CONFIGURATION.md](specs/19_CONFIGURATION.md)**
 - Configuration hierarchy & validation
 - Mode/venue/share class configs
 - Update workflow & restart procedures
@@ -171,7 +219,7 @@ All component specs in **[specs/](specs/) <!-- Directory link to specs folder --
 | Quality gates & validation | [QUALITY_GATES.md](QUALITY_GATES.md) |
 | AAVE index mechanics | [specs/02_EXPOSURE_MONITOR.md](specs/02_EXPOSURE_MONITOR.md) |
 | Timing & event model | [REFERENCE_ARCHITECTURE_CANONICAL.md](REFERENCE_ARCHITECTURE_CANONICAL.md) |
-| Mode configurations | [specs/CONFIGURATION.md](specs/CONFIGURATION.md) |
+| Mode configurations | [specs/19_CONFIGURATION.md](specs/19_CONFIGURATION.md) |
 | Component data flow | [COMPONENT_SPECS_INDEX.md](COMPONENT_SPECS_INDEX.md) |
 | Implementation tasks | [COMPONENT_SPECS_INDEX.md](COMPONENT_SPECS_INDEX.md) <!-- Redirected from REQUIREMENTS.md - requirements are component specifications --> |
 | API endpoints | [API_DOCUMENTATION.md](API_DOCUMENTATION.md) <!-- Redirected from REFERENCE.md - reference documentation is API docs --> |

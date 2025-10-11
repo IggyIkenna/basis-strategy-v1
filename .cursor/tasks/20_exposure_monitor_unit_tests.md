@@ -1,38 +1,42 @@
-# EXPOSURE MONITOR UNIT TESTS
+# EXPOSURE MONITOR ALIGNMENT & UNIT TESTS
 
 ## OVERVIEW
-This task implements comprehensive unit tests for the Exposure Monitor component to validate exposure calculations, integration with position monitor, and config-driven parameters. This ensures the Exposure Monitor component is fully tested and validated according to specifications.
+This task aligns the existing Exposure Monitor implementation with canonical specifications and implements comprehensive unit tests. The component exists at `backend/src/basis_strategy_v1/core/strategies/components/exposure_monitor.py` but needs alignment with mode-agnostic design patterns, config-driven parameters, and proper error codes.
 
-**Reference**: `docs/specs/02_EXPOSURE_MONITOR.md` - Exposure Monitor specification  
-**Reference**: `docs/REFERENCE_ARCHITECTURE_CANONICAL.md` - Section 7 (Generic vs Mode-Specific)  
-**Reference**: `docs/ARCHITECTURAL_DECISION_RECORDS.md` - ADR-003 (Reference-Based Architecture)  
+**Reference**: `docs/specs/02_EXPOSURE_MONITOR.md` - Mode-agnostic exposure calculation specification  
+**Reference**: `docs/REFERENCE_ARCHITECTURE_CANONICAL.md` - Section II (Config-Driven Mode-Agnostic Architecture)  
+**Reference**: `docs/CODE_STRUCTURE_PATTERNS.md` - Sections 2-4 (Mode-agnostic patterns)  
+**Reference**: `docs/IMPLEMENTATION_GAP_REPORT.md` - Component gap analysis  
 **Reference**: `tests/unit/` - Existing unit test structure
 
 ## CRITICAL REQUIREMENTS
 
-### 1. Exposure Calculation Testing
-- **Exposure calculations**: Test exposure calculations for all asset types
-- **Exposure aggregation**: Test exposure aggregation across venues and protocols
-- **Exposure normalization**: Test exposure normalization and standardization
-- **Exposure validation**: Test exposure validation logic and error handling
+### 1. Mode-Agnostic Architecture Alignment
+- **Generic exposure calculation**: Implement generic exposure calculation per spec
+- **Config-driven asset tracking**: Use `track_assets` from component config
+- **Config-driven conversion methods**: Use `conversion_methods` from component config
+- **Mode-agnostic behavior**: Ensure same logic for all strategy modes
+- **Error codes**: Add missing error codes EXP-001 through EXP-013
 
-### 2. Integration Testing
-- **Position monitor integration**: Test integration with position monitor
-- **Data provider integration**: Test integration with data provider
-- **Risk monitor integration**: Test integration with risk monitor
-- **Event logger integration**: Test integration with event logger
+### 2. Implementation Alignment
+- **Reference-based architecture**: Verify component references set at init
+- **Shared clock pattern**: Ensure timestamp-based data queries
+- **Position monitor integration**: Validate integration with position monitor
+- **Graceful degradation**: Handle missing data gracefully (return 0/empty)
+- **AAVE conversion**: Implement aToken to underlying conversion
 
-### 3. Config-Driven Parameter Testing
-- **Config parameter usage**: Test usage of config parameters (asset, share_class, lst_type)
-- **Mode-agnostic behavior**: Test mode-agnostic behavior with config-driven parameters
-- **Parameter validation**: Test parameter validation and error handling
-- **Parameter updates**: Test parameter update mechanisms
+### 3. Unit Test Implementation
+- **Mode-agnostic tests**: Test behavior across all strategy modes
+- **Config-driven tests**: Test config parameter usage and validation
+- **Error code tests**: Test all error codes and graceful degradation
+- **Integration tests**: Test with position monitor, data provider, other components
+- **Coverage target**: Achieve 80% test coverage
 
-### 4. Component Functionality Testing
-- **Exposure tracking**: Test exposure tracking functionality
-- **Exposure updates**: Test exposure update mechanisms
-- **Exposure persistence**: Test exposure persistence mechanisms
-- **Exposure reporting**: Test exposure reporting functionality
+### 4. Quality Gate Validation
+- **Architecture compliance**: Validate against canonical architecture
+- **Spec compliance**: Validate against component specification
+- **Integration validation**: Validate component integration patterns
+- **Performance validation**: Validate performance requirements
 
 ## FORBIDDEN PRACTICES
 

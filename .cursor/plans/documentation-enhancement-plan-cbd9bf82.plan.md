@@ -45,7 +45,7 @@ For each of 18 spec files:
 - 15_EVENT_DRIVEN_STRATEGY_ENGINE.md → `event_driven_strategy_engine.py`
 - 16_MATH_UTILITIES.md → math utilities
 - 17_HEALTH_ERROR_SYSTEMS.md → health/error systems
-- CONFIGURATION.md → config system
+- 19_CONFIGURATION.md → config system
 
 ### Implementation Status Template Structure
 

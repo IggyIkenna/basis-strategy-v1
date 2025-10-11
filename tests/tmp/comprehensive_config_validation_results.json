@@ -1,63 +1,12 @@
 {
   "base_configs": {
     "configs/local.json": {
-      "status": "success",
-      "file_exists": true,
-      "valid_json": true,
-      "required_sections": {
-        "environment": true,
-        "api": true,
-        "database": true,
-        "redis": true,
-        "data": true,
-        "execution": true
-      },
-      "missing_sections": [],
-      "config_keys": [
-        "_comment",
-        "environment",
-        "debug",
-        "api",
-        "database",
-        "redis",
-        "cache",
-        "data",
-        "execution"
-      ]
+      "status": "error",
+      "error": "File not found: /Users/ikennaigboaka/Documents/basis-strategy-v1/tests/../configs/local.json"
     },
     "configs/default.json": {
-      "status": "success",
-      "file_exists": true,
-      "valid_json": true,
-      "required_sections": {
-        "environment": true,
-        "api": true,
-        "database": true,
-        "redis": true,
-        "data": true,
-        "execution": true
-      },
-      "missing_sections": [],
-      "config_keys": [
-        "_comment",
-        "environment",
-        "debug",
-        "api",
-        "database",
-        "redis",
-        "cache",
-        "storage",
-        "monitoring",
-        "backtest",
-        "data",
-        "output",
-        "fees",
-        "execution",
-        "execution_costs",
-        "ltv",
-        "operational_timing",
-        "health"
-      ]
+      "status": "error",
+      "error": "File not found: /Users/ikennaigboaka/Documents/basis-strategy-v1/tests/../configs/default.json"
     }
   },
   "mode_configs": {
@@ -67,9 +16,11 @@
       "valid_yaml": true,
       "required_fields": {
         "mode": true,
-        "description": true,
         "share_class": true,
-        "data_requirements": true
+        "data_requirements": true,
+        "position_deviation_threshold": true,
+        "enable_market_impact": true,
+        "time_throttle_interval": true
       },
       "missing_fields": [],
       "mode": "btc_basis",
@@ -77,11 +28,30 @@
       "data_requirements_count": 5,
       "data_requirements": [
         "btc_prices",
-        "btc_futures_prices",
+        "btc_futures",
         "funding_rates",
         "gas_costs",
         "execution_costs"
-      ]
+      ],
+      "component_config": {
+        "present": true,
+        "components_present": {
+          "risk_monitor": true,
+          "exposure_monitor": true,
+          "pnl_calculator": true,
+          "strategy_manager": true,
+          "execution_manager": true,
+          "results_store": true,
+          "strategy_factory": true
+        },
+        "strategy_manager_missing_fields": [],
+        "strategy_factory_missing_fields": [],
+        "risk_monitor_missing_fields": [],
+        "exposure_monitor_missing_fields": [],
+        "pnl_calculator_missing_fields": [],
+        "execution_manager_missing_fields": [],
+        "results_store_missing_fields": []
+      }
     },
     "configs/modes/eth_leveraged.yaml": {
       "status": "success",
@@ -89,14 +59,16 @@
       "valid_yaml": true,
       "required_fields": {
         "mode": true,
-        "description": true,
         "share_class": true,
-        "data_requirements": true
+        "data_requirements": true,
+        "position_deviation_threshold": true,
+        "enable_market_impact": true,
+        "time_throttle_interval": true
       },
       "missing_fields": [],
       "mode": "eth_leveraged",
       "share_class": "ETH",
-      "data_requirements_count": 9,
+      "data_requirements_count": 8,
       "data_requirements": [
         "eth_prices",
         "weeth_prices",
@@ -105,9 +77,27 @@
         "eigen_rewards",
         "gas_costs",
         "execution_costs",
-        "aave_risk_params",
-        "lst_market_prices"
-      ]
+        "aave_risk_params"
+      ],
+      "component_config": {
+        "present": true,
+        "components_present": {
+          "risk_monitor": true,
+          "exposure_monitor": true,
+          "pnl_calculator": true,
+          "strategy_manager": true,
+          "execution_manager": true,
+          "results_store": true,
+          "strategy_factory": true
+        },
+        "strategy_manager_missing_fields": [],
+        "strategy_factory_missing_fields": [],
+        "risk_monitor_missing_fields": [],
+        "exposure_monitor_missing_fields": [],
+        "pnl_calculator_missing_fields": [],
+        "execution_manager_missing_fields": [],
+        "results_store_missing_fields": []
+      }
     },
     "configs/modes/eth_staking_only.yaml": {
       "status": "success",
@@ -115,23 +105,45 @@
       "valid_yaml": true,
       "required_fields": {
         "mode": true,
-        "description": true,
         "share_class": true,
-        "data_requirements": true
+        "data_requirements": true,
+        "position_deviation_threshold": true,
+        "enable_market_impact": true,
+        "time_throttle_interval": true
       },
       "missing_fields": [],
       "mode": "eth_staking_only",
       "share_class": "ETH",
-      "data_requirements_count": 7,
+      "data_requirements_count": 8,
       "data_requirements": [
         "eth_prices",
         "weeth_prices",
+        "aave_lending_rates",
         "staking_rewards",
         "eigen_rewards",
         "gas_costs",
         "execution_costs",
-        "lst_market_prices"
-      ]
+        "aave_risk_params"
+      ],
+      "component_config": {
+        "present": true,
+        "components_present": {
+          "risk_monitor": true,
+          "exposure_monitor": true,
+          "pnl_calculator": true,
+          "strategy_manager": true,
+          "execution_manager": true,
+          "results_store": true,
+          "strategy_factory": true
+        },
+        "strategy_manager_missing_fields": [],
+        "strategy_factory_missing_fields": [],
+        "risk_monitor_missing_fields": [],
+        "exposure_monitor_missing_fields": [],
+        "pnl_calculator_missing_fields": [],
+        "execution_manager_missing_fields": [],
+        "results_store_missing_fields": []
+      }
     },
     "configs/modes/pure_lending.yaml": {
       "status": "success",
@@ -139,21 +151,41 @@
       "valid_yaml": true,
       "required_fields": {
         "mode": true,
-        "description": true,
         "share_class": true,
-        "data_requirements": true
+        "data_requirements": true,
+        "position_deviation_threshold": true,
+        "enable_market_impact": true,
+        "time_throttle_interval": true
       },
       "missing_fields": [],
       "mode": "pure_lending",
       "share_class": "USDT",
-      "data_requirements_count": 5,
+      "data_requirements_count": 4,
       "data_requirements": [
-        "aave_lending_rates",
         "usdt_prices",
+        "aave_lending_rates",
         "gas_costs",
-        "execution_costs",
-        "aave_risk_params"
-      ]
+        "execution_costs"
+      ],
+      "component_config": {
+        "present": true,
+        "components_present": {
+          "risk_monitor": true,
+          "exposure_monitor": true,
+          "pnl_calculator": true,
+          "strategy_manager": true,
+          "execution_manager": true,
+          "results_store": true,
+          "strategy_factory": true
+        },
+        "strategy_manager_missing_fields": [],
+        "strategy_factory_missing_fields": [],
+        "risk_monitor_missing_fields": [],
+        "exposure_monitor_missing_fields": [],
+        "pnl_calculator_missing_fields": [],
+        "execution_manager_missing_fields": [],
+        "results_store_missing_fields": []
+      }
     },
     "configs/modes/usdt_market_neutral_no_leverage.yaml": {
       "status": "success",
@@ -161,24 +193,48 @@
       "valid_yaml": true,
       "required_fields": {
         "mode": true,
-        "description": true,
         "share_class": true,
-        "data_requirements": true
+        "data_requirements": true,
+        "position_deviation_threshold": true,
+        "enable_market_impact": true,
+        "time_throttle_interval": true
       },
       "missing_fields": [],
       "mode": "usdt_market_neutral_no_leverage",
       "share_class": "USDT",
-      "data_requirements_count": 8,
+      "data_requirements_count": 11,
       "data_requirements": [
         "eth_prices",
         "weeth_prices",
+        "aave_lending_rates",
         "staking_rewards",
         "eigen_rewards",
+        "ethfi_rewards",
         "funding_rates",
         "gas_costs",
         "execution_costs",
+        "aave_risk_params",
         "lst_market_prices"
-      ]
+      ],
+      "component_config": {
+        "present": true,
+        "components_present": {
+          "risk_monitor": true,
+          "exposure_monitor": true,
+          "pnl_calculator": true,
+          "strategy_manager": true,
+          "execution_manager": true,
+          "results_store": true,
+          "strategy_factory": true
+        },
+        "strategy_manager_missing_fields": [],
+        "strategy_factory_missing_fields": [],
+        "risk_monitor_missing_fields": [],
+        "exposure_monitor_missing_fields": [],
+        "pnl_calculator_missing_fields": [],
+        "execution_manager_missing_fields": [],
+        "results_store_missing_fields": []
+      }
     },
     "configs/modes/usdt_market_neutral.yaml": {
       "status": "success",
@@ -186,9 +242,11 @@
       "valid_yaml": true,
       "required_fields": {
         "mode": true,
-        "description": true,
         "share_class": true,
-        "data_requirements": true
+        "data_requirements": true,
+        "position_deviation_threshold": true,
+        "enable_market_impact": true,
+        "time_throttle_interval": true
       },
       "missing_fields": [],
       "mode": "usdt_market_neutral",
@@ -206,7 +264,26 @@
         "execution_costs",
         "aave_risk_params",
         "lst_market_prices"
-      ]
+      ],
+      "component_config": {
+        "present": true,
+        "components_present": {
+          "risk_monitor": true,
+          "exposure_monitor": true,
+          "pnl_calculator": true,
+          "strategy_manager": true,
+          "execution_manager": true,
+          "results_store": true,
+          "strategy_factory": true
+        },
+        "strategy_manager_missing_fields": [],
+        "strategy_factory_missing_fields": [],
+        "risk_monitor_missing_fields": [],
+        "exposure_monitor_missing_fields": [],
+        "pnl_calculator_missing_fields": [],
+        "execution_manager_missing_fields": [],
+        "results_store_missing_fields": []
+      }
     }
   },
   "venue_configs": {
@@ -217,20 +294,17 @@
       "required_fields": {
         "venue": true,
         "type": true,
-        "description": true
+        "description": false
       },
-      "missing_fields": [],
+      "missing_fields": [
+        "description"
+      ],
       "venue": "aave_v3",
       "type": "defi",
       "config_keys": [
         "venue",
         "type",
-        "description",
-        "network",
-        "contract_addresses",
-        "supported_assets",
-        "protocol_fees",
-        "gas_limits"
+        "network"
       ]
     },
     "configs/venues/alchemy.yaml": {
@@ -240,23 +314,17 @@
       "required_fields": {
         "venue": true,
         "type": true,
-        "description": true
+        "description": false
       },
-      "missing_fields": [],
+      "missing_fields": [
+        "description"
+      ],
       "venue": "alchemy",
       "type": "infrastructure",
       "config_keys": [
         "venue",
         "type",
-        "protocol",
-        "description",
-        "rpc",
-        "features",
-        "gas",
-        "rate_limits",
-        "premium",
-        "risk",
-        "monitoring"
+        "service"
       ]
     },
     "configs/venues/binance.yaml": {
@@ -266,22 +334,18 @@
       "required_fields": {
         "venue": true,
         "type": true,
-        "description": true
+        "description": false
       },
-      "missing_fields": [],
+      "missing_fields": [
+        "description"
+      ],
       "venue": "binance",
       "type": "cex",
       "config_keys": [
         "venue",
         "type",
-        "description",
-        "api_endpoints",
-        "trading_fees",
-        "max_position_size_usd",
-        "min_order_size_usd",
         "max_leverage",
-        "supported_assets",
-        "rate_limits"
+        "min_order_size_usd"
       ]
     },
     "configs/venues/bybit.yaml": {
@@ -291,22 +355,18 @@
       "required_fields": {
         "venue": true,
         "type": true,
-        "description": true
+        "description": false
       },
-      "missing_fields": [],
+      "missing_fields": [
+        "description"
+      ],
       "venue": "bybit",
       "type": "cex",
       "config_keys": [
         "venue",
         "type",
-        "description",
-        "api_endpoints",
-        "trading_fees",
-        "max_position_size_usd",
-        "min_order_size_usd",
         "max_leverage",
-        "supported_assets",
-        "rate_limits"
+        "min_order_size_usd"
       ]
     },
     "configs/venues/etherfi.yaml": {
@@ -316,21 +376,18 @@
       "required_fields": {
         "venue": true,
         "type": true,
-        "description": true
+        "description": false
       },
-      "missing_fields": [],
+      "missing_fields": [
+        "description"
+      ],
       "venue": "etherfi",
       "type": "defi",
       "config_keys": [
         "venue",
         "type",
-        "protocol",
-        "description",
-        "contracts",
-        "staking",
-        "rewards",
-        "risk",
-        "integration"
+        "min_stake_amount",
+        "unstaking_period"
       ]
     },
     "configs/venues/okx.yaml": {
@@ -340,22 +397,18 @@
       "required_fields": {
         "venue": true,
         "type": true,
-        "description": true
+        "description": false
       },
-      "missing_fields": [],
+      "missing_fields": [
+        "description"
+      ],
       "venue": "okx",
       "type": "cex",
       "config_keys": [
         "venue",
         "type",
-        "description",
-        "api_endpoints",
-        "trading_fees",
-        "max_position_size_usd",
-        "min_order_size_usd",
         "max_leverage",
-        "supported_assets",
-        "rate_limits"
+        "min_order_size_usd"
       ]
     },
     "configs/venues/lido.yaml": {
@@ -365,21 +418,18 @@
       "required_fields": {
         "venue": true,
         "type": true,
-        "description": true
+        "description": false
       },
-      "missing_fields": [],
+      "missing_fields": [
+        "description"
+      ],
       "venue": "lido",
       "type": "defi",
       "config_keys": [
         "venue",
         "type",
-        "protocol",
-        "description",
-        "contracts",
-        "staking",
-        "rewards",
-        "risk",
-        "integration"
+        "min_stake_amount",
+        "unstaking_period"
       ]
     },
     "configs/venues/morpho.yaml": {
@@ -389,21 +439,17 @@
       "required_fields": {
         "venue": true,
         "type": true,
-        "description": true
+        "description": false
       },
-      "missing_fields": [],
+      "missing_fields": [
+        "description"
+      ],
       "venue": "morpho",
       "type": "defi",
       "config_keys": [
         "venue",
         "type",
-        "protocol",
-        "description",
-        "contracts",
-        "flash_loans",
-        "supported_assets",
-        "risk",
-        "integration"
+        "network"
       ]
     }
   },
@@ -423,7 +469,8 @@
       "type": "directional",
       "supported_strategies": [
         "eth_leveraged",
-        "eth_staking_only"
+        "eth_staking_only",
+        "eth_basis"
       ]
     },
     "configs/share_classes/usdt_stable.yaml": {
@@ -448,120 +495,68 @@
     }
   },
   "env_variables": {
-    "backend/env.unified": {
+    "env.unified": {
       "status": "success",
       "file_exists": true,
-      "total_vars": 101,
+      "total_vars": 80,
       "critical_vars": {
         "BASIS_ENVIRONMENT": true,
         "BASIS_EXECUTION_MODE": true,
-        "BASIS_API__PORT": true,
-        "BASIS_REDIS__URL": true
+        "BASIS_API__PORT": false,
+        "DATA_LOAD_TIMEOUT": true,
+        "DATA_VALIDATION_STRICT": true,
+        "DATA_CACHE_SIZE": true,
+        "STRATEGY_MANAGER_TIMEOUT": true,
+        "STRATEGY_MANAGER_MAX_RETRIES": true,
+        "STRATEGY_FACTORY_TIMEOUT": true,
+        "STRATEGY_FACTORY_MAX_RETRIES": true
       },
-      "missing_critical": [],
+      "missing_critical": [
+        "BASIS_API__PORT"
+      ],
       "sample_vars": {
-        "BASIS_EXECUTION_MODE": "backtest",
-        "BASIS_ENVIRONMENT": "staging",
-        "BASIS_DEPLOYMENT": "cloud",
-        "BASIS_API__PORT": "8001",
-        "BASIS_API__RELOAD": "false"
+        "BASIS_ENVIRONMENT": "",
+        "BASIS_DEPLOYMENT_MODE": "",
+        "BASIS_DEPLOYMENT_MACHINE": "",
+        "BASIS_DATA_DIR": "",
+        "BASIS_DATA_MODE": ""
       }
     },
     "deploy/.env": {
-      "status": "success",
-      "file_exists": true,
-      "total_vars": 6,
-      "critical_vars": {
-        "BASIS_ENVIRONMENT": false,
-        "BASIS_EXECUTION_MODE": false,
-        "BASIS_API__PORT": false,
-        "BASIS_REDIS__URL": false
-      },
-      "missing_critical": [
-        "BASIS_ENVIRONMENT",
-        "BASIS_EXECUTION_MODE",
-        "BASIS_API__PORT",
-        "BASIS_REDIS__URL"
-      ],
-      "sample_vars": {
-        "APP_DOMAIN": "defi-project.odum-research.com",
-        "ACME_EMAIL": "ikenna@odum-research.com",
-        "BASIC_AUTH_HASH": "$2a$14$QADrrN7lrn3YnNfeyz6p7ObcX/vXtlUZnqaQylevtyJ4VvKKtPQ9O",
-        "HTTP_PORT": "80",
-        "HTTPS_PORT": "443"
-      }
+      "status": "error",
+      "error": "File not found: /Users/ikennaigboaka/Documents/basis-strategy-v1/tests/../deploy/.env"
     },
     "deploy/.env.dev": {
-      "status": "success",
-      "file_exists": true,
-      "total_vars": 6,
-      "critical_vars": {
-        "BASIS_ENVIRONMENT": false,
-        "BASIS_EXECUTION_MODE": false,
-        "BASIS_API__PORT": false,
-        "BASIS_REDIS__URL": false
-      },
-      "missing_critical": [
-        "BASIS_ENVIRONMENT",
-        "BASIS_EXECUTION_MODE",
-        "BASIS_API__PORT",
-        "BASIS_REDIS__URL"
-      ],
-      "sample_vars": {
-        "APP_DOMAIN": "localhost",
-        "ACME_EMAIL": "ikenna@odum-research.com",
-        "BASIC_AUTH_HASH": "",
-        "HTTP_PORT": "80",
-        "HTTPS_PORT": "8080  # Alternative port to avoid Chrome HSTS cache"
-      }
+      "status": "error",
+      "error": "File not found: /Users/ikennaigboaka/Documents/basis-strategy-v1/tests/../deploy/.env.dev"
     },
     "deploy/.env.staging": {
-      "status": "success",
-      "file_exists": true,
-      "total_vars": 6,
-      "critical_vars": {
-        "BASIS_ENVIRONMENT": false,
-        "BASIS_EXECUTION_MODE": false,
-        "BASIS_API__PORT": false,
-        "BASIS_REDIS__URL": false
-      },
-      "missing_critical": [
-        "BASIS_ENVIRONMENT",
-        "BASIS_EXECUTION_MODE",
-        "BASIS_API__PORT",
-        "BASIS_REDIS__URL"
-      ],
-      "sample_vars": {
-        "APP_DOMAIN": "defi-project-uat.odum-research.com",
-        "ACME_EMAIL": "ikenna@odum-research.com",
-        "BASIC_AUTH_HASH": "$2a$14$QADrrN7lrn3YnNfeyz6p7ObcX/vXtlUZnqaQylevtyJ4VvKKtPQ9O",
-        "HTTP_PORT": "80",
-        "HTTPS_PORT": "443"
-      }
+      "status": "error",
+      "error": "File not found: /Users/ikennaigboaka/Documents/basis-strategy-v1/tests/../deploy/.env.staging"
     }
   },
   "data_requirements": {
     "total_requirements": 14,
     "unique_requirements": [
-      "eth_prices",
-      "aave_lending_rates",
-      "ethfi_rewards",
-      "funding_rates",
-      "usdt_prices",
-      "staking_rewards",
+      "weeth_prices",
       "lst_market_prices",
-      "eigen_rewards",
       "aave_risk_params",
-      "btc_futures_prices",
+      "btc_prices",
+      "usdt_prices",
+      "aave_lending_rates",
       "execution_costs",
       "gas_costs",
-      "btc_prices",
-      "weeth_prices"
+      "eth_prices",
+      "funding_rates",
+      "eigen_rewards",
+      "btc_futures",
+      "staking_rewards",
+      "ethfi_rewards"
     ],
     "mode_requirements": {
       "btc_basis": [
         "btc_prices",
-        "btc_futures_prices",
+        "btc_futures",
         "funding_rates",
         "gas_costs",
         "execution_costs"
@@ -574,33 +569,35 @@
         "eigen_rewards",
         "gas_costs",
         "execution_costs",
-        "aave_risk_params",
-        "lst_market_prices"
+        "aave_risk_params"
       ],
       "eth_staking_only": [
         "eth_prices",
         "weeth_prices",
+        "aave_lending_rates",
         "staking_rewards",
         "eigen_rewards",
-        "gas_costs",
-        "execution_costs",
-        "lst_market_prices"
-      ],
-      "pure_lending": [
-        "aave_lending_rates",
-        "usdt_prices",
         "gas_costs",
         "execution_costs",
         "aave_risk_params"
       ],
+      "pure_lending": [
+        "usdt_prices",
+        "aave_lending_rates",
+        "gas_costs",
+        "execution_costs"
+      ],
       "usdt_market_neutral_no_leverage": [
         "eth_prices",
         "weeth_prices",
+        "aave_lending_rates",
         "staking_rewards",
         "eigen_rewards",
+        "ethfi_rewards",
         "funding_rates",
         "gas_costs",
         "execution_costs",
+        "aave_risk_params",
         "lst_market_prices"
       ],
       "usdt_market_neutral": [
@@ -664,11 +661,34 @@
       "ethfi_rewards": "protocol_data/staking/restaking_final/etherfi_seasonal_rewards_2024-01-01_2025-09-18.csv"
     },
     "data_availability": {
-      "eth_prices": {
-        "type": "single_file",
-        "expected_path": "/Users/ikennaigboaka/Documents/basis-strategy-v1/tests/../data/market_data/spot_prices/eth_usd/binance_ETHUSDT_1h_2020-01-01_2025-09-26.csv",
+      "lst_market_prices": {
+        "type": "multiple_files",
+        "files": [
+          {
+            "file": "market_data/spot_prices/lst_eth_ratios/curve_weETHWETH_1h_2024-05-12_2025-09-27.csv",
+            "exists": true,
+            "size": 711
+          },
+          {
+            "file": "market_data/spot_prices/lst_eth_ratios/uniswapv3_wstETHWETH_1h_2024-05-12_2025-09-27.csv",
+            "exists": true,
+            "size": 711
+          }
+        ],
         "exists": true,
-        "size": 5283792
+        "file_count": 2
+      },
+      "aave_risk_params": {
+        "type": "single_file",
+        "expected_path": "/Users/ikennaigboaka/Documents/basis-strategy-v1/tests/../data/protocol_data/aave/risk_params/aave_v3_risk_parameters.json",
+        "exists": true,
+        "size": 797
+      },
+      "btc_prices": {
+        "type": "single_file",
+        "expected_path": "/Users/ikennaigboaka/Documents/basis-strategy-v1/tests/../data/market_data/spot_prices/btc_usd/binance_BTCUSDT_1h_2024-01-01_2025-09-30.csv",
+        "exists": true,
+        "size": 1704865
       },
       "aave_lending_rates": {
         "type": "multiple_files",
@@ -697,11 +717,45 @@
         "exists": true,
         "file_count": 3
       },
-      "ethfi_rewards": {
-        "type": "single_file",
-        "expected_path": "/Users/ikennaigboaka/Documents/basis-strategy-v1/tests/../data/protocol_data/staking/restaking_final/etherfi_seasonal_rewards_2024-01-01_2025-09-18.csv",
+      "execution_costs": {
+        "type": "multiple_files",
+        "files": [
+          {
+            "file": "execution_costs/execution_cost_simulation_results.csv",
+            "exists": true,
+            "size": 12688673
+          },
+          {
+            "file": "execution_costs/lookup_tables/execution_costs_lookup.json",
+            "exists": true,
+            "size": 491808
+          }
+        ],
         "exists": true,
-        "size": 29472
+        "file_count": 2
+      },
+      "gas_costs": {
+        "type": "multiple_files",
+        "files": [
+          {
+            "file": "blockchain_data/gas_prices/ethereum_gas_prices_enhanced_2024-01-01_2025-09-26.csv",
+            "exists": true,
+            "size": 13284016
+          },
+          {
+            "file": "blockchain_data/gas_prices/ethereum_gas_prices_2024-01-01_2025-09-26.csv",
+            "exists": true,
+            "size": 2356036
+          }
+        ],
+        "exists": true,
+        "file_count": 2
+      },
+      "eth_prices": {
+        "type": "single_file",
+        "expected_path": "/Users/ikennaigboaka/Documents/basis-strategy-v1/tests/../data/market_data/spot_prices/eth_usd/binance_ETHUSDT_1h_2020-01-01_2025-09-26.csv",
+        "exists": true,
+        "size": 5283792
       },
       "funding_rates": {
         "type": "multiple_files",
@@ -740,6 +794,12 @@
         "exists": true,
         "file_count": 6
       },
+      "eigen_rewards": {
+        "type": "single_file",
+        "expected_path": "/Users/ikennaigboaka/Documents/basis-strategy-v1/tests/../data/protocol_data/staking/restaking_final/etherfi_seasonal_rewards_2024-01-01_2025-09-18.csv",
+        "exists": true,
+        "size": 29472
+      },
       "staking_rewards": {
         "type": "multiple_files",
         "files": [
@@ -762,74 +822,11 @@
         "exists": true,
         "file_count": 1
       },
-      "lst_market_prices": {
-        "type": "multiple_files",
-        "files": [
-          {
-            "file": "market_data/spot_prices/lst_eth_ratios/curve_weETHWETH_1h_2024-05-12_2025-09-27.csv",
-            "exists": true,
-            "size": 2506839
-          },
-          {
-            "file": "market_data/spot_prices/lst_eth_ratios/uniswapv3_wstETHWETH_1h_2024-05-12_2025-09-27.csv",
-            "exists": true,
-            "size": 2598069
-          }
-        ],
-        "exists": true,
-        "file_count": 2
-      },
-      "eigen_rewards": {
+      "ethfi_rewards": {
         "type": "single_file",
         "expected_path": "/Users/ikennaigboaka/Documents/basis-strategy-v1/tests/../data/protocol_data/staking/restaking_final/etherfi_seasonal_rewards_2024-01-01_2025-09-18.csv",
         "exists": true,
         "size": 29472
-      },
-      "aave_risk_params": {
-        "type": "single_file",
-        "expected_path": "/Users/ikennaigboaka/Documents/basis-strategy-v1/tests/../data/protocol_data/aave/risk_params/aave_v3_risk_parameters.json",
-        "exists": true,
-        "size": 2530
-      },
-      "execution_costs": {
-        "type": "multiple_files",
-        "files": [
-          {
-            "file": "execution_costs/execution_cost_simulation_results.csv",
-            "exists": true,
-            "size": 12688673
-          },
-          {
-            "file": "execution_costs/lookup_tables/execution_costs_lookup.json",
-            "exists": true,
-            "size": 491808
-          }
-        ],
-        "exists": true,
-        "file_count": 2
-      },
-      "gas_costs": {
-        "type": "multiple_files",
-        "files": [
-          {
-            "file": "blockchain_data/gas_prices/ethereum_gas_prices_enhanced_2024-01-01_2025-09-26.csv",
-            "exists": true,
-            "size": 13284016
-          },
-          {
-            "file": "blockchain_data/gas_prices/ethereum_gas_prices_2024-01-01_2025-09-26.csv",
-            "exists": true,
-            "size": 2356036
-          }
-        ],
-        "exists": true,
-        "file_count": 2
-      },
-      "btc_prices": {
-        "type": "single_file",
-        "expected_path": "/Users/ikennaigboaka/Documents/basis-strategy-v1/tests/../data/market_data/spot_prices/btc_usd/binance_BTCUSDT_1h_2024-01-01_2025-09-30.csv",
-        "exists": true,
-        "size": 1704865
       }
     }
   },
@@ -845,7 +842,8 @@
     "share_class_strategies": {
       "ETH": [
         "eth_leveraged",
-        "eth_staking_only"
+        "eth_staking_only",
+        "eth_basis"
       ],
       "USDT": [
         "pure_lending",
@@ -859,32 +857,29 @@
   },
   "separation_of_concerns": {
     "base_config_overlap": {
-      "overlapping_keys": [
-        "execution",
-        "_comment",
-        "cache",
-        "data",
-        "debug",
-        "environment",
-        "database",
-        "api",
-        "redis"
-      ],
-      "identical_values": [
-        "execution",
-        "debug",
-        "environment"
-      ],
-      "potential_duplication": 3
+      "overlapping_keys": [],
+      "identical_values": [],
+      "potential_duplication": 0
     },
     "base_config_strategy_keys": [],
     "separation_violations": false
   },
-  "errors": [],
+  "errors": [
+    "Base config file not found: configs/local.json",
+    "Base config file not found: configs/default.json",
+    "Environment file not found: deploy/.env",
+    "Environment file not found: deploy/.env.dev",
+    "Environment file not found: deploy/.env.staging"
+  ],
   "warnings": [
-    "Missing critical vars in deploy/.env: ['BASIS_ENVIRONMENT', 'BASIS_EXECUTION_MODE', 'BASIS_API__PORT', 'BASIS_REDIS__URL']",
-    "Missing critical vars in deploy/.env.dev: ['BASIS_ENVIRONMENT', 'BASIS_EXECUTION_MODE', 'BASIS_API__PORT', 'BASIS_REDIS__URL']",
-    "Missing critical vars in deploy/.env.staging: ['BASIS_ENVIRONMENT', 'BASIS_EXECUTION_MODE', 'BASIS_API__PORT', 'BASIS_REDIS__URL']",
-    "Identical values in base configs (potential duplication): ['execution', 'debug', 'environment']"
+    "Missing fields in configs/venues/aave_v3.yaml: ['description']",
+    "Missing fields in configs/venues/alchemy.yaml: ['description']",
+    "Missing fields in configs/venues/binance.yaml: ['description']",
+    "Missing fields in configs/venues/bybit.yaml: ['description']",
+    "Missing fields in configs/venues/etherfi.yaml: ['description']",
+    "Missing fields in configs/venues/okx.yaml: ['description']",
+    "Missing fields in configs/venues/lido.yaml: ['description']",
+    "Missing fields in configs/venues/morpho.yaml: ['description']",
+    "Missing critical vars in env.unified: ['BASIS_API__PORT']"
   ]
 }

@@ -1,38 +1,42 @@
-# RISK MONITOR UNIT TESTS
+# RISK MONITOR ALIGNMENT & UNIT TESTS
 
 ## OVERVIEW
-This task implements comprehensive unit tests for the Risk Monitor component to validate risk calculations, integration with exposure monitor, and circuit breaker logic. This ensures the Risk Monitor component is fully tested and validated according to specifications.
+This task aligns the existing Risk Monitor implementation with canonical specifications and implements comprehensive unit tests. The component exists at `backend/src/basis_strategy_v1/core/strategies/components/risk_monitor.py` but needs alignment with mode-agnostic design patterns, config-driven risk types, and proper error codes.
 
-**Reference**: `docs/specs/03_RISK_MONITOR.md` - Risk Monitor specification  
-**Reference**: `docs/REFERENCE_ARCHITECTURE_CANONICAL.md` - Section 1 (Reference-Based Architecture)  
-**Reference**: `docs/ARCHITECTURAL_DECISION_RECORDS.md` - ADR-003 (Reference-Based Architecture)  
+**Reference**: `docs/specs/03_RISK_MONITOR.md` - Config-driven risk types specification  
+**Reference**: `docs/REFERENCE_ARCHITECTURE_CANONICAL.md` - Section II (Config-Driven Mode-Agnostic Architecture)  
+**Reference**: `docs/CODE_STRUCTURE_PATTERNS.md` - Sections 2-4 (Mode-agnostic patterns)  
+**Reference**: `docs/IMPLEMENTATION_GAP_REPORT.md` - Component gap analysis  
 **Reference**: `tests/unit/` - Existing unit test structure
 
 ## CRITICAL REQUIREMENTS
 
-### 1. Risk Calculation Testing
-- **Risk calculations**: Test risk calculations for all risk types
-- **Risk aggregation**: Test risk aggregation across positions and venues
-- **Risk normalization**: Test risk normalization and standardization
-- **Risk validation**: Test risk validation logic and error handling
+### 1. Mode-Agnostic Architecture Alignment
+- **Generic risk assessment**: Implement generic risk assessment per spec
+- **Config-driven risk types**: Use `enabled_risk_types` from component config
+- **Config-driven risk limits**: Use `risk_limits` from component config
+- **Mode-agnostic behavior**: Ensure same logic for all strategy modes
+- **Error codes**: Add missing error codes RISK-001 through RISK-013
 
-### 2. Integration Testing
-- **Exposure monitor integration**: Test integration with exposure monitor
-- **Position monitor integration**: Test integration with position monitor
-- **Data provider integration**: Test integration with data provider
-- **Event logger integration**: Test integration with event logger
+### 2. Implementation Alignment
+- **Reference-based architecture**: Verify component references set at init
+- **Shared clock pattern**: Ensure timestamp-based data queries
+- **Exposure monitor integration**: Validate integration with exposure monitor
+- **Graceful degradation**: Handle missing risk types gracefully (return None)
+- **Risk level determination**: Implement safe/warning/critical risk levels
 
-### 3. Circuit Breaker Logic Testing
-- **Circuit breaker triggers**: Test circuit breaker trigger conditions
-- **Circuit breaker actions**: Test circuit breaker actions and responses
-- **Circuit breaker recovery**: Test circuit breaker recovery mechanisms
-- **Circuit breaker validation**: Test circuit breaker validation logic
+### 3. Unit Test Implementation
+- **Mode-agnostic tests**: Test behavior across all strategy modes
+- **Config-driven tests**: Test config parameter usage and validation
+- **Error code tests**: Test all error codes and graceful degradation
+- **Integration tests**: Test with exposure monitor, data provider, other components
+- **Coverage target**: Achieve 80% test coverage
 
-### 4. Component Functionality Testing
-- **Risk tracking**: Test risk tracking functionality
-- **Risk updates**: Test risk update mechanisms
-- **Risk persistence**: Test risk persistence mechanisms
-- **Risk reporting**: Test risk reporting functionality
+### 4. Quality Gate Validation
+- **Architecture compliance**: Validate against canonical architecture
+- **Spec compliance**: Validate against component specification
+- **Integration validation**: Validate component integration patterns
+- **Performance validation**: Validate performance requirements
 
 ## FORBIDDEN PRACTICES
 

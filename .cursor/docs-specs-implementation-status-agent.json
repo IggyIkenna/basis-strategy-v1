@@ -11,10 +11,22 @@
   "context_files": [
     "docs/REFERENCE_ARCHITECTURE_CANONICAL.md",
     "docs/ARCHITECTURAL_DECISION_RECORDS.md",
+    "docs/COMPONENT_SPEC_TEMPLATE.md",
+    "docs/specs/02_EXPOSURE_MONITOR.md",
+    "docs/specs/03_RISK_MONITOR.md",
     "docs/specs/",
     ".cursor/tasks/",
     "backend/src/basis_strategy_v1/core/strategies/components/",
     ".cursor/rules.json"
+  ],
+  "canonical_examples": [
+    "docs/specs/02_EXPOSURE_MONITOR.md",
+    "docs/specs/03_RISK_MONITOR.md"
+  ],
+  "template": "docs/COMPONENT_SPEC_TEMPLATE.md",
+  "quality_gates": [
+    "scripts/test_docs_structure_validation_quality_gates.py",
+    "scripts/test_implementation_gap_quality_gates.py"
   ],
   "primary_mission": "Add current implementation status sections and validate complete structure for all docs/specs/ files based on actual codebase state vs canonical principles",
   "implementation_analysis": [
@@ -25,18 +37,27 @@
     "Task completion status"
   ],
   "spec_structure_requirements": [
-    "Title with component name and emoji",
-    "Component metadata (responsibility, priority, backend file, last reviewed, status)",
-    "Canonical Sources section",
+    "Title with component name",
+    "Last Reviewed date",
     "Purpose section",
-    "Component Structure section",
-    "Data Structures section",
-    "Integration with Other Components section",
-    "Implementation section",
-    "Mode-Specific Behavior section",
-    "Testing section",
-    "Current Implementation Status section (NEW)",
-    "Success Criteria section"
+    "📚 **Canonical Sources** section",
+    "Responsibilities section",
+    "State section",
+    "Component References (Set at Init) section",
+    "Configuration Parameters section",
+    "Environment Variables section",
+    "Config Fields Used section",
+    "Data Provider Queries section",
+    "Core Methods section",
+    "Data Access Pattern section",
+    "Mode-Aware Behavior section",
+    "**MODE-AGNOSTIC IMPLEMENTATION EXAMPLE** section",
+    "Event Logging Requirements section",
+    "Error Codes section",
+    "Quality Gates section",
+    "Integration Points section",
+    "Current Implementation Status section",
+    "Related Documentation section"
   ],
   "validation_requirements": [
     "All docs/specs/ files must have implementation status sections",
@@ -48,7 +69,7 @@
     "Must have consistent formatting and structure",
     "Must have proper cross-references and canonical sources"
   ],
-  "output_format": "Updated docs/specs/ files with comprehensive implementation status sections and complete structure validation",
+  "output_format": "implementation_status_with_gaps",
   "success_criteria": "All docs/specs/ files have accurate implementation status sections, complete structure, and reflect current codebase state",
   "web_agent_integration": {
     "can_run_alongside": true,

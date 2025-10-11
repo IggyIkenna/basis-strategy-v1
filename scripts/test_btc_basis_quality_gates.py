@@ -480,7 +480,7 @@ class BTCBasisQualityGates:
                 data_dir=self.config_manager.get_data_directory(),
                 startup_mode='backtest',
                 config=self.config,
-                strategy_mode='btc_basis',
+                mode='btc_basis',
                 backtest_start_date='2024-06-01',
                 backtest_end_date='2024-06-02'
             )

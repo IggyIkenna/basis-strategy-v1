@@ -45,7 +45,7 @@ async def test_e2e_backtest_flow():
             data_dir=config_manager.get_data_directory(),
             startup_mode='backtest',
             config=mode_config,
-            strategy_mode='pure_lending'
+            mode='pure_lending'
         )
         print(f"  ✅ Data provider: {len(data_provider.data)} datasets loaded")
         

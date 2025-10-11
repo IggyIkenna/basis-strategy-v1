@@ -42,6 +42,14 @@ class StrategyManager:
         # Get strategy mode from config
         self.mode = config.get('mode', 'pure_lending')
         
+        # Load component-specific configuration
+        component_config = config.get('component_config', {})
+        strategy_manager_config = component_config.get('strategy_manager', {})
+        self.strategy_type = strategy_manager_config.get('strategy_type', self.mode)
+        self.actions = strategy_manager_config.get('actions', [])
+        self.rebalancing_triggers = strategy_manager_config.get('rebalancing_triggers', [])
+        self.position_calculation = strategy_manager_config.get('position_calculation', {})
+        
         # Create strategy instance using factory
         try:
             self.strategy = StrategyFactory.create_strategy(
@@ -56,7 +64,7 @@ class StrategyManager:
                 f"StrategyManager initialized with {self.mode} strategy",
                 event_type="component_initialization",
                 component="strategy_manager",
-                strategy_mode=self.mode
+                mode=self.mode
             )
             
         except Exception as e:
@@ -64,7 +72,7 @@ class StrategyManager:
                 f"Failed to create strategy: {e}",
                 event_type="strategy_creation_error",
                 error=str(e),
-                strategy_mode=self.mode
+                mode=self.mode
             )
             self.strategy = None
     
@@ -98,14 +106,14 @@ class StrategyManager:
                     'actions': [action.model_dump()],
                     'timestamp': timestamp,
                     'status': 'action_generated',
-                    'strategy_mode': self.mode
+                    'mode': self.mode
                 }
             else:
                 return {
                     'actions': [],
                     'timestamp': timestamp,
                     'status': 'no_action_needed',
-                    'strategy_mode': self.mode
+                    'mode': self.mode
                 }
                 
         except Exception as e:

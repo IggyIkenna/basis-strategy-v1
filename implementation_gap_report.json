@@ -1,0 +1,416 @@
+{
+  "components": {
+    "01_POSITION_MONITOR": {
+      "status": "NEEDS_WORK",
+      "priority": "MEDIUM",
+      "methods_implemented": 0,
+      "methods_total": 0,
+      "missing_methods": [],
+      "extra_methods": [
+        "_get_cex_spot_positions",
+        "get_all_positions",
+        "_update_last_positions",
+        "_get_smart_contract_positions",
+        "_get_cex_derivatives_positions",
+        "_get_wallet_positions",
+        "_extract_token_from_position_key",
+        "__init__",
+        "_categorize_position",
+        "_calculate_position_metrics",
+        "_calculate_position_by_category",
+        "get_position_summary",
+        "get_config_parameters",
+        "calculate_positions",
+        "_calculate_total_positions"
+      ],
+      "config_params_implemented": 0,
+      "config_params_total": 0,
+      "missing_config": [],
+      "canonical_compliance": 0.4,
+      "compliance_details": {
+        "has_config_driven_loop": false,
+        "has_mode_agnostic_logic": true,
+        "has_graceful_data_handling": true,
+        "has_component_factory": false,
+        "has_error_handling": false
+      },
+      "implementation_file": "backend/src/basis_strategy_v1/core/strategies/components/position_monitor.py"
+    },
+    "02_EXPOSURE_MONITOR": {
+      "status": "CANONICAL",
+      "priority": "MEDIUM",
+      "methods_implemented": 0,
+      "methods_total": 0,
+      "missing_methods": [],
+      "extra_methods": [
+        "_get_cex_spot_positions",
+        "_calculate_total_exposures",
+        "_calculate_exposure_metrics",
+        "_get_smart_contract_positions",
+        "_get_cex_derivatives_positions",
+        "_get_wallet_positions",
+        "_calculate_exposure_by_category",
+        "_extract_token_from_position_key",
+        "__init__",
+        "calculate_exposures",
+        "_categorize_position",
+        "get_exposure_summary",
+        "_update_last_exposures",
+        "get_config_parameters"
+      ],
+      "config_params_implemented": 0,
+      "config_params_total": 0,
+      "missing_config": [],
+      "canonical_compliance": 0.4,
+      "compliance_details": {
+        "has_config_driven_loop": false,
+        "has_mode_agnostic_logic": true,
+        "has_graceful_data_handling": true,
+        "has_component_factory": false,
+        "has_error_handling": false
+      },
+      "implementation_file": "backend/src/basis_strategy_v1/core/strategies/components/exposure_monitor.py"
+    },
+    "03_RISK_MONITOR": {
+      "status": "CANONICAL",
+      "priority": "LOW",
+      "methods_implemented": 0,
+      "methods_total": 0,
+      "missing_methods": [],
+      "extra_methods": [
+        "_calculate_delta_risk",
+        "_update_last_risks",
+        "_get_current_basis_spread",
+        "__init__",
+        "_get_risk_trend",
+        "_get_risk_level",
+        "calculate_risks",
+        "_get_liquidation_threshold",
+        "_get_delta_risk_multiplier",
+        "_get_default_risk_multiplier",
+        "_calculate_funding_risk",
+        "_calculate_liquidation_risk",
+        "_calculate_target_ltv",
+        "_calculate_basis_risk",
+        "_calculate_overall_risk",
+        "_get_current_funding_rate",
+        "_calculate_risk_metrics",
+        "_calculate_default_risk",
+        "get_risk_summary",
+        "get_config_parameters",
+        "_load_aave_risk_parameters"
+      ],
+      "config_params_implemented": 0,
+      "config_params_total": 0,
+      "missing_config": [],
+      "canonical_compliance": 0.6,
+      "compliance_details": {
+        "has_config_driven_loop": true,
+        "has_mode_agnostic_logic": true,
+        "has_graceful_data_handling": true,
+        "has_component_factory": false,
+        "has_error_handling": false
+      },
+      "implementation_file": "backend/src/basis_strategy_v1/core/strategies/components/risk_monitor.py"
+    },
+    "04_PNL_CALCULATOR": {
+      "status": "MISSING_IMPLEMENTATION",
+      "priority": "HIGH",
+      "methods_implemented": 0,
+      "methods_total": 0,
+      "config_params_implemented": 0,
+      "config_params_total": 0,
+      "canonical_compliance": 0
+    },
+    "05_STRATEGY_MANAGER": {
+      "status": "NEEDS_WORK",
+      "priority": "MEDIUM",
+      "methods_implemented": 0,
+      "methods_total": 0,
+      "missing_methods": [],
+      "extra_methods": [
+        "__init__",
+        "get_current_positions",
+        "calculate_strategy_actions"
+      ],
+      "config_params_implemented": 0,
+      "config_params_total": 0,
+      "missing_config": [],
+      "canonical_compliance": 0.4,
+      "compliance_details": {
+        "has_config_driven_loop": false,
+        "has_mode_agnostic_logic": true,
+        "has_graceful_data_handling": true,
+        "has_component_factory": false,
+        "has_error_handling": false
+      },
+      "implementation_file": "backend/src/basis_strategy_v1/core/strategies/components/strategy_manager.py"
+    },
+    "06_EXECUTION_MANAGER": {
+      "status": "NEEDS_WORK",
+      "priority": "LOW",
+      "methods_implemented": 0,
+      "methods_total": 0,
+      "missing_methods": [],
+      "extra_methods": [
+        "get_health_status",
+        "_execute_request_async",
+        "_validate_execution_request",
+        "_check_risk_limits",
+        "execute_trade",
+        "_get_daily_volume",
+        "__init__",
+        "cancel_execution",
+        "get_execution_history",
+        "get_execution_status",
+        "set_interfaces"
+      ],
+      "config_params_implemented": 0,
+      "config_params_total": 0,
+      "missing_config": [],
+      "canonical_compliance": 0.6,
+      "compliance_details": {
+        "has_config_driven_loop": false,
+        "has_mode_agnostic_logic": true,
+        "has_graceful_data_handling": true,
+        "has_component_factory": false,
+        "has_error_handling": true
+      },
+      "implementation_file": "backend/src/basis_strategy_v1/core/strategies/components/execution_manager.py"
+    },
+    "07B_EXECUTION_INTERFACES": {
+      "status": "MISSING_IMPLEMENTATION",
+      "priority": "HIGH",
+      "methods_implemented": 0,
+      "methods_total": 0,
+      "config_params_implemented": 0,
+      "config_params_total": 0,
+      "canonical_compliance": 0
+    },
+    "07C_EXECUTION_INTERFACE_FACTORY": {
+      "status": "MISSING_IMPLEMENTATION",
+      "priority": "HIGH",
+      "methods_implemented": 0,
+      "methods_total": 0,
+      "config_params_implemented": 0,
+      "config_params_total": 0,
+      "canonical_compliance": 0
+    },
+    "07_EXECUTION_INTERFACE_MANAGER": {
+      "status": "MISSING_IMPLEMENTATION",
+      "priority": "HIGH",
+      "methods_implemented": 0,
+      "methods_total": 0,
+      "config_params_implemented": 0,
+      "config_params_total": 0,
+      "canonical_compliance": 0
+    },
+    "08_EVENT_LOGGER": {
+      "status": "NEEDS_WORK",
+      "priority": "HIGH",
+      "methods_implemented": 0,
+      "methods_total": 0,
+      "missing_methods": [],
+      "extra_methods": [
+        "_convert_event_to_csv_row",
+        "_get_required_fields",
+        "__init__",
+        "get_event_history",
+        "_convert_event_to_text_line",
+        "_validate_event"
+      ],
+      "config_params_implemented": 0,
+      "config_params_total": 7,
+      "missing_config": [
+        "logging_requirements",
+        "event_filtering",
+        "audit_requirements",
+        "event_categories",
+        "log_retention_policy",
+        "event_logging_settings",
+        "compliance_settings"
+      ],
+      "canonical_compliance": 0.2,
+      "compliance_details": {
+        "has_config_driven_loop": false,
+        "has_mode_agnostic_logic": true,
+        "has_graceful_data_handling": false,
+        "has_component_factory": false,
+        "has_error_handling": false
+      },
+      "implementation_file": "backend/src/basis_strategy_v1/core/strategies/components/event_logger.py"
+    },
+    "09_DATA_PROVIDER": {
+      "status": "NEEDS_WORK",
+      "priority": "LOW",
+      "methods_implemented": 0,
+      "methods_total": 0,
+      "missing_methods": [],
+      "extra_methods": [
+        "get_health_status",
+        "clear_cache",
+        "get_protocol_data",
+        "_cache_data",
+        "get_data_availability",
+        "get_execution_costs",
+        "_is_cached",
+        "__init__",
+        "get_market_data",
+        "get_gas_costs"
+      ],
+      "config_params_implemented": 0,
+      "config_params_total": 0,
+      "missing_config": [],
+      "canonical_compliance": 0.6,
+      "compliance_details": {
+        "has_config_driven_loop": false,
+        "has_mode_agnostic_logic": true,
+        "has_graceful_data_handling": true,
+        "has_component_factory": false,
+        "has_error_handling": true
+      },
+      "implementation_file": "backend/src/basis_strategy_v1/core/strategies/components/data_provider.py"
+    },
+    "10_RECONCILIATION_COMPONENT": {
+      "status": "MISSING_IMPLEMENTATION",
+      "priority": "HIGH",
+      "methods_implemented": 0,
+      "methods_total": 0,
+      "config_params_implemented": 0,
+      "config_params_total": 0,
+      "canonical_compliance": 0
+    },
+    "11_POSITION_UPDATE_HANDLER": {
+      "status": "NEEDS_WORK",
+      "priority": "MEDIUM",
+      "methods_implemented": 0,
+      "methods_total": 0,
+      "missing_methods": [],
+      "extra_methods": [
+        "trigger_tight_loop_after_atomic",
+        "handle_position_update",
+        "__init__",
+        "handle_atomic_position_update"
+      ],
+      "config_params_implemented": 0,
+      "config_params_total": 0,
+      "missing_config": [],
+      "canonical_compliance": 0.4,
+      "compliance_details": {
+        "has_config_driven_loop": false,
+        "has_mode_agnostic_logic": false,
+        "has_graceful_data_handling": true,
+        "has_component_factory": false,
+        "has_error_handling": true
+      },
+      "implementation_file": "backend/src/basis_strategy_v1/core/strategies/components/position_update_handler.py"
+    },
+    "12_FRONTEND_SPEC": {
+      "status": "MISSING_IMPLEMENTATION",
+      "priority": "HIGH",
+      "methods_implemented": 0,
+      "methods_total": 0,
+      "config_params_implemented": 0,
+      "config_params_total": 0,
+      "canonical_compliance": 0
+    },
+    "13_BACKTEST_SERVICE": {
+      "status": "MISSING_IMPLEMENTATION",
+      "priority": "HIGH",
+      "methods_implemented": 0,
+      "methods_total": 0,
+      "config_params_implemented": 0,
+      "config_params_total": 0,
+      "canonical_compliance": 0
+    },
+    "14_LIVE_TRADING_SERVICE": {
+      "status": "MISSING_IMPLEMENTATION",
+      "priority": "HIGH",
+      "methods_implemented": 0,
+      "methods_total": 0,
+      "config_params_implemented": 0,
+      "config_params_total": 0,
+      "canonical_compliance": 0
+    },
+    "15_EVENT_DRIVEN_STRATEGY_ENGINE": {
+      "status": "MISSING_IMPLEMENTATION",
+      "priority": "HIGH",
+      "methods_implemented": 0,
+      "methods_total": 0,
+      "config_params_implemented": 0,
+      "config_params_total": 0,
+      "canonical_compliance": 0
+    },
+    "16_MATH_UTILITIES": {
+      "status": "MISSING_IMPLEMENTATION",
+      "priority": "HIGH",
+      "methods_implemented": 0,
+      "methods_total": 0,
+      "config_params_implemented": 0,
+      "config_params_total": 0,
+      "canonical_compliance": 0
+    },
+    "17_HEALTH_ERROR_SYSTEMS": {
+      "status": "MISSING_IMPLEMENTATION",
+      "priority": "HIGH",
+      "methods_implemented": 0,
+      "methods_total": 0,
+      "config_params_implemented": 0,
+      "config_params_total": 0,
+      "canonical_compliance": 0
+    },
+    "18_RESULTS_STORE": {
+      "status": "MISSING_IMPLEMENTATION",
+      "priority": "HIGH",
+      "methods_implemented": 0,
+      "methods_total": 0,
+      "config_params_implemented": 0,
+      "config_params_total": 0,
+      "canonical_compliance": 0
+    },
+    "19_CONFIGURATION": {
+      "status": "MISSING_IMPLEMENTATION",
+      "priority": "HIGH",
+      "methods_implemented": 0,
+      "methods_total": 0,
+      "config_params_implemented": 0,
+      "config_params_total": 0,
+      "canonical_compliance": 0
+    }
+  },
+  "summary": {
+    "total_specs": 21,
+    "total_implementations": 9,
+    "canonical_examples": [
+      "02_EXPOSURE_MONITOR",
+      "03_RISK_MONITOR"
+    ],
+    "high_priority_gaps": [
+      "04_PNL_CALCULATOR: Missing implementation",
+      "07B_EXECUTION_INTERFACES: Missing implementation",
+      "07C_EXECUTION_INTERFACE_FACTORY: Missing implementation",
+      "07_EXECUTION_INTERFACE_MANAGER: Missing implementation",
+      "08_EVENT_LOGGER: 0 missing methods, 7 missing config",
+      "10_RECONCILIATION_COMPONENT: Missing implementation",
+      "12_FRONTEND_SPEC: Missing implementation",
+      "13_BACKTEST_SERVICE: Missing implementation",
+      "14_LIVE_TRADING_SERVICE: Missing implementation",
+      "15_EVENT_DRIVEN_STRATEGY_ENGINE: Missing implementation",
+      "16_MATH_UTILITIES: Missing implementation",
+      "17_HEALTH_ERROR_SYSTEMS: Missing implementation",
+      "18_RESULTS_STORE: Missing implementation",
+      "19_CONFIGURATION: Missing implementation"
+    ],
+    "medium_priority_gaps": [
+      "01_POSITION_MONITOR: Compliance score 0.40",
+      "02_EXPOSURE_MONITOR: Compliance score 0.40",
+      "05_STRATEGY_MANAGER: Compliance score 0.40",
+      "11_POSITION_UPDATE_HANDLER: Compliance score 0.40"
+    ],
+    "low_priority_gaps": [
+      "03_RISK_MONITOR: Minor issues",
+      "06_EXECUTION_MANAGER: Minor issues",
+      "09_DATA_PROVIDER: Minor issues"
+    ]
+  }
+}

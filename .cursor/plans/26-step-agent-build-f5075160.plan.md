@@ -87,7 +87,7 @@ Execute all 29 tasks across 6 days, starting from foundational infrastructure th
 
 ### Task 09: Fail-Fast Configuration
 
-- **File**: `.cursor/tasks/09_fail_fast_configuration.md`
+- **File**: `.cursor/tasks/09_fail_fast_19_CONFIGURATION.md`
 - **Target**: `risk_monitor.py` (62 `.get()` instances)
 - **Success**: Direct config access, no defaults
 

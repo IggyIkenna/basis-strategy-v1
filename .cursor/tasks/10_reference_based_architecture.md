@@ -1,11 +1,11 @@
-# Fix Reference-Based Architecture Gaps
+# FIX REFERENCE-BASED ARCHITECTURE GAPS
 
-## Overview
+## OVERVIEW
 Implement proper reference-based architecture where components store references in `__init__` and never pass them as runtime parameters. Components should never create their own instances of shared resources.
 
-**Reference**: `docs/ARCHITECTURAL_DECISION_RECORDS.md` - ADR-003 Reference-Based Architecture  
 **Reference**: `docs/REFERENCE_ARCHITECTURE_CANONICAL.md` - Section 1 (Reference-Based Architecture Pattern)  
-**Reference**: `docs/DEVIATIONS_AND_CORRECTIONS.md` - Lines 177-190 (Reference-Based Architecture Gaps)
+**Reference**: `docs/ARCHITECTURAL_DECISION_RECORDS.md` - ADR-003 (Reference-Based Architecture)  
+**Reference**: `docs/IMPLEMENTATION_GAP_REPORT.md` - Component gap analysis
 
 ## CRITICAL REQUIREMENTS
 
@@ -33,50 +33,17 @@ Implement proper reference-based architecture where components store references 
 ## IMPLEMENTATION REQUIREMENTS
 
 ### 1. Reference-Based Component Design
-```python
-# ❌ WRONG: Passing references as runtime parameters
-class Component:
-    def __init__(self):
-        self.config = None
-        self.data_provider = None
-    
-    def update_state(self, config, data_provider, timestamp):
-        # Passing references as runtime parameters
-        market_data = data_provider.get_data(timestamp)
+- **Store References in __init__**: All components store shared resources as references during initialization
+- **Never Pass as Runtime Parameters**: Never pass config, data_provider, or other components as method parameters
+- **Never Create Own Instances**: Components must never create their own instances of shared resources
+- **Component Reference Management**: Components store references to other components at initialization
 
-# ✅ CORRECT: Store references in __init__
-class Component:
-    def __init__(self, config, data_provider, **component_refs):
-        # Store references at initialization
-        self.config = config
-        self.data_provider = data_provider
-        self.position_monitor = component_refs.get('position_monitor')
-        self.event_logger = component_refs.get('event_logger')
-    
-    def update_state(self, timestamp, trigger_source, **kwargs):
-        # Use stored references directly
-        market_data = self.data_provider.get_data(timestamp)
-        position = self.position_monitor.get_current_position() if self.position_monitor else {}
-```
+**Implementation Details**: See `docs/REFERENCE_ARCHITECTURE_CANONICAL.md` Section 1 for complete reference-based architecture patterns and component initialization requirements.
 
 ### 2. Component Initialization Pattern
-```python
-# ✅ CORRECT: Proper component initialization
-class ComponentManager:
-    def __init__(self):
-        # Create single instances once
-        self.config = load_config()
-        self.data_provider = DataProvider(self.config)
-        
-        # Create components with references
-        self.position_monitor = PositionMonitor(
-            config=self.config,
-            data_provider=self.data_provider
-        )
-        
-        self.exposure_monitor = ExposureMonitor(
-            config=self.config,
-            data_provider=self.data_provider,
+- **Event-Driven Strategy Engine**: Initialize components with proper reference passing
+- **Shared Resource Management**: Single config and data provider instances across all components
+- **Component Dependencies**: Proper dependency injection and reference management
             position_monitor=self.position_monitor
         )
         

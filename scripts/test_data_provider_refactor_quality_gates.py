@@ -122,7 +122,7 @@ class DataProviderRefactorQualityGates:
                 execution_mode='backtest',
                 data_mode='csv',
                 config={'mode': 'pure_lending'},
-                strategy_mode='pure_lending'
+                mode='pure_lending'
             )
             
             if not hasattr(provider, '_data_loaded'):
@@ -140,7 +140,7 @@ class DataProviderRefactorQualityGates:
                     execution_mode='backtest',
                     data_mode='db',
                     config={'mode': 'pure_lending'},
-                    strategy_mode='pure_lending'
+                    mode='pure_lending'
                 )
                 logger.error("Expected NotImplementedError for db mode")
                 return False
@@ -153,7 +153,7 @@ class DataProviderRefactorQualityGates:
                 execution_mode='live',
                 data_mode='csv',  # Should be ignored
                 config={'mode': 'pure_lending'},
-                strategy_mode='pure_lending'
+                mode='pure_lending'
             )
             
             if not hasattr(provider_live, 'config'):
@@ -192,7 +192,7 @@ class DataProviderRefactorQualityGates:
                 execution_mode='backtest',
                 data_mode='csv',
                 config=config_dict,
-                strategy_mode='pure_lending'
+                mode='pure_lending'
             )
             
             # Load data on-demand
@@ -247,7 +247,7 @@ class DataProviderRefactorQualityGates:
                 execution_mode='backtest',
                 data_mode='csv',
                 config=config_dict,
-                strategy_mode='pure_lending'
+                mode='pure_lending'
             )
             
             # Test date range before available data
@@ -303,7 +303,7 @@ class DataProviderRefactorQualityGates:
                 execution_mode='backtest',
                 data_mode='csv',
                 config={'mode': 'pure_lending'},
-                strategy_mode='pure_lending'
+                mode='pure_lending'
             )
             
             # Test health checker
@@ -357,7 +357,7 @@ class DataProviderRefactorQualityGates:
                     execution_mode='backtest',
                     data_mode='csv',
                     config={'mode': 'pure_lending'},
-                    strategy_mode='pure_lending'
+                    mode='pure_lending'
                 )
                 if hasattr(provider, '_data_loaded') and provider._data_loaded:
                     logger.error("Provider should not have data loaded without parameters")
@@ -390,7 +390,7 @@ class DataProviderRefactorQualityGates:
                 execution_mode='backtest',
                 data_mode='csv',
                 config={'mode': 'pure_lending'},
-                strategy_mode='pure_lending'
+                mode='pure_lending'
             )
             
             # Test missing start date
@@ -443,7 +443,7 @@ class DataProviderRefactorQualityGates:
                 execution_mode='backtest',
                 data_mode='csv',
                 config=config_dict,
-                strategy_mode='pure_lending'
+                mode='pure_lending'
             )
             
             # Load data first

@@ -257,7 +257,14 @@ class EnvironmentLoader:
             'APP_DOMAIN',
             'ACME_EMAIL',
             'HTTP_PORT',
-            'HTTPS_PORT'
+            'HTTPS_PORT',
+            'DATA_LOAD_TIMEOUT',
+            'DATA_VALIDATION_STRICT',
+            'DATA_CACHE_SIZE',
+            'STRATEGY_MANAGER_TIMEOUT',
+            'STRATEGY_MANAGER_MAX_RETRIES',
+            'STRATEGY_FACTORY_TIMEOUT',
+            'STRATEGY_FACTORY_MAX_RETRIES'
         ]
         
         missing_vars = []

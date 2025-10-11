@@ -78,12 +78,12 @@ def get_live_trading_service():
         return StubLiveTradingService()
 
 
-def get_data_provider(strategy_mode: str = None, start_date: str = None, end_date: str = None):
+def get_data_provider(mode: str = None, start_date: str = None, end_date: str = None):
     """
     Get data provider instance using factory pattern with on-demand data loading.
     
     Args:
-        strategy_mode: Strategy mode for data provider
+        mode: Strategy mode for data provider
         start_date: Start date for backtest (YYYY-MM-DD format)
         end_date: End date for backtest (YYYY-MM-DD format)
         
@@ -110,20 +110,20 @@ def get_data_provider(strategy_mode: str = None, start_date: str = None, end_dat
         # Get appropriate config based on execution mode
         if execution_mode == 'backtest':
             # For backtest: use mode-specific config (includes data_requirements)
-            if strategy_mode:
-                config = cm.get_complete_config(mode=strategy_mode)
+            if mode:
+                config = cm.get_complete_config(mode=mode)
             else:
                 # Default to base config if no mode specified
                 config = cm.get_complete_config()
-                logger.warning("No strategy_mode specified for backtest mode, using base config")
+                logger.warning("No mode specified for backtest mode, using base config")
         elif execution_mode == 'live':
             # For live: use mode-specific config (includes data_requirements)
-            if strategy_mode:
-                config = cm.get_complete_config(mode=strategy_mode)
+            if mode:
+                config = cm.get_complete_config(mode=mode)
             else:
                 # Default to base config if no mode specified
                 config = cm.get_complete_config()
-                logger.warning("No strategy_mode specified for live mode, using base config")
+                logger.warning("No mode specified for live mode, using base config")
         else:
             raise ValueError(f"Unknown execution_mode: {execution_mode}")
         
@@ -133,20 +133,20 @@ def get_data_provider(strategy_mode: str = None, start_date: str = None, end_dat
             execution_mode=execution_mode,
             data_mode=data_mode,
             config=config,
-            strategy_mode=strategy_mode,
+            mode=mode,
             backtest_start_date=start_date,
             backtest_end_date=end_date
         )
         
         # For backtest mode, load data on-demand
-        if execution_mode == 'backtest' and data_mode == 'csv' and strategy_mode and start_date and end_date:
-            provider.load_data_for_backtest(strategy_mode, start_date, end_date)
+        if execution_mode == 'backtest' and data_mode == 'csv' and mode and start_date and end_date:
+            provider.load_data_for_backtest(mode, start_date, end_date)
         
         return provider
 
     except Exception as e:
         logger.error("DataProvider failed, using stub", error=str(e))
-        return StubDataProvider(data_dir=cm.get_data_directory() if 'cm' in locals() else './data', mode=strategy_mode or "stub")
+        return StubDataProvider(data_dir=cm.get_data_directory() if 'cm' in locals() else './data', mode=mode or "stub")
 
 
 def get_execution_engine():

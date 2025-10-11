@@ -18,14 +18,22 @@
     "docs/ENVIRONMENT_VARIABLES.md",
     "docs/QUALITY_GATES.md",
     "docs/COMPONENT_SPECS_INDEX.md",
+    "docs/COMPONENT_SPEC_TEMPLATE.md",
+    "docs/specs/02_EXPOSURE_MONITOR.md",
+    "docs/specs/03_RISK_MONITOR.md",
     "docs/specs/",
     ".cursor/tasks/00_master_task_sequence.md",
     ".cursor/rules.json"
   ],
+  "canonical_examples": [
+    "docs/specs/02_EXPOSURE_MONITOR.md",
+    "docs/specs/03_RISK_MONITOR.md"
+  ],
+  "template": "docs/COMPONENT_SPEC_TEMPLATE.md",
   "primary_mission": "Ensure 100% consistency across all documentation with zero conflicting statements",
   "consistency_checks": [
     "Architecture principles alignment",
-    "Component specifications consistency", 
+    "Component specifications consistency using 19-section format",
     "Configuration requirements alignment",
     "Quality gate standards consistency",
     "Task sequence alignment",
@@ -35,7 +43,10 @@
     "Broken link detection and repair",
     "Cross-reference validation and redirection",
     "File path existence verification",
-    "Content similarity analysis for redirects"
+    "Content similarity analysis for redirects",
+    "19-section structure compliance for all component specs",
+    "Canonical Sources section presence",
+    "MODE-AGNOSTIC IMPLEMENTATION EXAMPLE section presence"
   ],
   "validation_requirements": [
     "No contradictory statements between docs/ files",

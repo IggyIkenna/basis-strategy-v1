@@ -50,6 +50,12 @@ class RiskMonitor:
         # Load venue configuration with fallbacks
         self.venues = config.get('venues', {})
         
+        # Load component-specific configuration
+        component_config = config.get('component_config', {})
+        risk_monitor_config = component_config.get('risk_monitor', {})
+        self.enabled_risk_types = risk_monitor_config.get('enabled_risk_types', [])
+        self.risk_limits = risk_monitor_config.get('risk_limits', {})
+        
         # Initialize risk metrics
         self.current_risk_metrics = {}
         self.last_calculation_timestamp = None

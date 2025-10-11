@@ -122,7 +122,7 @@ class TestDataProviderFactoryBehavior:
                     data_dir="./data", 
                     startup_mode="live",
                     config={'test': 'config'},
-                    strategy_mode="pure_lending"
+                    mode="pure_lending"
                 )
                 assert result_live == mock_live_instance
                 mock_live.assert_called_once_with(config={'test': 'config'}, mode="pure_lending")

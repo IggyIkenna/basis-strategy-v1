@@ -49,7 +49,14 @@ def validate_core_startup_config():
         'BASIS_DATA_START_DATE',
         'BASIS_DATA_END_DATE',
         'BASIS_API_PORT',
-        'BASIS_API_HOST'
+        'BASIS_API_HOST',
+        'DATA_LOAD_TIMEOUT',
+        'DATA_VALIDATION_STRICT',
+        'DATA_CACHE_SIZE',
+        'STRATEGY_MANAGER_TIMEOUT',
+        'STRATEGY_MANAGER_MAX_RETRIES',
+        'STRATEGY_FACTORY_TIMEOUT',
+        'STRATEGY_FACTORY_MAX_RETRIES'
     ]
     
     missing_vars = []

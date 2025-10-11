@@ -139,7 +139,14 @@ class ConfigValidator:
             'BASIS_API_HOST',
             'BASIS_API_CORS_ORIGINS',
             'HEALTH_CHECK_INTERVAL',
-            'HEALTH_CHECK_ENDPOINT'
+            'HEALTH_CHECK_ENDPOINT',
+            'DATA_LOAD_TIMEOUT',
+            'DATA_VALIDATION_STRICT',
+            'DATA_CACHE_SIZE',
+            'STRATEGY_MANAGER_TIMEOUT',
+            'STRATEGY_MANAGER_MAX_RETRIES',
+            'STRATEGY_FACTORY_TIMEOUT',
+            'STRATEGY_FACTORY_MAX_RETRIES'
         ]
         
         # Frontend/Caddy deployment variables (WARNING if missing, not ERROR)
@@ -172,9 +179,10 @@ class ConfigValidator:
             self.errors.append(f"BASIS_DATA_MODE must be 'csv' or 'db', got: {data_mode}")
         
         # Check environment-specific API keys (only for live mode)
-        if os.getenv('BASIS_EXECUTION_MODE') == 'live':
-            # Only check the current environment (dev or prod)
-            if self.environment in ['dev', 'prod']:
+        execution_mode = os.getenv('BASIS_EXECUTION_MODE')
+        if execution_mode == 'live':
+            # Only check the current environment (dev, staging, or prod)
+            if self.environment in ['dev', 'staging', 'prod']:
                 env_prefix = f'BASIS_{self.environment.upper()}__'
                 
                 required_vars = [
@@ -196,7 +204,7 @@ class ConfigValidator:
                 
                 for var in required_vars:
                     if not os.getenv(var):
-                        self.errors.append(f"Missing required environment variable: {var}")
+                        self.errors.append(f"Missing required environment variable for live mode: {var}")
                 
                 # Check for placeholder values
                 placeholder_vars = []
@@ -207,6 +215,11 @@ class ConfigValidator:
                 
                 if placeholder_vars:
                     self.warnings.append(f"Environment variables with placeholder values: {', '.join(placeholder_vars)}")
+        elif execution_mode == 'backtest':
+            # Backtest mode - no credentials required
+            logger.debug("Backtest mode detected - skipping credential validation")
+        else:
+            self.errors.append(f"Invalid BASIS_EXECUTION_MODE: {execution_mode}. Must be 'backtest' or 'live'")
     
     def _validate_mode_configs(self):
         """Validate mode configuration files."""
@@ -348,6 +361,22 @@ class ConfigValidator:
         if not (0.0 <= position_deviation_threshold <= 1.0):
             self.errors.append(f"Mode {mode_name}: position_deviation_threshold must be between 0.0 and 1.0, got {position_deviation_threshold}")
         
+        # Validate lst_type when staking_enabled
+        staking_enabled = config.get('staking_enabled', False)
+        lst_type = config.get('lst_type')
+        if staking_enabled and not lst_type:
+            self.errors.append(f"Mode {mode_name}: lst_type must be set when staking_enabled=true")
+        elif not staking_enabled and lst_type:
+            self.warnings.append(f"Mode {mode_name}: lst_type is set but staking_enabled=false")
+        
+        # Validate max_ltv when borrowing_enabled
+        borrowing_enabled = config.get('borrowing_enabled', False)
+        max_ltv = config.get('max_ltv')
+        if borrowing_enabled and not max_ltv:
+            self.errors.append(f"Mode {mode_name}: max_ltv must be set when borrowing_enabled=true")
+        elif not borrowing_enabled and max_ltv:
+            self.warnings.append(f"Mode {mode_name}: max_ltv is set but borrowing_enabled=false")
+        
         # Note: basis_trade_enabled is allowed for ETH share class (eth_basis strategy)
         
         # Check for deprecated parameters
@@ -382,6 +411,80 @@ class ConfigValidator:
             total_allocation = sum(hedge_allocation.values())
             if abs(total_allocation - 1.0) > 0.01:
                 self.warnings.append(f"Mode {mode_name}: hedge_allocation sums to {total_allocation}, expected 1.0")
+        
+        # Validate component_config sections
+        component_config = config.get('component_config', {})
+        required_components = ['risk_monitor', 'exposure_monitor', 'pnl_calculator', 'strategy_manager', 'execution_manager', 'results_store', 'strategy_factory']
+        
+        for component in required_components:
+            if component not in component_config:
+                self.errors.append(f"Mode {mode_name}: Missing required component_config.{component}")
+            else:
+                # Validate component-specific fields
+                self._validate_component_config(component, component_config[component], mode_name)
+    
+    def _validate_component_config(self, component: str, config: Dict[str, Any], mode_name: str):
+        """Validate component-specific configuration."""
+        if component == 'risk_monitor':
+            # Validate risk_monitor config
+            if 'enabled_risk_types' not in config:
+                self.errors.append(f"Mode {mode_name}: component_config.risk_monitor missing enabled_risk_types")
+            if 'risk_limits' not in config:
+                self.errors.append(f"Mode {mode_name}: component_config.risk_monitor missing risk_limits")
+        
+        elif component == 'exposure_monitor':
+            # Validate exposure_monitor config
+            if 'exposure_currency' not in config:
+                self.errors.append(f"Mode {mode_name}: component_config.exposure_monitor missing exposure_currency")
+            if 'track_assets' not in config:
+                self.errors.append(f"Mode {mode_name}: component_config.exposure_monitor missing track_assets")
+            if 'conversion_methods' not in config:
+                self.errors.append(f"Mode {mode_name}: component_config.exposure_monitor missing conversion_methods")
+        
+        elif component == 'pnl_calculator':
+            # Validate pnl_calculator config
+            if 'attribution_types' not in config:
+                self.errors.append(f"Mode {mode_name}: component_config.pnl_calculator missing attribution_types")
+            if 'reporting_currency' not in config:
+                self.errors.append(f"Mode {mode_name}: component_config.pnl_calculator missing reporting_currency")
+            if 'reconciliation_tolerance' not in config:
+                self.errors.append(f"Mode {mode_name}: component_config.pnl_calculator missing reconciliation_tolerance")
+        
+        elif component == 'strategy_manager':
+            # Validate strategy_manager config
+            if 'strategy_type' not in config:
+                self.errors.append(f"Mode {mode_name}: component_config.strategy_manager missing strategy_type")
+            if 'actions' not in config:
+                self.errors.append(f"Mode {mode_name}: component_config.strategy_manager missing actions")
+            if 'rebalancing_triggers' not in config:
+                self.errors.append(f"Mode {mode_name}: component_config.strategy_manager missing rebalancing_triggers")
+            if 'position_calculation' not in config:
+                self.errors.append(f"Mode {mode_name}: component_config.strategy_manager missing position_calculation")
+        
+        elif component == 'execution_manager':
+            # Validate execution_manager config
+            if 'supported_actions' not in config:
+                self.errors.append(f"Mode {mode_name}: component_config.execution_manager missing supported_actions")
+            if 'action_mapping' not in config:
+                self.errors.append(f"Mode {mode_name}: component_config.execution_manager missing action_mapping")
+        
+        elif component == 'results_store':
+            # Validate results_store config
+            if 'result_types' not in config:
+                self.errors.append(f"Mode {mode_name}: component_config.results_store missing result_types")
+            if 'balance_sheet_assets' not in config:
+                self.errors.append(f"Mode {mode_name}: component_config.results_store missing balance_sheet_assets")
+            if 'pnl_attribution_types' not in config:
+                self.errors.append(f"Mode {mode_name}: component_config.results_store missing pnl_attribution_types")
+        
+        elif component == 'strategy_factory':
+            # Validate strategy_factory config
+            if 'timeout' not in config:
+                self.errors.append(f"Mode {mode_name}: component_config.strategy_factory missing timeout")
+            if 'max_retries' not in config:
+                self.errors.append(f"Mode {mode_name}: component_config.strategy_factory missing max_retries")
+            if 'validation_strict' not in config:
+                self.errors.append(f"Mode {mode_name}: component_config.strategy_factory missing validation_strict")
     
     def _validate_share_class_strategy_compatibility(self, mode_config: Dict[str, Any], mode_name: str, share_class_configs: Dict[str, Any]):
         """Validate that strategy mode is compatible with its assigned share class."""

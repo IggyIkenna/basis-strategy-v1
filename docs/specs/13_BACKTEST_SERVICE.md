@@ -1,5 +1,7 @@
 # Backtest Service Component Specification
 
+**Last Reviewed**: October 11, 2025
+
 ## Purpose
 Orchestrate backtest execution using EventDrivenStrategyEngine with fresh component instantiation per request.
 
@@ -23,6 +25,29 @@ The following are set once during initialization and NEVER passed as runtime par
 
 These references are stored in __init__ and used throughout component lifecycle.
 Components NEVER receive these as method parameters during runtime.
+
+## Configuration Parameters
+
+### **Config-Driven Architecture**
+
+The Backtest Service is **mode-agnostic** and uses configuration from the strategy mode:
+
+```yaml
+# From strategy mode configuration
+backtest_service:
+  timeout_seconds: 3600
+  max_concurrent_backtests: 5
+  memory_limit_mb: 2048
+  component_cleanup_enabled: true
+  result_retention_days: 30
+```
+
+### **Parameter Definitions**
+- **timeout_seconds**: Maximum execution time for backtest
+- **max_concurrent_backtests**: Maximum concurrent backtest executions
+- **memory_limit_mb**: Memory limit for backtest execution
+- **component_cleanup_enabled**: Enable automatic component cleanup
+- **result_retention_days**: Days to retain backtest results
 
 ## Environment Variables
 
@@ -50,6 +75,390 @@ Components NEVER receive these as method parameters during runtime.
 - **strategy_settings**: Dict (strategy-specific settings)
   - **strategy_name**: Strategy mode name
   - **config_overrides**: Strategy configuration overrides
+
+## Config-Driven Behavior
+
+The Backtest Service uses configuration to determine how to initialize components and handle config overrides:
+
+**Component Configuration** (from `component_config.backtest_service`):
+```yaml
+component_config:
+  backtest_service:
+    # Backtest Service uses config-driven component initialization
+    # No mode-specific configuration needed
+    timeout: 3600           # Backtest execution timeout in seconds
+    max_concurrent: 3       # Maximum concurrent backtests
+    memory_limit: 2048      # Memory limit per backtest in MB
+```
+
+**Config-Driven Component Initialization**:
+- Uses `BaseDataProviderFactory.create()` to create mode-specific data providers
+- Uses `ComponentFactory.create_all()` to create config-driven components
+- Applies config overrides to component configurations
+- No mode-specific if statements in component initialization
+
+**Component Initialization by Mode**:
+
+**Pure Lending Mode**:
+- Creates: `PureLendingDataProvider` with AAVE USDT data
+- Creates: config-driven components with pure lending config
+- Applies: config overrides to component configurations
+- Same initialization logic as other modes
+
+**BTC Basis Mode**:
+- Creates: `BTCBasisDataProvider` with BTC spot/futures/funding data
+- Creates: config-driven components with BTC basis config
+- Applies: config overrides to component configurations
+- Same initialization logic as other modes
+
+**ETH Leveraged Mode**:
+- Creates: `ETHLeveragedDataProvider` with ETH/LST/AAVE data
+- Creates: config-driven components with ETH leveraged config
+- Applies: config overrides to component configurations
+- Same initialization logic as other modes
+
+**Key Principle**: Backtest Service is **purely orchestration** - it does NOT:
+- Make mode-specific decisions about which components to create
+- Handle strategy-specific initialization logic
+- Convert or transform configuration data
+- Make business logic decisions
+
+All initialization logic is generic - it uses factory patterns to create mode-specific data providers and config-driven components, then applies config overrides to customize component behavior.
+
+## MODE-AGNOSTIC IMPLEMENTATION EXAMPLE
+
+### Complete Backtest Service Implementation
+
+```python
+from typing import Dict, List, Any, Optional
+import asyncio
+import uuid
+import logging
+from datetime import datetime
+from decimal import Decimal
+
+class BacktestService:
+    """Service for orchestrating backtest execution using factory-based initialization"""
+    
+    def __init__(self, global_config: Dict[str, Any], config_manager: ConfigManager):
+        # Store references (NEVER modified)
+        self.global_config = global_config
+        self.config_manager = config_manager
+        
+        # Extract config-driven service settings
+        self.service_config = global_config.get('component_config', {}).get('backtest_service', {})
+        self.timeout = self.service_config.get('timeout', 3600)
+        self.max_concurrent = self.service_config.get('max_concurrent', 3)
+        self.memory_limit = self.service_config.get('memory_limit', 2048)
+        
+        # Initialize service state
+        self.running_backtests: Dict[str, Dict[str, Any]] = {}
+        self.completed_backtests: Dict[str, Dict[str, Any]] = {}
+        self.backtest_results: Dict[str, Dict] = {}
+        
+        # Validate config
+        self._validate_service_config()
+        
+        logging.info("BacktestService initialized with factory-based architecture")
+    
+    def _validate_service_config(self):
+        """Validate backtest service configuration"""
+        if self.timeout <= 0:
+            raise ValueError("backtest_service.timeout must be positive")
+        
+        if self.max_concurrent <= 0:
+            raise ValueError("backtest_service.max_concurrent must be positive")
+        
+        if self.memory_limit <= 0:
+            raise ValueError("backtest_service.memory_limit must be positive")
+    
+    async def run_backtest(self, request: BacktestRequest) -> str:
+        """
+        Run a backtest using factory-based component initialization.
+        
+        Parameters:
+        - request: BacktestRequest with strategy_name, config_overrides, start_date, end_date
+        
+        Returns:
+        - str: Request ID for tracking
+        
+        Raises:
+        - ValueError: If request validation fails
+        - RuntimeError: If backtest execution fails
+        """
+        request_id = str(uuid.uuid4())
+        
+        try:
+            # 1. Validate request
+            self._validate_request(request)
+            
+            # 2. Check concurrent limit
+            if len(self.running_backtests) >= self.max_concurrent:
+                raise RuntimeError(f"Maximum concurrent backtests ({self.max_concurrent}) reached")
+            
+            # 3. Slice config for strategy mode
+            config_slice = self._slice_config(request.strategy_name)
+            
+            # 4. Apply config overrides
+            final_config = self._apply_overrides(config_slice, request.config_overrides)
+            
+            # 5. Create fresh data provider using factory
+            data_provider = self._create_data_provider(final_config, request)
+            
+            # 6. Create fresh component instances using factory
+            components = self._create_components(final_config, data_provider)
+            
+            # 7. Initialize EventDrivenStrategyEngine
+            strategy_engine = EventDrivenStrategyEngine(
+                config=final_config,
+                execution_mode='backtest',
+                data_provider=data_provider,
+                **components
+            )
+            
+            # 8. Store running backtest
+            self.running_backtests[request_id] = {
+                'request': request,
+                'config': final_config,
+                'strategy_engine': strategy_engine,
+                'status': 'running',
+                'started_at': datetime.utcnow(),
+                'progress': 0
+            }
+            
+            # 9. Execute backtest asynchronously
+            asyncio.create_task(self._execute_backtest(request_id, strategy_engine, request))
+            
+            logging.info(f"Backtest {request_id} started for strategy {request.strategy_name}")
+            return request_id
+            
+        except Exception as e:
+            logging.error(f"Failed to start backtest {request_id}: {e}")
+            raise
+    
+    def _validate_request(self, request: BacktestRequest):
+        """Validate backtest request parameters"""
+        if not request.strategy_name:
+            raise ValueError("strategy_name cannot be empty")
+        
+        if not request.start_date or not request.end_date:
+            raise ValueError("start_date and end_date are required")
+        
+        if request.start_date >= request.end_date:
+            raise ValueError("start_date must be before end_date")
+        
+        if not request.initial_capital or request.initial_capital <= 0:
+            raise ValueError("initial_capital must be positive")
+        
+        if request.share_class not in ['USDT', 'ETH']:
+            raise ValueError("share_class must be 'USDT' or 'ETH'")
+    
+    def _slice_config(self, strategy_name: str) -> Dict[str, Any]:
+        """
+        Slice config for strategy mode (never modifies global config).
+        
+        Parameters:
+        - strategy_name: Strategy mode name
+        
+        Returns:
+        - Dict: Mode-specific config slice
+        """
+        try:
+            return self.config_manager.get_complete_config(mode=strategy_name)
+        except Exception as e:
+            logging.error(f"Failed to slice config for strategy {strategy_name}: {e}")
+            raise ValueError(f"Config slicing failed for strategy {strategy_name}: {e}")
+    
+    def _apply_overrides(self, config_slice: Dict[str, Any], overrides: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+        """
+        Apply overrides to config slice (never modifies global config).
+        
+        Parameters:
+        - config_slice: Mode-specific config
+        - overrides: Request overrides
+        
+        Returns:
+        - Dict: Config with overrides applied
+        """
+        if not overrides:
+            return config_slice.copy()
+        
+        # Deep copy to avoid modifying original
+        final_config = config_slice.copy()
+        
+        # Apply overrides recursively
+        for key, value in overrides.items():
+            if key in final_config and isinstance(final_config[key], dict) and isinstance(value, dict):
+                final_config[key].update(value)
+            else:
+                final_config[key] = value
+        
+        return final_config
+    
+    def _create_data_provider(self, config: Dict[str, Any], request: BacktestRequest) -> BaseDataProvider:
+        """
+        Create fresh data provider using factory pattern.
+        
+        Parameters:
+        - config: Complete configuration
+        - request: Backtest request
+        
+        Returns:
+        - BaseDataProvider: Fresh data provider instance
+        """
+        try:
+            # Use DataProviderFactory to create mode-specific data provider
+            data_provider = DataProviderFactory.create(
+                mode=request.strategy_name,
+                execution_mode='backtest',
+                config=config,
+                start_date=request.start_date,
+                end_date=request.end_date
+            )
+            
+            logging.info(f"Created {request.strategy_name} data provider for backtest")
+            return data_provider
+            
+        except Exception as e:
+            logging.error(f"Failed to create data provider for {request.strategy_name}: {e}")
+            raise RuntimeError(f"Data provider creation failed: {e}")
+    
+    def _create_components(self, config: Dict[str, Any], data_provider: BaseDataProvider) -> Dict[str, Any]:
+        """
+        Create fresh component instances using factory pattern.
+        
+        Parameters:
+        - config: Complete configuration
+        - data_provider: Data provider instance
+        
+        Returns:
+        - Dict[str, Any]: Dictionary of component instances
+        """
+        try:
+            # Use ComponentFactory to create all components
+            components = ComponentFactory.create_all(
+                config=config,
+                execution_mode='backtest',
+                data_provider=data_provider
+            )
+            
+            logging.info(f"Created {len(components)} components for backtest")
+            return components
+            
+        except Exception as e:
+            logging.error(f"Failed to create components: {e}")
+            raise RuntimeError(f"Component creation failed: {e}")
+    
+    async def _execute_backtest(self, request_id: str, strategy_engine: EventDrivenStrategyEngine, request: BacktestRequest):
+        """Execute backtest and handle completion"""
+        try:
+            # Execute backtest
+            results = await strategy_engine.run_backtest(
+                start_date=request.start_date,
+                end_date=request.end_date
+            )
+            
+            # Store results
+            self.backtest_results[request_id] = results
+            
+            # Move to completed
+            if request_id in self.running_backtests:
+                backtest_info = self.running_backtests.pop(request_id)
+                backtest_info.update({
+                    'status': 'completed',
+                    'completed_at': datetime.utcnow(),
+                    'results': results
+                })
+                self.completed_backtests[request_id] = backtest_info
+            
+            logging.info(f"Backtest {request_id} completed successfully")
+            
+        except Exception as e:
+            logging.error(f"Backtest {request_id} failed: {e}")
+            
+            # Move to completed with error
+            if request_id in self.running_backtests:
+                backtest_info = self.running_backtests.pop(request_id)
+                backtest_info.update({
+                    'status': 'failed',
+                    'completed_at': datetime.utcnow(),
+                    'error': str(e)
+                })
+                self.completed_backtests[request_id] = backtest_info
+    
+    async def get_status(self, request_id: str) -> Dict[str, Any]:
+        """Get the status of a backtest"""
+        if request_id in self.running_backtests:
+            backtest_info = self.running_backtests[request_id]
+            return {
+                'request_id': request_id,
+                'status': 'running',
+                'progress': backtest_info.get('progress', 0),
+                'started_at': backtest_info['started_at'].isoformat()
+            }
+        elif request_id in self.completed_backtests:
+            backtest_info = self.completed_backtests[request_id]
+            return {
+                'request_id': request_id,
+                'status': backtest_info['status'],
+                'started_at': backtest_info['started_at'].isoformat(),
+                'completed_at': backtest_info['completed_at'].isoformat(),
+                'error': backtest_info.get('error')
+            }
+        else:
+            raise ValueError(f"Backtest {request_id} not found")
+    
+    async def get_result(self, request_id: str) -> Optional[Dict[str, Any]]:
+        """Get the result of a completed backtest"""
+        if request_id in self.backtest_results:
+            return self.backtest_results[request_id]
+        else:
+            return None
+    
+    async def cancel_backtest(self, request_id: str) -> bool:
+        """Cancel a running backtest"""
+        if request_id in self.running_backtests:
+            # Cancel the backtest task
+            backtest_info = self.running_backtests.pop(request_id)
+            backtest_info['status'] = 'cancelled'
+            backtest_info['completed_at'] = datetime.utcnow()
+            self.completed_backtests[request_id] = backtest_info
+            return True
+        return False
+```
+
+### Integration with Factory Pattern
+
+```python
+# Example usage showing factory-based initialization
+class BacktestService:
+    def __init__(self, global_config: Dict[str, Any], config_manager: ConfigManager):
+        # ... initialization ...
+        
+        # Factory-based component creation
+        self.data_provider_factory = DataProviderFactory()
+        self.component_factory = ComponentFactory()
+        
+        logging.info("BacktestService initialized with factory pattern")
+    
+    def _create_data_provider(self, config: Dict[str, Any], request: BacktestRequest) -> BaseDataProvider:
+        """Create data provider using factory pattern"""
+        return self.data_provider_factory.create(
+            mode=request.strategy_name,
+            execution_mode='backtest',
+            config=config,
+            start_date=request.start_date,
+            end_date=request.end_date
+        )
+    
+    def _create_components(self, config: Dict[str, Any], data_provider: BaseDataProvider) -> Dict[str, Any]:
+        """Create components using factory pattern"""
+        return self.component_factory.create_all(
+            config=config,
+            execution_mode='backtest',
+            data_provider=data_provider
+        )
+```
 
 ## Data Provider Queries
 
@@ -751,13 +1160,13 @@ data_provider = create_data_provider(
     data_dir=config_manager.get_data_directory(),
     startup_mode=config_manager.get_startup_mode(),
     config=config,
-    strategy_mode=request.strategy_name,
+    mode=request.strategy_name,
     backtest_start_date=request.start_date.strftime('%Y-%m-%d'),
     backtest_end_date=request.end_date.strftime('%Y-%m-%d')
 )
 ```
 
-**Configuration Details**: See [CONFIGURATION.md](CONFIGURATION.md) <!-- Link is valid --> <!-- Link is valid --> for comprehensive configuration management.
+**Configuration Details**: See [19_CONFIGURATION.md](19_CONFIGURATION.md) <!-- Link is valid --> <!-- Link is valid --> for comprehensive configuration management.
 
 ### **Singleton Pattern Requirements**
 
@@ -797,7 +1206,7 @@ Following [VENUE_ARCHITECTURE.md](../VENUE_ARCHITECTURE.md) <!-- Link is valid -
 
 - **EventDrivenStrategyEngine**: [15_EVENT_DRIVEN_STRATEGY_ENGINE.md](15_EVENT_DRIVEN_STRATEGY_ENGINE.md) <!-- Link is valid --> - Main orchestration engine
 - **Data Provider**: [09_DATA_PROVIDER.md](09_DATA_PROVIDER.md) <!-- Link is valid --> - Historical data access
-- **Configuration**: [CONFIGURATION.md](CONFIGURATION.md) <!-- Link is valid --> <!-- Link is valid --> - Strategy configuration management
+- **Configuration**: [19_CONFIGURATION.md](19_CONFIGURATION.md) <!-- Link is valid --> <!-- Link is valid --> - Strategy configuration management
 
 ### **Infrastructure Dependencies**
 
@@ -1118,5 +1527,22 @@ Following [Quality Gate Validation](QUALITY_GATES.md) <!-- Redirected from 17_qu
 ---
 
 **Status**: Backtest Service is complete and fully operational! 🎉
+
+## Related Documentation
+
+### Component Specifications
+- [15_EVENT_DRIVEN_STRATEGY_ENGINE.md](15_EVENT_DRIVEN_STRATEGY_ENGINE.md) - Strategy engine orchestration
+- [14_LIVE_TRADING_SERVICE.md](14_LIVE_TRADING_SERVICE.md) - Live trading service
+- [01_POSITION_MONITOR.md](01_POSITION_MONITOR.md) - Position tracking component
+- [02_EXPOSURE_MONITOR.md](02_EXPOSURE_MONITOR.md) - Exposure monitoring component
+
+### Architecture Documentation
+- [../REFERENCE_ARCHITECTURE_CANONICAL.md](../REFERENCE_ARCHITECTURE_CANONICAL.md) - Canonical principles
+- [../CODE_STRUCTURE_PATTERNS.md](../CODE_STRUCTURE_PATTERNS.md) - Implementation patterns
+- [../ARCHITECTURAL_DECISION_RECORDS.md](../ARCHITECTURAL_DECISION_RECORDS.md) - ADR-001 tight loop
+
+### Configuration Documentation
+- [19_CONFIGURATION.md](19_CONFIGURATION.md) - Complete config schemas
+- [../MODES.md](../MODES.md) - Strategy mode definitions
 
 *Last Updated: January 6, 2025*

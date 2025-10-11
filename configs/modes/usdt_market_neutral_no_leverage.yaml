@@ -57,4 +57,61 @@ time_throttle_interval: 60
 
 # REMOVED: capital_allocation - not needed in config, calculated at runtime
 
+# Component configuration
+component_config:
+  risk_monitor:
+    enabled_risk_types: ["cex_margin_ratio", "delta_risk"]
+    risk_limits:
+      target_margin_ratio: 0.5
+      cex_margin_ratio_min: 0.15
+      maintenance_margin_requirement: 0.10
+      delta_tolerance: 0.005
+  
+  exposure_monitor:
+    exposure_currency: "USDT"
+    track_assets: ["ETH", "weETH", "USDT", "ETH_PERP", "EIGEN", "KING"]
+    conversion_methods:
+      ETH: "usd_price"
+      weETH: "oracle_price"
+      USDT: "direct"
+      ETH_PERP: "perp_mark_price"
+      EIGEN: "usd_price"
+      KING: "unwrap"
+  
+  pnl_calculator:
+    attribution_types: ["staking_yield_oracle", "staking_yield_rewards", "funding_pnl", "delta_pnl", "transaction_costs"]
+    reporting_currency: "USDT"
+    reconciliation_tolerance: 0.02
+  
+  strategy_manager:
+    strategy_type: "usdt_market_neutral_no_leverage"
+    actions: ["entry_full", "entry_partial", "exit_partial", "exit_full"]
+    rebalancing_triggers: ["deposit", "withdrawal", "delta_drift"]
+    position_calculation:
+      target_position: "eth_staking_unleveraged"
+      hedge_position: "eth_perp_short"
+      hedge_allocation:
+        binance: 0.4
+        bybit: 0.3
+        okx: 0.3
+  
+  execution_manager:
+    supported_actions: ["etherfi_stake", "etherfi_unstake", "cex_perp_short", "cex_perp_close"]
+    action_mapping:
+      entry_full: ["etherfi_stake", "cex_perp_short"]
+      exit_full: ["etherfi_unstake", "cex_perp_close"]
+      entry_partial: ["etherfi_stake", "cex_perp_short"]
+      exit_partial: ["etherfi_unstake", "cex_perp_close"]
+  
+  results_store:
+    result_types: ["balance_sheet", "pnl_attribution", "risk_metrics", "execution_log", "dust_tracking", "delta_tracking"]
+    balance_sheet_assets: ["ETH", "weETH", "USDT", "ETH_PERP", "EIGEN", "KING"]
+    pnl_attribution_types: ["staking_yield_oracle", "staking_yield_rewards", "funding_pnl", "delta_pnl", "transaction_costs"]
+    dust_tracking_tokens: ["EIGEN", "ETHFI", "KING"]
+  
+  strategy_factory:
+    timeout: 30
+    max_retries: 3
+    validation_strict: true
+
 

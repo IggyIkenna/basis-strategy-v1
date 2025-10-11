@@ -490,7 +490,7 @@ class EventDrivenStrategyEngine:
                 logger.error(f"Error stopping results store: {stop_error}")
             raise
     
-    async def _process_timestep(self, timestamp: pd.Timestamp, market_data: Dict, request_id: str):
+    def _process_timestep(self, timestamp: pd.Timestamp, market_data: Dict, request_id: str):
         """
         Process a single timestep in the backtest - CORE EVENT BEHAVIOR.
         
@@ -641,7 +641,7 @@ class EventDrivenStrategyEngine:
     # execute_trade_with_interface, get_balance_with_interface, get_position_with_interface,
     # execute_transfer_with_interface - these are interface methods, not core orchestration
     
-    async def _calculate_final_results(self, results: Dict) -> Dict[str, Any]:
+    def _calculate_final_results(self, results: Dict) -> Dict[str, Any]:
         """Calculate final backtest results."""
         
         # Get current position and calculate final P&L

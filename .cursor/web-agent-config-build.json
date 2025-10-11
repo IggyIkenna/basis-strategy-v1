@@ -160,7 +160,7 @@
       "tasks_completed": "26/26 (100%)",
       "quality_gates": "20/24 passing (83%)",
       "test_coverage": "80%",
-      "strategy_modes": "4/4 E2E working",
+      "modes": "4/4 E2E working",
       "deployment_ready": "System ready for staging deployment"
     }
   },

@@ -3,12 +3,13 @@
 ## OVERVIEW
 This task implements complete configuration loading from YAML files (modes/venues/share_classes) with full Pydantic validation and fail-fast behavior for missing or invalid configuration fields. This builds on the environment file switching to provide comprehensive configuration management.
 
-**Reference**: `docs/REFERENCE_ARCHITECTURE_CANONICAL.md` - Section 33 (Fail-Fast Configuration)  
-**Reference**: `docs/ARCHITECTURAL_DECISION_RECORDS.md` - ADR-040 (Fail-Fast Configuration)  
+**Reference**: `docs/REFERENCE_ARCHITECTURE_CANONICAL.md` - Section 6.1 (Infrastructure Configuration Elimination)  
 **Reference**: `docs/MODES.md` - Strategy mode configurations  
+**Reference**: `docs/VENUE_ARCHITECTURE.md` - Venue configuration patterns  
 **Reference**: `configs/modes/` - Mode configuration files  
 **Reference**: `configs/venues/` - Venue configuration files  
-**Reference**: `configs/share_classes/` - Share class configuration files
+**Reference**: `configs/share_classes/` - Share class configuration files  
+**Reference**: `docs/IMPLEMENTATION_GAP_REPORT.md` - Component gap analysis
 
 ## CRITICAL REQUIREMENTS
 
@@ -52,47 +53,20 @@ This task implements complete configuration loading from YAML files (modes/venue
 
 ## REQUIRED IMPLEMENTATION
 
-### 1. Configuration Loader
-```python
-# backend/src/basis_strategy_v1/core/config/config_loader.py
-class ConfigLoader:
-    def __init__(self, config_dir: str = "configs"):
-        self.config_dir = config_dir
-        self.modes_dir = f"{config_dir}/modes"
-        self.venues_dir = f"{config_dir}/venues"
-        self.share_classes_dir = f"{config_dir}/share_classes"
-    
-    def load_all_configurations(self) -> dict:
-        # 1. Load all mode configurations
-        # 2. Load all venue configurations
-        # 3. Load all share class configurations
-        # 4. Validate all configurations with Pydantic models
-        # 5. Resolve cross-references and dependencies
-        # 6. Return validated configuration dict
-```
+### 1. Configuration Loading System
+- **Config Loader**: Implement YAML configuration loading with Pydantic validation
+- **Model Validation**: Implement Pydantic models for all configuration types
+- **Dependency Resolution**: Implement cross-reference validation and resolution
+- **Fail-Fast Access**: Implement fail-fast configuration access patterns
 
-### 2. Pydantic Models
-```python
-# backend/src/basis_strategy_v1/core/config/models.py
-class ModeConfig(BaseModel):
-    name: str
-    strategy_type: str
-    venues: List[str]
-    share_class: str
-    # ... other required fields
+**Implementation Details**: See `docs/REFERENCE_ARCHITECTURE_CANONICAL.md` Section 6.1 for complete implementation patterns and `docs/MODES.md` for mode configuration specifications.
 
-class VenueConfig(BaseModel):
-    name: str
-    type: str  # CEX, DeFi, etc.
-    # ... other required fields
+### 2. Configuration Types
+- **Mode Configurations**: Strategy mode definitions and parameters
+- **Venue Configurations**: Trading venue definitions and settings
+- **Share Class Configurations**: Share class definitions and parameters
 
-class ShareClassConfig(BaseModel):
-    name: str
-    asset: str
-    # ... other required fields
-```
-
-### 3. Configuration Validation
+### 3. Validation System
 - **Startup validation**: Validate all configurations during application startup
 - **Runtime validation**: Validate configuration access patterns
 - **Dependency validation**: Validate cross-references between configurations

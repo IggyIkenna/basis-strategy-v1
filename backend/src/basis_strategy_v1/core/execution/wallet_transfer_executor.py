@@ -182,7 +182,7 @@ class WalletTransferExecutor:
         # This would involve actual wallet operations and CEX deposits/withdrawals
         raise NotImplementedError("Live wallet transfer execution not yet implemented")
     
-    async def _update_position_monitor(self, instruction: WalletTransferInstruction, timestamp: pd.Timestamp):
+    def _update_position_monitor(self, instruction: WalletTransferInstruction, timestamp: pd.Timestamp):
         """Update position monitor with transfer changes."""
         try:
             changes = {

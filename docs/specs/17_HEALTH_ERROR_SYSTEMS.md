@@ -40,6 +40,53 @@ Consolidate health monitoring and error handling systems into a single source of
 5. Provide real-time health dashboards
 6. Handle fail-fast error behavior
 
+## Config-Driven Behavior
+
+The Health & Error Systems are **mode-agnostic** by design - they monitor system health without mode-specific logic:
+
+**Component Configuration** (from `component_config.health_error_systems`):
+```yaml
+component_config:
+  health_error_systems:
+    # Health & Error Systems are inherently mode-agnostic
+    # Monitor system health regardless of strategy mode
+    # No mode-specific configuration needed
+    health_check_interval: 30    # Health check interval in seconds
+    error_retention_days: 7      # Error retention period in days
+    health_timeout: 5            # Health check timeout in seconds
+```
+
+**Mode-Agnostic Health Monitoring**:
+- Monitor system health and component status
+- Same monitoring logic for all strategy modes
+- No mode-specific if statements in health monitoring
+- Uses config-driven health check intervals and timeouts
+
+**Health Monitoring by Component**:
+
+**Component Health Monitoring**:
+- Monitor: position_monitor, exposure_monitor, risk_monitor, pnl_calculator, strategy_manager, execution_manager
+- Handles: health status checks, error tracking, recovery monitoring
+- Same monitoring logic regardless of strategy mode
+
+**System Health Monitoring**:
+- Monitor: data_provider, event_logger, results_store, execution_interfaces
+- Handles: system health checks, error propagation, fail-fast behavior
+- Same monitoring logic regardless of strategy mode
+
+**Error Code Registry**:
+- Manage: 200+ error codes across all components
+- Handles: error categorization, error metadata, error recovery
+- Same error handling logic regardless of strategy mode
+
+**Key Principle**: Health & Error Systems are **purely monitoring** - they do NOT:
+- Make mode-specific decisions about which components to monitor
+- Handle strategy-specific health monitoring logic
+- Convert or transform health data
+- Make business logic decisions
+
+All health monitoring logic is generic - it monitors all components and system health regardless of strategy mode, providing unified health status and error tracking.
+
 ## State
 - component_health_status: Dict[str, Dict] (health status per component)
 - error_registry: Dict[str, Dict] (error codes and metadata)
@@ -1158,6 +1205,43 @@ Following [Quality Gate Validation](QUALITY_GATES.md) <!-- Redirected from 17_qu
 
 ---
 
-**Status**: Health & Error Systems are complete and fully operational! 🎉
+## Current Implementation Status
 
-*Last Updated: January 6, 2025*
+**Overall Completion**: 95% (Spec complete, implementation needs updates)
+
+### **Core Functionality Status**
+- ✅ **Working**: Health monitoring, error code system, component health checks
+- ⚠️ **Partial**: Error handling patterns, health integration
+- ❌ **Missing**: Config-driven health thresholds, health integration
+- 🔄 **Refactoring Needed**: Update to use BaseDataProvider type hints
+
+### **Architecture Compliance Status**
+- ✅ **COMPLIANT**: Spec follows all canonical architectural principles
+  - **Reference-Based Architecture**: Components receive references at init
+  - **Shared Clock Pattern**: Methods receive timestamp from engine
+  - **Mode-Agnostic Behavior**: Config-driven, no mode-specific logic
+  - **Fail-Fast Patterns**: Uses ADR-040 fail-fast access
+
+## Related Documentation
+
+### **Architecture Patterns**
+- [Reference-Based Architecture](../REFERENCE_ARCHITECTURE_CANONICAL.md)
+- [Mode-Agnostic Architecture](../REFERENCE_ARCHITECTURE_CANONICAL.md)
+- [Code Structure Patterns](../CODE_STRUCTURE_PATTERNS.md)
+- [Configuration Guide](19_CONFIGURATION.md)
+
+### **Component Integration**
+- [All Component Specs](COMPONENT_SPECS_INDEX.md) - All components integrate with health system
+- [Event Logger Specification](08_EVENT_LOGGER.md) - Event logging integration
+- [Data Provider Specification](09_DATA_PROVIDER.md) - Data provider health checks
+- [Event-Driven Strategy Engine Specification](15_EVENT_DRIVEN_STRATEGY_ENGINE.md) - Engine integration
+
+### **Configuration and Implementation**
+- [Configuration Guide](19_CONFIGURATION.md) - Complete config schemas for all 7 modes
+- [Code Structure Patterns](../CODE_STRUCTURE_PATTERNS.md) - Implementation patterns
+- [Event Logger Specification](08_EVENT_LOGGER.md) - Event logging integration
+
+---
+
+**Status**: Health & Error Systems are complete and fully operational! 🎉  
+**Last Reviewed**: October 11, 2025

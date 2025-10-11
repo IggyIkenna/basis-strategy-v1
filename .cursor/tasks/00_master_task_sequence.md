@@ -3,9 +3,12 @@
 ## OVERVIEW
 This is the complete sequence of tasks to execute based on the 6-day implementation roadmap. Execute these tasks in order by day and priority, starting with foundational infrastructure and building up to complete end-to-end functionality.
 
-**Reference**: `TASK_DOCS_CONFLICT_ANALYSIS_REPORT.md` - Updated conflict analysis (October 10, 2025)  
-**Reference**: `docs/DEVIATIONS_AND_CORRECTIONS.md` - Current architectural violations  
-**Reference**: `IMPLEMENTATION_TIMELINE.md` - Detailed 6-day roadmap
+**Reference**: `docs/IMPLEMENTATION_GAP_REPORT.md` - Implementation gap analysis (October 11, 2025)  
+**Reference**: `docs/REFERENCE_ARCHITECTURE_CANONICAL.md` - Canonical architectural principles  
+**Reference**: `docs/COMPONENT_SPECS_INDEX.md` - All 20 component specifications  
+**Reference**: `docs/QUALITY_GATES.md` - Quality gate validation requirements  
+**Reference**: `docs/specs/` - Detailed component implementation guides  
+**Reference**: `scripts/test_implementation_gap_quality_gates.py` - Implementation gap detection
 
 ## 6-DAY IMPLEMENTATION ROADMAP
 
@@ -20,7 +23,7 @@ This is the complete sequence of tasks to execute based on the 6-day implementat
 6. **11_singleton_pattern.md** - Enforce singleton pattern (6-8 hours)
 7. **06_strategy_manager_refactor.md** - Strategy manager refactor (6-8 hours)
 8. **08_mode_agnostic_architecture.md** - Mode-agnostic architecture (6-8 hours)
-9. **09_fail_fast_configuration.md** - Fail-fast configuration (6-8 hours)
+9. **09_fail_fast_19_CONFIGURATION.md** - Fail-fast configuration (6-8 hours)
 
 ### Day 3: Component Integration & Quality Gates (12-16 hours)
 10. **12_tight_loop_architecture.md** - Tight loop architecture (6-8 hours)
@@ -34,23 +37,24 @@ This is the complete sequence of tasks to execute based on the 6-day implementat
 16. **16_btc_basis_quality_gates.md** - BTC basis E2E quality gates (4-5 hours)
 17. **17_eth_basis_quality_gates.md** - ETH basis E2E quality gates (4-5 hours)
 
-### Day 5: Complex Modes & Component Unit Tests (12-16 hours)
+### Day 5: Complex Modes & Component Alignment (12-16 hours)
 18. **18_usdt_market_neutral_quality_gates.md** - USDT market neutral E2E quality gates (4-5 hours)
-19. **19_position_monitor_unit_tests.md** - Position monitor unit tests (8-10 hours)
-20. **20_exposure_monitor_unit_tests.md** - Exposure monitor unit tests (8-10 hours)
-21. **21_risk_monitor_unit_tests.md** - Risk monitor unit tests (8-10 hours)
+19. **19_position_monitor_unit_tests.md** - Position monitor alignment & unit tests (8-10 hours)
+20. **20_exposure_monitor_unit_tests.md** - Exposure monitor alignment & unit tests (8-10 hours)
+21. **21_risk_monitor_unit_tests.md** - Risk monitor alignment & unit tests (8-10 hours)
 22. **22_strategy_manager_unit_tests.md** - Strategy manager unit tests (8-10 hours)
-23. **23_pnl_calculator_unit_tests.md** - P&L calculator unit tests (8-10 hours)
+23. **23_pnl_calculator_unit_tests.md** - P&L calculator alignment & unit tests (8-10 hours)
 
-### Day 6: Frontend & Live Mode Completion (12-16 hours)
-24. **24_frontend_implementation.md** - Frontend implementation (6-8 hours)
-25. **25_live_mode_quality_gates.md** - Live mode quality gates (6-8 hours)
-26. **26_comprehensive_quality_gates.md** - Comprehensive quality gates (6-8 hours)
+### Day 6: Execution Infrastructure & Service Validation (12-16 hours)
+24. **30_execution_components_implementation.md** - Execution components implementation (8-10 hours)
+25. **26_comprehensive_quality_gates.md** - Service layer & engine validation (6-8 hours)
+26. **25_live_mode_quality_gates.md** - Live mode quality gates (6-8 hours)
 
-### Day 7: Frontend Components & Authentication (12-16 hours)
-27. **27_authentication_system.md** - Authentication system implementation (4-6 hours)
-28. **28_live_trading_ui.md** - Live trading UI implementation (6-8 hours)
-29. **29_shared_utilities.md** - Shared utilities implementation (4-6 hours)
+### Day 7: Infrastructure & Frontend Completion (12-16 hours)
+27. **31_infrastructure_components_completion.md** - Infrastructure components completion (6-8 hours)
+28. **24_frontend_implementation.md** - Frontend implementation completion (6-8 hours)
+29. **27_authentication_system.md** - Authentication system implementation (4-6 hours)
+30. **28_live_trading_ui.md** - Live trading UI implementation (6-8 hours)
 
 ## EXECUTION INSTRUCTIONS
 1) **FOLLOW 6-DAY TIMELINE** - Execute tasks in day order (Day 1 → Day 6)
@@ -71,8 +75,9 @@ This is the complete sequence of tasks to execute based on the 6-day implementat
 ### High Parallelization Opportunities (Multiple Agents)
 - **Day 2, Tasks 7-9**: Strategy manager refactor || Mode-agnostic + Fail-fast config
 - **Day 3, Tasks 13-14**: API endpoints || Health/logging
-- **Day 5, Tasks 19-23**: All 5 component unit test tasks in parallel
-- **Day 6, Tasks 24-25**: Frontend implementation || Live mode
+- **Day 5, Tasks 19-23**: All 5 component alignment & unit test tasks in parallel
+- **Day 6, Tasks 25-26**: Service validation || Live mode quality gates
+- **Day 7, Tasks 28-30**: Frontend implementation || Authentication || Live trading UI
 
 ### Sequential Required (File Conflicts)
 - **Day 1**: All sequential (config/env foundation)
@@ -80,14 +85,14 @@ This is the complete sequence of tasks to execute based on the 6-day implementat
 - **Day 4**: All sequential (iterative validation per mode)
 
 ### Estimated Agent-Hours
-- **Total Sequential Work**: ~40 hours
-- **Total Parallel Work**: ~20 hours
-- **With 3-5 Background Agents**: Can complete in **6 calendar days**
+- **Total Sequential Work**: ~45 hours
+- **Total Parallel Work**: ~25 hours
+- **With 3-5 Background Agents**: Can complete in **7 calendar days**
 
-## ARCHITECTURAL VIOLATION PRIORITIES
-- **HIGH**: Async/await violations, Strategy manager refactor, Generic vs mode-specific
-- **MEDIUM**: Fail-fast config, Singleton pattern, Duplicate files, Tight loop, Reference-based, Data flow
-- **LOW**: Frontend implementation
+## IMPLEMENTATION GAP PRIORITIES
+- **HIGH**: Component alignment with specs, Execution infrastructure, Service validation
+- **MEDIUM**: Infrastructure completion, Quality gate implementation, Test coverage
+- **LOW**: Frontend completion, Authentication system
 
 ## CRITICAL ARCHITECTURE RULES
 - ❌ NEVER use hardcoded values to fix issues (including config values)
@@ -156,24 +161,27 @@ This is the complete sequence of tasks to execute based on the 6-day implementat
 
 ### Day 5 ✅
 - [ ] USDT market neutral E2E passing
-- [ ] All component unit tests passing
-- [ ] 80% unit test coverage achieved
+- [ ] All monitoring components aligned with specs
+- [ ] 80% unit test coverage achieved for core components
 
 ### Day 6 ✅
-- [ ] Frontend results components complete
-- [ ] Live mode framework complete
+- [ ] Execution infrastructure complete
+- [ ] Service layer validation complete
+- [ ] Live mode quality gates passing
+- [ ] 18/24 quality gates passing (75%)
+
+### Day 7 ✅
+- [ ] Infrastructure components complete
+- [ ] Frontend implementation complete
+- [ ] Authentication system complete (username: admin)
+- [ ] Live trading UI complete
 - [ ] 20/24 quality gates passing (83%)
 - [ ] System ready for staging deployment
 
-### Day 7 ✅
-- [ ] Authentication system complete (username: admin)
-- [ ] Live trading UI complete
-- [ ] Shared utilities and API client complete
-- [ ] Full frontend functionality ready
-
 ## OVERALL SUCCESS CRITERIA
-- [ ] All 29 tasks completed successfully
-- [ ] All quality gates passing
+- [ ] All 30 tasks completed successfully
+- [ ] All 20 component implementation gaps addressed
+- [ ] Quality gates improved from 12/24 to 20/24+ passing
 - [ ] All tests passing with 80% coverage
 - [ ] System ready for production deployment
 - [ ] Complete end-to-end functionality validated

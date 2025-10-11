@@ -41,3 +41,45 @@ time_throttle_interval: 60
 target_apy: 0.05  # 5% APY target
 max_drawdown: 0.005  # 0.5% max drawdown (only gas/conversion costs)
 
+# Component configuration
+component_config:
+  risk_monitor:
+    enabled_risk_types: []  # No liquidation risk for pure lending
+    risk_limits: {}
+  
+  exposure_monitor:
+    exposure_currency: "USDT"
+    track_assets: ["USDT", "aUSDT"]
+    conversion_methods:
+      USDT: "direct"
+      aUSDT: "aave_index"
+  
+  pnl_calculator:
+    attribution_types: ["supply_yield", "transaction_costs"]
+    reporting_currency: "USDT"
+    reconciliation_tolerance: 0.02
+  
+  strategy_manager:
+    strategy_type: "pure_lending"
+    actions: ["entry_full", "exit_full"]
+    rebalancing_triggers: ["deposit", "withdrawal"]
+    position_calculation:
+      target_position: "aave_usdt_supply"
+      max_position: "equity"
+  
+  execution_manager:
+    supported_actions: ["aave_supply", "aave_withdraw"]
+    action_mapping:
+      entry_full: ["aave_supply"]
+      exit_full: ["aave_withdraw"]
+  
+  results_store:
+    result_types: ["balance_sheet", "pnl_attribution", "execution_log"]
+    balance_sheet_assets: ["USDT", "aUSDT"]
+    pnl_attribution_types: ["supply_yield", "transaction_costs"]
+  
+  strategy_factory:
+    timeout: 30
+    max_retries: 3
+    validation_strict: true
+

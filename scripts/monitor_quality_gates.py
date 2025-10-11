@@ -202,7 +202,7 @@ class MonitorQualityGates:
         results = {}
         
         # Define all strategy modes to test
-        strategy_modes = [
+        modes = [
             {'mode': 'btc_basis', 'asset': 'BTC', 'share_class': 'USDT'},
             {'mode': 'eth_leveraged', 'asset': 'ETH', 'share_class': 'ETH'},
             {'mode': 'eth_staking_only', 'asset': 'ETH', 'share_class': 'ETH'},
@@ -211,7 +211,7 @@ class MonitorQualityGates:
             {'mode': 'usdt_market_neutral_no_leverage', 'asset': 'ETH', 'share_class': 'USDT'},
         ]
         
-        for strategy in strategy_modes:
+        for strategy in modes:
             mode = strategy['mode']
             asset = strategy['asset']
             share_class = strategy['share_class']

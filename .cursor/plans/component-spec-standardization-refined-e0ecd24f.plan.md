@@ -98,7 +98,7 @@ def __init__(self, ...):
 ## Config Fields Used
 
 ### Universal Config (All Components)
-- `strategy_mode`: str - e.g., 'eth_basis', 'pure_lending'
+- `mode`: str - e.g., 'eth_basis', 'pure_lending'
 - `share_class`: str - 'usdt_stable' | 'eth_directional'
 - `initial_capital`: float - Starting capital
 
@@ -382,7 +382,7 @@ def _health_check(self) -> Dict:
 **Issue**: Duplicate file numbers (two `08_` files, two `16_` files)
 
 **Actions**:
-1. Rename `08_EXECUTION_INTERFACES.md` → `08A_EXECUTION_INTERFACES.md` (or renumber execution layer)
+1. Rename `08_EXECUTION_INTERFACES.md` → `07A_EXECUTION_INTERFACES.md` (or renumber execution layer)
 2. Rename `16_RESULTS_STORE.md` → `18_RESULTS_STORE.md`
 3. Update all cross-references in other docs
 4. Update COMPONENT_SPECS_INDEX.md
@@ -406,7 +406,7 @@ def _health_check(self) -> Dict:
 - Component-specific log file documented
 
 ### Phase 2: Update Execution Layer Components (5 specs, 3-4 hours)
-**Components**: 06_EXECUTION_MANAGER, 07_EXECUTION_INTERFACE_MANAGER, 08_EVENT_LOGGER, 08A_EXECUTION_INTERFACES, 10_RECONCILIATION_COMPONENT, 11_POSITION_UPDATE_HANDLER
+**Components**: 06_EXECUTION_MANAGER, 07_EXECUTION_INTERFACE_MANAGER, 08_EVENT_LOGGER, 07A_EXECUTION_INTERFACES, 10_RECONCILIATION_COMPONENT, 11_POSITION_UPDATE_HANDLER
 
 **Notes**:
 - 06/07/08/10/11 already have basic "Environment Variables" sections - enhance these

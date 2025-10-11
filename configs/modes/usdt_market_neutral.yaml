@@ -33,7 +33,8 @@ hedge_allocation_okx: 0.3
 # Risk parameters
 margin_ratio_target: 1.0  # Target CEX margin ratio (100% = full capital utilization)
 max_stake_spread_move: 0.02215  # Max expected adverse weETH/ETH oracle move (2.215%)
-# NOTE: max_ltv and liquidation_threshold loaded from data/protocol_data/aave/risk_params/aave_v3_risk_parameters.json
+max_ltv: 0.91  # Maximum LTV for weETH (derived from AAVE risk params)
+liquidation_threshold: 0.95  # Liquidation threshold for weETH (derived from AAVE risk params)
 
 
 # Performance targets
@@ -58,3 +59,64 @@ data_requirements:
 
 # Live time throttling 
 time_throttle_interval: 60
+
+# Component configuration
+component_config:
+  risk_monitor:
+    enabled_risk_types: ["ltv_risk", "liquidation_risk", "cex_margin_ratio", "delta_risk"]
+    risk_limits:
+      target_ltv: 0.9094  # Target LTV = max_ltv * (1 - max_stake_spread_move)
+      liquidation_threshold: 0.95
+      target_margin_ratio: 0.5
+      cex_margin_ratio_min: 0.15
+      maintenance_margin_requirement: 0.10
+      delta_tolerance: 0.005
+  
+  exposure_monitor:
+    exposure_currency: "USDT"
+    track_assets: ["ETH", "weETH", "aWeETH", "variableDebtWETH", "USDT", "ETH_PERP", "EIGEN", "KING"]
+    conversion_methods:
+      ETH: "usd_price"
+      weETH: "oracle_price"
+      aWeETH: "aave_index"
+      variableDebtWETH: "aave_index"
+      USDT: "direct"
+      ETH_PERP: "perp_mark_price"
+      EIGEN: "usd_price"
+      KING: "unwrap"
+  
+  pnl_calculator:
+    attribution_types: ["supply_yield", "staking_yield_oracle", "staking_yield_rewards", "borrow_costs", "funding_pnl", "delta_pnl", "transaction_costs"]
+    reporting_currency: "USDT"
+    reconciliation_tolerance: 0.02
+  
+  strategy_manager:
+    strategy_type: "usdt_market_neutral"
+    actions: ["entry_full", "entry_partial", "exit_partial", "exit_full", "sell_dust"]
+    rebalancing_triggers: ["deposit", "withdrawal", "delta_drift", "ltv_drift"]
+    position_calculation:
+      target_position: "leveraged_eth_staking"
+      hedge_position: "eth_perp_short"
+      hedge_allocation:
+        binance: 0.4
+        bybit: 0.3
+        okx: 0.3
+  
+  execution_manager:
+    supported_actions: ["etherfi_stake", "etherfi_unstake", "aave_supply", "aave_borrow", "aave_repay", "cex_perp_short", "cex_perp_close", "sell_dust"]
+    action_mapping:
+      entry_full: ["etherfi_stake", "aave_supply", "aave_borrow", "cex_perp_short"]
+      exit_full: ["aave_repay", "etherfi_unstake", "cex_perp_close"]
+      sell_dust: ["sell_dust"]
+  
+  results_store:
+    result_types: ["balance_sheet", "pnl_attribution", "risk_metrics", "execution_log", "leverage_tracking", "dust_tracking", "delta_tracking"]
+    balance_sheet_assets: ["ETH", "weETH", "aWeETH", "variableDebtWETH", "USDT", "ETH_PERP", "EIGEN", "KING"]
+    pnl_attribution_types: ["supply_yield", "staking_yield_oracle", "staking_yield_rewards", "borrow_costs", "funding_pnl", "delta_pnl", "transaction_costs"]
+    leverage_tracking: true
+    dust_tracking_tokens: ["EIGEN", "ETHFI", "KING"]
+  
+  strategy_factory:
+    timeout: 30
+    max_retries: 3
+    validation_strict: true

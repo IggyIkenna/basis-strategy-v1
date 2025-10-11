@@ -61,39 +61,65 @@ All component specifications follow a standardized 18-section format:
 
 *Note: Specs may have additional domain-specific sections, but these 16 are mandatory.*
 
-## 🎯 **Component Overview**
+## Component Architecture Overview
 
-### **State Monitoring** (Reactive - Triggered by Events) ✅
-1. **[Position Monitor](specs/01_POSITION_MONITOR.md)** - Token + Derivative balance tracking
-2. **[Exposure Monitor](specs/02_EXPOSURE_MONITOR.md)** - Exposure aggregation & conversion ⭐ **AAVE mechanics canonical source**
-3. **[Risk Monitor](specs/03_RISK_MONITOR.md)** - Risk metrics & liquidation simulation
-4. **[P&L Calculator](specs/04_PNL_CALCULATOR.md)** - Balance & attribution P&L with reconciliation
+### Core Components (11) - Runtime Data/Decision/Execution Flow
+These components execute during backtest/live strategy runs:
 
-### **Decision & Orchestration** (Proactive - Issues Instructions) ✅
-5. **[Strategy Manager](specs/05_STRATEGY_MANAGER.md)** - Mode-specific orchestration & rebalancing
+**State Monitoring** (4 components):
+1. **[Position Monitor](specs/01_POSITION_MONITOR.md)** - Balance tracking
+2. **[Exposure Monitor](specs/02_EXPOSURE_MONITOR.md)** - Exposure aggregation
+3. **[Risk Monitor](specs/03_RISK_MONITOR.md)** - Risk metrics
+4. **[P&L Calculator](specs/04_PNL_CALCULATOR.md)** - P&L calculation
 
-### **Execution** (Action - Executes Instructions) ✅
-6. **[Execution Manager](specs/06_EXECUTION_MANAGER.md)** - Cross-venue execution orchestration
-7. **[Execution Interface Manager](specs/07_EXECUTION_INTERFACE_MANAGER.md)** - Interface management
-8. **[Event Logger](specs/08_EVENT_LOGGER.md)** - Audit-grade event tracking
-8A. **[Execution Interfaces](specs/08A_EXECUTION_INTERFACES.md)** - Unified execution abstraction (backtest/live)
-9. **[Data Provider](specs/09_DATA_PROVIDER.md)** - Market data access (historical + live modes)
-10. **[Reconciliation Component](specs/10_RECONCILIATION_COMPONENT.md)** - Position reconciliation
-11. **[Position Update Handler](specs/11_POSITION_UPDATE_HANDLER.md)** - Position update orchestration
+**Decision & Orchestration** (1 component):
+5. **[Strategy Manager](specs/05_STRATEGY_MANAGER.md)** - Mode-specific orchestration
 
-### **Service Components** (Always Active)
-12. **[Frontend Spec](specs/12_FRONTEND_SPEC.md)** - Wizard/stepper UI
-13. **[Backtest Service](specs/13_BACKTEST_SERVICE.md)** - Backtest execution service
-14. **[Live Trading Service](specs/14_LIVE_TRADING_SERVICE.md)** - Live trading service
-15. **[Event Driven Strategy Engine](specs/15_EVENT_DRIVEN_STRATEGY_ENGINE.md)** - Strategy execution engine
+**Execution** (4 components):
+6. **[Execution Manager](specs/06_EXECUTION_MANAGER.md)** - Execution orchestration
+7. **[Execution Interface Manager](specs/07_EXECUTION_INTERFACE_MANAGER.md)** - Interface routing
+8. **[Reconciliation Component](specs/10_RECONCILIATION_COMPONENT.md)** - Position verification
+9. **[Position Update Handler](specs/11_POSITION_UPDATE_HANDLER.md)** - Tight loop orchestration
 
-### **Supporting Components** (Utilities & Infrastructure)
-16. **[Math Utilities](specs/16_MATH_UTILITIES.md)** - Mathematical utilities
-17. **[Health & Error Systems](specs/17_HEALTH_ERROR_SYSTEMS.md)** - Structured logging & health monitoring
-18. **[Results Store](specs/18_RESULTS_STORE.md)** - Results storage and retrieval
+**Support** (2 components):
+10. **[Event Logger](specs/08_EVENT_LOGGER.md)** - Audit logging
+11. **[Data Provider](specs/09_DATA_PROVIDER.md)** - Market data access
 
-### **Configuration**
-19. **[Configuration](specs/CONFIGURATION.md)** - Configuration management
+### Supporting Components (9) - Services, Utilities, Infrastructure
+These components provide services and infrastructure:
+
+**Service Layer** (3 components):
+12. **[Backtest Service](specs/13_BACKTEST_SERVICE.md)** - Backtest orchestration
+13. **[Live Trading Service](specs/14_LIVE_TRADING_SERVICE.md)** - Live trading orchestration
+14. **[Event Driven Strategy Engine](specs/15_EVENT_DRIVEN_STRATEGY_ENGINE.md)** - Event loop management
+
+**Execution Infrastructure** (3 components):
+15. **[Execution Interfaces](specs/07B_EXECUTION_INTERFACES.md)** - Venue-specific execution
+16. **[Execution Interface Factory](specs/07C_EXECUTION_INTERFACE_FACTORY.md)** - Interface creation
+17. **[Strategy Factory](specs/5A_STRATEGY_FACTORY.md)** - Strategy manager creation
+
+**Utilities & Infrastructure** (3 components):
+18. **[Math Utilities](specs/16_MATH_UTILITIES.md)** - Mathematical calculations
+19. **[Health & Error Systems](specs/17_HEALTH_ERROR_SYSTEMS.md)** - Monitoring
+20. **[Results Store](specs/18_RESULTS_STORE.md)** - Results persistence
+21. **[Configuration](specs/19_CONFIGURATION.md)** - Config management
+
+## Config-Driven Mode-Agnostic Architecture
+
+Core components (1-11) are **mode-agnostic** and use `component_config` from mode YAML to determine behavior:
+- No hardcoded mode-specific logic
+- Behavior driven by configuration parameters
+- Graceful handling of missing data
+- See: CODE_STRUCTURE_PATTERNS.md for implementation patterns
+
+**Key Config Sections**:
+- `data_requirements`: What data the mode needs
+- `component_config.risk_monitor`: What risks to track
+- `component_config.exposure_monitor`: What assets to track
+- `component_config.pnl_calculator`: What PnL sources to attribute
+- `component_config.strategy_manager`: What actions available (mode-specific)
+
+**Reference**: 19_CONFIGURATION.md for complete config schemas
 
 ---
 
@@ -168,7 +194,7 @@ All components use centralized config infrastructure:
 - **ConfigValidator** (`infrastructure/config/config_validator.py`)
 - **HealthChecker** (`infrastructure/config/health_check.py`)
 
-**For config details**: See [specs/CONFIGURATION.md](specs/CONFIGURATION.md)
+**For config details**: See [specs/19_CONFIGURATION.md](specs/19_CONFIGURATION.md)
 
 ---
 
@@ -190,7 +216,7 @@ All components use centralized config infrastructure:
 1. **Start implementing?** → [README.md](README.md) <!-- Redirected from IMPLEMENTATION_ROADMAP.md - implementation status is documented here -->
 2. **Need component details?** → [specs/](specs/) <!-- Directory link to specs folder --> directory (12 detailed specs)
 3. **Architecture questions?** → [REFERENCE_ARCHITECTURE_CANONICAL.md](REFERENCE_ARCHITECTURE_CANONICAL.md)
-4. **Configuration help?** → [specs/CONFIGURATION.md](specs/CONFIGURATION.md)
+4. **Configuration help?** → [specs/19_CONFIGURATION.md](specs/19_CONFIGURATION.md)
 
 ---
 

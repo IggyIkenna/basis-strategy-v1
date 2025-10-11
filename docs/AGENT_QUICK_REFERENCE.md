@@ -2,6 +2,17 @@
 
 **For agents completing the 26 cursor tasks**
 
+## Purpose
+
+This document provides a quick reference guide for AI agents working on the Basis Strategy project. It contains critical warnings, key file locations, and essential patterns that agents must follow to maintain architectural integrity and avoid common pitfalls.
+
+## 📚 **Canonical Sources**
+
+**This document aligns with canonical architectural principles**:
+- **Architectural Principles**: [REFERENCE_ARCHITECTURE_CANONICAL.md](REFERENCE_ARCHITECTURE_CANONICAL.md) - Core principles including config-driven architecture
+- **Target Structure**: [TARGET_REPOSITORY_STRUCTURE.md](TARGET_REPOSITORY_STRUCTURE.md) - Repository organization standards
+- **Quality Gates**: [QUALITY_GATES.md](QUALITY_GATES.md) - Validation standards
+
 ## 🚨 Critical Warnings
 
 ### ❌ DO NOT:
@@ -126,3 +137,5 @@ Before completing any task:
 ---
 
 **Remember**: Always reference the full TARGET_REPOSITORY_STRUCTURE.md before making changes!
+
+

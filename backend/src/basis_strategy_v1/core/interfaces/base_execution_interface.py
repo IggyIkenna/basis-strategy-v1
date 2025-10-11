@@ -124,12 +124,16 @@ class BaseExecutionInterface(ABC):
                 token=details.get('token', None)
             )
     
-    async def _update_position_monitor(self, changes: Dict[str, Any]):
+    def _update_position_monitor(self, changes: Dict[str, Any]):
         """Update position monitor with execution changes."""
         if self.position_monitor:
             # Format changes for position monitor
             formatted_changes = self._format_changes_for_position_monitor(changes)
-            await self.position_monitor.update(formatted_changes)
+            self.position_monitor.update_state(
+                changes.get('timestamp', pd.Timestamp.now()),
+                'execution_interface',
+                **formatted_changes
+            )
     
     def _format_changes_for_position_monitor(self, changes: Dict[str, Any]) -> Dict[str, Any]:
         """Format execution changes for position monitor."""

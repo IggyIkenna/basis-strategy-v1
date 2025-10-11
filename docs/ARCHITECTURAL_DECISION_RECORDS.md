@@ -37,6 +37,8 @@ This document contains the full details of all architectural decisions made for 
 - Results Store runs after P&L calculation to persist results (async I/O exception)
 - Loop-within-loop pattern prevents race conditions
 
+**References**: 11_POSITION_UPDATE_HANDLER.md, 10_RECONCILIATION_COMPONENT.md
+
 ## ADR-002: Redis Removal
 
 **Date**: 2025-01-06  
@@ -82,6 +84,8 @@ This document contains the full details of all architectural decisions made for 
 - NEVER create own instances of config or data_provider
 - All components share singleton instances via references
 
+**References**: REFERENCE_ARCHITECTURE_CANONICAL.md section I.2
+
 ## ADR-004: Shared Clock Pattern
 
 **Date**: 2025-01-06  
@@ -104,6 +108,8 @@ This document contains the full details of all architectural decisions made for 
 - Components query data: `self.data_provider.get_data(timestamp)`
 - Data provider enforces `data <= timestamp` constraint
 - All components in same loop iteration use identical timestamp → identical data
+
+**References**: 15_EVENT_DRIVEN_STRATEGY_ENGINE.md
 
 ## ADR-005: Request Isolation Pattern
 
@@ -252,7 +258,7 @@ This document contains the full details of all architectural decisions made for 
 - **Component overview** → [COMPONENT_SPECS_INDEX.md](COMPONENT_SPECS_INDEX.md)
 - **Implementation tasks** → [COMPONENT_SPECS_INDEX.md](COMPONENT_SPECS_INDEX.md) <!-- Redirected from REQUIREMENTS.md - requirements are component specifications -->
 - **Timeline** → [README.md](README.md) <!-- Redirected from IMPLEMENTATION_ROADMAP.md - implementation status is documented here -->
-- **Configuration** → [specs/CONFIGURATION.md](specs/CONFIGURATION.md)
+- **Configuration** → [specs/19_CONFIGURATION.md](specs/19_CONFIGURATION.md)
 
 ---
 
@@ -1321,6 +1327,8 @@ configs/
 
 **Status**: ✅ Implemented and documented
 
+**References**: 19_CONFIGURATION.md
+
 ---
 
 ### **34. Exposure Monitor Outputs** ✅
@@ -1774,7 +1782,125 @@ while self.is_running:
 
 **See**: [COMPONENT_SPECS_INDEX.md](COMPONENT_SPECS_INDEX.md) <!-- Redirected from REQUIREMENTS.md - requirements are component specifications --> for task breakdown  
 **See**: [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md) <!-- Redirected from REPO_INTEGRATION_PLAN.md - integration is deployment --> for file mapping  
-**See**: [specs/CONFIGURATION.md](specs/CONFIGURATION.md) for configuration management
+**See**: [specs/19_CONFIGURATION.md](specs/19_CONFIGURATION.md) for configuration management
+
+## ADR-052: Config-Driven Mode-Agnostic Components
+
+**Date**: 2025-10-11  
+**Status**: Accepted  
+**Context**: Components were using hardcoded mode-specific if/else logic, making them difficult to reuse across different strategy modes and creating maintenance overhead.
+
+**Decision**: Components use `component_config` from mode YAML to determine behavior instead of mode-specific if/else logic. This enables mode-agnostic components that work identically across all 7 strategy modes.
+
+**Consequences**:
+- **Positive**: Components become reusable across all strategy modes
+- **Positive**: Modes defined purely in YAML configuration
+- **Positive**: Easier testing with config-driven behavior
+- **Positive**: No hardcoded mode logic in components
+- **Negative**: Requires comprehensive config schemas for all modes
+- **Negative**: Components must handle missing data gracefully
+
+**Implementation**:
+- Components extract behavior from `config.get('component_config', {}).get('component_name', {})`
+- No mode checks: `if mode == 'pure_lending'` → Use config parameters instead
+- Graceful data handling: Return None/0 when required data unavailable
+- All behavior controlled by configuration parameters
+
+**References**: 19_CONFIGURATION.md, CODE_STRUCTURE_PATTERNS.md sections 2-4
+
+## ADR-053: DataProvider Factory with Data Requirements Validation
+
+**Date**: 2025-10-11  
+**Status**: Accepted  
+**Context**: Different strategy modes need completely different data subscriptions (pure lending vs market neutral), but there was no validation that DataProviders could satisfy mode requirements.
+
+**Decision**: Mode-specific DataProviders validate `data_requirements` from config at initialization, ensuring fail-fast behavior when data cannot be provided.
+
+**Consequences**:
+- **Positive**: Fail-fast on missing data requirements
+- **Positive**: Clear data contracts per mode
+- **Positive**: Prevents runtime data errors
+- **Positive**: Explicit data requirements in config
+- **Negative**: Requires comprehensive data requirement definitions
+- **Negative**: DataProvider creation can fail at startup
+
+**Implementation**:
+- Each mode specifies `data_requirements: ["data_type_1", "data_type_2"]`
+- DataProviderFactory validates provider can satisfy all requirements
+- Provider.validate_data_requirements() raises ValueError if missing
+- Clear error messages for missing data types
+
+**References**: 09_DATA_PROVIDER.md, 19_CONFIGURATION.md data_requirements section
+
+## ADR-054: Graceful Data Handling in Components
+
+**Date**: 2025-10-11  
+**Status**: Accepted  
+**Context**: Not all strategy modes have all data types (e.g., pure lending has no perp data), but components were failing when required data was unavailable.
+
+**Decision**: Components return None/0 for calculations when required data is unavailable, enabling them to work across modes with different data subscriptions.
+
+**Consequences**:
+- **Positive**: Components work across all modes regardless of data availability
+- **Positive**: No crashes on missing data
+- **Positive**: Graceful degradation of functionality
+- **Positive**: Mode-agnostic component behavior
+- **Negative**: Components must handle None/0 values in calculations
+- **Negative**: Potential for silent failures if not handled properly
+
+**Implementation**:
+- Check data availability before calculations: `if 'perp_prices' in data.get('protocol_data', {}):`
+- Return None for missing data: `results[item] = None`
+- Return 0 for numeric calculations when data unavailable
+- Log warnings for missing data in debug mode
+
+**References**: CODE_STRUCTURE_PATTERNS.md sections 2-4, component specs
+
+## ADR-055: Component Factory with Config Validation
+
+**Date**: 2025-10-11  
+**Status**: Accepted  
+**Context**: Components were being created without validating that they received valid configuration, leading to runtime errors and unclear failure modes.
+
+**Decision**: ComponentFactory validates `component_config` before creating component instances, ensuring fail-fast behavior on configuration errors.
+
+**Consequences**:
+- **Positive**: Fail-fast on config errors at startup
+- **Positive**: Clear config contracts for each component
+- **Positive**: Prevents runtime configuration errors
+- **Positive**: Explicit validation of required config fields
+- **Negative**: Component creation can fail at startup
+- **Negative**: Requires comprehensive config validation rules
+
+**Implementation**:
+- ComponentFactory validates required fields for each component
+- Check component-specific config completeness
+- Validate config parameter values and types
+- Raise ValueError with clear error messages for missing/invalid config
+
+**References**: CODE_STRUCTURE_PATTERNS.md section 10, 19_CONFIGURATION.md
+
+## ADR-056: Core vs Supporting Components Architecture
+
+**Date**: 2025-10-11  
+**Status**: Accepted  
+**Context**: The system had 20+ components but no clear distinction between runtime execution components and supporting infrastructure, making architecture understanding difficult.
+
+**Decision**: Organize components into 11 core components (runtime data/decision/execution flow) and 9 supporting components (services, utilities, infrastructure).
+
+**Consequences**:
+- **Positive**: Clear architecture boundaries
+- **Positive**: Easier onboarding and understanding
+- **Positive**: Clear separation of runtime vs infrastructure concerns
+- **Positive**: Better component organization
+- **Negative**: Requires updating all documentation references
+- **Negative**: May need to adjust component counts in various places
+
+**Implementation**:
+- **Core Components (11)**: Position Monitor, Exposure Monitor, Risk Monitor, PnL Calculator, Strategy Manager, Execution Manager, Execution Interface Manager, Reconciliation Component, Position Update Handler, Event Logger, Data Provider
+- **Supporting Components (9)**: Backtest Service, Live Trading Service, Event Driven Strategy Engine, Execution Interfaces, Execution Interface Factory, Strategy Factory, Math Utilities, Health & Error Systems, Results Store, Configuration
+
+**References**: COMPONENT_SPECS_INDEX.md, all component specs
 
 ## Decision Index
 
@@ -1831,3 +1957,8 @@ while self.is_running:
 | ADR-049 | Error Logging Standard | 2025-01-06 | Accepted | Medium |
 | ADR-050 | Liquidation Simulation | 2025-01-06 | Accepted | Medium |
 | ADR-051 | Live Trading Data Flow Integration | 2025-01-06 | Accepted | High |
+| ADR-052 | Config-Driven Mode-Agnostic Components | 2025-10-11 | Accepted | High |
+| ADR-053 | DataProvider Factory with Data Requirements Validation | 2025-10-11 | Accepted | High |
+| ADR-054 | Graceful Data Handling in Components | 2025-10-11 | Accepted | High |
+| ADR-055 | Component Factory with Config Validation | 2025-10-11 | Accepted | High |
+| ADR-056 | Core vs Supporting Components Architecture | 2025-10-11 | Accepted | High |

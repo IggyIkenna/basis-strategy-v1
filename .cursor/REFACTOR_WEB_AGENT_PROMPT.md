@@ -18,15 +18,24 @@ Copy and paste this prompt when setting up your web-based background agent for t
 ### **Phase 1: Documentation Foundation** (Agents 1-2)
 
 #### **Agent 1: Docs Specs Implementation Status Agent** (Priority: Highest)
-- **Purpose**: Establish baseline documentation state with current implementation status
-- **What it does**: Adds comprehensive "Current Implementation Status" sections to all `docs/specs/` files
-- **Output**: Updated `docs/specs/` files with implementation status sections
+- **Purpose**: Establish baseline documentation state with current implementation status using 19-section structure
+- **What it does**: 
+  - Validates all `docs/specs/` files follow 19-section format from `docs/COMPONENT_SPEC_TEMPLATE.md`
+  - Uses `02_EXPOSURE_MONITOR.md` and `03_RISK_MONITOR.md` as canonical examples
+  - Runs `test_implementation_gap_quality_gates.py` to identify real implementation gaps
+  - Generates/refactors `.cursor/tasks/` files for missing implementations
+- **Output**: Updated `docs/specs/` files with implementation status sections and task files for gaps
 - **Timeline**: 4-6 hours
 
 #### **Agent 2: Docs Consistency Agent** (Priority: High)
-- **Purpose**: Ensure documentation consistency and fix broken links
-- **What it does**: Validates all cross-references, fixes broken links, ensures architectural principles consistency
-- **Output**: 100% consistent documentation with working links
+- **Purpose**: Ensure documentation consistency and fix broken links using 19-section structure
+- **What it does**: 
+  - Validates all 22 component specs follow 19-section format
+  - Ensures all specs have "📚 **Canonical Sources**" section at top
+  - Ensures all specs have "**MODE-AGNOSTIC IMPLEMENTATION EXAMPLE**" section
+  - Validates cross-references point to existing files
+  - Eliminates conflicting architectural descriptions
+- **Output**: 100% consistent documentation with working links and canonical structure
 - **Timeline**: 2-3 hours
 
 ### **Phase 2: Core Implementation** (Agents 3-4)
@@ -38,9 +47,14 @@ Copy and paste this prompt when setting up your web-based background agent for t
 - **Timeline**: 6-8 hours
 
 #### **Agent 4: Architecture Compliance Agent** (Priority: High)
-- **Purpose**: Ensure all code follows architectural principles and rules
-- **What it does**: Scans codebase for rule violations, fixes hardcoded values, ensures singleton patterns
-- **Output**: Architecture-compliant codebase
+- **Purpose**: Ensure all code follows architectural principles and rules using implementation gap analysis
+- **What it does**: 
+  - Runs `test_implementation_gap_quality_gates.py` to identify gaps
+  - Prioritizes fixing components with "❌" status from gap report
+  - References canonical implementations (02_EXPOSURE_MONITOR, 03_RISK_MONITOR)
+  - Updates code to match spec patterns and config-driven behavior
+  - Generates/refactors `.cursor/tasks/` files for implementation gaps
+- **Output**: Architecture-compliant codebase with canonical patterns
 - **Timeline**: 4-6 hours
 
 ### **Phase 3: System Validation** (Agents 5-6)
@@ -139,20 +153,24 @@ python scripts/test_integration_alignment_quality_gates.py
 
 ## Success Criteria
 - **Architecture Compliance**: 100% adherence to canonical principles
-- **Quality Gates**: 15/24 passing (60%+)
+- **Quality Gates**: 18/24 passing (75%+) including docs validation
+- **Documentation Structure**: 100% of specs follow 19-section format
+- **Implementation Alignment**: ≥80% implementation gap closure
 - **Test Coverage**: 80%+ unit test coverage
-- **Documentation**: 100% consistency across all docs
+- **Canonical Compliance**: All components follow 02_EXPOSURE_MONITOR/03_RISK_MONITOR patterns
 - **Configuration**: All config loaded from YAML files
 - **Code Quality**: No hardcoded values, proper data flow
 - **Integration Alignment**: 100% integration alignment across all aspects
+- **Task Generation**: Agents generate/refactor .cursor/tasks/ files for missing implementations
 
 ## Current Priorities
 1. **Execute Refactor Standard Process** in proper sequence
-2. **Fix failing quality gates** to reach 60%+ pass rate
+2. **Fix failing quality gates** to reach 75%+ pass rate including docs validation
 3. **Implement missing unit tests** for core components  
-4. **Refactor architecture violations** in codebase
-5. **Complete frontend implementation** for live trading UI
-6. **Validate configuration system** across all modes
+4. **Refactor architecture violations** in codebase using canonical examples
+5. **Generate task files** for implementation gaps identified by quality gates
+6. **Complete frontend implementation** for live trading UI
+7. **Validate configuration system** across all modes
 
 ## Workflow Process
 1. **Environment Check**: Verify backend is running with `./platform.sh backtest`

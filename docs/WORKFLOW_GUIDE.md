@@ -21,7 +21,7 @@
 
 - **Component Details** → [COMPONENT_SPECS_INDEX.md](COMPONENT_SPECS_INDEX.md)
 - **Architecture Decisions** → [REFERENCE_ARCHITECTURE_CANONICAL.md](REFERENCE_ARCHITECTURE_CANONICAL.md)
-- **Configuration** → [specs/CONFIGURATION.md](specs/CONFIGURATION.md)
+- **Configuration** → [specs/19_CONFIGURATION.md](specs/19_CONFIGURATION.md)
 - **Environment Variables** → [ENVIRONMENT_VARIABLES.md](ENVIRONMENT_VARIABLES.md)
 - **Deployment Guide** → [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md)
 
@@ -35,8 +35,139 @@ The Basis Strategy system is a **component-based, event-driven architecture** th
 - **Component-Based**: 11 core components with clear responsibilities
 - **Event-Driven**: Synchronous event chain with audit logging
 - **Mode-Agnostic**: Same interfaces for backtest and live execution
+- **Config-Driven**: Component behavior determined by configuration, not mode-specific logic
 - **Fail-Fast**: Explicit configuration with no hidden defaults
 - **Audit-Grade**: Complete event trail with balance snapshots
+
+### **Config-Driven Data Flow**
+
+The system uses configuration to drive component behavior and data flow:
+
+**Configuration Structure**:
+```yaml
+mode: "btc_basis"
+share_class: "USDT"
+asset: "BTC"
+
+# Data requirements (what this mode needs)
+data_requirements:
+  - "btc_spot_prices"
+  - "btc_futures_prices"
+  - "btc_funding_rates"
+
+# Component behavior configs
+component_config:
+  risk_monitor:
+    enabled_risk_types: ["cex_margin_ratio", "funding_risk"]
+    risk_limits:
+      cex_margin_ratio_min: 0.2
+      funding_risk_max: 0.05
+  exposure_monitor:
+    exposure_currency: "USDT"
+    track_assets: ["BTC", "USDT", "ETH"]
+    conversion_methods:
+      BTC: "usd_price"
+      USDT: "direct"
+      ETH: "usd_price"
+  pnl_calculator:
+    attribution_types: ["funding_pnl", "delta_pnl", "transaction_costs"]
+    reporting_currency: "USDT"
+```
+
+**Config-Driven Component Behavior**:
+1. **DataProvider**: Loads only data types specified in `data_requirements`
+2. **Risk Monitor**: Calculates only risk types specified in `enabled_risk_types`
+3. **Exposure Monitor**: Tracks only assets specified in `track_assets`
+4. **PnL Calculator**: Calculates only attribution types specified in `attribution_types`
+5. **Strategy Manager**: Uses `strategy_type` to determine mode-specific logic
+6. **Execution Manager**: Maps strategy actions using `action_mapping` config
+
+### **Config-Driven Architecture Principles**
+
+The system implements a **config-driven mode-agnostic architecture** that enables:
+
+**1. Mode-Agnostic Components**:
+- Components have no hardcoded mode-specific logic
+- Behavior is determined by configuration parameters
+- Same component code works for all strategy modes
+- Graceful handling of missing data or unused features
+
+**2. Data Provider Abstraction Layer**:
+- `BaseDataProviderFactory` creates mode-specific data providers
+- Standardized data structure returned by all providers
+- Data requirements validation ensures completeness
+- Mode-specific data acquisition with unified interface
+
+**3. Component Factory Patterns**:
+- `StrategyFactory` creates mode-specific strategy instances
+- `ExecutionInterfaceFactory` creates venue-specific execution interfaces
+- `ComponentFactory` creates config-driven component instances
+- Dependency injection with proper component references
+
+**4. Configuration Validation**:
+- Required fields validation at startup
+- Data requirements validation against provider capabilities
+- Component configuration validation for completeness
+- Cross-reference validation for data types and assets
+
+**5. Factory-Based Initialization**:
+```python
+# DataProvider Factory
+data_provider = DataProviderFactory.create(execution_mode, config)
+
+# Component Factory
+components = ComponentFactory.create_all(config, data_provider)
+
+# Strategy Factory
+strategy = StrategyFactory.create_strategy(mode, config, dependencies)
+
+# Execution Interface Factory
+interfaces = ExecutionInterfaceFactory.create_all_interfaces(config, data_provider)
+```
+
+**6. Config-Driven Workflow**:
+- Components check for data availability before processing
+- Graceful degradation when data is missing
+- No mode-specific if statements in component logic
+- Configuration drives all component behavior
+
+**7. Benefits of Config-Driven Architecture**:
+- **True Mode-Agnostic Components**: No hardcoded mode logic
+- **Explicit Data Requirements**: Each mode declares what it needs
+- **Configurable Behavior**: Component behavior is configurable per mode
+- **Validation and Safety**: Config validation ensures completeness
+- **Maintainability**: Clear separation between data requirements and component behavior
+
+### **Example: Config-Driven Risk Monitor Behavior**
+
+The Risk Monitor demonstrates perfect mode-agnostic behavior:
+
+```python
+# Pure Lending Mode Config
+component_config:
+  risk_monitor:
+    enabled_risk_types: []  # No liquidation risk
+
+# Risk Monitor calculates ZERO risk types (graceful)
+risk_metrics = {}  # Empty - no risks enabled
+
+# USDT Market Neutral Mode Config
+component_config:
+  risk_monitor:
+    enabled_risk_types: ["ltv_risk", "liquidation_risk", "cex_margin_ratio", "delta_risk"]
+
+# Risk Monitor calculates ALL 4 risk types
+risk_metrics = {
+    'ltv_risk': {...},
+    'liquidation_risk': {...},
+    'cex_margin_ratio': {...},
+    'delta_risk': {...}
+}
+```
+
+**Same component code** - different behavior based on config! This is the power of config-driven architecture.
+
+See [REFERENCE_ARCHITECTURE_CANONICAL.md](REFERENCE_ARCHITECTURE_CANONICAL.md) for complete patterns.
 
 ### **Workflow Trigger Types**
 
@@ -1301,7 +1432,7 @@ graph TD
 
 ### **Code References**
 - **Config Loading**: `backend/src/basis_strategy_v1/infrastructure/config/settings.py:get_settings()`
-- **Environment Detection**: `backend/src/basis_strategy_v1/infrastructure/config/settings.py:detect_strategy_mode()`
+- **Environment Detection**: `backend/src/basis_strategy_v1/infrastructure/config/settings.py:detect_mode()`
 - **Validation**: `backend/src/basis_strategy_v1/infrastructure/config/config_validator.py`
 
 ---
@@ -1967,7 +2098,7 @@ graph TD
     style L fill:#e8f5e8
 ```
 
-**Implementation Note**: All components use direct method calls for communication. No Redis pub/sub messaging is used.
+**Implementation Note**: All components are orchestrated by the Event-Driven Strategy Engine. Components communicate via stored references and return data to the engine. No Redis pub/sub messaging is used.
 
 ### **Event Structure**
 
@@ -2132,7 +2263,7 @@ graph TD
 
 ### **Code References**
 - **Strategy Manager**: `backend/src/basis_strategy_v1/core/strategies/components/strategy_manager.py:make_strategy_decision()`
-- **Mode Detection**: `backend/src/basis_strategy_v1/infrastructure/config/settings.py:detect_strategy_mode()`
+- **Mode Detection**: `backend/src/basis_strategy_v1/infrastructure/config/settings.py:detect_mode()`
 - **Mode Configs**: `configs/modes/*.yaml`
 
 ---
@@ -2438,7 +2569,8 @@ graph TD
    - No JSON configuration hierarchy needed
 
 2. **Remove Redis Dependencies**:
-   - All components use direct function calls for communication
+   - All components are orchestrated by the Event-Driven Strategy Engine
+   - Components communicate via stored references and return data to engine
    - No Redis pub/sub messaging needed
    - Maintain synchronous communication for both backtest and live modes
 

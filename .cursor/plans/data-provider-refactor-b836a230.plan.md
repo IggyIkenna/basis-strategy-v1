@@ -90,7 +90,7 @@ Refactor data provider to separate data source mode (csv vs db) from execution m
 - Validates date range against `BASIS_DATA_START_DATE` and `BASIS_DATA_END_DATE`
 - Loads only data required for the specific strategy mode (from `data_requirements` in config)
 - Validates loaded data covers the requested date range
-- Raises `DataProviderError` with specific error codes if validation fails
+- Raises `BaseDataProviderError` with specific error codes if validation fails
 - Update `_validate_backtest_dates()` to use provided dates instead of instance attributes
 - Keep mode-specific loading logic in `_load_data_for_mode()` but make it accept parameters
 
@@ -122,13 +122,13 @@ Refactor data provider to separate data source mode (csv vs db) from execution m
 - Validate requested date range against `BASIS_DATA_START_DATE`/`BASIS_DATA_END_DATE`
 - Create data provider on-demand with strategy mode + date range
 - Pass data provider to backtest service
-- Handle `DataProviderError` exceptions with proper error responses
+- Handle `BaseDataProviderError` exceptions with proper error responses
 
 ### Step 7: Update Health Check System
 
 **File: `backend/src/basis_strategy_v1/core/health/component_health.py`**
 
-- Update `DataProviderHealthChecker` to handle non-loaded state
+- Update `BaseDataProviderHealthChecker` to handle non-loaded state
 - Add check: "is data loaded?" → if no, report "not_ready"
 - Add check: "environment variables set?" → validate `BASIS_DATA_MODE`
 

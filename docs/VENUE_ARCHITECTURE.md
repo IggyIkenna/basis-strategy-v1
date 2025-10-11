@@ -17,7 +17,7 @@ This document defines the venue-based execution architecture for the basis-strat
 **Scope**: This document focuses specifically on venue-based execution architecture. For other architectural concerns, see:
 - **Component Architecture**: `docs/REFERENCE_ARCHITECTURE_CANONICAL.md`
 - **Strategy Manager**: `docs/specs/05_STRATEGY_MANAGER.md`
-- **Configuration Management**: `docs/specs/CONFIGURATION.md`
+- **Configuration Management**: `docs/specs/19_CONFIGURATION.md`
 - **Quality Gates**: `docs/QUALITY_GATES.md`
 
 ## Core Architecture Principles
@@ -208,10 +208,21 @@ class BaseExecutionInterface(ABC):
     async def _trigger_tight_loop(self, instruction: Dict, result: Dict):
         """Trigger tight loop: execution → position_monitor → reconciliation."""
         # Update position monitor
-        await self.position_monitor.update(result)
+        # ❌ INCORRECT:
+        # await self.position_monitor.update_state()(result)
+        
+        # ✅ CORRECT:
+        self.position_monitor.update_state(
+            timestamp=timestamp,
+            trigger_source='execution_manager',
+            execution_deltas=result
+        )
+        
         # Verify reconciliation
         await self._verify_reconciliation(instruction, result)
 ```
+
+**Note**: The `update_state()` method signature is standardized across all components per Reference-Based Architecture pattern. See [01_POSITION_MONITOR.md](specs/01_POSITION_MONITOR.md) for complete interface specification.
 
 ### CEX Execution Interface
 **File**: `backend/src/basis_strategy_v1/core/interfaces/cex_execution_interface.py`
@@ -493,7 +504,7 @@ class ExecutionInterfaceFactory:
 **Reference**: For implementation details, see:
 - **Strategy Manager Architecture**: `docs/specs/05_STRATEGY_MANAGER.md` - Strategy manager refactor and inheritance-based modes
 - **Execution Manager**: `docs/specs/06_EXECUTION_MANAGER.md` - Centralized execution manager for venue routing
-- **Configuration Management**: `docs/specs/CONFIGURATION.md` - Environment variable integration and venue configuration
+- **Configuration Management**: `docs/specs/19_CONFIGURATION.md` - Environment variable integration and venue configuration
 - **Architectural Decisions**: `docs/REFERENCE_ARCHITECTURE_CANONICAL.md` - Generic vs mode-specific architecture and component design
 
 ### Current Implementation Gaps
@@ -545,7 +556,7 @@ class ExecutionInterfaceFactory:
 - **Strategy Manager Refactor**: `docs/specs/05_STRATEGY_MANAGER.md` - Inheritance-based strategy modes and transfer manager removal
 - **Generic vs Mode-Specific Architecture**: `docs/REFERENCE_ARCHITECTURE_CANONICAL.md` - Component architecture and mode-agnostic design
 - **Execution Manager Implementation**: `docs/specs/06_EXECUTION_MANAGER.md` - Venue-based instruction routing
-- **Configuration Management**: `docs/specs/CONFIGURATION.md` - Environment variable integration and venue configuration
+- **Configuration Management**: `docs/specs/19_CONFIGURATION.md` - Environment variable integration and venue configuration
 - **Quality Gate Implementation**: `docs/QUALITY_GATES.md` - Venue-specific quality checks and validation
 - **Dust Management System**: `docs/specs/05_STRATEGY_MANAGER.md` - Dust detection and conversion
 - **Reserve Management System**: `docs/specs/05_STRATEGY_MANAGER.md` - Reserve monitoring and withdrawal handling
@@ -555,7 +566,7 @@ class ExecutionInterfaceFactory:
 **For detailed codebase analysis, see**:
 - **Strategy Manager Analysis**: `docs/specs/05_STRATEGY_MANAGER.md` - Current implementation gaps and refactor requirements
 - **Component Architecture Analysis**: `docs/REFERENCE_ARCHITECTURE_CANONICAL.md` - Generic vs mode-specific architecture violations
-- **Environment Integration Analysis**: `docs/specs/CONFIGURATION.md` - Environment variable integration gaps
+- **Environment Integration Analysis**: `docs/specs/19_CONFIGURATION.md` - Environment variable integration gaps
 - **Execution Manager Analysis**: `docs/specs/06_EXECUTION_MANAGER.md` - Missing execution manager and venue routing
 - **Quality Gate Analysis**: `docs/QUALITY_GATES.md` - Venue-specific quality gate requirements
 

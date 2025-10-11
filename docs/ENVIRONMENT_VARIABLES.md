@@ -209,6 +209,9 @@ Each strategy mode has specific venue requirements based on its configuration:
 | `BASIS_LOG_LEVEL` | Logging verbosity | All components | Debug vs production logging |
 | `BASIS_EXECUTION_MODE` | Execution mode | All components | Controls venue execution behavior (backtest vs live) |
 | `BASIS_DATA_START_DATE` | Data start date | Data Provider | Historical data range start |
+| `BASIS_CONFIG__VALIDATION_STRICT` | Strict config validation | Configuration | Enable fail-fast config validation per ADR-040 |
+| `BASIS_CONFIG__CACHE_SIZE` | Config cache size | Configuration | Maximum config entries to cache |
+| `BASIS_CONFIG__RELOAD_INTERVAL` | Config reload interval (seconds) | Configuration | How often to check for config changes |
 | `BASIS_DATA_END_DATE` | Data end date | Data Provider | Historical data range end |
 
 **Critical**: These variables MUST be set in override files - no defaults in `env.unified`.
@@ -217,6 +220,25 @@ Each strategy mode has specific venue requirements based on its configuration:
 - **`./platform.sh start`** and **`./platform.sh backend`**: Use `BASIS_EXECUTION_MODE` from environment files
 - **`./platform.sh backtest`**: **Always forces backtest mode** regardless of env file setting
 - **Default env files**: `dev` and `staging` = backtest, `production` = live
+
+**Configuration System Variables**:
+- **`BASIS_CONFIG__VALIDATION_STRICT`**: Enable strict configuration validation (default: true)
+  - **Usage**: Controls fail-fast behavior per ADR-040
+  - **Values**: true | false
+  - **Recommended**: true (catch configuration errors early)
+  - **Impact**: When true, missing config keys raise KeyError instead of returning defaults
+
+- **`BASIS_CONFIG__CACHE_SIZE`**: Configuration cache size (default: 1000)
+  - **Usage**: Limits memory usage for cached config slices
+  - **Values**: Integer > 0
+  - **Recommended**: 1000
+  - **Impact**: Higher values = more memory, faster repeated config access
+
+- **`BASIS_CONFIG__RELOAD_INTERVAL`**: Config reload interval in seconds (default: 300)
+  - **Usage**: How often system checks for config file changes
+  - **Values**: Integer >= 60
+  - **Recommended**: 300 (5 minutes)
+  - **Impact**: Lower values = more frequent checks, higher I/O overhead
 
 ### **2. Frontend Deployment Configuration (OPTIONAL if running backend only)**
 
@@ -336,6 +358,26 @@ Each strategy mode has specific venue requirements based on its configuration:
 - **Restart Behavior**: Restarts all services (backend + frontend) for both backtest and live modes
 - **Retry Logic**: Up to 3 restart attempts with exponential backoff before giving up
 - **Default Values**: `HEALTH_CHECK_INTERVAL=30s`, `HEALTH_CHECK_ENDPOINT=/health`
+
+---
+
+### **9. Component-Specific Configuration**
+| Variable | Usage | Component | Purpose |
+|----------|-------|-----------|---------|
+| `DATA_LOAD_TIMEOUT` | Data loading timeout (seconds) | Data Provider | Max time for data loading (default: 300) |
+| `DATA_VALIDATION_STRICT` | Strict validation mode | Data Provider | Enable strict data validation (default: true) |
+| `DATA_CACHE_SIZE` | Cache size (MB) | Data Provider | Data cache memory limit (default: 1000) |
+| `STRATEGY_MANAGER_TIMEOUT` | Action timeout (seconds) | Strategy Manager | Max time for strategy actions (default: 30) |
+| `STRATEGY_MANAGER_MAX_RETRIES` | Max retry attempts | Strategy Manager | Retry limit for failed actions (default: 3) |
+| `STRATEGY_FACTORY_TIMEOUT` | Creation timeout (seconds) | Strategy Factory | Max time for strategy creation (default: 30) |
+| `STRATEGY_FACTORY_MAX_RETRIES` | Max retry attempts | Strategy Factory | Retry limit for factory operations (default: 3) |
+
+**Component-Specific Behavior**:
+- **Data Provider**: Controls data loading performance and validation strictness
+- **Strategy Manager**: Controls action execution timeouts and retry behavior
+- **Strategy Factory**: Controls strategy creation timeouts and retry behavior
+
+**Default Values**: All component-specific variables have sensible defaults and are optional for basic operation.
 
 ---
 
@@ -623,7 +665,7 @@ BASIS_TESTNET__ENABLED=false
 
 This consolidated guide provides complete visibility into environment variables usage, redundancy analysis, and best practices.
 
-**For configuration workflow**: See [specs/CONFIGURATION.md](specs/CONFIGURATION.md)  
+**For configuration workflow**: See [specs/19_CONFIGURATION.md](specs/19_CONFIGURATION.md)  
 **For deployment setup**: See [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md)
 
 *Last Updated: October 3, 2025*

@@ -114,11 +114,11 @@ clients:
 
 ### Validation Script
 ```python
-def validate_live_trading_clients(strategy_mode: str, environment: str):
+def validate_live_trading_clients(mode: str, environment: str):
     """Validate all required clients for live trading mode."""
     
     # 1. Load client requirements from config
-    client_requirements = load_client_requirements(strategy_mode)
+    client_requirements = load_client_requirements(mode)
     
     # 2. Load environment configuration
     env_config = load_environment_config(environment)

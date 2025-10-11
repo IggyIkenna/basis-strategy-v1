@@ -177,13 +177,49 @@ class ComprehensiveConfigValidator:
                     config = yaml.safe_load(f)
                 
                 # Validate required fields
-                required_fields = ['mode', 'description', 'share_class', 'data_requirements']
+                required_fields = ['mode', 'share_class', 'data_requirements', 'position_deviation_threshold', 'enable_market_impact', 'time_throttle_interval']
                 missing_fields = [field for field in required_fields if field not in config]
                 
                 # Validate data requirements
                 data_requirements = config.get('data_requirements', [])
                 if not isinstance(data_requirements, list) or len(data_requirements) == 0:
                     missing_fields.append('data_requirements (empty or not list)')
+                
+                # Validate component_config sections
+                component_config = config.get('component_config', {})
+                required_components = ['risk_monitor', 'exposure_monitor', 'pnl_calculator', 'strategy_manager', 'execution_manager', 'results_store', 'strategy_factory']
+                component_config_status = {component: component in component_config for component in required_components}
+                
+                # Check strategy_manager config
+                strategy_manager_config = component_config.get('strategy_manager', {})
+                strategy_manager_fields = ['strategy_type', 'actions', 'rebalancing_triggers', 'position_calculation']
+                strategy_manager_missing = [field for field in strategy_manager_fields if field not in strategy_manager_config]
+                
+                # Check strategy_factory config
+                strategy_factory_config = component_config.get('strategy_factory', {})
+                strategy_factory_fields = ['timeout', 'max_retries', 'validation_strict']
+                strategy_factory_missing = [field for field in strategy_factory_fields if field not in strategy_factory_config]
+                
+                # Check other component configs
+                risk_monitor_config = component_config.get('risk_monitor', {})
+                risk_monitor_fields = ['enabled_risk_types', 'risk_limits']
+                risk_monitor_missing = [field for field in risk_monitor_fields if field not in risk_monitor_config]
+                
+                exposure_monitor_config = component_config.get('exposure_monitor', {})
+                exposure_monitor_fields = ['exposure_currency', 'track_assets', 'conversion_methods']
+                exposure_monitor_missing = [field for field in exposure_monitor_fields if field not in exposure_monitor_config]
+                
+                pnl_calculator_config = component_config.get('pnl_calculator', {})
+                pnl_calculator_fields = ['attribution_types', 'reporting_currency', 'reconciliation_tolerance']
+                pnl_calculator_missing = [field for field in pnl_calculator_fields if field not in pnl_calculator_config]
+                
+                execution_manager_config = component_config.get('execution_manager', {})
+                execution_manager_fields = ['supported_actions', 'action_mapping']
+                execution_manager_missing = [field for field in execution_manager_fields if field not in execution_manager_config]
+                
+                results_store_config = component_config.get('results_store', {})
+                results_store_fields = ['result_types', 'balance_sheet_assets', 'pnl_attribution_types']
+                results_store_missing = [field for field in results_store_fields if field not in results_store_config]
                 
                 self.results['mode_configs'][config_file] = {
                     'status': 'success',
@@ -194,7 +230,18 @@ class ComprehensiveConfigValidator:
                     'mode': config.get('mode'),
                     'share_class': config.get('share_class'),
                     'data_requirements_count': len(data_requirements),
-                    'data_requirements': data_requirements
+                    'data_requirements': data_requirements,
+                    'component_config': {
+                        'present': 'component_config' in config,
+                        'components_present': component_config_status,
+                        'strategy_manager_missing_fields': strategy_manager_missing,
+                        'strategy_factory_missing_fields': strategy_factory_missing,
+                        'risk_monitor_missing_fields': risk_monitor_missing,
+                        'exposure_monitor_missing_fields': exposure_monitor_missing,
+                        'pnl_calculator_missing_fields': pnl_calculator_missing,
+                        'execution_manager_missing_fields': execution_manager_missing,
+                        'results_store_missing_fields': results_store_missing
+                    }
                 }
                 
                 if missing_fields:
@@ -351,6 +398,14 @@ class ComprehensiveConfigValidator:
                     'BASIS_ENVIRONMENT',
                     'BASIS_EXECUTION_MODE',
                     'BASIS_API__PORT',
+                    # Component-specific environment variables
+                    'DATA_LOAD_TIMEOUT',
+                    'DATA_VALIDATION_STRICT',
+                    'DATA_CACHE_SIZE',
+                    'STRATEGY_MANAGER_TIMEOUT',
+                    'STRATEGY_MANAGER_MAX_RETRIES',
+                    'STRATEGY_FACTORY_TIMEOUT',
+                    'STRATEGY_FACTORY_MAX_RETRIES',
                     # Redis removed - using in-memory cache only
                 ]
                 

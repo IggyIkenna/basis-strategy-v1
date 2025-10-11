@@ -31,6 +31,13 @@ class ExposureMonitor:
         self.data_provider = data_provider
         self.utility_manager = utility_manager
         
+        # Load component-specific configuration
+        component_config = config.get('component_config', {})
+        exposure_monitor_config = component_config.get('exposure_monitor', {})
+        self.exposure_currency = exposure_monitor_config.get('exposure_currency', 'USDT')
+        self.track_assets = exposure_monitor_config.get('track_assets', [])
+        self.conversion_methods = exposure_monitor_config.get('conversion_methods', {})
+        
         # Exposure tracking
         self.last_exposures = None
         

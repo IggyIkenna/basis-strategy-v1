@@ -327,7 +327,72 @@ class PositionMonitor:
 
 ---
 
-## II. Architectural Principles
+## II. Config-Driven Mode-Agnostic Architecture
+
+### Core Principle
+Components are mode-agnostic and use configuration to determine behavior rather than hardcoded mode-specific logic.
+
+### Component Categories
+
+**Mode-Agnostic Components** (use component_config):
+- Position Monitor (tracks all positions)
+- Exposure Monitor (config-driven asset tracking)
+- Risk Monitor (config-driven risk types)
+- P&L Calculator (config-driven attribution)
+- Reconciliation Component (always the same)
+- Execution Interface Manager (venue routing)
+- Event Logger (logging is universal)
+- Results Store (config-driven result types)
+
+**Mode-Specific Components** (naturally strategy-specific):
+- Strategy Manager (inherits from BaseStrategyManager, mode-specific logic)
+- Data Provider (mode-specific subscriptions via DataProviderFactory)
+
+### Configuration Structure
+
+Each mode YAML contains:
+- `data_requirements`: List of data types needed
+- `component_config`: Dict of component behavior configs
+  - `risk_monitor`: enabled_risk_types, risk_limits
+  - `exposure_monitor`: track_assets, conversion_methods
+  - `pnl_calculator`: attribution_types, reporting_currency
+  - `strategy_manager`: strategy_type, actions, rebalancing_triggers
+  - `execution_manager`: supported_actions, action_mapping
+  - `results_store`: result_types, tracking configs
+
+### Implementation Pattern
+
+```python
+class ModeAgnosticComponent:
+    def __init__(self, config: Dict, data_provider, execution_mode: str, **refs):
+        # Extract component-specific config
+        self.component_config = config.get('component_config', {}).get('component_name', {})
+        self.config_param = self.component_config.get('param', [])
+        
+        # Validate config
+        self._validate_config()
+    
+    def process(self, data: Dict) -> Dict:
+        results = {}
+        
+        # Process only configured items (no mode checks!)
+        for item in self.config_param:
+            if self._data_available(item, data):
+                results[item] = self._calculate(item, data)
+            else:
+                results[item] = None  # Graceful handling
+        
+        return results
+```
+
+**References**:
+- Implementation: CODE_STRUCTURE_PATTERNS.md sections 2-4
+- Config schemas: 19_CONFIGURATION.md
+- ADRs: ADR-052, ADR-053, ADR-054, ADR-055
+
+---
+
+## III. Architectural Principles
 
 ### 1. No Hardcoded Values
 **CRITICAL RULE**: NEVER use hardcoded values to fix issues. Always use proper data flow and component integration.
@@ -455,8 +520,8 @@ execution_manager → execution_interface_manager → position_update_handler �
 - **No health history tracking** (performance optimized)
 - **200+ error codes preserved** across all components
 
-### 7. Generic vs Mode-Specific Architecture
-**CRITICAL DISTINCTION**: Components should be generic and mode-agnostic, but care about specific config parameters rather than strategy mode.
+### 7. Config-Driven Mode-Agnostic Architecture
+**CRITICAL DISTINCTION**: Components should be generic and mode-agnostic, using configuration parameters to drive behavior instead of mode-specific logic.
 
 **Generic Components**:
 - Position Monitor: Generic monitoring tool
@@ -465,12 +530,72 @@ execution_manager → execution_interface_manager → position_update_handler �
 - Risk Monitor: Generic risk assessment
 - Utility Manager: Generic utility methods
 
+**Config-Driven Component Behavior**:
+- Components use configuration parameters instead of mode-specific if statements
+- Each mode specifies which data types, risk types, and attribution types to use
+- Components gracefully handle missing data by returning zeros or skipping calculations
+- No hardcoded mode logic in component implementations
+
 **P&L Monitor Must Be Mode-Agnostic**:
 - Single logic for both backtest and live modes
 - No mode-specific if statements in P&L calculations
 - Universal balance calculation across all venues (wallets, smart contracts, CEX spot, CEX derivatives)
 - Generic P&L attribution system: all attribution types calculated uniformly across modes
 - Unused attributions return 0 P&L (no mode-specific logic)
+- Attribution types specified in config: `attribution_types: ["supply_yield", "funding_pnl", "delta_pnl", "transaction_costs"]`
+
+**Exposure Monitor Must Be Mode-Agnostic**:
+- Generic exposure calculation using config-driven asset tracking
+- Track assets specified in config: `track_assets: ["BTC", "USDT", "ETH"]`
+- Conversion methods specified in config: `conversion_methods: {"BTC": "usd_price", "USDT": "direct"}`
+- No mode-specific asset handling logic
+
+**Risk Monitor Must Be Mode-Agnostic**:
+- Generic risk assessment using config-driven risk types
+- Risk types specified in config: `enabled_risk_types: ["aave_health_factor", "cex_margin_ratio", "funding_risk"]`
+- Risk limits specified in config: `risk_limits: {"aave_health_factor_min": 1.1, "cex_margin_ratio_min": 0.2}`
+- No mode-specific risk calculation logic
+
+**Data Provider Abstraction Layer**:
+- Base DataProvider class with standardized interface
+- Mode-specific data providers inherit from base class
+- Standardized data structure returned to all components
+- Data requirements specified in config: `data_requirements: ["btc_spot_prices", "btc_futures_prices", "btc_funding_rates"]`
+
+**DataProvider Factory Pattern**:
+```python
+class DataProviderFactory:
+    @staticmethod
+    def create(execution_mode: str, config: Dict) -> DataProvider:
+        mode = config['mode']
+        data_requirements = config.get('data_requirements', [])
+        
+        # Create mode-specific data provider
+        if mode == 'pure_lending':
+            provider = PureLendingDataProvider(execution_mode, config)
+        elif mode == 'btc_basis':
+            provider = BTCBasisDataProvider(execution_mode, config)
+        # ... etc
+        
+        # Validate that provider can satisfy data requirements
+        provider.validate_data_requirements(data_requirements)
+        return provider
+```
+
+**Standardized Data Structure**:
+```python
+def get_data(self, timestamp: pd.Timestamp) -> Dict[str, Any]:
+    return {
+        'market_data': {
+            'prices': {'BTC': 45000.0, 'ETH': 3000.0, 'USDT': 1.0},
+            'rates': {'funding_binance_btc': 0.0001, 'aave_usdt_supply': 0.05}
+        },
+        'protocol_data': {
+            'aave_indexes': {'aUSDT': 1.05, 'aETH': 1.02},
+            'oracle_prices': {'weETH': 1.0256, 'wstETH': 1.0150}
+        }
+    }
+```
 
 **Centralized Utility Methods**:
 - Liquidity index, market prices, conversions must be centralized
@@ -597,7 +722,7 @@ execution_manager → execution_interface_manager → position_update_handler �
 
 ---
 
-## III. Key Architectural Decisions Summary
+## IV. Key Architectural Decisions Summary
 
 ### Core ADRs (ADR-001 through ADR-009)
 
@@ -796,7 +921,7 @@ def update_state(self, timestamp: pd.Timestamp, trigger_source: str):
 - **Data Provider**: [specs/09_DATA_PROVIDER.md](specs/09_DATA_PROVIDER.md)
 - **Position Update Handler**: [specs/11_POSITION_UPDATE_HANDLER.md](specs/11_POSITION_UPDATE_HANDLER.md)
 - **Reconciliation Component**: [specs/10_RECONCILIATION_COMPONENT.md](specs/10_RECONCILIATION_COMPONENT.md)
-- **Configuration**: [specs/CONFIGURATION.md](specs/CONFIGURATION.md)
+- **Configuration**: [specs/19_CONFIGURATION.md](specs/19_CONFIGURATION.md)
 - **Health Error Systems**: [specs/17_HEALTH_ERROR_SYSTEMS.md](specs/17_HEALTH_ERROR_SYSTEMS.md)
 
 ### Workflow and Pattern Documentation

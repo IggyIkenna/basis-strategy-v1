@@ -513,7 +513,7 @@ class ExampleComponent:
 3. Add `position_deviation_threshold` slider if advanced mode shown
 4. Simplify execution mode documentation
 
-### 16.4 docs/specs/CONFIGURATION.md Updates
+### 16.4 docs/specs/19_CONFIGURATION.md Updates
 
 **Changes**:
 
@@ -599,7 +599,7 @@ Execute phases in sequence to maintain consistency between config → models →
 - [ ] Update reserve management in MODES.md to reference position_deviation_threshold
 - [ ] Remove use_flash_loan references and add state logging to docs/specs/05_STRATEGY_MANAGER.md
 - [ ] Remove use_flash_loan and unwind_mode UI elements from docs/specs/12_FRONTEND_SPEC.md
-- [ ] Update docs/specs/CONFIGURATION.md with removed parameters and new position_deviation_threshold
+- [ ] Update docs/specs/19_CONFIGURATION.md with removed parameters and new position_deviation_threshold
 - [ ] Update .cursor/tasks/19_venue_based_execution_architecture.md to remove flash loan toggle references
 - [ ] Add validation for basis_trade_enabled error, position_deviation_threshold range, and deprecated params in config_validator.py
 - [ ] Search and verify all use_flash_loan and unwind_mode references removed from documentation

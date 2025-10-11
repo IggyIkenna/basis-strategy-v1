@@ -80,7 +80,7 @@ def test_strategy_manager():
             print(f"✅ Strategy manager initialized for {mode}")
             
             # Test mode detection
-            detected_mode = manager.detect_strategy_mode()
+            detected_mode = manager.detect_mode()
             print(f"✅ Mode detection: {detected_mode}")
             assert detected_mode == mode, f"Mode detection failed: expected {mode}, got {detected_mode}"
             

@@ -1,12 +1,18 @@
-# Task 28: Live Trading UI Implementation
+# LIVE TRADING UI IMPLEMENTATION
+
+## OVERVIEW
+This task implements the live trading UI components per frontend specifications. The UI provides comprehensive live trading controls, real-time monitoring, and capital management functionality.
+
+**Reference**: `docs/specs/12_FRONTEND_SPEC.md` - Frontend specification (live trading section)  
+**Reference**: `docs/REFERENCE_ARCHITECTURE_CANONICAL.md` - Section VII (Frontend Component Architecture)  
+**Reference**: `docs/API_DOCUMENTATION.md` - Backend API integration  
+**Reference**: `docs/USER_GUIDE.md` - User interface requirements  
+**Reference**: `docs/IMPLEMENTATION_GAP_REPORT.md` - Component gap analysis
 
 **Priority**: HIGH  
 **Estimated Time**: 6-8 hours  
 **Dependencies**: Task 27 (Authentication System)  
 **Day**: 6 (Frontend & Live Mode Completion)
-
-## Overview
-Implement the live trading UI components for starting/stopping live trading, monitoring status, and managing capital deposits/withdrawals.
 
 ## Requirements
 

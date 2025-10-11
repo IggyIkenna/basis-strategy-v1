@@ -51,3 +51,55 @@ data_requirements:
 time_throttle_interval: 60
 
 # REMOVED: capital_allocation - not needed in config, calculated at runtime
+
+# Component configuration
+component_config:
+  risk_monitor:
+    enabled_risk_types: ["ltv_risk", "liquidation_risk"]
+    risk_limits:
+      target_ltv: 0.9094  # Target LTV = max_ltv * (1 - max_stake_spread_move)
+      liquidation_threshold: 0.95
+  
+  exposure_monitor:
+    exposure_currency: "ETH"
+    track_assets: ["ETH", "weETH", "aWeETH", "variableDebtWETH", "EIGEN", "KING"]
+    conversion_methods:
+      ETH: "direct"
+      weETH: "oracle_price"
+      aWeETH: "aave_index"
+      variableDebtWETH: "aave_index"
+      EIGEN: "usd_price"
+      KING: "unwrap"
+  
+  pnl_calculator:
+    attribution_types: ["supply_yield", "staking_yield_oracle", "staking_yield_rewards", "borrow_costs", "transaction_costs"]
+    reporting_currency: "ETH"
+    reconciliation_tolerance: 0.02
+  
+  strategy_manager:
+    strategy_type: "eth_leveraged"
+    actions: ["entry_full", "entry_partial", "exit_partial", "exit_full", "sell_dust"]
+    rebalancing_triggers: ["deposit", "withdrawal", "ltv_drift"]
+    position_calculation:
+      target_position: "leveraged_eth_staking"
+      leverage_ratio: 0.9
+      lst_type: "weeth"
+  
+  execution_manager:
+    supported_actions: ["etherfi_stake", "etherfi_unstake", "aave_supply", "aave_borrow", "aave_repay", "sell_dust"]
+    action_mapping:
+      entry_full: ["etherfi_stake", "aave_supply", "aave_borrow"]
+      exit_full: ["aave_repay", "etherfi_unstake"]
+      sell_dust: ["sell_dust"]
+  
+  results_store:
+    result_types: ["balance_sheet", "pnl_attribution", "risk_metrics", "execution_log", "leverage_tracking", "dust_tracking"]
+    balance_sheet_assets: ["ETH", "weETH", "aWeETH", "variableDebtWETH", "EIGEN", "KING"]
+    pnl_attribution_types: ["supply_yield", "staking_yield_oracle", "staking_yield_rewards", "borrow_costs", "transaction_costs"]
+    leverage_tracking: true
+    dust_tracking_tokens: ["EIGEN", "ETHFI", "KING"]
+  
+  strategy_factory:
+    timeout: 30
+    max_retries: 3
+    validation_strict: true

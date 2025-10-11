@@ -5,7 +5,7 @@
 **Updated**: October 10, 2025 - Component spec standardization complete  
 **Last Reviewed**: October 10, 2025  
 **Status**: ✅ Aligned with canonical architectural principles  
-**Component Specs**: ✅ **18-SECTION FORMAT COMPLETE** - All 20 component specs updated to standardized format
+**Component Specs**: ✅ **19-SECTION FORMAT COMPLETE** - All 22 component specs updated to standardized format
 
 ---
 
@@ -16,6 +16,8 @@
 - **Strategy Specifications**: [MODES.md](MODES.md) - Canonical strategy mode definitions
 - **Design Decisions**: [REFERENCE_ARCHITECTURE_CANONICAL.md](REFERENCE_ARCHITECTURE_CANONICAL.md) - Core design decisions
 - **Component Specifications**: [specs/](specs/) - Detailed component implementation guides
+- **Component Spec Template**: [COMPONENT_SPEC_TEMPLATE.md](COMPONENT_SPEC_TEMPLATE.md) - 19-section standardized format
+- **Canonical Examples**: [02_EXPOSURE_MONITOR.md](specs/02_EXPOSURE_MONITOR.md), [03_RISK_MONITOR.md](specs/03_RISK_MONITOR.md)
 - **Target Repository Structure**: [TARGET_REPOSITORY_STRUCTURE.md](TARGET_REPOSITORY_STRUCTURE.md) - Reference for agents completing cursor tasks
 - **Agent Quick Reference**: [AGENT_QUICK_REFERENCE.md](AGENT_QUICK_REFERENCE.md) - Quick reference card for agents
 
@@ -178,7 +180,7 @@ export BASIS_ENVIRONMENT=staging
 - Integration plan → [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md) <!-- Redirected from REPO_INTEGRATION_PLAN.md - integration is deployment -->
 
 **For Configuration**:
-- Config workflow & validation → [specs/CONFIGURATION.md](specs/CONFIGURATION.md)
+- Config workflow & validation → [specs/19_CONFIGURATION.md](specs/19_CONFIGURATION.md)
 - Environment variables → [ENVIRONMENT_VARIABLES.md](ENVIRONMENT_VARIABLES.md)
 - Config reference → [API_DOCUMENTATION.md](API_DOCUMENTATION.md) <!-- Redirected from REFERENCE.md - reference documentation is API docs --> (Config section)
 
@@ -237,7 +239,7 @@ For complete details, see individual component specs:
 
 **Reference**:
 - [API_DOCUMENTATION.md](API_DOCUMENTATION.md) <!-- Redirected from REFERENCE.md - reference documentation is API docs --> - API, events, config, data structures
-- [specs/CONFIGURATION.md](specs/CONFIGURATION.md) - Configuration guide
+- [specs/19_CONFIGURATION.md](specs/19_CONFIGURATION.md) - Configuration guide
 
 **User Documentation**:
 - [GETTING_STARTED.md](GETTING_STARTED.md) <!-- Redirected from QUICK_START.md - quick start is part of getting started guide -->, [USER_GUIDE.md](USER_GUIDE.md)

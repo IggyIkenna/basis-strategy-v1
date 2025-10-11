@@ -31,7 +31,7 @@ async def test_live_data_connections_for_mode(mode: str):
             data_dir=cm.get_data_directory(),
             startup_mode='live',
             config=mode_config,
-            strategy_mode=mode
+            mode=mode
         )
         
         print(f"  📊 Data requirements: {dp_live.data_requirements}")

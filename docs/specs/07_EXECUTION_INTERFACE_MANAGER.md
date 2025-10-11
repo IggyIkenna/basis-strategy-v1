@@ -25,12 +25,17 @@ Routes 3 types of instructions (wallet_transfer, smart_contract_action, cex_trad
 ## Component References (Set at Init)
 The following are set once during initialization and NEVER passed as runtime parameters:
 
-- cex_execution_interfaces: Dict[str, CEXExecutionInterface] (keyed by venue: 'binance', 'hyperliquid')
+- cex_execution_interfaces: Dict[str, CEXExecutionInterface] (keyed by venue: 'binance', 'bybit', 'okx')
 - dex_execution_interfaces: Dict[str, DEXExecutionInterface] (keyed by venue: 'uniswap', 'curve')
-- onchain_execution_interfaces: Dict[str, OnChainExecutionInterface] (keyed by protocol: 'aave', 'morpho')
-- data_provider: DataProvider (reference, uses shared clock for pricing)
+- onchain_execution_interfaces: Dict[str, OnChainExecutionInterface] (keyed by protocol: 'aave', 'morpho', 'alchemy')
+- data_provider: BaseDataProvider (reference, uses shared clock for pricing)
 - config: Dict (reference, venue-specific settings)
 - execution_mode: str (BASIS_EXECUTION_MODE)
+
+**Credential Management**:
+- All execution interfaces receive environment-specific credentials during initialization
+- Credentials are validated before interface creation
+- Environment-specific routing based on `BASIS_ENVIRONMENT`
 
 These references are stored in __init__ and used throughout component lifecycle.
 Components NEVER receive these as method parameters during runtime.
@@ -61,6 +66,92 @@ Components NEVER receive these as method parameters during runtime.
 ### Component-Specific Variables
 None
 
+## Venue Credential Management
+
+### Credential Routing to Execution Interfaces
+
+The Execution Interface Manager coordinates venue credential management by ensuring that all execution interfaces receive the appropriate environment-specific credentials based on `BASIS_ENVIRONMENT`.
+
+**Credential Management Implementation**:
+```python
+def _initialize_venue_credentials(self) -> None:
+    """Initialize environment-specific credentials for all venues."""
+    environment = os.getenv('BASIS_ENVIRONMENT', 'dev')
+    credential_prefix = f"BASIS_{environment.upper()}__"
+    
+    # Validate that all required credentials are available
+    self._validate_all_venue_credentials()
+    
+    # Store credential prefix for interface initialization
+    self.credential_prefix = credential_prefix
+    self.environment = environment
+
+def _validate_all_venue_credentials(self) -> None:
+    """Validate that all required venue credentials are available."""
+    required_venues = self.config.get('venue_settings', {}).keys()
+    
+    for venue in required_venues:
+        credentials = self._get_venue_credentials(venue)
+        self._validate_credentials(credentials, venue)
+
+def _get_venue_credentials(self, venue: str) -> Dict:
+    """Get environment-specific credentials for venue."""
+    environment = os.getenv('BASIS_ENVIRONMENT', 'dev')
+    credential_prefix = f"BASIS_{environment.upper()}__"
+    
+    if venue == 'binance':
+        return {
+            'spot_api_key': os.getenv(f'{credential_prefix}CEX__BINANCE_SPOT_API_KEY'),
+            'spot_secret': os.getenv(f'{credential_prefix}CEX__BINANCE_SPOT_SECRET'),
+            'futures_api_key': os.getenv(f'{credential_prefix}CEX__BINANCE_FUTURES_API_KEY'),
+            'futures_secret': os.getenv(f'{credential_prefix}CEX__BINANCE_FUTURES_SECRET'),
+        }
+    elif venue == 'bybit':
+        return {
+            'api_key': os.getenv(f'{credential_prefix}CEX__BYBIT_API_KEY'),
+            'secret': os.getenv(f'{credential_prefix}CEX__BYBIT_SECRET'),
+        }
+    elif venue == 'okx':
+        return {
+            'api_key': os.getenv(f'{credential_prefix}CEX__OKX_API_KEY'),
+            'secret': os.getenv(f'{credential_prefix}CEX__OKX_SECRET'),
+            'passphrase': os.getenv(f'{credential_prefix}CEX__OKX_PASSPHRASE'),
+        }
+    elif venue == 'alchemy':
+        return {
+            'private_key': os.getenv(f'{credential_prefix}ALCHEMY__PRIVATE_KEY'),
+            'rpc_url': os.getenv(f'{credential_prefix}ALCHEMY__RPC_URL'),
+            'wallet_address': os.getenv(f'{credential_prefix}ALCHEMY__WALLET_ADDRESS'),
+            'network': os.getenv(f'{credential_prefix}ALCHEMY__NETWORK'),
+            'chain_id': os.getenv(f'{credential_prefix}ALCHEMY__CHAIN_ID'),
+        }
+    else:
+        raise ValueError(f"Unknown venue: {venue}")
+
+def _validate_credentials(self, credentials: Dict, venue: str) -> bool:
+    """Validate that required credentials are present and non-empty."""
+    for key, value in credentials.items():
+        if not value or value.startswith('your_') or value == '0x...':
+            raise ComponentError(
+                error_code='EIM-004',
+                message=f'Invalid or missing credential for {venue}: {key}',
+                component='ExecutionInterfaceManager',
+                severity='CRITICAL'
+            )
+    return True
+```
+
+### Credential Validation Requirements
+
+**Validation Requirements**:
+- All venue credentials must be validated before interface initialization
+- Environment-specific credentials must be set for the current environment
+- No placeholder values (starting with 'your_' or '0x...')
+- Credential validation occurs during manager initialization
+
+**Reference**: [VENUE_ARCHITECTURE.md](../VENUE_ARCHITECTURE.md) - Environment Variables section
+**Reference**: [ENVIRONMENT_VARIABLES.md](../ENVIRONMENT_VARIABLES.md) - Environment-Specific Credential Routing section
+
 ### Environment Variable Access Pattern
 ```python
 def __init__(self, ...):
@@ -77,20 +168,64 @@ def __init__(self, ...):
 ## Config Fields Used
 
 ### Universal Config (All Components)
-- `strategy_mode`: str - e.g., 'eth_basis', 'pure_lending'
+- `mode`: str - e.g., 'eth_basis', 'pure_lending'
 - `share_class`: str - 'usdt_stable' | 'eth_directional'
 - `initial_capital`: float - Starting capital
 
 ### Component-Specific Config
-- `venue_timeout`: int - Timeout for venue API calls
+- `component_config.execution_interface_manager.venue_timeout`: int - Timeout for venue API calls
   - **Usage**: Determines how long to wait for venue responses
   - **Default**: 15 (seconds)
   - **Validation**: Must be > 0 and < 120
 
-- `max_retries_per_venue`: int - Maximum retries per venue
+- `component_config.execution_interface_manager.max_retries_per_venue`: int - Maximum retries per venue
   - **Usage**: Determines retry behavior for venue failures
   - **Default**: 3
   - **Validation**: Must be > 0 and < 10
+
+## Config-Driven Behavior
+
+The Execution Interface Manager is **mode-agnostic** by design - it routes instructions to venue interfaces without mode-specific logic:
+
+**Component Configuration** (from `component_config.execution_interface_manager`):
+```yaml
+component_config:
+  execution_interface_manager:
+    # Execution Interface Manager is inherently mode-agnostic
+    # Routes instructions based on venue type, not strategy mode
+    # No mode-specific configuration needed
+```
+
+**Mode-Agnostic Instruction Routing**:
+- Routes instructions based on venue type (CEX, DEX, OnChain)
+- Same routing logic for all strategy modes
+- No mode-specific if statements in instruction routing
+- Venue interfaces handle mode-specific execution logic
+
+**Instruction Routing by Venue Type**:
+
+**CEX Instructions**:
+- Routes to: `binance`, `bybit`, `okx` interfaces
+- Handles: spot trades, perp trades, margin operations
+- Same routing logic regardless of strategy mode
+
+**DEX Instructions**:
+- Routes to: `uniswap`, `curve` interfaces
+- Handles: token swaps, liquidity operations
+- Same routing logic regardless of strategy mode
+
+**OnChain Instructions**:
+- Routes to: `aave`, `morpho`, `etherfi`, `lido` interfaces
+- Handles: lending, borrowing, staking, flash loans
+- Same routing logic regardless of strategy mode
+
+**Key Principle**: Execution Interface Manager is **purely routing** - it does NOT:
+- Make mode-specific decisions about which venues to use
+- Handle strategy-specific execution logic
+- Convert or transform instructions
+- Make business logic decisions
+
+All strategy-specific logic is handled by the Strategy Manager and Execution Manager. The Execution Interface Manager simply routes instructions to the appropriate venue interfaces based on the instruction type and venue specified in the instruction.
 
 ### Config Access Pattern
 ```python
@@ -320,6 +455,19 @@ raise ComponentError(
     message='Execution delta aggregation failed',
     component='ExecutionInterfaceManager',
     severity='MEDIUM'
+)
+```
+
+#### EIM-004: Invalid or Missing Venue Credentials (CRITICAL)
+**Description**: Environment-specific venue credentials are missing or invalid
+**Cause**: Missing environment variables, placeholder values, invalid credential format
+**Recovery**: Set proper environment-specific credentials, verify BASIS_ENVIRONMENT setting
+```python
+raise ComponentError(
+    error_code='EIM-004',
+    message='Invalid or missing venue credentials',
+    component='ExecutionInterfaceManager',
+    severity='CRITICAL'
 )
 ```
 
@@ -782,13 +930,16 @@ def _route_cex_trade(self, instruction: Dict):
 
 ```python
 class ExecutionInterfaceManager:
-    def __init__(self, config: Dict, data_provider: DataProvider, execution_mode: str):
+    def __init__(self, config: Dict, data_provider: BaseDataProvider, execution_mode: str):
         # Store references (NEVER modified)
         self.config = config
         self.data_provider = data_provider
         self.execution_mode = execution_mode
         
-        # Initialize venue interfaces
+        # Initialize venue credentials
+        self._initialize_venue_credentials()
+        
+        # Initialize venue interfaces with credentials
         self.cex_execution_interfaces = self._initialize_cex_interfaces()
         self.dex_execution_interfaces = self._initialize_dex_interfaces()
         self.onchain_execution_interfaces = self._initialize_onchain_interfaces()
@@ -880,38 +1031,44 @@ class ExecutionInterfaceManager:
             return interface.execute_live_transfer(instruction)
     
     def _initialize_cex_interfaces(self) -> Dict[str, CEXExecutionInterface]:
-        """Initialize CEX execution interfaces."""
+        """Initialize CEX execution interfaces with environment-specific credentials."""
         interfaces = {}
         for venue in self.config.get('venues', {}).get('cex', []):
+            credentials = self._get_venue_credentials(venue)
             interfaces[venue] = CEXExecutionInterface(
                 venue=venue,
                 config=self.config['venues']['cex'][venue],
                 data_provider=self.data_provider,
-                execution_mode=self.execution_mode
+                execution_mode=self.execution_mode,
+                credentials=credentials
             )
         return interfaces
     
     def _initialize_dex_interfaces(self) -> Dict[str, DEXExecutionInterface]:
-        """Initialize DEX execution interfaces."""
+        """Initialize DEX execution interfaces with environment-specific credentials."""
         interfaces = {}
         for venue in self.config.get('venues', {}).get('dex', []):
+            credentials = self._get_venue_credentials(venue)
             interfaces[venue] = DEXExecutionInterface(
                 venue=venue,
                 config=self.config['venues']['dex'][venue],
                 data_provider=self.data_provider,
-                execution_mode=self.execution_mode
+                execution_mode=self.execution_mode,
+                credentials=credentials
             )
         return interfaces
     
     def _initialize_onchain_interfaces(self) -> Dict[str, OnChainExecutionInterface]:
-        """Initialize OnChain execution interfaces."""
+        """Initialize OnChain execution interfaces with environment-specific credentials."""
         interfaces = {}
         for protocol in self.config.get('venues', {}).get('onchain', []):
+            credentials = self._get_venue_credentials(protocol)
             interfaces[protocol] = OnChainExecutionInterface(
                 protocol=protocol,
                 config=self.config['venues']['onchain'][protocol],
                 data_provider=self.data_provider,
-                execution_mode=self.execution_mode
+                execution_mode=self.execution_mode,
+                credentials=credentials
             )
         return interfaces
     
@@ -938,7 +1095,7 @@ class ExecutionInterfaceManager:
 
 ### **Component Integration**
 - [Execution Manager Specification](06_EXECUTION_MANAGER.md) - Provides instruction blocks for routing
-- [Execution Interfaces Specification](08A_EXECUTION_INTERFACES.md) - Defines venue execution interfaces
+- [Execution Interfaces Specification](07B_EXECUTION_INTERFACES.md) - Defines venue execution interfaces
 - [Data Provider Specification](09_DATA_PROVIDER.md) - Provides market data for execution
 - [Event Logger Specification](08_EVENT_LOGGER.md) - Logs execution routing events
 - [Position Update Handler Specification](11_POSITION_UPDATE_HANDLER.md) - Receives execution deltas

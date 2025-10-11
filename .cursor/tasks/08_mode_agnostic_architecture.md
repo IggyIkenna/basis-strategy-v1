@@ -5,8 +5,10 @@ Components must be mode-agnostic where appropriate, but strategy mode-specific w
 
 **Reference**: `docs/REFERENCE_ARCHITECTURE_CANONICAL.md` - Section 7 (Generic vs Mode-Specific)  
 **Reference**: `docs/ARCHITECTURAL_DECISION_RECORDS.md` - ADR-003, ADR-004, ADR-005  
-**Reference**: `docs/specs/02_EXPOSURE_MONITOR.md` - Generic exposure calculation  
+**Reference**: `docs/specs/02_EXPOSURE_MONITOR.md` - Generic exposure calculation (CANONICAL EXAMPLE)  
+**Reference**: `docs/specs/03_RISK_MONITOR.md` - Mode-agnostic risk calculation (CANONICAL EXAMPLE)
 **Reference**: `docs/specs/04_PNL_CALCULATOR.md` - Mode-agnostic P&L calculation
+**Reference**: `scripts/test_implementation_gap_quality_gates.py` - Implementation gap detection
 
 ## CRITICAL REQUIREMENTS
 

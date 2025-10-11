@@ -3,9 +3,10 @@
 ## OVERVIEW
 This task implements proper environment file switching with BASIS_ENVIRONMENT variable and fail-fast validation for missing environment files and required variables. This is the foundational infrastructure that enables proper deployment across dev/staging/prod environments.
 
-**Reference**: `docs/REFERENCE_ARCHITECTURE_CANONICAL.md` - Section 33 (Fail-Fast Configuration)  
-**Reference**: `docs/ARCHITECTURAL_DECISION_RECORDS.md` - ADR-040 (Fail-Fast Configuration)  
-**Reference**: `docs/ENVIRONMENT_VARIABLES.md` - Environment variable specifications
+**Reference**: `docs/REFERENCE_ARCHITECTURE_CANONICAL.md` - Section 6.1 (Infrastructure Configuration Elimination)  
+**Reference**: `docs/ENVIRONMENT_VARIABLES.md` - Environment variable specifications  
+**Reference**: `docs/IMPLEMENTATION_GAP_REPORT.md` - Component gap analysis  
+**Reference**: `env.dev`, `env.staging`, `env.prod`, `env.unified` - Environment files
 
 ## CRITICAL REQUIREMENTS
 
@@ -47,32 +48,21 @@ This task implements proper environment file switching with BASIS_ENVIRONMENT va
 
 ## REQUIRED IMPLEMENTATION
 
-### 1. Environment Configuration Loader
-```python
-# backend/src/basis_strategy_v1/infrastructure/config/environment_loader.py
-class EnvironmentLoader:
-    def __init__(self, environment: str = None):
-        self.environment = environment or os.getenv('BASIS_ENVIRONMENT', 'dev')
-        self.env_file = f"env.{self.environment}"
-        self.unified_file = "env.unified"
-    
-    def load_environment(self) -> dict:
-        # 1. Validate environment file exists
-        # 2. Load env.unified as base
-        # 3. Load environment-specific overrides
-        # 4. Validate all required variables present
-        # 5. Return validated environment dict
-```
+### 1. Environment Configuration System
+- **Environment Loader**: Implement environment file loading with fail-fast validation
+- **Variable Access**: Implement fail-fast environment variable access  
+- **Startup Integration**: Integrate environment validation into application startup
+- **Error Handling**: Implement comprehensive error handling for missing files/variables
+
+**Implementation Details**: See `docs/REFERENCE_ARCHITECTURE_CANONICAL.md` Section 6.1 for complete implementation patterns and `docs/ENVIRONMENT_VARIABLES.md` for variable specifications.
 
 ### 2. Environment File Structure
-```
-env.unified          # Base environment variables (all environments)
-env.dev              # Development overrides
-env.staging          # Staging overrides  
-env.prod             # Production overrides
-```
+- **env.unified**: Base environment variables (all environments)
+- **env.dev**: Development overrides
+- **env.staging**: Staging overrides  
+- **env.prod**: Production overrides
 
-### 3. Startup Integration
+### 3. Integration Points
 - **Backend startup**: Integrate environment loading into backend startup sequence
 - **Frontend build**: Use environment variables for frontend build process
 - **Docker integration**: Support environment file mounting in containers

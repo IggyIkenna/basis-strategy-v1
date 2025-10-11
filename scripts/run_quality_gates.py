@@ -42,11 +42,18 @@ class QualityGateValidator:
         
         # Define quality gate categories and their scripts
         self.quality_gate_categories = {
-            'docs': {
-                'description': 'Documentation Validation',
+            'docs_validation': {
+                'description': 'Documentation Structure & Implementation Gap Validation',
                 'scripts': [
-                    'test_docs_link_validation_quality_gates.py',
-                    'test_docs_structure_validation_quality_gates.py'
+                    'test_docs_structure_validation_quality_gates.py',
+                    'test_implementation_gap_quality_gates.py'
+                ],
+                'critical': True
+            },
+            'docs': {
+                'description': 'Documentation Link Validation',
+                'scripts': [
+                    'test_docs_link_validation_quality_gates.py'
                 ],
                 'critical': True
             },
@@ -88,11 +95,41 @@ class QualityGateValidator:
                 ],
                 'critical': False
             },
+            'data_loading': {
+                'description': 'Data Provider Validation',
+                'scripts': [
+                    'test_data_availability_quality_gates.py',
+                    'test_data_provider_factory_quality_gates.py'
+                ],
+                'critical': True
+            },
+            'logical_exceptions': {
+                'description': 'Logical Exception Validation',
+                'scripts': [
+                    'test_logical_exceptions_quality_gates.py'
+                ],
+                'critical': True
+            },
+            'mode_agnostic_design': {
+                'description': 'Mode-Agnostic Design Validation',
+                'scripts': [
+                    'test_mode_agnostic_design_quality_gates.py'
+                ],
+                'critical': True
+            },
             'configuration': {
                 'description': 'Configuration Validation',
                 'scripts': [
                     'validate_config_alignment.py',
                     'test_config_and_data_validation.py'
+                ],
+                'critical': True
+            },
+            'data_loading': {
+                'description': 'Data Loading & Provider Factory Validation',
+                'scripts': [
+                    'test_data_availability_quality_gates.py',
+                    'test_data_provider_factory_quality_gates.py'
                 ],
                 'critical': True
             },
@@ -142,7 +179,7 @@ class QualityGateValidator:
                 
                 success_indicators = [
                     'SUCCESS:', 'All tests passed', 'All gates passed',
-                    'quality gates passed!', 'COMPLETE SUCCESS!'
+                    'quality gates passed!', 'QUALITY GATE PASSED', 'COMPLETE SUCCESS!'
                 ]
                 
                 has_success = any(indicator in result.stdout for indicator in success_indicators)
@@ -527,10 +564,15 @@ class QualityGateValidator:
             from basis_strategy_v1.infrastructure.config.config_manager import get_config_manager
             
             config_manager = get_config_manager()
+            # Create test config for pure_lending mode
+            test_config = {
+                'mode': 'pure_lending',
+                'data_requirements': ['usdt_prices', 'aave_lending_rates', 'gas_costs', 'execution_costs'],
+                'data_dir': config_manager.get_data_directory()
+            }
             data_provider = create_data_provider(
-                data_dir=config_manager.get_data_directory(),
-                startup_mode='backtest',
-                config=config_manager.get_complete_config()
+                execution_mode='backtest',
+                config=test_config
             )
             
             phase_2_results['data_provider_factory'] = {
@@ -1466,7 +1508,7 @@ provider = create_data_provider(
     execution_mode='backtest',
     data_mode='csv',
     config={'mode': 'pure_lending'},
-    strategy_mode='pure_lending'
+    mode='pure_lending'
 )
 
 # Check if data is NOT loaded at startup
@@ -1511,7 +1553,7 @@ provider = create_data_provider(
     execution_mode='backtest',
     data_mode='csv',
     config={'mode': 'pure_lending'},
-    strategy_mode='pure_lending'
+    mode='pure_lending'
 )
 
 # Load data on-demand
@@ -1957,7 +1999,7 @@ async def main():
     import argparse
     
     parser = argparse.ArgumentParser(description='Quality Gates Validation - Single Entry Point')
-    parser.add_argument('--category', choices=['docs', 'strategy', 'components', 'health', 'performance', 'configuration', 'integration', 'coverage'],
+    parser.add_argument('--category', choices=['docs_validation', 'docs', 'strategy', 'components', 'health', 'performance', 'configuration', 'integration', 'coverage'],
                        help='Run specific category of quality gates')
     parser.add_argument('--docs', action='store_true',
                        help='Run documentation link validation quality gates')
@@ -1981,10 +2023,10 @@ async def main():
     
     elif args.docs:
         # Run documentation quality gates specifically
-        print(f"🚦 DOCUMENTATION LINK VALIDATION QUALITY GATES")
+        print(f"🚦 DOCUMENTATION VALIDATION QUALITY GATES")
         print("=" * 60)
         
-        category_results = await validator.run_category('docs')
+        category_results = await validator.run_category('docs_validation')
         
         # Generate category-specific report
         if 'error' in category_results:

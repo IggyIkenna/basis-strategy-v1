@@ -1,0 +1,383 @@
+{
+  "metadata": {
+    "generated_at": "2025-10-11T15:14:48.725475",
+    "total_specs": 21,
+    "total_implementations": 9,
+    "analysis_version": "1.0"
+  },
+  "components": {
+    "01_POSITION_MONITOR": {
+      "status": "MISSING_IMPLEMENTATION",
+      "priority": "HIGH",
+      "compliance_score": 0,
+      "gaps": {
+        "missing_methods": [],
+        "missing_config": [],
+        "missing_error_codes": [],
+        "missing_event_logging": [],
+        "missing_data_access": [],
+        "missing_integration": []
+      },
+      "task_recommendations": [
+        "Create complete implementation for 01_POSITION_MONITOR"
+      ]
+    },
+    "02_EXPOSURE_MONITOR": {
+      "status": "MISSING_IMPLEMENTATION",
+      "priority": "HIGH",
+      "compliance_score": 0,
+      "gaps": {
+        "missing_methods": [],
+        "missing_config": [],
+        "missing_error_codes": [],
+        "missing_event_logging": [],
+        "missing_data_access": [],
+        "missing_integration": []
+      },
+      "task_recommendations": [
+        "Create complete implementation for 02_EXPOSURE_MONITOR"
+      ]
+    },
+    "03_RISK_MONITOR": {
+      "status": "MISSING_IMPLEMENTATION",
+      "priority": "HIGH",
+      "compliance_score": 0,
+      "gaps": {
+        "missing_methods": [],
+        "missing_config": [],
+        "missing_error_codes": [],
+        "missing_event_logging": [],
+        "missing_data_access": [],
+        "missing_integration": []
+      },
+      "task_recommendations": [
+        "Create complete implementation for 03_RISK_MONITOR"
+      ]
+    },
+    "04_PNL_CALCULATOR": {
+      "status": "MISSING_IMPLEMENTATION",
+      "priority": "HIGH",
+      "compliance_score": 0,
+      "gaps": {
+        "missing_methods": [],
+        "missing_config": [],
+        "missing_error_codes": [],
+        "missing_event_logging": [],
+        "missing_data_access": [],
+        "missing_integration": []
+      },
+      "task_recommendations": [
+        "Create complete implementation for 04_PNL_CALCULATOR"
+      ]
+    },
+    "05_STRATEGY_MANAGER": {
+      "status": "MISSING_IMPLEMENTATION",
+      "priority": "HIGH",
+      "compliance_score": 0,
+      "gaps": {
+        "missing_methods": [],
+        "missing_config": [],
+        "missing_error_codes": [],
+        "missing_event_logging": [],
+        "missing_data_access": [],
+        "missing_integration": []
+      },
+      "task_recommendations": [
+        "Create complete implementation for 05_STRATEGY_MANAGER"
+      ]
+    },
+    "06_EXECUTION_MANAGER": {
+      "status": "MISSING_IMPLEMENTATION",
+      "priority": "HIGH",
+      "compliance_score": 0,
+      "gaps": {
+        "missing_methods": [],
+        "missing_config": [],
+        "missing_error_codes": [],
+        "missing_event_logging": [],
+        "missing_data_access": [],
+        "missing_integration": []
+      },
+      "task_recommendations": [
+        "Create complete implementation for 06_EXECUTION_MANAGER"
+      ]
+    },
+    "07B_EXECUTION_INTERFACES": {
+      "status": "MISSING_IMPLEMENTATION",
+      "priority": "HIGH",
+      "compliance_score": 0,
+      "gaps": {
+        "missing_methods": [],
+        "missing_config": [],
+        "missing_error_codes": [],
+        "missing_event_logging": [],
+        "missing_data_access": [],
+        "missing_integration": []
+      },
+      "task_recommendations": [
+        "Create complete implementation for 07B_EXECUTION_INTERFACES"
+      ]
+    },
+    "07C_EXECUTION_INTERFACE_FACTORY": {
+      "status": "MISSING_IMPLEMENTATION",
+      "priority": "HIGH",
+      "compliance_score": 0,
+      "gaps": {
+        "missing_methods": [],
+        "missing_config": [],
+        "missing_error_codes": [],
+        "missing_event_logging": [],
+        "missing_data_access": [],
+        "missing_integration": []
+      },
+      "task_recommendations": [
+        "Create complete implementation for 07C_EXECUTION_INTERFACE_FACTORY"
+      ]
+    },
+    "07_EXECUTION_INTERFACE_MANAGER": {
+      "status": "MISSING_IMPLEMENTATION",
+      "priority": "HIGH",
+      "compliance_score": 0,
+      "gaps": {
+        "missing_methods": [],
+        "missing_config": [],
+        "missing_error_codes": [],
+        "missing_event_logging": [],
+        "missing_data_access": [],
+        "missing_integration": []
+      },
+      "task_recommendations": [
+        "Create complete implementation for 07_EXECUTION_INTERFACE_MANAGER"
+      ]
+    },
+    "08_EVENT_LOGGER": {
+      "status": "MISSING_IMPLEMENTATION",
+      "priority": "HIGH",
+      "compliance_score": 0,
+      "gaps": {
+        "missing_methods": [],
+        "missing_config": [
+          "event_logging_settings",
+          "log_retention_policy",
+          "event_filtering",
+          "logging_requirements",
+          "event_categories",
+          "audit_requirements",
+          "compliance_settings"
+        ],
+        "missing_error_codes": [],
+        "missing_event_logging": [],
+        "missing_data_access": [],
+        "missing_integration": []
+      },
+      "task_recommendations": [
+        "Create complete implementation for 08_EVENT_LOGGER"
+      ]
+    },
+    "09_DATA_PROVIDER": {
+      "status": "MISSING_IMPLEMENTATION",
+      "priority": "HIGH",
+      "compliance_score": 0,
+      "gaps": {
+        "missing_methods": [],
+        "missing_config": [],
+        "missing_error_codes": [],
+        "missing_event_logging": [],
+        "missing_data_access": [],
+        "missing_integration": []
+      },
+      "task_recommendations": [
+        "Create complete implementation for 09_DATA_PROVIDER"
+      ]
+    },
+    "10_RECONCILIATION_COMPONENT": {
+      "status": "MISSING_IMPLEMENTATION",
+      "priority": "HIGH",
+      "compliance_score": 0,
+      "gaps": {
+        "missing_methods": [],
+        "missing_config": [],
+        "missing_error_codes": [],
+        "missing_event_logging": [],
+        "missing_data_access": [],
+        "missing_integration": []
+      },
+      "task_recommendations": [
+        "Create complete implementation for 10_RECONCILIATION_COMPONENT"
+      ]
+    },
+    "11_POSITION_UPDATE_HANDLER": {
+      "status": "MISSING_IMPLEMENTATION",
+      "priority": "HIGH",
+      "compliance_score": 0,
+      "gaps": {
+        "missing_methods": [],
+        "missing_config": [],
+        "missing_error_codes": [],
+        "missing_event_logging": [],
+        "missing_data_access": [],
+        "missing_integration": []
+      },
+      "task_recommendations": [
+        "Create complete implementation for 11_POSITION_UPDATE_HANDLER"
+      ]
+    },
+    "12_FRONTEND_SPEC": {
+      "status": "MISSING_IMPLEMENTATION",
+      "priority": "HIGH",
+      "compliance_score": 0,
+      "gaps": {
+        "missing_methods": [],
+        "missing_config": [],
+        "missing_error_codes": [],
+        "missing_event_logging": [],
+        "missing_data_access": [],
+        "missing_integration": []
+      },
+      "task_recommendations": [
+        "Create complete implementation for 12_FRONTEND_SPEC"
+      ]
+    },
+    "13_BACKTEST_SERVICE": {
+      "status": "MISSING_IMPLEMENTATION",
+      "priority": "HIGH",
+      "compliance_score": 0,
+      "gaps": {
+        "missing_methods": [],
+        "missing_config": [],
+        "missing_error_codes": [],
+        "missing_event_logging": [],
+        "missing_data_access": [],
+        "missing_integration": []
+      },
+      "task_recommendations": [
+        "Create complete implementation for 13_BACKTEST_SERVICE"
+      ]
+    },
+    "14_LIVE_TRADING_SERVICE": {
+      "status": "MISSING_IMPLEMENTATION",
+      "priority": "HIGH",
+      "compliance_score": 0,
+      "gaps": {
+        "missing_methods": [],
+        "missing_config": [],
+        "missing_error_codes": [],
+        "missing_event_logging": [],
+        "missing_data_access": [],
+        "missing_integration": []
+      },
+      "task_recommendations": [
+        "Create complete implementation for 14_LIVE_TRADING_SERVICE"
+      ]
+    },
+    "15_EVENT_DRIVEN_STRATEGY_ENGINE": {
+      "status": "MISSING_IMPLEMENTATION",
+      "priority": "HIGH",
+      "compliance_score": 0,
+      "gaps": {
+        "missing_methods": [],
+        "missing_config": [],
+        "missing_error_codes": [],
+        "missing_event_logging": [],
+        "missing_data_access": [],
+        "missing_integration": []
+      },
+      "task_recommendations": [
+        "Create complete implementation for 15_EVENT_DRIVEN_STRATEGY_ENGINE"
+      ]
+    },
+    "16_MATH_UTILITIES": {
+      "status": "MISSING_IMPLEMENTATION",
+      "priority": "HIGH",
+      "compliance_score": 0,
+      "gaps": {
+        "missing_methods": [],
+        "missing_config": [],
+        "missing_error_codes": [],
+        "missing_event_logging": [],
+        "missing_data_access": [],
+        "missing_integration": []
+      },
+      "task_recommendations": [
+        "Create complete implementation for 16_MATH_UTILITIES"
+      ]
+    },
+    "17_HEALTH_ERROR_SYSTEMS": {
+      "status": "MISSING_IMPLEMENTATION",
+      "priority": "HIGH",
+      "compliance_score": 0,
+      "gaps": {
+        "missing_methods": [],
+        "missing_config": [],
+        "missing_error_codes": [],
+        "missing_event_logging": [],
+        "missing_data_access": [],
+        "missing_integration": []
+      },
+      "task_recommendations": [
+        "Create complete implementation for 17_HEALTH_ERROR_SYSTEMS"
+      ]
+    },
+    "18_RESULTS_STORE": {
+      "status": "MISSING_IMPLEMENTATION",
+      "priority": "HIGH",
+      "compliance_score": 0,
+      "gaps": {
+        "missing_methods": [],
+        "missing_config": [],
+        "missing_error_codes": [],
+        "missing_event_logging": [],
+        "missing_data_access": [],
+        "missing_integration": []
+      },
+      "task_recommendations": [
+        "Create complete implementation for 18_RESULTS_STORE"
+      ]
+    },
+    "19_CONFIGURATION": {
+      "status": "MISSING_IMPLEMENTATION",
+      "priority": "HIGH",
+      "compliance_score": 0,
+      "gaps": {
+        "missing_methods": [],
+        "missing_config": [],
+        "missing_error_codes": [],
+        "missing_event_logging": [],
+        "missing_data_access": [],
+        "missing_integration": []
+      },
+      "task_recommendations": [
+        "Create complete implementation for 19_CONFIGURATION"
+      ]
+    }
+  },
+  "summary": {
+    "canonical_examples": [],
+    "high_priority_gaps": [
+      "01_POSITION_MONITOR: Missing implementation",
+      "02_EXPOSURE_MONITOR: Missing implementation",
+      "03_RISK_MONITOR: Missing implementation",
+      "04_PNL_CALCULATOR: Missing implementation",
+      "05_STRATEGY_MANAGER: Missing implementation",
+      "06_EXECUTION_MANAGER: Missing implementation",
+      "07B_EXECUTION_INTERFACES: Missing implementation",
+      "07C_EXECUTION_INTERFACE_FACTORY: Missing implementation",
+      "07_EXECUTION_INTERFACE_MANAGER: Missing implementation",
+      "08_EVENT_LOGGER: Missing implementation",
+      "09_DATA_PROVIDER: Missing implementation",
+      "10_RECONCILIATION_COMPONENT: Missing implementation",
+      "11_POSITION_UPDATE_HANDLER: Missing implementation",
+      "12_FRONTEND_SPEC: Missing implementation",
+      "13_BACKTEST_SERVICE: Missing implementation",
+      "14_LIVE_TRADING_SERVICE: Missing implementation",
+      "15_EVENT_DRIVEN_STRATEGY_ENGINE: Missing implementation",
+      "16_MATH_UTILITIES: Missing implementation",
+      "17_HEALTH_ERROR_SYSTEMS: Missing implementation",
+      "18_RESULTS_STORE: Missing implementation",
+      "19_CONFIGURATION: Missing implementation"
+    ],
+    "medium_priority_gaps": [],
+    "low_priority_gaps": [],
+    "task_recommendations": []
+  }
+}

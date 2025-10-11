@@ -137,8 +137,8 @@ class StrategyFactory:
 ### 5. API Integration
 Update API endpoints to pass strategy mode:
 
-- **Backtest API**: Add `strategy_mode` parameter
-- **Live API**: Add `strategy_mode` parameter  
+- **Backtest API**: Add `mode` parameter
+- **Live API**: Add `mode` parameter  
 - **Event Engine**: Pass strategy mode through to strategy manager
 - **Tight Loop Integration**: Strategy manager triggers tight loop after position updates
 - **Event Engine Integration**: Proper integration with EventDrivenStrategyEngine

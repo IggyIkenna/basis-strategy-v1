@@ -46,3 +46,55 @@ time_throttle_interval: 60
 # Performance targets
 target_apy: 0.08  # 8% APY target (funding rate collection)
 max_drawdown: 0.02  # 2% max drawdown (usually positive funding)
+
+# Component configuration
+component_config:
+  risk_monitor:
+    enabled_risk_types: ["cex_margin_ratio", "delta_risk"]
+    risk_limits:
+      target_margin_ratio: 0.5
+      cex_margin_ratio_min: 0.15
+      maintenance_margin_requirement: 0.10
+      delta_tolerance: 0.005
+  
+  exposure_monitor:
+    exposure_currency: "USDT"
+    track_assets: ["BTC", "BTC_PERP"]
+    conversion_methods:
+      BTC: "usd_price"
+      BTC_PERP: "perp_mark_price"
+  
+  pnl_calculator:
+    attribution_types: ["funding_pnl", "delta_pnl", "basis_pnl", "transaction_costs"]
+    reporting_currency: "USDT"
+    reconciliation_tolerance: 0.02
+  
+  strategy_manager:
+    strategy_type: "btc_basis"
+    actions: ["entry_full", "entry_partial", "exit_partial", "exit_full"]
+    rebalancing_triggers: ["deposit", "withdrawal", "delta_drift"]
+    position_calculation:
+      target_position: "btc_spot_long"
+      hedge_position: "btc_perp_short"
+      hedge_allocation:
+        binance: 0.4
+        bybit: 0.3
+        okx: 0.3
+  
+  execution_manager:
+    supported_actions: ["cex_spot_buy", "cex_spot_sell", "cex_perp_short", "cex_perp_close"]
+    action_mapping:
+      entry_full: ["cex_spot_buy", "cex_perp_short"]
+      exit_full: ["cex_perp_close", "cex_spot_sell"]
+      entry_partial: ["cex_spot_buy", "cex_perp_short"]
+      exit_partial: ["cex_perp_close", "cex_spot_sell"]
+  
+  results_store:
+    result_types: ["balance_sheet", "pnl_attribution", "risk_metrics", "execution_log", "delta_tracking"]
+    balance_sheet_assets: ["BTC", "USDT", "BTC_PERP"]
+    pnl_attribution_types: ["funding_pnl", "delta_pnl", "basis_pnl", "transaction_costs"]
+  
+  strategy_factory:
+    timeout: 30
+    max_retries: 3
+    validation_strict: true

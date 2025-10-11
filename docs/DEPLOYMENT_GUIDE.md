@@ -10,7 +10,7 @@
 ## 📚 **Related Documentation**
 
 - **Getting Started** → [GETTING_STARTED.md](GETTING_STARTED.md) (basic setup)
-- **Configuration** → [specs/CONFIGURATION.md](specs/CONFIGURATION.md) (environment setup)
+- **Configuration** → [specs/19_CONFIGURATION.md](specs/19_CONFIGURATION.md) (environment setup)
 - **Component Health** → [COMPONENT_SPECS_INDEX.md](COMPONENT_SPECS_INDEX.md) (health monitoring)
 - **Environment Variables** → [ENVIRONMENT_VARIABLES.md](ENVIRONMENT_VARIABLES.md) (required vars)
 - **Venue Architecture** → [VENUE_ARCHITECTURE.md](VENUE_ARCHITECTURE.md) (venue client initialization)
@@ -57,50 +57,41 @@ cd docker
 
 ### **Backend Startup Initialization Sequence**
 
-The backend follows a specific initialization sequence when starting up:
+1. **Environment Variable Loading**: Load env.unified + environment overrides
+2. **Configuration Loading**: 
+   - Load YAML configs from configs/ (modes, venues, share_classes)
+   - Validate against schemas
+   - Create immutable global config
+3. **Component Initialization**:
+   - Initialize 11 core components in dependency order
+   - Initialize 9 supporting components
+   - Register all with unified health manager
+   - Use ComponentFactory with config validation (ADR-055)
+4. **Health Checks**: Verify all components healthy before accepting requests
 
-#### **1. Environment Variable Loading**
-```bash
-# Load base environment from env.unified
-source env.unified
+See: COMPONENT_SPECS_INDEX.md for component list, REFERENCE_ARCHITECTURE_CANONICAL.md for initialization patterns.
 
-# Load environment-specific overrides
-# Non-Docker: .env.dev, .env.staging, .env.production
-# Docker: docker/.env.dev, docker/.env.staging, docker/.env.prod
-```
+### Component Architecture
+- **Core Components (11)**: Runtime execution flow (see COMPONENT_SPECS_INDEX.md)
+- **Supporting Components (9)**: Services and infrastructure
+- **Mode-Agnostic Design**: Core components use component_config for behavior
+- **Config-Driven**: All behavior specified in mode YAML files
 
-#### **2. Main() Entry Point Orchestration**
-The `main()` function orchestrates startup with these steps:
-
-1. **Initialize Metrics**: Set up monitoring and metrics collection
-2. **Load Configuration**: 
-   - Pick up YAML files from `configs/` (mounted by docker if using docker)
-   - Load, merge and validate against schemas in `config_models.py`
-   - Quality gates ensure only valid config exists in YAML files
-   - Single config instance per deployment (no runtime updates)
-3. **Initialize Data Provider**:
-   - Load data sources (if BASIS_DATA_MODE=csv, load from CSV files in `data/` directory else if BASIS_DATA_MODE=db, load from database)
-   - Validate data sources vs environment config
-   - Route based on `BASIS_ENVIRONMENT` (dev/staging/prod)
-   - Separate data loading vs external API heartbeat operations
-4. **Run Basic Health Checks**: 
-   - Initialize components in dependency order
-   - Register components with unified health manager
-   - Components report health status automatically
-   - Fail fast if any component initialization fails
-
-#### **3. Environment Variable Integration**
-The system uses three distinct environment variables:
+See: REFERENCE_ARCHITECTURE_CANONICAL.md Section II for config-driven architecture details.
 
 - **`BASIS_DEPLOYMENT_MODE`**: `local` vs `docker` (port/host forwarding and dependency injection)
 - **`BASIS_ENVIRONMENT`**: `dev` vs `staging` vs `production` (controls venue credentials AND deployment infrastructure like hosts, ports, API endpoints)
 - **`BASIS_DATA_MODE`**: `csv` vs `db` (data source: CSV vs DB)
 - **`BASIS_EXECUTION_MODE`**: `backtest` vs `live` (venue execution: simulated in backtest vs real)
+- **`BASIS_CONFIG__VALIDATION_STRICT`**: `true` vs `false` (fail-fast config validation per ADR-040)
+- **`BASIS_CONFIG__CACHE_SIZE`**: Integer (config cache size, default: 1000)
+- **`BASIS_CONFIG__RELOAD_INTERVAL`**: Integer seconds (config reload interval, default: 300)
 
 **Critical Distinction**:
 - **Deployment Mode**: Controls how services are deployed (local vs containerized)
 - **Environment**: Controls data sources and API endpoints (dev/staging/prod)
 - **Execution Mode**: Controls venue behavior (simulated vs real execution)
+- **Config Variables**: Control configuration system behavior (validation, caching, reloading)
 
 #### **4. Main() Entry Point Orchestration Details**
 The `main()` function orchestrates the complete startup sequence:

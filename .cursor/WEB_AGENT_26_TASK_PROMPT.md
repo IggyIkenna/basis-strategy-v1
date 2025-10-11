@@ -1,15 +1,16 @@
-# Web Agent Prompt for Basis Strategy 26-Step Build Plan
+# Web Agent Prompt for Basis Strategy Implementation Gap Build Plan
 
 ## Agent Identity
-You are an autonomous web-based background agent executing the 26-step Basis Strategy build plan. Your mission is to systematically implement all tasks across 6 days, achieving 20/24 quality gates passing (83%) and 80% unit test coverage.
+You are an autonomous web-based background agent executing the Basis Strategy implementation gap build plan. Your mission is to systematically address all 20 component implementation gaps across 7 days, achieving 20/24 quality gates passing (83%) and 80% unit test coverage.
 
-**CRITICAL**: You must strictly follow `docs/TARGET_REPOSITORY_STRUCTURE.md` - DO NOT create random files unless explicitly marked as `[CREATE]` in the target structure documentation.
+**CRITICAL**: You must strictly follow canonical documentation references in all tasks - DO NOT create random files unless explicitly marked as `[CREATE]` in the target structure documentation.
 
 ## Current Status
-- **Quality Gates**: 1/16 passing (6.2%) - CRITICAL FAILURE
-- **Backend Status**: Not running (connection timeout)
+- **Quality Gates**: 12/24 passing (50%) - IMPROVEMENT NEEDED
+- **Implementation Gaps**: 20 components need alignment/completion
+- **Backend Status**: Requires validation
 - **Target**: 20/24 quality gates passing (83%)
-- **Timeline**: 6 days, 26 tasks, autonomous execution
+- **Timeline**: 7 days, 30 tasks, autonomous execution
 
 ## Immediate Actions Required
 
@@ -69,16 +70,19 @@ Start with Task 01: Environment file switching & fail-fast validation.
 
 1. **Task 01**: Environment file switching & fail-fast validation
    - File: `.cursor/tasks/01_environment_file_switching.md`
+   - Reference: `docs/REFERENCE_ARCHITECTURE_CANONICAL.md` Section 6.1
    - Quality Gate: `scripts/test_environment_switching_quality_gates.py`
    - Success: BASIS_ENVIRONMENT switching, fail-fast validation
 
 2. **Task 02**: Config loading & validation
    - File: `.cursor/tasks/02_config_loading_validation.md`
+   - Reference: `docs/REFERENCE_ARCHITECTURE_CANONICAL.md` Section 6.1
    - Quality Gate: `scripts/test_config_validation_quality_gates.py`
    - Success: All YAML loading, Pydantic validation, fail-fast
 
 3. **Task 03**: Data loading quality gate
    - File: `.cursor/tasks/03_data_loading_quality_gate.md`
+   - Reference: `docs/REFERENCE_ARCHITECTURE_CANONICAL.md` Section 8
    - Quality Gate: `scripts/test_data_provider_refactor_quality_gates.py`
    - Success: All data files validated for all modes
 
@@ -92,32 +96,38 @@ Start with Task 01: Environment file switching & fail-fast validation.
 
 1. **Task 07**: Fix async/await violations (HIGH PRIORITY)
    - File: `.cursor/tasks/07_fix_async_await_violations.md`
+   - Reference: `docs/REFERENCE_ARCHITECTURE_CANONICAL.md` Section 6
    - Targets: `position_monitor.py`, `risk_monitor.py`, `strategy_manager.py`, `pnl_calculator.py`, `position_update_handler.py`
    - Quality Gate: `scripts/test_async_ordering_quality_gates.py`
    - Critical: Remove async from internal methods per ADR-006
 
 2. **Task 10**: Reference-based architecture
    - File: `.cursor/tasks/10_reference_based_architecture.md`
+   - Reference: `docs/REFERENCE_ARCHITECTURE_CANONICAL.md` Section 1
    - Target: All component files
    - Success: Store references in `__init__`, singleton per request
 
 3. **Task 11**: Singleton pattern
    - File: `.cursor/tasks/11_singleton_pattern.md`
+   - Reference: `docs/REFERENCE_ARCHITECTURE_CANONICAL.md` Section 2
    - Target: `event_driven_strategy_engine.py`, components
    - Success: Single instance per component per request
 
 4. **Task 06**: Strategy manager refactor (HIGH PRIORITY)
    - File: `.cursor/tasks/06_strategy_manager_refactor.md`
+   - Reference: `docs/REFERENCE_ARCHITECTURE_CANONICAL.md` Section 3
    - Actions: DELETE `transfer_manager.py`, create BaseStrategyManager, StrategyFactory
    - Success: 5 standardized actions, inheritance-based
 
 5. **Task 08**: Mode-agnostic architecture (HIGH PRIORITY)
    - File: `.cursor/tasks/08_mode_agnostic_architecture.md`
+   - Reference: `docs/REFERENCE_ARCHITECTURE_CANONICAL.md` Section 7
    - Targets: `exposure_monitor.py`, `pnl_calculator.py`
    - Success: Config params instead of mode checks
 
 6. **Task 09**: Fail-fast configuration
-   - File: `.cursor/tasks/09_fail_fast_configuration.md`
+   - File: `.cursor/tasks/09_fail_fast_19_CONFIGURATION.md`
+   - Reference: `docs/REFERENCE_ARCHITECTURE_CANONICAL.md` Section 6.1
    - Target: `risk_monitor.py` (62 `.get()` instances)
    - Success: Direct config access, no defaults
 
@@ -187,64 +197,69 @@ Start with Task 01: Environment file switching & fail-fast validation.
 - BTC basis funding rate calculations working
 - ETH basis LST integration working
 
-### Day 5: Complex Modes & Unit Tests (Tasks 18-23) - 12-16 hours
-**Priority**: MEDIUM - Complex strategies + testing
+### Day 5: Component Alignment & Unit Tests (Tasks 18-23) - 12-16 hours
+**Priority**: HIGH - Component alignment with specs + testing
 
 1. **Task 18**: USDT market neutral E2E
    - File: `.cursor/tasks/18_usdt_market_neutral_quality_gates.md`
    - Quality Gate: `scripts/test_usdt_market_neutral_quality_gates.py`
    - Success: Full leverage, multi-venue hedging
 
-2. **Tasks 19-23**: Component unit tests (PARALLEL)
-   - Task 19: Position Monitor - `scripts/test_position_monitor_unit_tests_quality_gates.py`
-   - Task 20: Exposure Monitor - `scripts/test_exposure_monitor_unit_tests_quality_gates.py`
-   - Task 21: Risk Monitor - `scripts/test_risk_monitor_unit_tests_quality_gates.py`
-   - Task 22: Strategy Manager - `scripts/test_strategy_manager_unit_tests_quality_gates.py`
-   - Task 23: P&L Calculator - `scripts/test_pnl_calculator_unit_tests_quality_gates.py`
-   - Success: 80% test coverage each
+2. **Tasks 19-23**: Component alignment & unit tests (PARALLEL)
+   - Task 19: Position Monitor Alignment - `docs/specs/01_POSITION_MONITOR.md`
+   - Task 20: Exposure Monitor Alignment - `docs/specs/02_EXPOSURE_MONITOR.md`
+   - Task 21: Risk Monitor Alignment - `docs/specs/03_RISK_MONITOR.md`
+   - Task 22: Strategy Manager Unit Tests - `docs/specs/05_STRATEGY_MANAGER.md`
+   - Task 23: P&L Calculator Alignment - `docs/specs/04_PNL_CALCULATOR.md`
+   - Success: 80% test coverage each, alignment with canonical specs
 
 **Success Criteria**:
 - USDT market neutral with full leverage
+- All monitoring components aligned with canonical specifications
 - 80% unit test coverage for all components
 
-### Day 6: Frontend & Live Mode (Tasks 24-26) - 12-16 hours
-**Priority**: MEDIUM - Frontend and live mode
+### Day 6: Execution Infrastructure & Service Validation (Tasks 24-26) - 12-16 hours
+**Priority**: HIGH - Execution infrastructure and service validation
 
-1. **Task 24**: Frontend implementation
-   - File: `.cursor/tasks/24_frontend_implementation.md`
-   - Target: `frontend/src/components/results/`
-   - Success: ResultsPage, MetricCard, PlotlyChart, EventLogViewer
+1. **Task 24**: Execution components implementation
+   - File: `.cursor/tasks/30_execution_components_implementation.md`
+   - Reference: `docs/specs/06_EXECUTION_MANAGER.md`, `docs/specs/07_EXECUTION_INTERFACE_MANAGER.md`
+   - Success: Complete execution infrastructure, tight loop architecture
 
-2. **Task 25**: Live mode framework
+2. **Task 25**: Service layer & engine validation
+   - File: `.cursor/tasks/26_comprehensive_quality_gates.md`
+   - Reference: `docs/specs/13_BACKTEST_SERVICE.md`, `docs/specs/14_LIVE_TRADING_SERVICE.md`
+   - Quality Gate: `scripts/run_quality_gates.py`
+   - Success: Service layer validation, request isolation compliance
+
+3. **Task 26**: Live mode quality gates
    - File: `.cursor/tasks/25_live_mode_quality_gates.md`
    - Quality Gate: `scripts/test_live_mode_quality_gates.py`
    - Success: Live data provider, execution framework
 
-3. **Task 26**: Comprehensive quality gates
-   - File: `.cursor/tasks/26_comprehensive_quality_gates.md`
-   - Quality Gate: `scripts/run_quality_gates.py`
-   - Target: 20/24 passing (83%)
-
 **Success Criteria**:
-- Frontend results components complete
+- Execution infrastructure complete and aligned with specs
+- Service layer validation complete
 - Live mode framework ready
-- 20/24 quality gates passing (83%)
+- 18/24 quality gates passing (75%)
 
 ## Task Execution Protocol
 
 ### Before Each Task
 1. **Read Complete Task File**: Understand requirements and success criteria
-2. **Check Target Structure**: Verify files to modify/create against `docs/TARGET_REPOSITORY_STRUCTURE.md`
-3. **Check Current Status**: Run relevant quality gates
-4. **Plan Implementation**: Follow Reference patterns from task files
+2. **Review Canonical References**: Read all Reference sections in task files
+3. **Check Target Structure**: Verify files to modify/create against `docs/TARGET_REPOSITORY_STRUCTURE.md`
+4. **Check Current Status**: Run relevant quality gates
+5. **Plan Implementation**: Follow canonical patterns from Reference sections
 
 ### During Task Execution
 1. **Follow Canonical Patterns**: Never violate patterns in Reference sections
 2. **Follow Target Structure**: Strictly adhere to `docs/TARGET_REPOSITORY_STRUCTURE.md`
 3. **Implement Changes**: Make required modifications only to files marked as `[KEEP]` or `[MODIFY]`
 4. **Create Only Specified Files**: Only create files explicitly marked as `[CREATE]` in target structure
-5. **Test Incrementally**: Run quality gates after major changes
-6. **Fix Issues**: Address failures without breaking canonical patterns
+5. **Align with Specifications**: Ensure all implementations align with component specifications
+6. **Test Incrementally**: Run quality gates after major changes
+7. **Fix Issues**: Address failures without breaking canonical patterns
 
 ### After Each Task
 1. **Run Task-Specific Quality Gate**: Verify task completion
@@ -297,6 +312,37 @@ cd tests && python -m pytest -v
 python scripts/analyze_test_coverage.py
 ```
 
+### Day 7: Infrastructure & Frontend Completion (Tasks 27-30) - 12-16 hours
+**Priority**: MEDIUM - Infrastructure completion and frontend
+
+1. **Task 27**: Infrastructure components completion
+   - File: `.cursor/tasks/31_infrastructure_components_completion.md`
+   - Reference: `docs/specs/16_MATH_UTILITIES.md`, `docs/specs/17_HEALTH_ERROR_SYSTEMS.md`
+   - Success: Complete infrastructure components, unified health system
+
+2. **Task 28**: Frontend implementation completion
+   - File: `.cursor/tasks/24_frontend_implementation.md`
+   - Reference: `docs/specs/12_FRONTEND_SPEC.md`
+   - Success: Complete frontend implementation per specs
+
+3. **Task 29**: Authentication system implementation
+   - File: `.cursor/tasks/27_authentication_system.md`
+   - Reference: `docs/specs/12_FRONTEND_SPEC.md` (authentication section)
+   - Success: Username/password authentication, JWT tokens
+
+4. **Task 30**: Live trading UI implementation
+   - File: `.cursor/tasks/28_live_trading_ui.md`
+   - Reference: `docs/specs/12_FRONTEND_SPEC.md` (live trading section)
+   - Success: Live trading controls, real-time monitoring
+
+**Success Criteria**:
+- Infrastructure components complete and aligned with specs
+- Frontend implementation complete per specifications
+- Authentication system functional
+- Live trading UI complete
+- 20/24 quality gates passing (83%)
+- System ready for staging deployment
+
 ## Success Metrics
 
 ### Daily Targets
@@ -304,12 +350,14 @@ python scripts/analyze_test_coverage.py
 - **Day 2**: Core architecture violations fixed ✅
 - **Day 3**: Component integration complete ✅
 - **Day 4**: 3 strategy modes E2E passing ✅
-- **Day 5**: Complex strategy + 80% unit coverage ✅
-- **Day 6**: Frontend + live mode + 20/24 gates passing ✅
+- **Day 5**: Component alignment + 80% unit coverage ✅
+- **Day 6**: Execution infrastructure + service validation ✅
+- **Day 7**: Infrastructure + frontend completion ✅
 
 ### Final Target
-- **26/26 tasks completed** (100%)
+- **30/30 tasks completed** (100%)
 - **20/24 quality gates passing** (83%)
+- **All 20 component implementation gaps addressed**
 - **80% unit test coverage**
 - **4/4 strategy modes E2E working**
 - **System ready for staging deployment**
@@ -347,15 +395,16 @@ python scripts/analyze_test_coverage.py
 - **Action**: Start backend with `./platform.sh backtest` (after dependencies installed)
 - **Verify**: `curl -s http://localhost:8001/health/`
 
-### Quality Gates Failing
-- **Current**: 1/16 passing (6.2%)
+### Quality Gates Need Improvement
+- **Current**: 12/24 passing (50%)
 - **Target**: 20/24 passing (83%)
-- **Critical**: Pure lending showing 1166% APY (should be 3-8%)
+- **Critical**: Need to address 20 component implementation gaps
 
-### Architecture Violations
-- **Async/await violations**: 18 methods across 5 files
-- **Strategy manager**: Needs refactor, delete transfer_manager.py
-- **Mode-agnostic**: Components need config params instead of mode checks
+### Implementation Gaps
+- **Component Alignment**: 20 components need alignment with canonical specifications
+- **Execution Infrastructure**: Execution components need implementation/completion
+- **Service Validation**: Service layer needs validation against specifications
+- **Infrastructure Components**: Math utilities, health systems, results store need completion
 
 ## Repository Structure Compliance
 
@@ -390,6 +439,8 @@ Before completing any task, verify:
 - [ ] Components are mode-agnostic
 - [ ] No async in internal methods
 - [ ] Fail-fast configuration is used
+- [ ] Components align with canonical specifications
+- [ ] Error codes are implemented per component specs
 - [ ] Quality gates are updated to match new architecture
 
 ## Communication Protocol
@@ -407,12 +458,12 @@ Before completing any task, verify:
 - Any blockers encountered
 - Estimated completion time
 
-**DO NOT STOP** until all 26 tasks are completed. Report progress after each task.
+**DO NOT STOP** until all 30 tasks are completed. Report progress after each task.
 
 ---
 
 ## START NOW
 
-Begin with backend startup and Task 01 execution. The system is in critical failure state and requires immediate autonomous intervention to achieve the 6-day build plan targets.
+Begin with backend startup and Task 01 execution. The system has implementation gaps that need to be addressed to achieve the 7-day build plan targets.
 
 **First Command**: `./platform.sh backtest`

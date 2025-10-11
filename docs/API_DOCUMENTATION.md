@@ -20,7 +20,7 @@
 
 - **Component Details** → [COMPONENT_SPECS_INDEX.md](COMPONENT_SPECS_INDEX.md)
 - **Workflow Guide** → [WORKFLOW_GUIDE.md](WORKFLOW_GUIDE.md)
-- **Configuration** → [specs/CONFIGURATION.md](specs/CONFIGURATION.md)
+- **Configuration** → [specs/19_CONFIGURATION.md](specs/19_CONFIGURATION.md)
 - **Environment Variables** → [ENVIRONMENT_VARIABLES.md](ENVIRONMENT_VARIABLES.md)
 - **Deployment Guide** → [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md)
 
@@ -199,6 +199,18 @@ Production: https://api.basis-strategy.com/api/v1
   "start_date": "2024-01-01T00:00:00Z",
   "end_date": "2024-01-31T23:59:59Z",
   "initial_capital": 100000.0,
+  "config_overrides": {
+    "component_config": {
+      "risk_monitor": {
+        "risk_limits": {
+          "aave_health_factor_min": 1.2
+        }
+      },
+      "pnl_calculator": {
+        "reconciliation_tolerance": 0.01
+      }
+    }
+  },
   "share_class": "USDT"
 }
 ```
@@ -355,6 +367,17 @@ The `performance_attribution` field breaks down the total return into specific s
 
 **Total Attribution**: 0.008 + 0.0015 + 0.0005 - 0.002 + 0.018 + 0.001 - 0.0002 = 0.0268 (2.68%)
 
+### **Config-Driven Attribution**
+
+**Note**: The attribution types calculated are determined by `component_config.pnl_calculator.attribution_types` in the mode configuration. Each strategy mode enables only the attribution types relevant to its operations:
+
+- **Pure Lending**: `supply_yield`, `transaction_costs`
+- **BTC Basis**: `funding_pnl`, `delta_pnl`, `basis_pnl`, `transaction_costs`
+- **ETH Leveraged**: `supply_yield`, `staking_yield_oracle`, `staking_yield_rewards`, `borrow_costs`, `price_change_pnl`, `transaction_costs`
+- **USDT Market Neutral**: All 8 attribution types (full complexity)
+
+Unused attribution types return 0.0 (graceful handling). See [19_CONFIGURATION.md](specs/19_CONFIGURATION.md) for complete config schemas.
+
 ---
 
 ## 🚀 **Live Trading Endpoints**
@@ -371,7 +394,19 @@ The `performance_attribution` field breaks down the total return into specific s
   "strategy_name": "usdt_market_neutral",
   "share_class": "USDT",
   "max_trade_size_usd": 10000.0,
-  "emergency_stop_loss_pct": 0.15
+  "emergency_stop_loss_pct": 0.15,
+  "config_overrides": {
+    "component_config": {
+      "risk_monitor": {
+        "risk_limits": {
+          "aave_health_factor_min": 1.2
+        }
+      },
+      "execution_manager": {
+        "supported_actions": ["aave_supply", "aave_withdraw", "cex_spot_buy", "cex_perp_short"]
+      }
+    }
+  }
 }
 ```
 

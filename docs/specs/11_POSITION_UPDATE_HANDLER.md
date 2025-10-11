@@ -5,9 +5,13 @@ Orchestrates the tight loop sequence between position updates and downstream com
 
 ## 📚 **Canonical Sources**
 
-- **Architectural Principles**: [REFERENCE_ARCHITECTURE_CANONICAL.md](../REFERENCE_ARCHITECTURE_CANONICAL.md) - Canonical architectural principles
-- **Strategy Specifications**: [MODES.md](../MODES.md) - Canonical strategy mode definitions
-- **Component Specifications**: [specs/](specs/) - Detailed component implementation guides
+**This component spec aligns with canonical architectural principles**:
+- **Architectural Principles**: [../REFERENCE_ARCHITECTURE_CANONICAL.md](../REFERENCE_ARCHITECTURE_CANONICAL.md) - Canonical architectural principles
+- **Mode-Agnostic Architecture**: [../REFERENCE_ARCHITECTURE_CANONICAL.md](../REFERENCE_ARCHITECTURE_CANONICAL.md) - Config-driven architecture guide
+- **Code Structures**: [../CODE_STRUCTURE_PATTERNS.md](../CODE_STRUCTURE_PATTERNS.md) - Complete implementation patterns  
+- **Configuration**: [19_CONFIGURATION.md](19_CONFIGURATION.md) - Complete config schemas for all 7 modes
+- **Strategy Specifications**: [../MODES.md](../MODES.md) - Strategy mode definitions
+- **Tight Loop Architecture**: [../ARCHITECTURAL_DECISION_RECORDS.md](../ARCHITECTURAL_DECISION_RECORDS.md) - ADR-001 execution reconciliation
 - **Related Components**: [06_EXECUTION_MANAGER.md](06_EXECUTION_MANAGER.md) - Execution Manager integration
 - **Related Components**: [07_EXECUTION_INTERFACE_MANAGER.md](07_EXECUTION_INTERFACE_MANAGER.md) - Execution Interface Manager integration
 
@@ -32,7 +36,7 @@ The following are set once during initialization and NEVER passed as runtime par
 - risk_monitor: RiskMonitor
 - pnl_calculator: PnLCalculator
 - reconciliation_component: ReconciliationComponent
-- data_provider: DataProvider (reference only, uses shared clock)
+- data_provider: BaseDataProvider (reference, uses shared clock)
 - config: Dict (reference, never modified)
 - execution_mode: str (BASIS_EXECUTION_MODE)
 
@@ -54,6 +58,7 @@ Components NEVER receive these as method parameters during runtime.
 ## Config Fields Used
 
 ### Universal Config (All Components)
+- **mode**: str - e.g., 'eth_basis', 'pure_lending' (NOT 'mode')
 - **execution_mode**: 'backtest' | 'live' (from strategy mode slice)
 - **log_level**: 'DEBUG' | 'INFO' | 'WARNING' | 'ERROR' (from strategy mode slice)
 
@@ -65,6 +70,53 @@ Components NEVER receive these as method parameters during runtime.
 - **position_settings**: Dict (position-specific settings)
   - **update_interval**: Position update interval
   - **validation_rules**: Position validation rules
+
+## Config-Driven Behavior
+
+The Position Update Handler is **mode-agnostic** by design - it orchestrates the tight loop sequence without mode-specific logic:
+
+**Component Configuration** (from `component_config.position_update_handler`):
+```yaml
+component_config:
+  position_update_handler:
+    # Position Update Handler is inherently mode-agnostic
+    # Orchestrates tight loop sequence regardless of strategy mode
+    # No mode-specific configuration needed
+    tight_loop_timeout: 10    # Tight loop timeout in seconds
+    max_retries: 3           # Maximum retry attempts
+    component_timeout: 5     # Individual component timeout
+```
+
+**Mode-Agnostic Tight Loop Orchestration**:
+- Orchestrates tight loop: position_monitor → exposure_monitor → risk_monitor → pnl_calculator
+- Same orchestration logic for all strategy modes
+- No mode-specific if statements in orchestration logic
+- Uses config-driven timeout and retry settings
+
+**Tight Loop Orchestration by Mode**:
+
+**Pure Lending Mode**:
+- Orchestrates: position_monitor (USDT/aUSDT) → exposure_monitor (USDT exposure) → risk_monitor (AAVE health) → pnl_calculator (supply yield)
+- Simple component chain
+- Same orchestration logic as other modes
+
+**BTC Basis Mode**:
+- Orchestrates: position_monitor (BTC spot/perp) → exposure_monitor (BTC/USDT exposure) → risk_monitor (CEX margin/funding risk) → pnl_calculator (funding/delta PnL)
+- Multi-venue component chain
+- Same orchestration logic as other modes
+
+**ETH Leveraged Mode**:
+- Orchestrates: position_monitor (ETH/LST/AAVE) → exposure_monitor (ETH exposure) → risk_monitor (AAVE health/liquidation) → pnl_calculator (staking/borrow PnL)
+- Complex AAVE component chain
+- Same orchestration logic as other modes
+
+**Key Principle**: Position Update Handler is **purely orchestration** - it does NOT:
+- Make mode-specific decisions about which components to call
+- Handle strategy-specific orchestration logic
+- Convert or transform data between components
+- Make business logic decisions
+
+All orchestration logic is generic - it calls the same component sequence (position_monitor → exposure_monitor → risk_monitor → pnl_calculator) regardless of strategy mode, with each component handling mode-specific logic internally using config-driven behavior.
 
 ## Data Provider Queries
 
@@ -121,6 +173,140 @@ def update_state(self, timestamp: pd.Timestamp, trigger_source: str, execution_d
         # Orchestrate tight loop with real data
         return self._orchestrate_live_loop(timestamp, trigger_source, execution_deltas)
 ```
+
+## **MODE-AGNOSTIC IMPLEMENTATION EXAMPLE**
+
+### **Complete Config-Driven Position Update Handler**
+
+```python
+from typing import Dict, Optional
+import pandas as pd
+import logging
+
+logger = logging.getLogger(__name__)
+
+class PositionUpdateHandler:
+    """Mode-agnostic tight loop orchestrator"""
+    
+    def __init__(self, config: Dict, data_provider: 'BaseDataProvider', execution_mode: str,
+                 position_monitor: 'PositionMonitor', exposure_monitor: 'ExposureMonitor',
+                 risk_monitor: 'RiskMonitor', pnl_calculator: 'PnLCalculator'):
+        # Store references (NEVER modified)
+        self.config = config
+        self.data_provider = data_provider
+        self.execution_mode = execution_mode
+        self.position_monitor = position_monitor
+        self.exposure_monitor = exposure_monitor
+        self.risk_monitor = risk_monitor
+        self.pnl_calculator = pnl_calculator
+        
+        # Initialize component-specific state
+        self.tight_loop_active = False
+        self.current_loop_timestamp = None
+        self.loop_execution_count = 0
+        
+        logger.info(f"PositionUpdateHandler initialized")
+    
+    def handle_position_update(self, changes: Dict, timestamp: pd.Timestamp, 
+                               market_data: Dict = None, trigger_component: str = 'unknown') -> Dict:
+        """
+        Handle position monitor update and trigger the tight loop.
+        MODE-AGNOSTIC - same orchestration for all strategy modes.
+        
+        Args:
+            changes: Position changes to apply (backtest mode only)
+            timestamp: Current timestamp
+            market_data: Market data for calculations
+            trigger_component: Component that triggered the update
+        
+        Returns:
+            Dictionary with updated exposure, risk, and P&L data
+        """
+        # Log component start (per EVENT_LOGGER.md)
+        start_time = pd.Timestamp.now()
+        logger.debug(f"PositionUpdateHandler.handle_position_update started at {start_time}")
+        
+        try:
+            # Step 1: Update position monitor
+            if self.execution_mode == 'backtest':
+                # Update position with execution deltas
+                self.position_monitor.update_state(timestamp, 'execution_manager', changes)
+                updated_snapshot = self.position_monitor.get_current_positions()
+            else:
+                # Refresh positions from live APIs
+                self.position_monitor.update_state(timestamp, 'position_refresh', None)
+                updated_snapshot = self.position_monitor.get_current_positions()
+            
+            # Step 2: Recalculate exposure
+            updated_exposure = self.exposure_monitor.calculate_exposure(
+                timestamp=timestamp,
+                position_snapshot=updated_snapshot,
+                market_data=market_data or {}
+            )
+            
+            # Step 3: Reassess risk
+            updated_risk = self.risk_monitor.assess_risk(
+                exposure_data=updated_exposure,
+                market_data=market_data or {}
+            )
+            
+            # Step 4: Recalculate P&L
+            updated_pnl = self.pnl_calculator.calculate_pnl(
+                current_exposure=updated_exposure,
+                previous_exposure=None,  # Will use internal state
+                timestamp=timestamp,
+                period_start=self.config.get('period_start')
+            )
+            
+            # Log component end (per EVENT_LOGGER.md)
+            end_time = pd.Timestamp.now()
+            processing_time_ms = (end_time - start_time).total_seconds() * 1000
+            logger.debug(f"PositionUpdateHandler.handle_position_update completed at {end_time}, took {processing_time_ms:.2f}ms")
+            
+            return {
+                'exposure': updated_exposure,
+                'risk': updated_risk,
+                'pnl': updated_pnl,
+                'processing_time_ms': processing_time_ms
+            }
+        
+        except Exception as e:
+            logger.error(f"Position update failed: {e}")
+            raise ComponentError(
+                error_code='PUH-001',
+                message=f'Position update handler failed: {str(e)}',
+                component='PositionUpdateHandler',
+                severity='HIGH',
+                original_exception=e
+            )
+```
+
+### **Key Benefits of Mode-Agnostic Implementation**
+
+1. **No Mode-Specific Logic**: Component has zero hardcoded mode checks
+2. **Simple Sequential Chain**: position → exposure → risk → pnl
+3. **Component Logging**: Start/end timestamps per EVENT_LOGGER.md
+4. **Fail-Fast Errors**: Wraps exceptions in ComponentError with PUH-001
+
+### **ComponentFactory Pattern**
+
+```python
+class ComponentFactory:
+    """Creates components with config validation"""
+    
+    @staticmethod
+    def create_position_update_handler(config: Dict, data_provider: 'BaseDataProvider', execution_mode: str,
+                                       position_monitor: 'PositionMonitor', exposure_monitor: 'ExposureMonitor',
+                                       risk_monitor: 'RiskMonitor', pnl_calculator: 'PnLCalculator') -> PositionUpdateHandler:
+        """Create Position Update Handler - mode-agnostic tight loop orchestrator"""
+        # No component config needed - mode-agnostic
+        return PositionUpdateHandler(
+            config, data_provider, execution_mode,
+            position_monitor, exposure_monitor, risk_monitor, pnl_calculator
+        )
+```
+
+---
 
 ## Event Logging Requirements
 
@@ -545,7 +731,7 @@ Main entry point for position update orchestration.
 
 Parameters:
 - timestamp: Current loop timestamp (from EventDrivenStrategyEngine)
-- trigger_source: 'full_loop' | 'execution_manager' | 'manual'
+- trigger_source: 'full_loop' | 'execution_manager' | 'position_refresh'
 - execution_deltas: Dict (optional) - position deltas from execution manager
 
 Behavior:
@@ -565,7 +751,7 @@ Parameters:
 - execution_deltas: Position deltas from execution manager (optional)
 
 Behavior:
-1. Call position_monitor.update_state(timestamp, execution_deltas, 'execution_manager')
+1. Call position_monitor.update_state(timestamp, 'execution_manager', execution_deltas)
 2. Call reconciliation_component.update_state(timestamp, simulated_state, 'execution_manager')
 3. If reconciliation success: Continue tight loop chain
 4. If reconciliation failed: Trigger refresh loop
@@ -580,7 +766,7 @@ Parameters:
 - timestamp: Current loop timestamp
 
 Behavior:
-1. Call position_monitor.update_state(timestamp, None, 'full_loop')
+1. Call position_monitor.update_state(timestamp, 'full_loop', None)
 2. Call exposure_monitor.update_state(timestamp, 'full_loop')
 3. Call risk_monitor.update_state(timestamp, 'full_loop')
 4. Call pnl_calculator.update_state(timestamp, 'full_loop')
@@ -670,6 +856,35 @@ def _process_timestep(self, timestamp: pd.Timestamp):
     # ... strategy logic ...
 ```
 
+### Receives FROM Position Monitor
+
+The Position Update Handler orchestrates updates using Position Monitor's interface:
+
+**Position Monitor Interface**:
+```python
+# Update position state
+position_monitor.update_state(
+    timestamp=timestamp,
+    trigger_source='execution_manager',  # or 'position_refresh', 'full_loop'
+    execution_deltas={'wallet': {'USDT': -1000.0, 'ETH': 0.3}, ...}
+)
+
+# Get current position snapshot
+position_snapshot = position_monitor.get_current_positions()
+# Returns: {
+#     'wallet': {...},
+#     'cex_accounts': {...},
+#     'perp_positions': {...},
+#     'timestamp': timestamp,
+#     'tracked_assets': [...]  # ← Config-driven asset list
+# }
+```
+
+**Key Integration Points**:
+- **Calls**: `position_monitor.update_state()` with trigger_source and execution_deltas
+- **Returns**: Position snapshot with tracked_assets for downstream components
+- **Validation**: Position Monitor validates assets against track_assets config (fail-fast)
+
 ## Integration Points
 
 ### Called BY
@@ -677,7 +892,8 @@ def _process_timestep(self, timestamp: pd.Timestamp):
 - EventDrivenStrategyEngine (full loop): position_update_handler.update_state(timestamp, 'full_loop')
 
 ### Calls TO
-- position_monitor.update_state(timestamp, execution_deltas, trigger_source) - position updates
+- position_monitor.update_state(timestamp, trigger_source, execution_deltas) - position updates
+- position_monitor.get_current_positions() - position snapshots with tracked_assets
 - exposure_monitor.update_state(timestamp, 'tight_loop') - exposure calculations
 - risk_monitor.update_state(timestamp, 'tight_loop') - risk assessments
 - pnl_calculator.update_state(timestamp, 'tight_loop') - P&L calculations
@@ -718,10 +934,10 @@ def _process_timestep(self, timestamp: pd.Timestamp):
 
 ```python
 class PositionUpdateHandler:
-    def __init__(self, config: Dict, data_provider: DataProvider, execution_mode: str,
-                 position_monitor: PositionMonitor, exposure_monitor: ExposureMonitor,
-                 risk_monitor: RiskMonitor, pnl_calculator: PnLCalculator,
-                 reconciliation_component: ReconciliationComponent):
+    def __init__(self, config: Dict, data_provider: 'BaseDataProvider', execution_mode: str,
+                 position_monitor: 'PositionMonitor', exposure_monitor: 'ExposureMonitor',
+                 risk_monitor: 'RiskMonitor', pnl_calculator: 'PnLCalculator',
+                 reconciliation_component: 'ReconciliationComponent'):
         # Store references (NEVER modified)
         self.config = config
         self.data_provider = data_provider
@@ -761,7 +977,7 @@ class PositionUpdateHandler:
         
         try:
             # Update position with execution deltas
-            self.position_monitor.update_state(timestamp, execution_deltas, 'execution_manager')
+            self.position_monitor.update_state(timestamp, 'execution_manager', execution_deltas)
             
             # Check reconciliation (mode-aware)
             if self.execution_mode == 'backtest':
@@ -787,7 +1003,7 @@ class PositionUpdateHandler:
     def _execute_full_loop(self, timestamp: pd.Timestamp):
         """Execute full loop without reconciliation."""
         # Update all components in sequence
-        self.position_monitor.update_state(timestamp, None, 'full_loop')
+        self.position_monitor.update_state(timestamp, 'full_loop', None)
         self.exposure_monitor.update_state(timestamp, 'full_loop')
         self.risk_monitor.update_state(timestamp, 'full_loop')
         self.pnl_calculator.update_state(timestamp, 'full_loop')
@@ -796,7 +1012,7 @@ class PositionUpdateHandler:
         """Trigger position refresh for reconciliation failure."""
         if self.execution_mode == 'live':
             # Refresh position and retry reconciliation
-            self.position_monitor.update_state(timestamp, None, 'position_refresh')
+            self.position_monitor.update_state(timestamp, 'position_refresh', None)
             # Reconciliation component will be called again by execution manager
     
     def get_health_status(self) -> Dict:
@@ -810,14 +1026,46 @@ class PositionUpdateHandler:
         }
 ```
 
+## Current Implementation Status
+
+**Overall Completion**: 90% (Spec complete, implementation needs updates)
+
+### **Core Functionality Status**
+- ✅ **Working**: Tight loop orchestration, component coordination, position updates
+- ⚠️ **Partial**: Error handling patterns, health integration
+- ❌ **Missing**: Config-driven timeout settings, health integration
+- 🔄 **Refactoring Needed**: Update to use BaseDataProvider type hints
+
+### **Architecture Compliance Status**
+- ✅ **COMPLIANT**: Spec follows all canonical architectural principles
+  - **Reference-Based Architecture**: Components receive references at init
+  - **Shared Clock Pattern**: Methods receive timestamp from engine
+  - **Mode-Agnostic Behavior**: Config-driven, no mode-specific logic
+  - **Fail-Fast Patterns**: Uses ADR-040 fail-fast access
+
 ## Related Documentation
+
+### **Architecture Patterns**
 - [Reference-Based Architecture](../REFERENCE_ARCHITECTURE_CANONICAL.md)
-- [Shared Clock Pattern](../SHARED_CLOCK_PATTERN.md)
-- [Request Isolation Pattern](../REQUEST_ISOLATION_PATTERN.md)
-- [Position Monitor Specification](01_POSITION_MONITOR.md)
-- [Exposure Monitor Specification](02_EXPOSURE_MONITOR.md)
-- [Risk Monitor Specification](03_RISK_MONITOR.md)
-- [PnL Calculator Specification](04_PNL_CALCULATOR.md)
-- [Reconciliation Component Specification](10_RECONCILIATION_COMPONENT.md)
-- [Execution Manager Specification](06_EXECUTION_MANAGER.md)
-- [Event-Driven Strategy Engine Specification](15_EVENT_DRIVEN_STRATEGY_ENGINE.md)
+- [Mode-Agnostic Architecture](../REFERENCE_ARCHITECTURE_CANONICAL.md)
+- [Code Structure Patterns](../CODE_STRUCTURE_PATTERNS.md)
+- [Configuration Guide](19_CONFIGURATION.md)
+
+### **Component Integration**
+- [Position Monitor Specification](01_POSITION_MONITOR.md) - Position data provider
+- [Exposure Monitor Specification](02_EXPOSURE_MONITOR.md) - Exposure calculations
+- [Risk Monitor Specification](03_RISK_MONITOR.md) - Risk metrics
+- [PnL Calculator Specification](04_PNL_CALCULATOR.md) - PnL calculations
+- [Reconciliation Component Specification](10_RECONCILIATION_COMPONENT.md) - Position validation
+- [Execution Manager Specification](06_EXECUTION_MANAGER.md) - Execution coordination
+- [Event-Driven Strategy Engine Specification](15_EVENT_DRIVEN_STRATEGY_ENGINE.md) - Engine integration
+
+### **Configuration and Implementation**
+- [Configuration Guide](19_CONFIGURATION.md) - Complete config schemas for all 7 modes
+- [Code Structure Patterns](../CODE_STRUCTURE_PATTERNS.md) - Implementation patterns
+- [Event Logger Specification](08_EVENT_LOGGER.md) - Event logging integration
+
+---
+
+**Status**: Specification complete ✅  
+**Last Reviewed**: October 11, 2025

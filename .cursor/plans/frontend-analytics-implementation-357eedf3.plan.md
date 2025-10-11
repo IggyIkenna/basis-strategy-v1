@@ -388,7 +388,7 @@ export const apiClient = import.meta.env.VITE_API_MODE === 'mock'
 - Document VITE_API_MODE usage
 - Update deployment configuration section
 
-**File:** `docs/specs/CONFIGURATION.md`
+**File:** `docs/specs/19_CONFIGURATION.md`
 
 - Add frontend environment variables section
 - Document API mode switching
@@ -567,7 +567,7 @@ Verify dependencies are installed:
 - [ ] Add VITE_API_MODE to docker env files
 - [ ] Update API client to use VITE_API_MODE
 - [ ] Update docs/specs/12_FRONTEND_SPEC.md with env vars
-- [ ] Update docs/specs/CONFIGURATION.md with frontend env vars
+- [ ] Update docs/specs/19_CONFIGURATION.md with frontend env vars
 - [ ] Update docs/ENVIRONMENT_VARIABLES.md with VITE_API_MODE
 - [ ] Update docs/DEPLOYMENT_GUIDE.md with frontend deployment
 - [ ] Update docs/GETTING_STARTED.md with frontend setup

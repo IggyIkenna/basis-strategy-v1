@@ -1,5 +1,7 @@
 # Live Trading Service Component Specification
 
+**Last Reviewed**: October 11, 2025
+
 ## Purpose
 Orchestrate live trading with real execution and risk management using EventDrivenStrategyEngine.
 
@@ -23,6 +25,31 @@ The following are set once during initialization and NEVER passed as runtime par
 
 These references are stored in __init__ and used throughout component lifecycle.
 Components NEVER receive these as method parameters during runtime.
+
+## Configuration Parameters
+
+### **Config-Driven Architecture**
+
+The Live Trading Service is **mode-agnostic** and uses configuration from the strategy mode:
+
+```yaml
+# From strategy mode configuration
+live_trading_service:
+  timeout_seconds: 7200
+  max_concurrent_trades: 3
+  memory_limit_mb: 4096
+  risk_management_enabled: true
+  execution_timeout: 30
+  position_size_limit: 1000000
+```
+
+### **Parameter Definitions**
+- **timeout_seconds**: Maximum execution time for live trading
+- **max_concurrent_trades**: Maximum concurrent trade executions
+- **memory_limit_mb**: Memory limit for live trading execution
+- **risk_management_enabled**: Enable real-time risk management
+- **execution_timeout**: Timeout for individual trade executions
+- **position_size_limit**: Maximum position size limit
 
 ## Environment Variables
 
@@ -50,6 +77,445 @@ Components NEVER receive these as method parameters during runtime.
 - **strategy_settings**: Dict (strategy-specific settings)
   - **strategy_name**: Strategy mode name
   - **config_overrides**: Strategy configuration overrides
+
+## Config-Driven Behavior
+
+The Live Trading Service uses configuration to determine how to initialize components and handle config overrides:
+
+**Component Configuration** (from `component_config.live_trading_service`):
+```yaml
+component_config:
+  live_trading_service:
+    # Live Trading Service uses config-driven component initialization
+    # No mode-specific configuration needed
+    timeout: 3600           # Live trading execution timeout in seconds
+    max_concurrent: 5       # Maximum concurrent strategies
+    memory_limit: 1024      # Memory limit per strategy in MB
+```
+
+**Config-Driven Component Initialization**:
+- Uses `BaseDataProviderFactory.create()` to create mode-specific data providers
+- Uses `ComponentFactory.create_all()` to create config-driven components
+- Applies config overrides to component configurations
+- No mode-specific if statements in component initialization
+
+**Component Initialization by Mode**:
+
+**Pure Lending Mode**:
+- Creates: `PureLendingDataProvider` with real-time AAVE USDT data
+- Creates: config-driven components with pure lending config
+- Applies: config overrides to component configurations
+- Same initialization logic as other modes
+
+**BTC Basis Mode**:
+- Creates: `BTCBasisDataProvider` with real-time BTC spot/futures/funding data
+- Creates: config-driven components with BTC basis config
+- Applies: config overrides to component configurations
+- Same initialization logic as other modes
+
+**ETH Leveraged Mode**:
+- Creates: `ETHLeveragedDataProvider` with real-time ETH/LST/AAVE data
+- Creates: config-driven components with ETH leveraged config
+- Applies: config overrides to component configurations
+- Same initialization logic as other modes
+
+**Key Principle**: Live Trading Service is **purely orchestration** - it does NOT:
+- Make mode-specific decisions about which components to create
+- Handle strategy-specific initialization logic
+- Convert or transform configuration data
+- Make business logic decisions
+
+All initialization logic is generic - it uses factory patterns to create mode-specific data providers and config-driven components, then applies config overrides to customize component behavior.
+
+## MODE-AGNOSTIC IMPLEMENTATION EXAMPLE
+
+### Complete Live Trading Service Implementation
+
+```python
+from typing import Dict, List, Any, Optional
+import asyncio
+import uuid
+import logging
+from datetime import datetime
+from decimal import Decimal
+
+class LiveTradingService:
+    """Service for orchestrating live trading execution using factory-based initialization"""
+    
+    def __init__(self, global_config: Dict[str, Any], config_manager: ConfigManager):
+        # Store references (NEVER modified)
+        self.global_config = global_config
+        self.config_manager = config_manager
+        
+        # Extract config-driven service settings
+        self.service_config = global_config.get('component_config', {}).get('live_trading_service', {})
+        self.timeout = self.service_config.get('timeout', 3600)
+        self.max_concurrent = self.service_config.get('max_concurrent', 5)
+        self.memory_limit = self.service_config.get('memory_limit', 1024)
+        
+        # Initialize service state
+        self.running_strategies: Dict[str, Dict[str, Any]] = {}
+        self.completed_strategies: Dict[str, Dict[str, Any]] = {}
+        self.strategy_status: Dict[str, Dict] = {}
+        
+        # Validate config
+        self._validate_service_config()
+        
+        logging.info("LiveTradingService initialized with factory-based architecture")
+    
+    def _validate_service_config(self):
+        """Validate live trading service configuration"""
+        if self.timeout <= 0:
+            raise ValueError("live_trading_service.timeout must be positive")
+        
+        if self.max_concurrent <= 0:
+            raise ValueError("live_trading_service.max_concurrent must be positive")
+        
+        if self.memory_limit <= 0:
+            raise ValueError("live_trading_service.memory_limit must be positive")
+    
+    async def start_live_trading(self, request: LiveTradingRequest) -> str:
+        """
+        Start live trading using factory-based component initialization.
+        
+        Parameters:
+        - request: LiveTradingRequest with strategy_name, config_overrides, risk_limits
+        
+        Returns:
+        - str: Request ID for tracking
+        
+        Raises:
+        - ValueError: If request validation fails
+        - RuntimeError: If live trading execution fails
+        """
+        request_id = str(uuid.uuid4())
+        
+        try:
+            # 1. Validate request
+            self._validate_request(request)
+            
+            # 2. Check concurrent limit
+            if len(self.running_strategies) >= self.max_concurrent:
+                raise RuntimeError(f"Maximum concurrent strategies ({self.max_concurrent}) reached")
+            
+            # 3. Slice config for strategy mode
+            config_slice = self._slice_config(request.strategy_name)
+            
+            # 4. Apply config overrides
+            final_config = self._apply_overrides(config_slice, request.config_overrides)
+            
+            # 5. Create fresh data provider using factory
+            data_provider = self._create_data_provider(final_config, request)
+            
+            # 6. Create fresh component instances using factory
+            components = self._create_components(final_config, data_provider)
+            
+            # 7. Initialize EventDrivenStrategyEngine
+            strategy_engine = EventDrivenStrategyEngine(
+                config=final_config,
+                execution_mode='live',
+                data_provider=data_provider,
+                **components
+            )
+            
+            # 8. Store running strategy
+            self.running_strategies[request_id] = {
+                'request': request,
+                'config': final_config,
+                'strategy_engine': strategy_engine,
+                'status': 'running',
+                'started_at': datetime.utcnow(),
+                'last_heartbeat': datetime.utcnow(),
+                'total_pnl': 0.0,
+                'total_trades': 0,
+                'current_drawdown': 0.0
+            }
+            
+            # 9. Start live trading asynchronously
+            asyncio.create_task(self._execute_live_trading(request_id, strategy_engine, request))
+            
+            logging.info(f"Live trading {request_id} started for strategy {request.strategy_name}")
+            return request_id
+            
+        except Exception as e:
+            logging.error(f"Failed to start live trading {request_id}: {e}")
+            raise
+    
+    def _validate_request(self, request: LiveTradingRequest):
+        """Validate live trading request parameters"""
+        if not request.strategy_name:
+            raise ValueError("strategy_name cannot be empty")
+        
+        if not request.initial_capital or request.initial_capital <= 0:
+            raise ValueError("initial_capital must be positive")
+        
+        if request.share_class not in ['USDT', 'ETH']:
+            raise ValueError("share_class must be 'USDT' or 'ETH'")
+        
+        if not request.risk_limits:
+            raise ValueError("risk_limits are required for live trading")
+        
+        # Validate risk limits
+        required_risk_limits = ['max_drawdown', 'max_daily_loss']
+        for limit in required_risk_limits:
+            if limit not in request.risk_limits:
+                raise ValueError(f"risk_limits.{limit} is required")
+    
+    def _slice_config(self, strategy_name: str) -> Dict[str, Any]:
+        """
+        Slice config for strategy mode (never modifies global config).
+        
+        Parameters:
+        - strategy_name: Strategy mode name
+        
+        Returns:
+        - Dict: Mode-specific config slice
+        """
+        try:
+            return self.config_manager.get_complete_config(mode=strategy_name)
+        except Exception as e:
+            logging.error(f"Failed to slice config for strategy {strategy_name}: {e}")
+            raise ValueError(f"Config slicing failed for strategy {strategy_name}: {e}")
+    
+    def _apply_overrides(self, config_slice: Dict[str, Any], overrides: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+        """
+        Apply overrides to config slice (never modifies global config).
+        
+        Parameters:
+        - config_slice: Mode-specific config
+        - overrides: Request overrides
+        
+        Returns:
+        - Dict: Config with overrides applied
+        """
+        if not overrides:
+            return config_slice.copy()
+        
+        # Deep copy to avoid modifying original
+        final_config = config_slice.copy()
+        
+        # Apply overrides recursively
+        for key, value in overrides.items():
+            if key in final_config and isinstance(final_config[key], dict) and isinstance(value, dict):
+                final_config[key].update(value)
+            else:
+                final_config[key] = value
+        
+        return final_config
+    
+    def _create_data_provider(self, config: Dict[str, Any], request: LiveTradingRequest) -> BaseDataProvider:
+        """
+        Create fresh data provider using factory pattern.
+        
+        Parameters:
+        - config: Complete configuration
+        - request: Live trading request
+        
+        Returns:
+        - BaseDataProvider: Fresh data provider instance
+        """
+        try:
+            # Use DataProviderFactory to create mode-specific data provider
+            data_provider = DataProviderFactory.create(
+                mode=request.strategy_name,
+                execution_mode='live',
+                config=config
+            )
+            
+            logging.info(f"Created {request.strategy_name} data provider for live trading")
+            return data_provider
+            
+        except Exception as e:
+            logging.error(f"Failed to create data provider for {request.strategy_name}: {e}")
+            raise RuntimeError(f"Data provider creation failed: {e}")
+    
+    def _create_components(self, config: Dict[str, Any], data_provider: BaseDataProvider) -> Dict[str, Any]:
+        """
+        Create fresh component instances using factory pattern.
+        
+        Parameters:
+        - config: Complete configuration
+        - data_provider: Data provider instance
+        
+        Returns:
+        - Dict[str, Any]: Dictionary of component instances
+        """
+        try:
+            # Use ComponentFactory to create all components
+            components = ComponentFactory.create_all(
+                config=config,
+                execution_mode='live',
+                data_provider=data_provider
+            )
+            
+            logging.info(f"Created {len(components)} components for live trading")
+            return components
+            
+        except Exception as e:
+            logging.error(f"Failed to create components: {e}")
+            raise RuntimeError(f"Component creation failed: {e}")
+    
+    async def _execute_live_trading(self, request_id: str, strategy_engine: EventDrivenStrategyEngine, request: LiveTradingRequest):
+        """Execute live trading and handle monitoring"""
+        try:
+            # Start live trading execution
+            await strategy_engine.run_live()
+            
+            # Move to completed
+            if request_id in self.running_strategies:
+                strategy_info = self.running_strategies.pop(request_id)
+                strategy_info.update({
+                    'status': 'completed',
+                    'completed_at': datetime.utcnow()
+                })
+                self.completed_strategies[request_id] = strategy_info
+            
+            logging.info(f"Live trading {request_id} completed successfully")
+            
+        except Exception as e:
+            logging.error(f"Live trading {request_id} failed: {e}")
+            
+            # Move to completed with error
+            if request_id in self.running_strategies:
+                strategy_info = self.running_strategies.pop(request_id)
+                strategy_info.update({
+                    'status': 'failed',
+                    'completed_at': datetime.utcnow(),
+                    'error': str(e)
+                })
+                self.completed_strategies[request_id] = strategy_info
+    
+    async def stop_live_trading(self, request_id: str) -> bool:
+        """Stop live trading for specific request"""
+        if request_id in self.running_strategies:
+            strategy_info = self.running_strategies.pop(request_id)
+            strategy_info.update({
+                'status': 'stopped',
+                'completed_at': datetime.utcnow()
+            })
+            self.completed_strategies[request_id] = strategy_info
+            return True
+        return False
+    
+    async def get_strategy_status(self, request_id: str) -> Dict[str, Any]:
+        """Get current status of live trading strategy"""
+        if request_id in self.running_strategies:
+            strategy_info = self.running_strategies[request_id]
+            return {
+                'request_id': request_id,
+                'status': 'running',
+                'started_at': strategy_info['started_at'].isoformat(),
+                'last_heartbeat': strategy_info['last_heartbeat'].isoformat(),
+                'total_pnl': strategy_info['total_pnl'],
+                'total_trades': strategy_info['total_trades'],
+                'current_drawdown': strategy_info['current_drawdown']
+            }
+        elif request_id in self.completed_strategies:
+            strategy_info = self.completed_strategies[request_id]
+            return {
+                'request_id': request_id,
+                'status': strategy_info['status'],
+                'started_at': strategy_info['started_at'].isoformat(),
+                'completed_at': strategy_info['completed_at'].isoformat(),
+                'error': strategy_info.get('error')
+            }
+        else:
+            raise ValueError(f"Strategy {request_id} not found")
+    
+    async def check_risk_limits(self, request_id: str) -> Dict[str, Any]:
+        """Check if risk limits are being breached"""
+        if request_id not in self.running_strategies:
+            raise ValueError(f"Strategy {request_id} not found")
+        
+        strategy_info = self.running_strategies[request_id]
+        request = strategy_info['request']
+        
+        breaches = []
+        
+        # Check max drawdown
+        max_drawdown = request.risk_limits.get('max_drawdown')
+        if max_drawdown is not None:
+            current_drawdown = abs(strategy_info['current_drawdown'])
+            if current_drawdown > max_drawdown:
+                breaches.append({
+                    'type': 'max_drawdown',
+                    'limit': max_drawdown,
+                    'current': current_drawdown,
+                    'breach_pct': ((current_drawdown - max_drawdown) / max_drawdown) * 100
+                })
+        
+        # Check max daily loss
+        max_daily_loss = request.risk_limits.get('max_daily_loss')
+        if max_daily_loss is not None:
+            current_pnl = strategy_info['total_pnl']
+            if current_pnl < -max_daily_loss:
+                breaches.append({
+                    'type': 'max_daily_loss',
+                    'limit': max_daily_loss,
+                    'current': abs(current_pnl),
+                    'breach_pct': ((abs(current_pnl) - max_daily_loss) / max_daily_loss) * 100
+                })
+        
+        if breaches:
+            return {
+                'status': 'breach_detected',
+                'breaches': breaches,
+                'action_required': True
+            }
+        else:
+            return {
+                'status': 'within_limits',
+                'breaches': [],
+                'action_required': False
+            }
+    
+    async def emergency_stop(self, request_id: str, reason: str = "Emergency stop") -> bool:
+        """Emergency stop a live trading strategy"""
+        logging.warning(f"Emergency stop requested for {request_id}: {reason}")
+        
+        # Stop the strategy
+        success = await self.stop_live_trading(request_id)
+        
+        if success and request_id in self.completed_strategies:
+            # Add emergency stop info
+            self.completed_strategies[request_id]['emergency_stop'] = {
+                'reason': reason,
+                'stopped_at': datetime.utcnow()
+            }
+        
+        return success
+```
+
+### Integration with Factory Pattern
+
+```python
+# Example usage showing factory-based initialization
+class LiveTradingService:
+    def __init__(self, global_config: Dict[str, Any], config_manager: ConfigManager):
+        # ... initialization ...
+        
+        # Factory-based component creation
+        self.data_provider_factory = DataProviderFactory()
+        self.component_factory = ComponentFactory()
+        
+        logging.info("LiveTradingService initialized with factory pattern")
+    
+    def _create_data_provider(self, config: Dict[str, Any], request: LiveTradingRequest) -> BaseDataProvider:
+        """Create data provider using factory pattern"""
+        return self.data_provider_factory.create(
+            mode=request.strategy_name,
+            execution_mode='live',
+            config=config
+        )
+    
+    def _create_components(self, config: Dict[str, Any], data_provider: BaseDataProvider) -> Dict[str, Any]:
+        """Create components using factory pattern"""
+        return self.component_factory.create_all(
+            config=config,
+            execution_mode='live',
+            data_provider=data_provider
+        )
+```
 
 ## Data Provider Queries
 
@@ -747,7 +1213,7 @@ base_config.update({
 })
 ```
 
-**Configuration Details**: See [CONFIGURATION.md](CONFIGURATION.md) <!-- Link is valid --> <!-- Link is valid --> for comprehensive configuration management.
+**Configuration Details**: See [19_CONFIGURATION.md](19_CONFIGURATION.md) <!-- Link is valid --> <!-- Link is valid --> for comprehensive configuration management.
 
 ### **Singleton Pattern Requirements**
 
@@ -787,7 +1253,7 @@ Following [VENUE_ARCHITECTURE.md](../VENUE_ARCHITECTURE.md) <!-- Link is valid -
 
 - **EventDrivenStrategyEngine**: [15_EVENT_DRIVEN_STRATEGY_ENGINE.md](15_EVENT_DRIVEN_STRATEGY_ENGINE.md) <!-- Link is valid --> - Main orchestration engine
 - **Data Provider**: [09_DATA_PROVIDER.md](09_DATA_PROVIDER.md) <!-- Link is valid --> - Live data access
-- **Configuration**: [CONFIGURATION.md](CONFIGURATION.md) <!-- Link is valid --> <!-- Link is valid --> - Strategy configuration management
+- **Configuration**: [19_CONFIGURATION.md](19_CONFIGURATION.md) <!-- Link is valid --> <!-- Link is valid --> - Strategy configuration management
 
 ### **Infrastructure Dependencies**
 
@@ -1196,5 +1662,23 @@ Following [Quality Gate Validation](QUALITY_GATES.md) <!-- Redirected from 17_qu
 ---
 
 **Status**: Live Trading Service is complete and fully operational! 🎉
+
+## Related Documentation
+
+### Component Specifications
+- [15_EVENT_DRIVEN_STRATEGY_ENGINE.md](15_EVENT_DRIVEN_STRATEGY_ENGINE.md) - Strategy engine orchestration
+- [13_BACKTEST_SERVICE.md](13_BACKTEST_SERVICE.md) - Backtest service
+- [01_POSITION_MONITOR.md](01_POSITION_MONITOR.md) - Position tracking component
+- [02_EXPOSURE_MONITOR.md](02_EXPOSURE_MONITOR.md) - Exposure monitoring component
+- [03_RISK_MONITOR.md](03_RISK_MONITOR.md) - Risk monitoring component
+
+### Architecture Documentation
+- [../REFERENCE_ARCHITECTURE_CANONICAL.md](../REFERENCE_ARCHITECTURE_CANONICAL.md) - Canonical principles
+- [../CODE_STRUCTURE_PATTERNS.md](../CODE_STRUCTURE_PATTERNS.md) - Implementation patterns
+- [../ARCHITECTURAL_DECISION_RECORDS.md](../ARCHITECTURAL_DECISION_RECORDS.md) - ADR-001 tight loop
+
+### Configuration Documentation
+- [19_CONFIGURATION.md](19_CONFIGURATION.md) - Complete config schemas
+- [../MODES.md](../MODES.md) - Strategy mode definitions
 
 *Last Updated: January 6, 2025*

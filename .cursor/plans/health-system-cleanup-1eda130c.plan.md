@@ -55,7 +55,7 @@ Keep existing component health checkers but update to:
 - `ComponentHealthReport` dataclass (remove history fields)
 - `ComponentHealthChecker` base class
 - `PositionMonitorHealthChecker`
-- `DataProviderHealthChecker`
+- `BaseDataProviderHealthChecker`
 - `RiskMonitorHealthChecker`
 - `EventLoggerHealthChecker`
 
@@ -232,7 +232,7 @@ Update health check sections (lines 567-613):
 
 ### 5.4 Update Config Workflow
 
-**File**: `docs/specs/CONFIGURATION.md`
+**File**: `docs/specs/19_CONFIGURATION.md`
 
 Update health monitoring section (lines 211-227):
 
