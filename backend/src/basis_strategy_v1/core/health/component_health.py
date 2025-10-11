@@ -58,16 +58,16 @@ class ComponentHealthChecker:
         self.component_name = component_name
         self.last_health_check = None
     
-    async def check_health(self) -> ComponentHealthReport:
+    def check_health(self) -> ComponentHealthReport:
         """Check component health and return report."""
         timestamp = datetime.now(timezone.utc)
         
         try:
             # Perform readiness checks
-            readiness_checks = await self._perform_readiness_checks()
+            readiness_checks = self._perform_readiness_checks()
             
             # Get component metrics
-            metrics = await self._get_component_metrics()
+            metrics = self._get_component_metrics()
             
             # Determine overall status
             status = self._determine_status(readiness_checks)
@@ -75,7 +75,7 @@ class ComponentHealthChecker:
             # Get error information if unhealthy
             error_code, error_message = None, None
             if status in [HealthStatus.UNHEALTHY, HealthStatus.NOT_READY]:
-                error_code, error_message = await self._get_error_info()
+                error_code, error_message = self._get_error_info()
             
             report = ComponentHealthReport(
                 component_name=self.component_name,
@@ -85,7 +85,7 @@ class ComponentHealthChecker:
                 error_message=error_message,
                 readiness_checks=readiness_checks,
                 metrics=metrics,
-                dependencies=await self._get_dependencies()
+                dependencies=self._get_dependencies()
             )
             
             # Store last health check (no history)
@@ -103,15 +103,15 @@ class ComponentHealthChecker:
                 error_message=f"Health check failed: {str(e)}"
             )
     
-    async def _perform_readiness_checks(self) -> Dict[str, bool]:
+    def _perform_readiness_checks(self) -> Dict[str, bool]:
         """Perform component-specific readiness checks. Override in subclasses."""
         return {"basic_check": True}
     
-    async def _get_component_metrics(self) -> Dict[str, Any]:
+    def _get_component_metrics(self) -> Dict[str, Any]:
         """Get component-specific metrics. Override in subclasses."""
         return {}
     
-    async def _get_error_info(self) -> tuple[Optional[str], Optional[str]]:
+    def _get_error_info(self) -> tuple[Optional[str], Optional[str]]:
         """Get error code and message. Override in subclasses."""
         return None, None
     
@@ -140,7 +140,7 @@ class ComponentHealthChecker:
         else:
             logger.info(f"{error_code}: {error_message} - {message}", extra=log_data)
     
-    async def _get_dependencies(self) -> List[str]:
+    def _get_dependencies(self) -> List[str]:
         """Get component dependencies. Override in subclasses."""
         return []
     
@@ -169,7 +169,7 @@ class PositionMonitorHealthChecker(ComponentHealthChecker):
         super().__init__("position_monitor")
         self.position_monitor = position_monitor
     
-    async def _perform_readiness_checks(self) -> Dict[str, bool]:
+    def _perform_readiness_checks(self) -> Dict[str, bool]:
         """Check Position Monitor readiness."""
         checks = {}
         
@@ -193,7 +193,7 @@ class PositionMonitorHealthChecker(ComponentHealthChecker):
         
         return checks
     
-    async def _get_component_metrics(self) -> Dict[str, Any]:
+    def _get_component_metrics(self) -> Dict[str, Any]:
         """Get Position Monitor metrics."""
         try:
             snapshot = self.position_monitor.get_snapshot()
@@ -206,7 +206,7 @@ class PositionMonitorHealthChecker(ComponentHealthChecker):
         except:
             return {"error": "Could not get metrics"}
     
-    async def _get_error_info(self) -> tuple[Optional[str], Optional[str]]:
+    def _get_error_info(self) -> tuple[Optional[str], Optional[str]]:
         """Get Position Monitor error information."""
         if not hasattr(self.position_monitor, '_token_monitor'):
             return "POS-001", "Position Monitor not initialized"
@@ -223,7 +223,7 @@ class DataProviderHealthChecker(ComponentHealthChecker):
         super().__init__("data_provider")
         self.data_provider = data_provider
     
-    async def _perform_readiness_checks(self) -> Dict[str, bool]:
+    def _perform_readiness_checks(self) -> Dict[str, bool]:
         """Check Data Provider readiness."""
         checks = {}
         
@@ -266,7 +266,7 @@ class DataProviderHealthChecker(ComponentHealthChecker):
         
         return checks
     
-    async def _get_component_metrics(self) -> Dict[str, Any]:
+    def _get_component_metrics(self) -> Dict[str, Any]:
         """Get Data Provider metrics."""
         try:
             import os
@@ -291,7 +291,7 @@ class DataProviderHealthChecker(ComponentHealthChecker):
         except:
             return {"error": "Could not get metrics"}
     
-    async def _get_error_info(self) -> tuple[Optional[str], Optional[str]]:
+    def _get_error_info(self) -> tuple[Optional[str], Optional[str]]:
         """Get Data Provider error information."""
         if not hasattr(self.data_provider, 'data'):
             return "DATA-001", "Data Provider not initialized"
@@ -312,7 +312,7 @@ class RiskMonitorHealthChecker(ComponentHealthChecker):
         super().__init__("risk_monitor")
         self.risk_monitor = risk_monitor
     
-    async def _perform_readiness_checks(self) -> Dict[str, bool]:
+    def _perform_readiness_checks(self) -> Dict[str, bool]:
         """Check Risk Monitor readiness."""
         checks = {}
         
@@ -338,7 +338,7 @@ class RiskMonitorHealthChecker(ComponentHealthChecker):
                     'eth_usd_price': 3000.0,
                     'timestamp': pd.Timestamp.now(tz='UTC')
                 }
-                risk_result = await self.risk_monitor.assess_risk(dummy_exposure, dummy_market_data)
+                risk_result = self.risk_monitor.assess_risk(dummy_exposure, dummy_market_data)
                 checks["risk_assessment_available"] = isinstance(risk_result, dict)
             except:
                 checks["risk_assessment_available"] = False
@@ -349,7 +349,7 @@ class RiskMonitorHealthChecker(ComponentHealthChecker):
         
         return checks
     
-    async def _get_component_metrics(self) -> Dict[str, Any]:
+    def _get_component_metrics(self) -> Dict[str, Any]:
         """Get Risk Monitor metrics."""
         try:
             return {
@@ -364,7 +364,7 @@ class RiskMonitorHealthChecker(ComponentHealthChecker):
         except:
             return {"error": "Could not get metrics"}
     
-    async def _get_error_info(self) -> tuple[Optional[str], Optional[str]]:
+    def _get_error_info(self) -> tuple[Optional[str], Optional[str]]:
         """Get Risk Monitor error information."""
         if not hasattr(self.risk_monitor, 'config'):
             return "RISK-001", "Risk Monitor not initialized"
@@ -382,7 +382,7 @@ class EventLoggerHealthChecker(ComponentHealthChecker):
         super().__init__("event_logger")
         self.event_logger = event_logger
     
-    async def _perform_readiness_checks(self) -> Dict[str, bool]:
+    def _perform_readiness_checks(self) -> Dict[str, bool]:
         """Check Event Logger readiness."""
         checks = {}
         
@@ -402,7 +402,7 @@ class EventLoggerHealthChecker(ComponentHealthChecker):
         
         return checks
     
-    async def _get_component_metrics(self) -> Dict[str, Any]:
+    def _get_component_metrics(self) -> Dict[str, Any]:
         """Get Event Logger metrics."""
         try:
             return {
@@ -414,7 +414,7 @@ class EventLoggerHealthChecker(ComponentHealthChecker):
         except:
             return {"error": "Could not get metrics"}
     
-    async def _get_error_info(self) -> tuple[Optional[str], Optional[str]]:
+    def _get_error_info(self) -> tuple[Optional[str], Optional[str]]:
         """Get Event Logger error information."""
         if not hasattr(self.event_logger, 'events'):
             return "EVENT-001", "Event Logger not initialized"

@@ -241,7 +241,8 @@ class EventDrivenStrategyEngine:
                 config=self.config,
                 share_class=self.share_class,
                 initial_capital=self.initial_capital,
-                data_provider=self.data_provider
+                data_provider=self.data_provider,
+                utility_manager=self.utility_manager
             )
             # Component health now handled by unified health manager
             initialized_components.append('pnl_calculator')

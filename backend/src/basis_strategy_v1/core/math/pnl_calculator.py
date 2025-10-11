@@ -148,7 +148,8 @@ class PnLCalculator:
                  config: Dict[str, Any],
                  share_class: str, 
                  initial_capital: float,
-                 data_provider=None):
+                 data_provider=None,
+                 utility_manager=None):
         """
         Initialize P&L calculator with injected config and parameters.
         
@@ -159,11 +160,13 @@ class PnLCalculator:
             share_class: Share class ('ETH' or 'USDT')
             initial_capital: Initial capital from API request
             data_provider: Data provider instance for funding rate lookups
+            utility_manager: Centralized utility manager for shared methods
         """
         self.config = config
         self.share_class = share_class
         self.initial_capital = initial_capital
         self.data_provider = data_provider
+        self.utility_manager = utility_manager
         
         # Track cumulative attribution components
         self.cumulative = {
