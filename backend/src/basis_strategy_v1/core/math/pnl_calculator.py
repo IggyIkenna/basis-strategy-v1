@@ -362,6 +362,11 @@ class PnLCalculator:
             # First hour, no P&L yet
             return self._zero_attribution()
         
+        # Ensure previous_exposure is a dictionary, not a Timestamp
+        if not isinstance(previous_exposure, dict):
+            pnl_logger.warning(f"Previous exposure is not a dict: {type(previous_exposure)}, returning zero attribution")
+            return self._zero_attribution()
+        
         # Mode-specific attribution calculation
         # Mode-agnostic attribution calculation
         # All strategies should use the same attribution logic based on exposure changes
@@ -505,6 +510,11 @@ class PnLCalculator:
         """Calculate AAVE supply yield from index growth."""
         supply_pnl = 0.0
         
+        # Ensure both parameters are dictionaries
+        if not isinstance(current, dict) or not isinstance(previous, dict):
+            pnl_logger.warning(f"Supply PnL calculation: current type: {type(current)}, previous type: {type(previous)}")
+            return 0.0
+        
         # Calculate aWeETH supply P&L (for ETH-based strategies)
         current_aweeth = current['exposures'].get('aWeETH', {})
         previous_aweeth = previous['exposures'].get('aWeETH', {})
@@ -546,6 +556,11 @@ class PnLCalculator:
     
     def _calc_staking_pnl(self, current: Dict, previous: Dict) -> float:
         """Calculate staking yield from oracle price changes."""
+        # Ensure both parameters are dictionaries
+        if not isinstance(current, dict) or not isinstance(previous, dict):
+            pnl_logger.warning(f"Staking PnL calculation: current type: {type(current)}, previous type: {type(previous)}")
+            return 0.0
+        
         # This captures the weETH/ETH oracle price appreciation
         # (base staking yield, not seasonal rewards)
         
@@ -572,6 +587,10 @@ class PnLCalculator:
     
     def _calc_price_change_pnl(self, current: Dict, previous: Dict) -> float:
         """Calculate P&L from ETH price changes on net exposure."""
+        # Ensure both parameters are dictionaries
+        if not isinstance(current, dict) or not isinstance(previous, dict):
+            pnl_logger.warning(f"Price change PnL calculation: current type: {type(current)}, previous type: {type(previous)}")
+            return 0.0
         # This captures the effect of ETH price changes on the net delta
         current_eth_price = current['exposures'].get('aWeETH', {}).get('eth_usd_price', 3000.0)
         previous_eth_price = previous['exposures'].get('aWeETH', {}).get('eth_usd_price', 3000.0)

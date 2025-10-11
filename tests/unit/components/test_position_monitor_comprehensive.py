@@ -13,7 +13,7 @@ from datetime import datetime, timedelta
 # Add backend to path
 sys.path.append('backend/src')
 
-from basis_strategy_v1.core.strategies.components.position_monitor import PositionMonitor, create_position_monitor
+from basis_strategy_v1.core.strategies.components.position_monitor import PositionMonitor
 
 
 class TestPositionMonitorComprehensive:
@@ -22,7 +22,19 @@ class TestPositionMonitorComprehensive:
     @pytest.fixture
     def position_monitor(self):
         """Create position monitor for testing."""
-        return create_position_monitor(execution_mode='backtest')
+        config = {
+            'execution_mode': 'backtest',
+            'data_dir': 'data',
+            'component_config': {
+                'position_monitor': {
+                    'tracked_assets': ['USDT', 'ETH', 'BTC'],
+                    'venues': ['WALLET', 'CEX_SPOT', 'CEX_DERIVATIVES', 'SMART_CONTRACT']
+                }
+            }
+        }
+        data_provider = Mock()
+        utility_manager = Mock()
+        return PositionMonitor(config, data_provider, utility_manager)
 
     @pytest.mark.asyncio
     async def test_update_with_token_changes(self, position_monitor):

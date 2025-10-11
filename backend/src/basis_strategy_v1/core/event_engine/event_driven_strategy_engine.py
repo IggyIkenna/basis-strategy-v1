@@ -802,30 +802,30 @@ class EventDrivenStrategyEngine:
             if loop.is_running():
                 # If we're in an async context, schedule the coroutine
                 asyncio.create_task(self.event_logger.log_event(
-                    timestamp=timestamp,
                     event_type='TIMESTEP_PROCESSED',
-                    venue='system',
-                    token=None,
-                    data={
+                    event_data={
+                        'venue': 'system',
+                        'token': None,
                         'exposure': exposure,
                         'risk': risk_assessment,
                         'pnl': pnl,
                         'decision': strategy_decision
-                    }
+                    },
+                    timestamp=timestamp
                 ))
             else:
                 # If we're not in an async context, run it
                 loop.run_until_complete(self.event_logger.log_event(
-                    timestamp=timestamp,
                     event_type='TIMESTEP_PROCESSED',
-                    venue='system',
-                    token=None,
-                    data={
+                    event_data={
+                        'venue': 'system',
+                        'token': None,
                         'exposure': exposure,
                         'risk': risk_assessment,
                         'pnl': pnl,
                         'decision': strategy_decision
-                    }
+                    },
+                    timestamp=timestamp
                 ))
         except Exception as e:
             logger.error(f"Failed to log timestep event: {e}")
@@ -874,20 +874,24 @@ class EventDrivenStrategyEngine:
             if loop.is_running():
                 # If we're in an async context, schedule the coroutine
                 asyncio.create_task(self.event_logger.log_event(
-                    timestamp=timestamp,
                     event_type='ERROR',
-                    venue='system',
-                    token=None,
-                    data={'error': error_message}
+                    event_data={
+                        'venue': 'system',
+                        'token': None,
+                        'error': error_message
+                    },
+                    timestamp=timestamp
                 ))
             else:
                 # If we're not in an async context, run it
                 loop.run_until_complete(self.event_logger.log_event(
-                    timestamp=timestamp,
                     event_type='ERROR',
-                    venue='system',
-                    token=None,
-                    data={'error': error_message}
+                    event_data={
+                        'venue': 'system',
+                        'token': None,
+                        'error': error_message
+                    },
+                    timestamp=timestamp
                 ))
         except Exception as e:
             logger.error(f"Failed to log error event: {e}")
