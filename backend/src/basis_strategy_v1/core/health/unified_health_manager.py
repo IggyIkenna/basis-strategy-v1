@@ -316,7 +316,7 @@ class UnifiedHealthManager:
         for component_name, checker in self.component_checkers.items():
             if component_name in relevant_components:
                 try:
-                    report = await checker.check_health()
+                    report = checker.check_health()
                     component_health[component_name] = {
                         "status": report.status.value,
                         "timestamp": report.timestamp.isoformat(),

@@ -13,6 +13,8 @@ import logging
 import pandas as pd
 from datetime import datetime
 
+from ....infrastructure.logging.structured_logger import get_position_monitor_logger
+
 logger = logging.getLogger(__name__)
 
 class PositionMonitor:
@@ -31,10 +33,18 @@ class PositionMonitor:
         self.data_provider = data_provider
         self.utility_manager = utility_manager
         
+        # Initialize structured logger
+        self.structured_logger = get_position_monitor_logger()
+        
         # Position tracking
         self.last_positions = None
         
-        logger.info("PositionMonitor initialized (mode-agnostic)")
+        self.structured_logger.info(
+            "PositionMonitor initialized",
+            event_type="component_initialization",
+            component="position_monitor",
+            mode="mode-agnostic"
+        )
     
     def calculate_positions(self, timestamp: pd.Timestamp) -> Dict[str, Any]:
         """
@@ -91,7 +101,12 @@ class PositionMonitor:
             }
             
         except Exception as e:
-            logger.error(f"Error calculating positions: {e}")
+            self.structured_logger.error(
+                f"Error calculating positions: {e}",
+                event_type="position_calculation_error",
+                error=str(e),
+                timestamp=timestamp.isoformat()
+            )
             return {
                 'timestamp': timestamp,
                 'total_positions': {},

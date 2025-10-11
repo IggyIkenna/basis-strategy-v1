@@ -1,306 +1,323 @@
 #!/usr/bin/env python3
 """
-Health & Logging Quality Gates
+Health & Logging Structure Quality Gates
 
-This script validates the unified health system and structured logging implementation.
-It tests health check endpoints, component health checks, and structured logging
-across all components.
+Tests the unified health system and structured logging implementation
+for all components to ensure proper observability and debugging capabilities.
 
 Reference: .cursor/tasks/05_health_logging_structure.md
 """
 
-import os
 import sys
-import requests
+import os
+import asyncio
 import json
+import time
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, Any, List
+import requests
+import logging
 
-# Add backend src to path
-backend_src = Path(__file__).parent.parent / "backend" / "src"
-sys.path.insert(0, str(backend_src))
+# Add the backend source to the path
+sys.path.insert(0, str(Path(__file__).parent.parent / "backend" / "src"))
 
-def test_health_endpoints():
-    """Test health check endpoints."""
-    print("Testing health check endpoints...")
+from basis_strategy_v1.core.health.unified_health_manager import UnifiedHealthManager
+from basis_strategy_v1.infrastructure.logging.structured_logger import get_structured_logger
+from basis_strategy_v1.core.strategies.components.position_monitor import PositionMonitor
+from basis_strategy_v1.core.strategies.components.risk_monitor import RiskMonitor
+from basis_strategy_v1.core.strategies.components.event_logger import EventLogger
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+class HealthLoggingQualityGates:
+    """Quality gates for health and logging structure."""
     
-    base_url = "http://localhost:8000"
-    endpoints = [
-        "/health",
-        "/health/detailed",
-    ]
+    def __init__(self):
+        self.base_url = "http://localhost:8001"
+        self.test_results = []
+        self.health_manager = UnifiedHealthManager()
+        
+    def log_test_result(self, test_name: str, passed: bool, message: str = ""):
+        """Log test result."""
+        status = "✅ PASS" if passed else "❌ FAIL"
+        print(f"{status} {test_name}: {message}")
+        self.test_results.append({
+            'test': test_name,
+            'passed': passed,
+            'message': message
+        })
     
-    failed_endpoints = []
-    
-    for endpoint in endpoints:
+    def test_health_endpoints(self) -> bool:
+        """Test health endpoints functionality."""
+        print("\n🔍 Testing Health Endpoints...")
+        
         try:
-            response = requests.get(f"{base_url}{endpoint}", timeout=5)
-            if response.status_code != 200:
-                failed_endpoints.append(f"{endpoint}: {response.status_code}")
-        except requests.exceptions.RequestException:
-            # Backend might not be running
-            print("⚠️  Backend not running - skipping health endpoint tests")
+            # Test basic health endpoint
+            response = requests.get(f"{self.base_url}/health", timeout=5)
+            if response.status_code == 200:
+                health_data = response.json()
+                if 'status' in health_data and 'timestamp' in health_data:
+                    self.log_test_result("Basic Health Endpoint", True, f"Status: {health_data['status']}")
+                else:
+                    self.log_test_result("Basic Health Endpoint", False, "Missing required fields")
+                    return False
+            else:
+                self.log_test_result("Basic Health Endpoint", False, f"HTTP {response.status_code}")
+                return False
+            
+            # Test detailed health endpoint
+            response = requests.get(f"{self.base_url}/health/detailed", timeout=10)
+            if response.status_code == 200:
+                health_data = response.json()
+                if 'status' in health_data and 'components' in health_data:
+                    self.log_test_result("Detailed Health Endpoint", True, f"Components: {len(health_data.get('components', {}))}")
+                else:
+                    self.log_test_result("Detailed Health Endpoint", False, "Missing required fields")
+                    return False
+            else:
+                self.log_test_result("Detailed Health Endpoint", False, f"HTTP {response.status_code}")
+                return False
+                
             return True
-    
-    if failed_endpoints:
-        print("❌ Failed health endpoints:")
-        for failed in failed_endpoints:
-            print(f"  - {failed}")
-        return False
-    
-    print("✅ All health endpoints work correctly")
-    return True
-
-def test_health_response_format():
-    """Test health response format."""
-    print("Testing health response format...")
-    
-    base_url = "http://localhost:8000"
-    
-    try:
-        response = requests.get(f"{base_url}/health", timeout=5)
-        if response.status_code == 200:
-            try:
-                data = response.json()
-                if not isinstance(data, dict):
-                    print("❌ Health response is not a JSON object")
-                    return False
-                
-                # Check for required health fields
-                required_fields = ["status", "timestamp"]
-                for field in required_fields:
-                    if field not in data:
-                        print(f"❌ Health response missing required field: {field}")
-                        return False
-            except json.JSONDecodeError:
-                print("❌ Health response is not valid JSON")
-                return False
-    except requests.exceptions.RequestException:
-        print("⚠️  Backend not running - skipping health response format tests")
-        return True
-    
-    print("✅ Health response format is correct")
-    return True
-
-def test_detailed_health_response():
-    """Test detailed health response format."""
-    print("Testing detailed health response format...")
-    
-    base_url = "http://localhost:8000"
-    
-    try:
-        response = requests.get(f"{base_url}/health/detailed", timeout=5)
-        if response.status_code == 200:
-            try:
-                data = response.json()
-                if not isinstance(data, dict):
-                    print("❌ Detailed health response is not a JSON object")
-                    return False
-                
-                # Check for required detailed health fields
-                required_fields = ["status", "timestamp", "components"]
-                for field in required_fields:
-                    if field not in data:
-                        print(f"❌ Detailed health response missing required field: {field}")
-                        return False
-                
-                # Check that components is a dictionary
-                if not isinstance(data.get("components"), dict):
-                    print("❌ Detailed health response components is not a dictionary")
-                    return False
-            except json.JSONDecodeError:
-                print("❌ Detailed health response is not valid JSON")
-                return False
-    except requests.exceptions.RequestException:
-        print("⚠️  Backend not running - skipping detailed health response tests")
-        return True
-    
-    print("✅ Detailed health response format is correct")
-    return True
-
-def test_component_health_checks():
-    """Test component health checks."""
-    print("Testing component health checks...")
-    
-    try:
-        from basis_strategy_v1.infrastructure.health.health_checker import HealthChecker
-        health_checker = HealthChecker()
-        
-        # Test basic health check
-        health_status = health_checker.check_health()
-        if not isinstance(health_status, dict):
-            print("❌ Health check result is not a dictionary")
+            
+        except Exception as e:
+            self.log_test_result("Health Endpoints", False, f"Exception: {e}")
             return False
+    
+    def test_health_manager(self) -> bool:
+        """Test health manager functionality."""
+        print("\n🔍 Testing Health Manager...")
         
-        # Test detailed health check
-        detailed_health = health_checker.check_detailed_health()
-        if not isinstance(detailed_health, dict):
-            print("❌ Detailed health check result is not a dictionary")
+        try:
+            # Test basic health check
+            health_data = asyncio.run(self.health_manager.check_basic_health())
+            if isinstance(health_data, dict) and 'status' in health_data:
+                self.log_test_result("Health Manager Basic Check", True, f"Status: {health_data['status']}")
+            else:
+                self.log_test_result("Health Manager Basic Check", False, "Invalid response format")
+                return False
+            
+            # Test detailed health check
+            detailed_health = asyncio.run(self.health_manager.check_detailed_health())
+            if isinstance(detailed_health, dict) and 'status' in detailed_health:
+                self.log_test_result("Health Manager Detailed Check", True, f"Status: {detailed_health['status']}")
+            else:
+                self.log_test_result("Health Manager Detailed Check", False, "Invalid response format")
+                return False
+                
+            return True
+            
+        except Exception as e:
+            self.log_test_result("Health Manager", False, f"Exception: {e}")
             return False
+    
+    def test_structured_logging(self) -> bool:
+        """Test structured logging implementation."""
+        print("\n🔍 Testing Structured Logging...")
         
-        print("✅ Component health checks work correctly")
-        return True
+        try:
+            # Test structured logger creation
+            logger = get_structured_logger('test_component')
+            if logger and hasattr(logger, 'info'):
+                self.log_test_result("Structured Logger Creation", True, "Logger created successfully")
+            else:
+                self.log_test_result("Structured Logger Creation", False, "Invalid logger")
+                return False
+            
+            # Test logging methods
+            logger.info("Test info message", event_type="test")
+            logger.warning("Test warning message", event_type="test")
+            logger.error("Test error message", event_type="test")
+            logger.log_performance("test_operation", 100.5, success=True)
+            logger.log_business_event("test_event", "Test business event")
+            logger.log_component_health("healthy", "Test health check")
+            logger.log_data_event("load", "test_data", success=True)
+            logger.log_strategy_event("test_strategy", "test_event", "Test strategy event")
+            
+            self.log_test_result("Structured Logging Methods", True, "All logging methods work")
+            
+            return True
+            
+        except Exception as e:
+            self.log_test_result("Structured Logging", False, f"Exception: {e}")
+            return False
+    
+    def test_component_logging_integration(self) -> bool:
+        """Test component logging integration."""
+        print("\n🔍 Testing Component Logging Integration...")
         
-    except ImportError:
-        print("⚠️  HealthChecker not implemented yet - skipping")
-        return True
-    except Exception as e:
-        print(f"❌ Component health checks failed: {e}")
-        return False
-
-def test_structured_logging():
-    """Test structured logging implementation."""
-    print("Testing structured logging implementation...")
+        try:
+            # Test Position Monitor logging
+            config = {'mode': 'test', 'share_class': 'USDT'}
+            position_monitor = PositionMonitor(config, None, None)
+            
+            if hasattr(position_monitor, 'structured_logger'):
+                self.log_test_result("Position Monitor Logging", True, "Structured logger integrated")
+            else:
+                self.log_test_result("Position Monitor Logging", False, "No structured logger found")
+                return False
+            
+            # Test Risk Monitor logging
+            risk_monitor = RiskMonitor(config, None, None)
+            
+            if hasattr(risk_monitor, 'structured_logger'):
+                self.log_test_result("Risk Monitor Logging", True, "Structured logger integrated")
+            else:
+                self.log_test_result("Risk Monitor Logging", False, "No structured logger found")
+                return False
+            
+            # Test Event Logger
+            event_logger = EventLogger(config, None, None)
+            
+            if hasattr(event_logger, 'structured_logger'):
+                self.log_test_result("Event Logger Logging", True, "Structured logger integrated")
+            else:
+                self.log_test_result("Event Logger Logging", False, "No structured logger found")
+                return False
+            
+            return True
+            
+        except Exception as e:
+            self.log_test_result("Component Logging Integration", False, f"Exception: {e}")
+            return False
     
-    try:
-        from basis_strategy_v1.infrastructure.logging.structured_logger import StructuredLogger
-        logger = StructuredLogger("test_component")
+    def test_log_levels(self) -> bool:
+        """Test log level usage."""
+        print("\n🔍 Testing Log Levels...")
         
-        # Test structured logging
-        logger.log_event("INFO", "Test message", test_param="test_value")
-        logger.log_performance("test_operation", 0.1, test_param="test_value")
+        try:
+            logger = get_structured_logger('test_component')
+            
+            # Test all log levels
+            logger.debug("Debug message", event_type="test")
+            logger.info("Info message", event_type="test")
+            logger.warning("Warning message", event_type="test")
+            logger.error("Error message", event_type="test")
+            logger.critical("Critical message", event_type="test")
+            
+            self.log_test_result("Log Levels", True, "All log levels work correctly")
+            
+            return True
+            
+        except Exception as e:
+            self.log_test_result("Log Levels", False, f"Exception: {e}")
+            return False
+    
+    def test_performance_logging(self) -> bool:
+        """Test performance logging."""
+        print("\n🔍 Testing Performance Logging...")
         
-        print("✅ Structured logging works correctly")
-        return True
+        try:
+            logger = get_structured_logger('test_component')
+            
+            # Test performance logging
+            start_time = time.time()
+            time.sleep(0.1)  # Simulate work
+            duration = (time.time() - start_time) * 1000  # Convert to ms
+            
+            logger.log_performance("test_operation", duration, success=True, operation_type="test")
+            logger.log_performance("failed_operation", duration, success=False, operation_type="test")
+            
+            self.log_test_result("Performance Logging", True, "Performance logging works correctly")
+            
+            return True
+            
+        except Exception as e:
+            self.log_test_result("Performance Logging", False, f"Exception: {e}")
+            return False
+    
+    def test_event_correlation(self) -> bool:
+        """Test event correlation IDs."""
+        print("\n🔍 Testing Event Correlation...")
         
-    except ImportError:
-        print("⚠️  StructuredLogger not implemented yet - skipping")
-        return True
-    except Exception as e:
-        print(f"❌ Structured logging failed: {e}")
-        return False
-
-def test_component_logging_integration():
-    """Test component logging integration."""
-    print("Testing component logging integration...")
+        try:
+            logger = get_structured_logger('test_component')
+            
+            # Test correlation ID setting
+            correlation_id = "test-correlation-123"
+            logger.set_correlation_id(correlation_id)
+            
+            # Test logging with correlation ID
+            logger.info("Test message with correlation", event_type="test")
+            
+            self.log_test_result("Event Correlation", True, "Correlation IDs work correctly")
+            
+            return True
+            
+        except Exception as e:
+            self.log_test_result("Event Correlation", False, f"Exception: {e}")
+            return False
     
-    # Check that components have logging integration
-    component_files = [
-        "backend/src/basis_strategy_v1/core/strategies/components/position_monitor.py",
-        "backend/src/basis_strategy_v1/core/strategies/components/risk_monitor.py",
-        "backend/src/basis_strategy_v1/core/strategies/components/strategy_manager.py",
-        "backend/src/basis_strategy_v1/core/strategies/components/execution_manager.py",
-        "backend/src/basis_strategy_v1/core/strategies/components/data_provider.py",
-    ]
-    
-    missing_files = []
-    for file_path in component_files:
-        if not os.path.exists(file_path):
-            missing_files.append(file_path)
-    
-    if missing_files:
-        print("❌ Missing component files:")
-        for missing in missing_files:
-            print(f"  - {missing}")
-        return False
-    
-    print("✅ Component logging integration files exist")
-    return True
-
-def test_event_logger_integration():
-    """Test event logger integration."""
-    print("Testing event logger integration...")
-    
-    try:
-        from basis_strategy_v1.core.strategies.components.event_logger import EventLogger
-        event_logger = EventLogger()
+    def run_all_tests(self) -> bool:
+        """Run all quality gate tests."""
+        print("🚀 Starting Health & Logging Structure Quality Gates...")
         
-        # Test event logging
-        event_logger.log_event("test_event", {"test": "data"})
+        tests = [
+            self.test_health_endpoints,
+            self.test_health_manager,
+            self.test_structured_logging,
+            self.test_component_logging_integration,
+            self.test_log_levels,
+            self.test_performance_logging,
+            self.test_event_correlation
+        ]
         
-        print("✅ Event logger integration works correctly")
-        return True
+        all_passed = True
+        for test in tests:
+            try:
+                if not test():
+                    all_passed = False
+            except Exception as e:
+                print(f"❌ Test {test.__name__} failed with exception: {e}")
+                all_passed = False
         
-    except ImportError:
-        print("⚠️  EventLogger not implemented yet - skipping")
-        return True
-    except Exception as e:
-        print(f"❌ Event logger integration failed: {e}")
-        return False
-
-def test_health_system_files():
-    """Test that health system files exist."""
-    print("Testing health system files...")
+        return all_passed
     
-    health_files = [
-        "backend/src/basis_strategy_v1/infrastructure/health/health_checker.py",
-        "backend/src/basis_strategy_v1/api/health.py",
-    ]
-    
-    missing_files = []
-    for file_path in health_files:
-        if not os.path.exists(file_path):
-            missing_files.append(file_path)
-    
-    if missing_files:
-        print("❌ Missing health system files:")
-        for missing in missing_files:
-            print(f"  - {missing}")
-        return False
-    
-    print("✅ Health system files exist")
-    return True
-
-def test_logging_system_files():
-    """Test that logging system files exist."""
-    print("Testing logging system files...")
-    
-    logging_files = [
-        "backend/src/basis_strategy_v1/infrastructure/logging/structured_logger.py",
-    ]
-    
-    missing_files = []
-    for file_path in logging_files:
-        if not os.path.exists(file_path):
-            missing_files.append(file_path)
-    
-    if missing_files:
-        print("❌ Missing logging system files:")
-        for missing in missing_files:
-            print(f"  - {missing}")
-        return False
-    
-    print("✅ Logging system files exist")
-    return True
+    def print_summary(self):
+        """Print test summary."""
+        print("\n" + "="*60)
+        print("📊 HEALTH & LOGGING STRUCTURE QUALITY GATES SUMMARY")
+        print("="*60)
+        
+        passed = sum(1 for result in self.test_results if result['passed'])
+        total = len(self.test_results)
+        
+        print(f"Tests Passed: {passed}/{total}")
+        print(f"Success Rate: {(passed/total)*100:.1f}%")
+        
+        if passed == total:
+            print("🎉 ALL TESTS PASSED! Health & logging structure is working correctly.")
+        else:
+            print("⚠️  Some tests failed. Check the details above.")
+        
+        print("\nDetailed Results:")
+        for result in self.test_results:
+            status = "✅" if result['passed'] else "❌"
+            print(f"  {status} {result['test']}: {result['message']}")
 
 def main():
-    """Run all health and logging quality gates."""
-    print("=" * 60)
-    print("HEALTH & LOGGING QUALITY GATES")
-    print("=" * 60)
+    """Main function."""
+    quality_gates = HealthLoggingQualityGates()
     
-    tests = [
-        test_health_system_files,
-        test_logging_system_files,
-        test_health_endpoints,
-        test_health_response_format,
-        test_detailed_health_response,
-        test_component_health_checks,
-        test_structured_logging,
-        test_component_logging_integration,
-        test_event_logger_integration,
-    ]
-    
-    passed = 0
-    total = len(tests)
-    
-    for test in tests:
-        try:
-            if test():
-                passed += 1
-        except Exception as e:
-            print(f"❌ Test {test.__name__} failed with exception: {e}")
-        print()
-    
-    print("=" * 60)
-    print(f"RESULTS: {passed}/{total} tests passed")
-    
-    if passed == total:
-        print("✅ All health and logging quality gates passed!")
-        return 0
-    else:
-        print("❌ Some health and logging quality gates failed!")
-        return 1
+    try:
+        success = quality_gates.run_all_tests()
+        quality_gates.print_summary()
+        
+        if success:
+            print("\n🎯 Quality gates completed successfully!")
+            sys.exit(0)
+        else:
+            print("\n❌ Quality gates failed!")
+            sys.exit(1)
+            
+    except KeyboardInterrupt:
+        print("\n⏹️  Quality gates interrupted by user")
+        sys.exit(1)
+    except Exception as e:
+        print(f"\n💥 Quality gates failed with exception: {e}")
+        sys.exit(1)
 
 if __name__ == "__main__":
-    sys.exit(main())
+    main()

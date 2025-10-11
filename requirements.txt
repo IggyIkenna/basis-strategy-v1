@@ -64,6 +64,7 @@ eth-account>=0.9.0
 eth-utils>=2.3.0
 hexbytes>=0.3.1
 typing-extensions>=4.8.0
+PyJWT>=2.10.1
 
 # Dependencies already present but confirmed in use:
 # - fastapi (API routes)

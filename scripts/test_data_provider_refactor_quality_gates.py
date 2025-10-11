@@ -177,13 +177,21 @@ class DataProviderRefactorQualityGates:
             os.environ['BASIS_DATA_END_DATE'] = '2025-09-18'
             
             from basis_strategy_v1.infrastructure.data.data_provider_factory import create_data_provider
+            from basis_strategy_v1.infrastructure.config.config_loader import ConfigLoader
+            
+            # Load the full configuration
+            config_loader = ConfigLoader()
+            mode_config = config_loader.get_mode_config('pure_lending')
+            
+            # Convert Pydantic model to dict for the data provider
+            config_dict = mode_config.model_dump()
             
             # Test pure_lending mode
             provider = create_data_provider(
                 data_dir='data',
                 execution_mode='backtest',
                 data_mode='csv',
-                config={'mode': 'pure_lending'},
+                config=config_dict,
                 strategy_mode='pure_lending'
             )
             
@@ -227,12 +235,18 @@ class DataProviderRefactorQualityGates:
             
             from basis_strategy_v1.infrastructure.data.data_provider_factory import create_data_provider
             from basis_strategy_v1.infrastructure.data.historical_data_provider import DataProviderError
+            from basis_strategy_v1.infrastructure.config.config_loader import ConfigLoader
+            
+            # Load the full configuration
+            config_loader = ConfigLoader()
+            mode_config = config_loader.get_mode_config('pure_lending')
+            config_dict = mode_config.model_dump()
             
             provider = create_data_provider(
                 data_dir='data',
                 execution_mode='backtest',
                 data_mode='csv',
-                config={'mode': 'pure_lending'},
+                config=config_dict,
                 strategy_mode='pure_lending'
             )
             
@@ -417,12 +431,18 @@ class DataProviderRefactorQualityGates:
             os.environ['BASIS_DATA_END_DATE'] = '2025-09-18'
             
             from basis_strategy_v1.infrastructure.data.data_provider_factory import create_data_provider
+            from basis_strategy_v1.infrastructure.config.config_loader import ConfigLoader
+            
+            # Load the full configuration
+            config_loader = ConfigLoader()
+            mode_config = config_loader.get_mode_config('pure_lending')
+            config_dict = mode_config.model_dump()
             
             provider = create_data_provider(
                 data_dir='data',
                 execution_mode='backtest',
                 data_mode='csv',
-                config={'mode': 'pure_lending'},
+                config=config_dict,
                 strategy_mode='pure_lending'
             )
             
