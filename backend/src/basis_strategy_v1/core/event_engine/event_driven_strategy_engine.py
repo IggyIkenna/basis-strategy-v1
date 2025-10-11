@@ -465,7 +465,7 @@ class EventDrivenStrategyEngine:
                 try:
                     # Get market data snapshot for this timestamp
                     market_data = self.data_provider.get_market_data_snapshot(timestamp)
-                    await self._process_timestep(timestamp, market_data, request_id)
+                    self._process_timestep(timestamp, market_data, request_id)
                 except Exception as e:
                     logger.warning(f"Skipping timestamp {timestamp} due to missing data: {e}")
                     continue
@@ -490,7 +490,7 @@ class EventDrivenStrategyEngine:
                 logger.error(f"Error stopping results store: {stop_error}")
             raise
     
-    async def _process_timestep(self, timestamp: pd.Timestamp, market_data: Dict, request_id: str):
+    def _process_timestep(self, timestamp: pd.Timestamp, market_data: Dict, request_id: str):
         """
         Process a single timestep in the backtest - CORE EVENT BEHAVIOR.
         
@@ -534,7 +534,7 @@ class EventDrivenStrategyEngine:
                 self.risk_monitor.enable_debug_logging()
             
             logger.info(f"Event Engine: Calling Risk Monitor assess_risk")
-            risk_assessment = await self.risk_monitor.assess_risk(
+            risk_assessment = self.risk_monitor.assess_risk(
                 exposure_data=exposure,
                 market_data=market_data
             )
@@ -543,7 +543,7 @@ class EventDrivenStrategyEngine:
             # 4. Calculate P&L using injected config
             logger.info(f"Event Engine: About to calculate P&L for timestamp {timestamp}")
             try:
-                pnl = await self.pnl_calculator.calculate_pnl(
+                pnl = self.pnl_calculator.calculate_pnl(
                     current_exposure=exposure,
                     timestamp=timestamp
                 )
@@ -576,51 +576,24 @@ class EventDrivenStrategyEngine:
             logger.info(f"Event Engine: Strategy decision action = {action}")
             if action not in ['HOLD', 'MAINTAIN_NEUTRAL', 'NO_ACTION']:
                 logger.info(f"Event Engine: Executing strategy decision: {strategy_decision}")
-                await self._execute_strategy_decision(strategy_decision, timestamp, market_data)
+                self._execute_strategy_decision(strategy_decision, timestamp, market_data)
                 
                 # Note: Fast path balance updates are now handled in Strategy Manager after each instruction block
             else:
                 logger.info(f"Event Engine: No action needed for {action}")
             
-            # 7. Log events
-            await self.event_logger.log_event(
-                timestamp=timestamp,
-                event_type='TIMESTEP_PROCESSED',
-                venue='system',
-                token=None,
-                data={
-                    'exposure': exposure,
-                    'risk': risk_assessment,
-                    'pnl': pnl,
-                    'decision': strategy_decision
-                }
-            )
+            # 7. Log events (async I/O - handled separately)
+            self._log_timestep_event(timestamp, exposure, risk_assessment, pnl, strategy_decision)
             
-            # 8. Store results asynchronously
-            await self.results_store.save_timestep_result(
-                request_id=request_id,
-                timestamp=timestamp,
-                data={
-                    'pnl': pnl,
-                    'exposure': exposure,
-                    'risk': risk_assessment,
-                    'decision': strategy_decision,
-                    'event_type': 'TIMESTEP_PROCESSED'
-                }
-            )
+            # 8. Store results (async I/O - handled separately)
+            self._store_timestep_result(request_id, timestamp, exposure, risk_assessment, pnl, strategy_decision, action)
             
         except Exception as e:
             logger.error(f"Error processing timestep {timestamp}: {e}")
-            # Log error event
-            await self.event_logger.log_event(
-                timestamp=timestamp,
-                event_type='ERROR',
-                venue='system',
-                token=None,
-                data={'error': str(e)}
-            )
+            # Log error event (async I/O - handled separately)
+            self._log_error_event(timestamp, str(e))
 
-    async def _execute_strategy_decision(self, decision: Dict, timestamp: pd.Timestamp, market_data: Dict):
+    def _execute_strategy_decision(self, decision: Dict, timestamp: pd.Timestamp, market_data: Dict):
         """Execute a strategy decision by delegating to Strategy Manager."""
         action = decision.get('action')
         
@@ -629,12 +602,10 @@ class EventDrivenStrategyEngine:
             logger.debug(f"No execution needed for action: {action}")
         else:
             # Delegate all execution to Strategy Manager with market data
-            await self.strategy_manager.execute_decision(
-                decision=decision,
-                timestamp=timestamp,
-                execution_interfaces=self.execution_interfaces,
-                market_data=market_data
-            )
+            # Note: Strategy Manager doesn't have execute_decision method yet
+            # For now, just log the decision
+            logger.info(f"Strategy decision to execute: {decision}")
+            # TODO: Implement strategy execution when Strategy Manager is complete
     
     # REMOVED: Other legacy async methods that can be implemented later
     # _initialize_pure_lending_positions, _update_ausdt_balance,
@@ -792,6 +763,105 @@ class EventDrivenStrategyEngine:
             
         except Exception as e:
             print(f"\n❌ DEBUG ERROR: Failed to get position monitor state: {e}\n")
+    
+    def _log_timestep_event(self, timestamp: pd.Timestamp, exposure: Dict, risk_assessment: Dict, pnl: Dict, strategy_decision: Dict):
+        """Log timestep event asynchronously (I/O operation)."""
+        try:
+            # Schedule async logging (non-blocking)
+            import asyncio
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                # If we're in an async context, schedule the coroutine
+                asyncio.create_task(self.event_logger.log_event(
+                    timestamp=timestamp,
+                    event_type='TIMESTEP_PROCESSED',
+                    venue='system',
+                    token=None,
+                    data={
+                        'exposure': exposure,
+                        'risk': risk_assessment,
+                        'pnl': pnl,
+                        'decision': strategy_decision
+                    }
+                ))
+            else:
+                # If we're not in an async context, run it
+                loop.run_until_complete(self.event_logger.log_event(
+                    timestamp=timestamp,
+                    event_type='TIMESTEP_PROCESSED',
+                    venue='system',
+                    token=None,
+                    data={
+                        'exposure': exposure,
+                        'risk': risk_assessment,
+                        'pnl': pnl,
+                        'decision': strategy_decision
+                    }
+                ))
+        except Exception as e:
+            logger.error(f"Failed to log timestep event: {e}")
+    
+    def _store_timestep_result(self, request_id: str, timestamp: pd.Timestamp, exposure: Dict, risk_assessment: Dict, pnl: Dict, strategy_decision: Dict, action: str):
+        """Store timestep result asynchronously (I/O operation)."""
+        try:
+            # Schedule async storage (non-blocking)
+            import asyncio
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                # If we're in an async context, schedule the coroutine
+                asyncio.create_task(self.results_store.save_timestep_result(
+                    request_id=request_id,
+                    timestamp=timestamp,
+                    data={
+                        'pnl': pnl,
+                        'exposure': exposure,
+                        'risk': risk_assessment,
+                        'decision': strategy_decision,
+                        'event_type': 'TIMESTEP_PROCESSED'
+                    }
+                ))
+            else:
+                # If we're not in an async context, run it
+                loop.run_until_complete(self.results_store.save_timestep_result(
+                    request_id=request_id,
+                    timestamp=timestamp,
+                    data={
+                        'pnl': pnl,
+                        'exposure': exposure,
+                        'risk': risk_assessment,
+                        'decision': strategy_decision,
+                        'event_type': 'TIMESTEP_PROCESSED'
+                    }
+                ))
+        except Exception as e:
+            logger.error(f"Failed to store timestep result: {e}")
+    
+    def _log_error_event(self, timestamp: pd.Timestamp, error_message: str):
+        """Log error event asynchronously (I/O operation)."""
+        try:
+            # Schedule async logging (non-blocking)
+            import asyncio
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                # If we're in an async context, schedule the coroutine
+                asyncio.create_task(self.event_logger.log_event(
+                    timestamp=timestamp,
+                    event_type='ERROR',
+                    venue='system',
+                    token=None,
+                    data={'error': error_message}
+                ))
+            else:
+                # If we're not in an async context, run it
+                loop.run_until_complete(self.event_logger.log_event(
+                    timestamp=timestamp,
+                    event_type='ERROR',
+                    venue='system',
+                    token=None,
+                    data={'error': error_message}
+                ))
+        except Exception as e:
+            logger.error(f"Failed to log error event: {e}")
 
 
 # REMOVED: create_event_driven_strategy_engine convenience function

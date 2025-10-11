@@ -124,6 +124,24 @@ class RiskMonitor:
             # Use fallback value
             return 0.0
     
+    def assess_risk(self, exposure_data: Dict[str, Any], market_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Assess risk using exposure data and market data.
+        
+        Args:
+            exposure_data: Current exposure data
+            market_data: Current market data
+            
+        Returns:
+            Dictionary with risk assessment results
+        """
+        # Extract timestamp from market_data or use current time
+        timestamp = market_data.get('timestamp', pd.Timestamp.now())
+        if isinstance(timestamp, str):
+            timestamp = pd.Timestamp(timestamp)
+        
+        return self.calculate_risks(exposure_data, timestamp)
+    
     def calculate_risks(self, exposures: Dict[str, Any], timestamp: pd.Timestamp) -> Dict[str, Any]:
         """
         Calculate risks regardless of mode (backtest or live).
