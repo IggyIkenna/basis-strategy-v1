@@ -289,6 +289,8 @@ class EventDrivenStrategyEngine:
             logger.info("Initializing Strategy Manager...")
             self.strategy_manager = StrategyManager(
                 config=self.config,
+                data_provider=self.data_provider,
+                utility_manager=self.utility_manager,
                 exposure_monitor=self.exposure_monitor,
                 risk_monitor=self.risk_monitor
             )

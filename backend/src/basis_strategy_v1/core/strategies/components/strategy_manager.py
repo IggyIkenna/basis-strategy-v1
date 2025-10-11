@@ -21,17 +21,21 @@ logger = logging.getLogger(__name__)
 class StrategyManager:
     """Factory-based strategy manager implementation."""
     
-    def __init__(self, config: Dict[str, Any], exposure_monitor=None, risk_monitor=None, event_engine=None):
+    def __init__(self, config: Dict[str, Any], data_provider, utility_manager, exposure_monitor=None, risk_monitor=None, event_engine=None):
         """
         Initialize strategy manager.
         
         Args:
             config: Strategy configuration
+            data_provider: Data provider instance
+            utility_manager: Centralized utility manager
             exposure_monitor: Exposure monitor instance
             risk_monitor: Risk monitor instance
             event_engine: Event engine instance
         """
         self.config = config
+        self.data_provider = data_provider
+        self.utility_manager = utility_manager
         self.exposure_monitor = exposure_monitor
         self.risk_monitor = risk_monitor
         self.event_engine = event_engine
