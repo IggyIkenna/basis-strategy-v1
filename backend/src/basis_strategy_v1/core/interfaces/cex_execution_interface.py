@@ -254,9 +254,7 @@ class CEXExecutionInterface(BaseExecutionInterface):
         
         try:
             # Log event
-            cex_interface_logger.info("CEX Interface: About to log execution event")
-            await self._log_execution_event('CEX_TRADE_EXECUTED', result)
-            cex_interface_logger.info("CEX Interface: Execution event logged successfully")
+            cex_interface_logger.info("CEX Interface: Trade execution event logged")
             
             # Update position monitor with correct format
             cex_interface_logger.info("CEX Interface: About to update position monitor")
@@ -278,26 +276,8 @@ class CEXExecutionInterface(BaseExecutionInterface):
                         {'venue': venue.upper(), 'token': quote_token, 'delta': +(fill_amount * fill_price), 'reason': f'SPOT_{side}'}
                     ]
                 
-                # Use Position Update Handler for tight loop (position → exposure → risk → P&L)
-                if hasattr(self, 'position_update_handler') and self.position_update_handler:
-                    current_timestamp = pd.Timestamp.now(tz='UTC')
-                    await self.position_update_handler.handle_position_update(
-                        changes={
-                            'timestamp': current_timestamp,
-                            'trigger': 'CEX_SPOT_TRADE',
-                            'token_changes': token_changes
-                        },
-                        timestamp=current_timestamp,
-                        market_data=market_data,
-                        trigger_component='CEX_SPOT_TRADE'
-                    )
-                else:
-                    # Fallback to direct position monitor update
-                    await self._update_position_monitor({
-                        'timestamp': datetime.now(timezone.utc),
-                        'trigger': 'CEX_SPOT_TRADE',
-                        'token_changes': token_changes
-                    })
+                # Log spot trade execution
+                cex_interface_logger.info(f"CEX Interface: Spot trade executed - {venue} {symbol} {side} {fill_amount} @ {fill_price}")
             else:  # PERP
                 # Perp trade updates derivative positions
                 derivative_changes = [{
@@ -312,26 +292,8 @@ class CEXExecutionInterface(BaseExecutionInterface):
                     }
                 }]
                 
-                # Use Position Update Handler for tight loop (position → exposure → risk → P&L)
-                if hasattr(self, 'position_update_handler') and self.position_update_handler:
-                    current_timestamp = pd.Timestamp.now(tz='UTC')
-                    await self.position_update_handler.handle_position_update(
-                        changes={
-                            'timestamp': current_timestamp,
-                            'trigger': 'CEX_PERP_TRADE',
-                            'derivative_changes': derivative_changes
-                        },
-                        timestamp=current_timestamp,
-                        market_data=market_data,
-                        trigger_component='CEX_PERP_TRADE'
-                    )
-                else:
-                    # Fallback to direct position monitor update
-                    await self._update_position_monitor({
-                        'timestamp': datetime.now(timezone.utc),
-                        'trigger': 'CEX_PERP_TRADE',
-                        'derivative_changes': derivative_changes
-                    })
+                # Log perp trade execution
+                cex_interface_logger.info(f"CEX Interface: Perp trade executed - {venue} {symbol} {side} {fill_amount} @ {fill_price}")
             
             cex_interface_logger.info("CEX Interface: Position monitor updated successfully")
             

@@ -280,7 +280,7 @@ class BTCBasisQualityGates:
             from basis_strategy_v1.core.interfaces.cex_execution_interface import CEXExecutionInterface
             
             # Create CEX execution interface
-            cex_interface = CEXExecutionInterface(config={})
+            cex_interface = CEXExecutionInterface(execution_mode='backtest', config={})
             
             # Create test instruction
             instruction = {
@@ -301,7 +301,7 @@ class BTCBasisQualityGates:
             result = await cex_interface.execute_trade(instruction, market_data)
             
             # Validate result
-            if result.get('status') == 'success':
+            if result and result.get('status') == 'FILLED':
                 return {
                     'passed': True,
                     'message': 'Spot trade execution working correctly',
@@ -310,7 +310,7 @@ class BTCBasisQualityGates:
             else:
                 return {
                     'passed': False,
-                    'message': f'Spot trade execution failed: {result.get("error", "Unknown error")}',
+                    'message': f'Spot trade execution failed: {result}',
                     'details': {'result': result}
                 }
             
@@ -328,7 +328,7 @@ class BTCBasisQualityGates:
             from basis_strategy_v1.core.interfaces.cex_execution_interface import CEXExecutionInterface
             
             # Create CEX execution interface
-            cex_interface = CEXExecutionInterface(config={})
+            cex_interface = CEXExecutionInterface(execution_mode='backtest', config={})
             
             # Create test instruction
             instruction = {
@@ -349,7 +349,7 @@ class BTCBasisQualityGates:
             result = await cex_interface.execute_trade(instruction, market_data)
             
             # Validate result
-            if result.get('status') == 'success':
+            if result and result.get('status') == 'FILLED':
                 return {
                     'passed': True,
                     'message': 'Perp trade execution working correctly',
@@ -358,7 +358,7 @@ class BTCBasisQualityGates:
             else:
                 return {
                     'passed': False,
-                    'message': f'Perp trade execution failed: {result.get("error", "Unknown error")}',
+                    'message': f'Perp trade execution failed: {result}',
                     'details': {'result': result}
                 }
             
@@ -538,9 +538,13 @@ class BTCBasisQualityGates:
         """QG10: Test end-to-end integration."""
         try:
             # Run a minimal backtest to test integration
+            test_config = self.config.copy()
+            test_config['mode'] = 'btc_basis'
+            test_config['data_requirements'] = ['btc_prices', 'btc_futures', 'funding_rates', 'gas_costs', 'execution_costs']
+            
             data_provider = create_data_provider(
                 execution_mode='backtest',
-                config=self.config,
+                config=test_config,
                 data_dir=self.config_manager.get_data_directory(),
                 backtest_start_date='2024-06-01',
                 backtest_end_date='2024-06-02'
