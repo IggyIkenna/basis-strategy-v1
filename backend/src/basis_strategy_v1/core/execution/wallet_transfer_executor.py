@@ -209,7 +209,7 @@ class WalletTransferExecutor:
                 # Ensure timestamp is pandas Timestamp
                 if not isinstance(timestamp, pd.Timestamp):
                     timestamp = pd.Timestamp(timestamp)
-                await self.position_update_handler.handle_position_update(
+                self.position_update_handler.handle_position_update(
                     changes=changes,
                     timestamp=timestamp,
                     market_data={},  # Wallet transfers don't need market data
@@ -217,7 +217,7 @@ class WalletTransferExecutor:
                 )
             else:
                 # Fallback to direct position monitor update
-                await self.position_monitor.update(changes)
+                self.position_monitor.update(changes)
             
         except Exception as e:
             wallet_transfer_logger.error(f"Position monitor update failed: {e}")

@@ -143,6 +143,12 @@ class PnLCalculatorError(Exception):
 
 class PnLCalculator:
     """Calculate P&L using balance-based and attribution methods."""
+    _instance = None
+    
+    def __new__(cls, *args, **kwargs):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
     
     def __init__(self, 
                  config: Dict[str, Any],

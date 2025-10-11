@@ -1,338 +1,237 @@
 """
-Pure Lending Strategy
+Pure Lending Strategy Implementation
 
-Simple lending USDT strategy without leverage or staking or hedging.
-Implements the standardized strategy manager interface.
+This module implements the pure lending strategy using the base strategy manager
+architecture with standardized 5-action interface.
 
+Reference: docs/specs/05_STRATEGY_MANAGER.md - Component specification
 Reference: docs/MODES.md - Pure Lending Strategy
-Reference: configs/modes/pure_lending.yaml - Configuration
 """
 
 from typing import Dict, List, Any
-import pandas as pd
-
 from .base_strategy_manager import BaseStrategyManager, StrategyAction
-from ...infrastructure.logging.structured_logger import get_strategy_manager_logger
+import logging
 
+logger = logging.getLogger(__name__)
 
 class PureLendingStrategy(BaseStrategyManager):
-    """Pure lending strategy implementation."""
+    """Pure lending strategy implementation"""
     
     def __init__(self, config: Dict[str, Any], risk_monitor, position_monitor, event_engine):
-        """Initialize pure lending strategy."""
+        """
+        Initialize pure lending strategy.
+        
+        Args:
+            config: Strategy configuration
+            risk_monitor: Risk monitor instance
+            position_monitor: Position monitor instance
+            event_engine: Event engine instance
+        """
         super().__init__(config, risk_monitor, position_monitor, event_engine)
         
-        # Strategy-specific configuration
-        self.lending_enabled = config.get('lending_enabled', True)
-        self.target_apy = config.get('target_apy', 0.05)  # 5% APY target
-        self.max_drawdown = config.get('max_drawdown', 0.005)  # 0.5% max drawdown
+        # Pure lending specific configuration
+        self.lending_venues = config.get('lending_venues', ['aave', 'morpho'])
+        self.target_ltv = config.get('target_ltv', 0.8)
+        self.max_ltv = config.get('max_ltv', 0.9)
         
-        self.structured_logger.info(
-            "PureLendingStrategy initialized",
-            event_type="strategy_initialization",
-            strategy="pure_lending",
-            lending_enabled=self.lending_enabled,
-            target_apy=self.target_apy
-        )
+        logger.info(f"PureLendingStrategy initialized for {self.share_class} {self.asset}")
     
     def calculate_target_position(self, current_equity: float) -> Dict[str, float]:
-        """
-        Calculate target position for pure lending strategy.
-        
-        For pure lending, the target is to lend all available USDT on AAVE.
-        
-        Args:
-            current_equity: Current equity in USDT
-            
-        Returns:
-            Dictionary with target positions
-        """
+        """Calculate target position based on current equity"""
         try:
-            # For pure lending, target is to lend all USDT on AAVE
-            target_position = {
-                'aUSDT': current_equity,  # Lend all USDT on AAVE
-                'USDT': 0.0  # No USDT in wallet (all lent)
+            # For pure lending, target position is based on LTV
+            target_borrow = current_equity * self.target_ltv
+            target_supply = current_equity + target_borrow
+            
+            return {
+                'supply': target_supply,
+                'borrow': target_borrow,
+                'equity': current_equity
             }
-            
-            self.structured_logger.debug(
-                f"Calculated target position: {target_position}",
-                event_type="target_position_calculation",
-                current_equity=current_equity,
-                target_position=target_position
-            )
-            
-            return target_position
-            
         except Exception as e:
-            self.structured_logger.error(
-                f"Error calculating target position: {e}",
-                event_type="target_position_error",
-                error=str(e),
-                current_equity=current_equity
-            )
-            return {}
+            logger.error(f"Failed to calculate target position: {e}")
+            return {'supply': 0.0, 'borrow': 0.0, 'equity': current_equity}
     
     def entry_full(self, equity: float) -> StrategyAction:
-        """
-        Enter full position for pure lending.
-        
-        Args:
-            equity: Available equity to deploy
-            
-        Returns:
-            Strategy action for full entry
-        """
+        """Enter full position (initial setup or large deposits)"""
         try:
-            # For pure lending, full entry means lending all USDT on AAVE
-            instructions = [
-                {
-                    'action': 'lend',
-                    'venue': 'aave_v3',
-                    'token': 'USDT',
-                    'amount': equity,
-                    'target_token': 'aUSDT'
-                }
-            ]
+            target_position = self.calculate_target_position(equity)
             
-            action = StrategyAction(
+            instructions = []
+            for venue in self.lending_venues:
+                instructions.append({
+                    'venue': venue,
+                    'action': 'supply',
+                    'amount': target_position['supply'] / len(self.lending_venues),
+                    'currency': self.asset
+                })
+                instructions.append({
+                    'venue': venue,
+                    'action': 'borrow',
+                    'amount': target_position['borrow'] / len(self.lending_venues),
+                    'currency': self.asset
+                })
+            
+            return StrategyAction(
                 action_type='entry_full',
-                target_amount=equity,
-                target_currency='USDT',
+                target_amount=target_position['supply'],
+                target_currency=self.asset,
                 instructions=instructions,
-                atomic=True,
-                metadata={
-                    'strategy': 'pure_lending',
-                    'target_apy': self.target_apy
-                }
+                atomic=True
             )
-            
-            self.structured_logger.info(
-                f"Generated full entry action: {equity:.2f} USDT",
-                event_type="strategy_action",
-                action_type='entry_full',
-                amount=equity,
-                instructions=len(instructions)
-            )
-            
-            return action
-            
         except Exception as e:
-            self.structured_logger.error(
-                f"Error generating full entry action: {e}",
-                event_type="strategy_action_error",
+            logger.error(f"Failed to create entry_full action: {e}")
+            return StrategyAction(
                 action_type='entry_full',
-                error=str(e)
+                target_amount=0.0,
+                target_currency=self.asset,
+                instructions=[],
+                atomic=True
             )
-            raise
     
     def entry_partial(self, equity_delta: float) -> StrategyAction:
-        """
-        Scale up position for pure lending.
-        
-        Args:
-            equity_delta: Additional equity to deploy
-            
-        Returns:
-            Strategy action for partial entry
-        """
+        """Scale up position (small deposits or PnL gains)"""
         try:
-            # For pure lending, partial entry means lending additional USDT
-            instructions = [
-                {
-                    'action': 'lend',
-                    'venue': 'aave_v3',
-                    'token': 'USDT',
-                    'amount': equity_delta,
-                    'target_token': 'aUSDT'
-                }
-            ]
+            # Scale up proportionally
+            target_position = self.calculate_target_position(equity_delta)
             
-            action = StrategyAction(
+            instructions = []
+            for venue in self.lending_venues:
+                instructions.append({
+                    'venue': venue,
+                    'action': 'supply',
+                    'amount': target_position['supply'] / len(self.lending_venues),
+                    'currency': self.asset
+                })
+                instructions.append({
+                    'venue': venue,
+                    'action': 'borrow',
+                    'amount': target_position['borrow'] / len(self.lending_venues),
+                    'currency': self.asset
+                })
+            
+            return StrategyAction(
                 action_type='entry_partial',
-                target_amount=equity_delta,
-                target_currency='USDT',
+                target_amount=target_position['supply'],
+                target_currency=self.asset,
                 instructions=instructions,
-                atomic=True,
-                metadata={
-                    'strategy': 'pure_lending',
-                    'target_apy': self.target_apy
-                }
+                atomic=True
             )
-            
-            self.structured_logger.info(
-                f"Generated partial entry action: {equity_delta:.2f} USDT",
-                event_type="strategy_action",
-                action_type='entry_partial',
-                amount=equity_delta,
-                instructions=len(instructions)
-            )
-            
-            return action
-            
         except Exception as e:
-            self.structured_logger.error(
-                f"Error generating partial entry action: {e}",
-                event_type="strategy_action_error",
+            logger.error(f"Failed to create entry_partial action: {e}")
+            return StrategyAction(
                 action_type='entry_partial',
-                error=str(e)
+                target_amount=0.0,
+                target_currency=self.asset,
+                instructions=[],
+                atomic=True
             )
-            raise
     
     def exit_full(self, equity: float) -> StrategyAction:
-        """
-        Exit entire position for pure lending.
-        
-        Args:
-            equity: Current equity to exit
-            
-        Returns:
-            Strategy action for full exit
-        """
+        """Exit entire position (withdrawals or risk override)"""
         try:
-            # For pure lending, full exit means withdrawing all aUSDT from AAVE
-            instructions = [
-                {
+            # Get current position to determine exit amounts
+            position_snapshot = self.position_monitor.get_position_snapshot()
+            current_supply = position_snapshot.get('total_supply', 0.0)
+            current_borrow = position_snapshot.get('total_borrow', 0.0)
+            
+            instructions = []
+            for venue in self.lending_venues:
+                instructions.append({
+                    'venue': venue,
+                    'action': 'repay',
+                    'amount': current_borrow / len(self.lending_venues),
+                    'currency': self.asset
+                })
+                instructions.append({
+                    'venue': venue,
                     'action': 'withdraw',
-                    'venue': 'aave_v3',
-                    'token': 'aUSDT',
-                    'amount': equity,
-                    'target_token': 'USDT'
-                }
-            ]
+                    'amount': current_supply / len(self.lending_venues),
+                    'currency': self.asset
+                })
             
-            action = StrategyAction(
+            return StrategyAction(
                 action_type='exit_full',
-                target_amount=equity,
-                target_currency='USDT',
+                target_amount=current_supply,
+                target_currency=self.asset,
                 instructions=instructions,
-                atomic=True,
-                metadata={
-                    'strategy': 'pure_lending'
-                }
+                atomic=True
             )
-            
-            self.structured_logger.info(
-                f"Generated full exit action: {equity:.2f} USDT",
-                event_type="strategy_action",
-                action_type='exit_full',
-                amount=equity,
-                instructions=len(instructions)
-            )
-            
-            return action
-            
         except Exception as e:
-            self.structured_logger.error(
-                f"Error generating full exit action: {e}",
-                event_type="strategy_action_error",
+            logger.error(f"Failed to create exit_full action: {e}")
+            return StrategyAction(
                 action_type='exit_full',
-                error=str(e)
+                target_amount=0.0,
+                target_currency=self.asset,
+                instructions=[],
+                atomic=True
             )
-            raise
     
     def exit_partial(self, equity_delta: float) -> StrategyAction:
-        """
-        Scale down position for pure lending.
-        
-        Args:
-            equity_delta: Equity to reduce
-            
-        Returns:
-            Strategy action for partial exit
-        """
+        """Scale down position (small withdrawals or risk reduction)"""
         try:
-            # For pure lending, partial exit means withdrawing some aUSDT from AAVE
-            instructions = [
-                {
+            # Scale down proportionally
+            target_position = self.calculate_target_position(equity_delta)
+            
+            instructions = []
+            for venue in self.lending_venues:
+                instructions.append({
+                    'venue': venue,
+                    'action': 'repay',
+                    'amount': target_position['borrow'] / len(self.lending_venues),
+                    'currency': self.asset
+                })
+                instructions.append({
+                    'venue': venue,
                     'action': 'withdraw',
-                    'venue': 'aave_v3',
-                    'token': 'aUSDT',
-                    'amount': equity_delta,
-                    'target_token': 'USDT'
-                }
-            ]
+                    'amount': target_position['supply'] / len(self.lending_venues),
+                    'currency': self.asset
+                })
             
-            action = StrategyAction(
+            return StrategyAction(
                 action_type='exit_partial',
-                target_amount=equity_delta,
-                target_currency='USDT',
+                target_amount=target_position['supply'],
+                target_currency=self.asset,
                 instructions=instructions,
-                atomic=True,
-                metadata={
-                    'strategy': 'pure_lending'
-                }
+                atomic=True
             )
-            
-            self.structured_logger.info(
-                f"Generated partial exit action: {equity_delta:.2f} USDT",
-                event_type="strategy_action",
-                action_type='exit_partial',
-                amount=equity_delta,
-                instructions=len(instructions)
-            )
-            
-            return action
-            
         except Exception as e:
-            self.structured_logger.error(
-                f"Error generating partial exit action: {e}",
-                event_type="strategy_action_error",
+            logger.error(f"Failed to create exit_partial action: {e}")
+            return StrategyAction(
                 action_type='exit_partial',
-                error=str(e)
+                target_amount=0.0,
+                target_currency=self.asset,
+                instructions=[],
+                atomic=True
             )
-            raise
     
     def sell_dust(self, dust_tokens: Dict[str, float]) -> StrategyAction:
-        """
-        Convert non-share-class tokens to USDT for pure lending.
-        
-        Args:
-            dust_tokens: Dictionary of dust tokens and amounts
-            
-        Returns:
-            Strategy action for dust selling
-        """
+        """Convert non-share-class tokens to share class currency"""
         try:
             instructions = []
-            
-            # Convert all dust tokens to USDT
             for token, amount in dust_tokens.items():
-                if token != 'USDT' and amount > 0:
+                if token != self.asset and amount > 0:
                     instructions.append({
-                        'action': 'swap',
-                        'venue': 'uniswap_v3',  # Use Uniswap for token swaps
-                        'token': token,
+                        'venue': 'spot_exchange',
+                        'action': 'sell',
                         'amount': amount,
-                        'target_token': 'USDT'
+                        'currency': token,
+                        'target_currency': self.asset
                     })
             
-            action = StrategyAction(
+            return StrategyAction(
                 action_type='sell_dust',
                 target_amount=sum(dust_tokens.values()),
-                target_currency='USDT',
+                target_currency=self.asset,
                 instructions=instructions,
-                atomic=True,
-                metadata={
-                    'strategy': 'pure_lending',
-                    'dust_tokens': dust_tokens
-                }
+                atomic=False
             )
-            
-            self.structured_logger.info(
-                f"Generated dust selling action: {len(instructions)} tokens",
-                event_type="strategy_action",
-                action_type='sell_dust',
-                dust_tokens=list(dust_tokens.keys()),
-                instructions=len(instructions)
-            )
-            
-            return action
-            
         except Exception as e:
-            self.structured_logger.error(
-                f"Error generating dust selling action: {e}",
-                event_type="strategy_action_error",
+            logger.error(f"Failed to create sell_dust action: {e}")
+            return StrategyAction(
                 action_type='sell_dust',
-                error=str(e)
+                target_amount=0.0,
+                target_currency=self.asset,
+                instructions=[],
+                atomic=False
             )
-            raise

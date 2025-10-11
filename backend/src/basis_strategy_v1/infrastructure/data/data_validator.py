@@ -116,6 +116,14 @@ class DataValidator:
             expected_start = pd.to_datetime(self.start_date)
             expected_end = pd.to_datetime(self.end_date)
             
+            # Handle timezone comparison - make both timezone-aware or both timezone-naive
+            if min_date.tz is not None and expected_start.tz is None:
+                expected_start = expected_start.tz_localize('UTC')
+                expected_end = expected_end.tz_localize('UTC')
+            elif min_date.tz is None and expected_start.tz is not None:
+                min_date = min_date.tz_localize('UTC')
+                max_date = max_date.tz_localize('UTC')
+            
             if min_date < expected_start or max_date > expected_end:
                 raise DataProviderError(
                     'DATA-004',

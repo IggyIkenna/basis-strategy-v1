@@ -19,6 +19,12 @@ logger = logging.getLogger(__name__)
 
 class PositionMonitor:
     """Mode-agnostic position monitor that works for both backtest and live modes"""
+    _instance = None
+    
+    def __new__(cls, *args, **kwargs):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
     
     def __init__(self, config: Dict[str, Any], data_provider, utility_manager):
         """

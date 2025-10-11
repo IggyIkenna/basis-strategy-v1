@@ -19,6 +19,12 @@ logger = logging.getLogger(__name__)
 
 class RiskMonitor:
     """Mode-agnostic risk monitor that works for both backtest and live modes"""
+    _instance = None
+    
+    def __new__(cls, *args, **kwargs):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
     
     def __init__(self, config: Dict[str, Any], data_provider, utility_manager):
         """
@@ -40,21 +46,21 @@ class RiskMonitor:
         # Load AAVE risk parameters from data provider (as per spec)
         self._load_aave_risk_parameters()
         
-        # Use fallback values for modes that don't need them
-        self.max_drawdown = config.get('max_drawdown', 0.2)  # 20% default
-        self.leverage_enabled = config.get('leverage_enabled', False)  # False default
+        # Use direct config access for fail-fast behavior
+        self.max_drawdown = config['max_drawdown']
+        self.leverage_enabled = config['leverage_enabled']
         
         # Calculate target_ltv from AAVE risk parameters (as per spec)
         self.target_ltv = self._calculate_target_ltv()
         
-        # Load venue configuration with fallbacks
-        self.venues = config.get('venues', {})
+        # Load venue configuration with fail-fast behavior
+        self.venues = config['venues']
         
-        # Load component-specific configuration
-        component_config = config.get('component_config', {})
-        risk_monitor_config = component_config.get('risk_monitor', {})
-        self.enabled_risk_types = risk_monitor_config.get('enabled_risk_types', [])
-        self.risk_limits = risk_monitor_config.get('risk_limits', {})
+        # Load component-specific configuration with fail-fast behavior
+        component_config = config['component_config']
+        risk_monitor_config = component_config['risk_monitor']
+        self.enabled_risk_types = risk_monitor_config['enabled_risk_types']
+        self.risk_limits = risk_monitor_config['risk_limits']
         
         # Initialize risk metrics
         self.current_risk_metrics = {}
@@ -77,7 +83,7 @@ class RiskMonitor:
             from pathlib import Path
             
             # Get data directory from config or use default
-            data_dir = self.config.get('data_dir', 'data')
+            data_dir = self.config['data_dir']
             risk_params_path = Path(data_dir) / 'protocol_data/aave/risk_params/aave_v3_risk_parameters.json'
             
             if risk_params_path.exists():
@@ -136,7 +142,7 @@ class RiskMonitor:
             Dictionary with risk assessment results
         """
         # Extract timestamp from market_data or use current time
-        timestamp = market_data.get('timestamp', pd.Timestamp.now())
+        timestamp = market_data['timestamp']
         if isinstance(timestamp, str):
             timestamp = pd.Timestamp(timestamp)
         

@@ -60,26 +60,9 @@ class TransferExecutionInterface(BaseExecutionInterface):
         super().__init__(execution_mode, config)
         
         # Initialize transfer manager
-        self._init_transfer_manager()
+        # Transfer manager removed - using direct execution instead
     
-    def _init_transfer_manager(self):
-        """Initialize the cross-venue transfer manager."""
-        try:
-            from ..rebalancing.transfer_manager import CrossVenueTransferManager
-            
-            # Create a mock portfolio for the transfer manager
-            # In a real implementation, this would come from the position monitor
-            mock_portfolio = {
-                'positions': {},
-                'initial_capital': self.config.get('initial_capital', 100000)
-            }
-            
-            self.transfer_manager = CrossVenueTransferManager(self.config, mock_portfolio)
-            logger.info("Transfer manager initialized successfully")
-            
-        except Exception as e:
-            logger.error(f"Failed to initialize transfer manager: {e}")
-            self.transfer_manager = None
+    # Transfer manager removed - using direct execution instead
     
     async def execute_trade(self, instruction: Dict[str, Any], market_data: Dict[str, Any]) -> Dict[str, Any]:
         """

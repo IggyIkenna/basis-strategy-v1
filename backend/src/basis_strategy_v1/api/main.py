@@ -13,7 +13,7 @@ import uvicorn
 from contextlib import asynccontextmanager
 from typing import Optional
 
-from .routes import backtest, strategies, health, results, charts, live_trading, auth, capital
+from .routes import backtest, strategies, health, results, charts, live_trading, auth, capital, config
 from .middleware.correlation import CorrelationMiddleware
 from ..infrastructure.config.config_manager import get_settings
 from ..infrastructure.config.config_validator import validate_configuration
@@ -246,6 +246,16 @@ def create_application() -> FastAPI:
         charts.router,
         prefix="/api/v1/results",
         tags=["charts"]
+    )
+    app.include_router(
+        config.router,
+        prefix="/api/v1/config",
+        tags=["config"]
+    )
+    app.include_router(
+        config.router,
+        prefix="/api/v1",
+        tags=["config"]
     )
     
     # Mount Prometheus metrics endpoint

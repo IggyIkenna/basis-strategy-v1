@@ -20,6 +20,12 @@ logger = logging.getLogger(__name__)
 
 class StrategyManager:
     """Factory-based strategy manager implementation."""
+    _instance = None
+    
+    def __new__(cls, *args, **kwargs):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
     
     def __init__(self, config: Dict[str, Any], data_provider, utility_manager, exposure_monitor=None, risk_monitor=None, event_engine=None):
         """
@@ -79,6 +85,36 @@ class StrategyManager:
                 mode=self.mode
             )
             self.strategy = None
+    
+    def entry_full(self, equity: float):
+        """Enter full position (initial setup or large deposits)"""
+        if self.strategy:
+            return self.strategy.entry_full(equity)
+        return None
+    
+    def entry_partial(self, equity_delta: float):
+        """Scale up position (small deposits or PnL gains)"""
+        if self.strategy:
+            return self.strategy.entry_partial(equity_delta)
+        return None
+    
+    def exit_full(self, equity: float):
+        """Exit entire position (withdrawals or risk override)"""
+        if self.strategy:
+            return self.strategy.exit_full(equity)
+        return None
+    
+    def exit_partial(self, equity_delta: float):
+        """Scale down position (small withdrawals or risk reduction)"""
+        if self.strategy:
+            return self.strategy.exit_partial(equity_delta)
+        return None
+    
+    def sell_dust(self, dust_tokens: Dict[str, float]):
+        """Convert non-share-class tokens to share class currency"""
+        if self.strategy:
+            return self.strategy.sell_dust(dust_tokens)
+        return None
     
     def calculate_strategy_actions(self, timestamp: pd.Timestamp) -> Dict[str, Any]:
         """
