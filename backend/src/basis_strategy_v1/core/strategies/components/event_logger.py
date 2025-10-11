@@ -497,3 +497,7 @@ class EventLogger:
         except Exception as e:
             logger.error(f"Error converting event to text line: {e}")
             return f"[{event_record.get('timestamp', '')}] {event_record.get('event_type', '')}: "
+    
+    def get_all_events(self) -> List[Dict[str, Any]]:
+        """Get all logged events."""
+        return self.event_history

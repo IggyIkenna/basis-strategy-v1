@@ -500,7 +500,7 @@ class EventDrivenStrategyEngine:
                     continue
             
             # Save final results and event log
-            final_results = await self._calculate_final_results(results)
+            final_results = self._calculate_final_results(results)
             await self.results_store.save_final_result(request_id, final_results)
             await self.results_store.save_event_log(request_id, self.event_logger.get_all_events())
             
@@ -644,15 +644,23 @@ class EventDrivenStrategyEngine:
     def _calculate_final_results(self, results: Dict) -> Dict[str, Any]:
         """Calculate final backtest results."""
         
-        # Get current position and calculate final P&L
+        # Get current position and calculate exposure for P&L calculation
         current_position = self.position_monitor.get_snapshot(self.current_timestamp)
-        final_pnl = self.pnl_calculator.calculate_pnl(self.current_timestamp, current_position)
+        final_exposure = self.exposure_monitor.calculate_exposures(
+            positions=current_position,
+            timestamp=self.current_timestamp
+        )
+        final_pnl = self.pnl_calculator.calculate_pnl(final_exposure, timestamp=self.current_timestamp)
         
         # Calculate performance metrics
         initial_capital = self.initial_capital
-        final_value = initial_capital + final_pnl['balance_based']['pnl_cumulative']
-        total_return = final_pnl['balance_based']['pnl_cumulative']
-        total_return_pct = (total_return / initial_capital) * 100
+        pnl_cumulative = final_pnl.get('balance_based', {}).get('pnl_cumulative', 0.0)
+        logger.info(f"Final results calculation - initial_capital: {initial_capital}, pnl_cumulative: {pnl_cumulative}")
+        logger.info(f"Final P&L structure: {final_pnl}")
+        
+        final_value = initial_capital + pnl_cumulative
+        total_return = pnl_cumulative
+        total_return_pct = (total_return / initial_capital) * 100 if initial_capital > 0 else 0
         
         # Get all events
         all_events = self.event_logger.get_all_events()
