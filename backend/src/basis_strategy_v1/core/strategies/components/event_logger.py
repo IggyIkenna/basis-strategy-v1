@@ -15,6 +15,8 @@ from datetime import datetime
 import json
 import os
 
+from ....infrastructure.logging.structured_logger import get_structured_logger
+
 logger = logging.getLogger(__name__)
 
 class EventLogger:
@@ -32,6 +34,9 @@ class EventLogger:
         self.config = config
         self.data_provider = data_provider
         self.utility_manager = utility_manager
+        
+        # Initialize structured logger
+        self.structured_logger = get_structured_logger('event_logger')
         
         # Event tracking
         self.event_history = []
@@ -53,7 +58,12 @@ class EventLogger:
         else:
             self.log_level = 'INFO'  # Default only if not specified
         
-        logger.info("EventLogger initialized (mode-agnostic)")
+        self.structured_logger.info(
+            "EventLogger initialized",
+            event_type="component_initialization",
+            component="event_logger",
+            mode="mode-agnostic"
+        )
     
     async def log_event(self, event_type: str, event_data: Dict[str, Any], 
                        timestamp: pd.Timestamp) -> Dict[str, Any]:

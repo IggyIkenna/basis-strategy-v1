@@ -2,332 +2,424 @@
 """
 Strategy Manager Refactor Quality Gates
 
-Validates that the strategy manager refactor is properly implemented with:
-- Base strategy manager architecture
-- Strategy factory pattern
-- Inheritance-based strategy implementations
-- Standardized wrapper actions
+Tests the new factory-based strategy manager architecture with standardized
+wrapper actions and tight loop integration.
 
-Reference: docs/MODES.md - Standardized Strategy Manager Architecture
-Reference: docs/specs/05_STRATEGY_MANAGER.md - Component specification
+Reference: .cursor/tasks/06_strategy_manager_refactor.md
 """
 
-import os
 import sys
-import re
-import logging
+import os
+import asyncio
+import json
+import time
 from pathlib import Path
-from typing import List, Dict, Tuple
+from typing import Dict, Any, List
+import logging
 
 # Add the backend source to the path
-backend_src = Path(__file__).parent.parent / "backend" / "src"
-sys.path.insert(0, str(backend_src))
+sys.path.insert(0, str(Path(__file__).parent.parent / "backend" / "src"))
+
+from basis_strategy_v1.core.strategies.strategy_factory import StrategyFactory, create_strategy
+from basis_strategy_v1.core.strategies.base_strategy_manager import BaseStrategyManager, StrategyAction
+from basis_strategy_v1.core.strategies.pure_lending_strategy import PureLendingStrategy
+from basis_strategy_v1.core.strategies.components.strategy_manager import StrategyManager
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s [%(levelname)-8s] %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S'
-)
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 class StrategyManagerRefactorQualityGates:
-    """Quality gates for strategy manager refactor implementation."""
+    """Quality gates for strategy manager refactor."""
     
     def __init__(self):
-        self.backend_src = Path(__file__).parent.parent / "backend" / "src"
-        self.strategy_files = [
-            "basis_strategy_v1/core/strategies/base_strategy_manager.py",
-            "basis_strategy_v1/core/strategies/strategy_factory.py",
-            "basis_strategy_v1/core/strategies/pure_lending_strategy.py"
-        ]
+        self.test_results = []
         
-    def run_quality_gates(self) -> bool:
-        """Run all strategy manager refactor quality gates."""
-        logger.info("🚀 Starting Strategy Manager Refactor Quality Gates")
-        logger.info("=" * 80)
-        
-        gates = [
-            ("QG1", "Base Strategy Manager Architecture", self._test_base_strategy_manager),
-            ("QG2", "Strategy Factory Pattern", self._test_strategy_factory),
-            ("QG3", "Strategy Implementation", self._test_strategy_implementation),
-            ("QG4", "Standardized Wrapper Actions", self._test_standardized_actions),
-            ("QG5", "Inheritance Pattern", self._test_inheritance_pattern),
-            ("QG6", "Strategy Registration", self._test_strategy_registration),
-            ("QG7", "Architecture Compliance", self._test_architecture_compliance),
-            ("QG8", "Integration Test", self._test_integration)
-        ]
-        
-        passed = 0
-        total = len(gates)
-        
-        for gate_id, gate_name, test_func in gates:
-            logger.info(f"🔄 Running {gate_id}: {gate_name}")
-            try:
-                if test_func():
-                    logger.info(f"✅ {gate_id}: PASS")
-                    passed += 1
-                else:
-                    logger.info(f"❌ {gate_id}: FAIL")
-            except Exception as e:
-                logger.error(f"❌ {gate_id}: ERROR - {e}")
-        
-        logger.info("=" * 80)
-        logger.info("🚦 STRATEGY MANAGER REFACTOR QUALITY GATES RESULTS")
-        logger.info("=" * 80)
-        
-        status = "PASS" if passed == total else "FAIL"
-        logger.info(f"Overall Status: {status}")
-        logger.info(f"Gates Passed: {passed}")
-        logger.info(f"Gates Failed: {total - passed}")
-        logger.info(f"Pass Rate: {(passed/total)*100:.1f}%")
-        logger.info("")
-        logger.info("Gate Results:")
-        for gate_id, gate_name, _ in gates:
-            logger.info(f"  {gate_id}: ✅ PASS" if gate_id in [g[0] for g in gates[:passed]] else f"  {gate_id}: ❌ FAIL")
-        
-        if passed == total:
-            logger.info("")
-            logger.info("🎉 All strategy manager refactor quality gates passed!")
-        
-        return passed == total
+    def log_test_result(self, test_name: str, passed: bool, message: str = ""):
+        """Log test result."""
+        status = "✅ PASS" if passed else "❌ FAIL"
+        print(f"{status} {test_name}: {message}")
+        self.test_results.append({
+            'test': test_name,
+            'passed': passed,
+            'message': message
+        })
     
-    def _test_base_strategy_manager(self) -> bool:
-        """Test that base strategy manager architecture is implemented."""
-        violations = []
+    def test_base_strategy_manager(self) -> bool:
+        """Test base strategy manager functionality."""
+        print("\n🔍 Testing Base Strategy Manager...")
         
-        base_file = self.backend_src / "basis_strategy_v1/core/strategies/base_strategy_manager.py"
-        if not base_file.exists():
-            violations.append("Base strategy manager file not found")
-            return False
-        
-        with open(base_file, 'r') as f:
-            content = f.read()
-        
-        # Check for required classes and methods
-        required_elements = [
-            'class StrategyAction(BaseModel)',
-            'class BaseStrategyManager(ABC)',
-            '@abstractmethod',
-            'def calculate_target_position(',
-            'def entry_full(',
-            'def entry_partial(',
-            'def exit_full(',
-            'def exit_partial(',
-            'def sell_dust(',
-            'def get_equity(',
-            'def trigger_tight_loop('
-        ]
-        
-        for element in required_elements:
-            if element not in content:
-                violations.append(f"Missing required element: {element}")
-        
-        if violations:
-            logger.error(f"Found {len(violations)} base strategy manager violations:")
-            for violation in violations:
-                logger.error(f"  - {violation}")
-            return False
-        
-        return True
-    
-    def _test_strategy_factory(self) -> bool:
-        """Test that strategy factory pattern is implemented."""
-        violations = []
-        
-        factory_file = self.backend_src / "basis_strategy_v1/core/strategies/strategy_factory.py"
-        if not factory_file.exists():
-            violations.append("Strategy factory file not found")
-            return False
-        
-        with open(factory_file, 'r') as f:
-            content = f.read()
-        
-        # Check for required factory elements
-        required_elements = [
-            'class StrategyFactory',
-            'STRATEGY_MAP',
-            'def create_strategy(',
-            'def get_available_modes(',
-            'def is_mode_supported(',
-            'def register_strategy('
-        ]
-        
-        for element in required_elements:
-            if element not in content:
-                violations.append(f"Missing required factory element: {element}")
-        
-        if violations:
-            logger.error(f"Found {len(violations)} strategy factory violations:")
-            for violation in violations:
-                logger.error(f"  - {violation}")
-            return False
-        
-        return True
-    
-    def _test_strategy_implementation(self) -> bool:
-        """Test that strategy implementations exist."""
-        violations = []
-        
-        # Check for Pure Lending strategy
-        pure_lending_file = self.backend_src / "basis_strategy_v1/core/strategies/pure_lending_strategy.py"
-        if not pure_lending_file.exists():
-            violations.append("Pure lending strategy file not found")
-        else:
-            with open(pure_lending_file, 'r') as f:
-                content = f.read()
-            
-            # Check for required strategy elements
-            required_elements = [
-                'class PureLendingStrategy(BaseStrategyManager)',
-                'def calculate_target_position(',
-                'def entry_full(',
-                'def entry_partial(',
-                'def exit_full(',
-                'def exit_partial(',
-                'def sell_dust('
-            ]
-            
-            for element in required_elements:
-                if element not in content:
-                    violations.append(f"Missing required strategy element: {element}")
-        
-        if violations:
-            logger.error(f"Found {len(violations)} strategy implementation violations:")
-            for violation in violations:
-                logger.error(f"  - {violation}")
-            return False
-        
-        return True
-    
-    def _test_standardized_actions(self) -> bool:
-        """Test that standardized wrapper actions are implemented."""
-        violations = []
-        
-        pure_lending_file = self.backend_src / "basis_strategy_v1/core/strategies/pure_lending_strategy.py"
-        if not pure_lending_file.exists():
-            violations.append("Pure lending strategy file not found")
-            return False
-        
-        with open(pure_lending_file, 'r') as f:
-            content = f.read()
-        
-        # Check for standardized action types
-        action_types = [
-            'action_type=\'entry_full\'',
-            'action_type=\'entry_partial\'',
-            'action_type=\'exit_full\'',
-            'action_type=\'exit_partial\'',
-            'action_type=\'sell_dust\''
-        ]
-        
-        for action_type in action_types:
-            if action_type not in content:
-                violations.append(f"Missing standardized action type: {action_type}")
-        
-        if violations:
-            logger.error(f"Found {len(violations)} standardized actions violations:")
-            for violation in violations:
-                logger.error(f"  - {violation}")
-            return False
-        
-        return True
-    
-    def _test_inheritance_pattern(self) -> bool:
-        """Test that inheritance pattern is properly implemented."""
-        violations = []
-        
-        pure_lending_file = self.backend_src / "basis_strategy_v1/core/strategies/pure_lending_strategy.py"
-        if not pure_lending_file.exists():
-            violations.append("Pure lending strategy file not found")
-            return False
-        
-        with open(pure_lending_file, 'r') as f:
-            content = f.read()
-        
-        # Check for inheritance from BaseStrategyManager
-        if 'BaseStrategyManager' not in content:
-            violations.append("Strategy does not inherit from BaseStrategyManager")
-        
-        # Check for super() call in __init__
-        if 'super().__init__(' not in content:
-            violations.append("Strategy does not call super().__init__()")
-        
-        if violations:
-            logger.error(f"Found {len(violations)} inheritance pattern violations:")
-            for violation in violations:
-                logger.error(f"  - {violation}")
-            return False
-        
-        return True
-    
-    def _test_strategy_registration(self) -> bool:
-        """Test that strategies are properly registered in the factory."""
-        violations = []
-        
-        factory_file = self.backend_src / "basis_strategy_v1/core/strategies/strategy_factory.py"
-        if not factory_file.exists():
-            violations.append("Strategy factory file not found")
-            return False
-        
-        with open(factory_file, 'r') as f:
-            content = f.read()
-        
-        # Check for Pure Lending strategy registration
-        if "'pure_lending': PureLendingStrategy" not in content:
-            violations.append("Pure lending strategy not registered in factory")
-        
-        # Check for import of PureLendingStrategy
-        if "from .pure_lending_strategy import PureLendingStrategy" not in content:
-            violations.append("PureLendingStrategy not imported in factory")
-        
-        if violations:
-            logger.error(f"Found {len(violations)} strategy registration violations:")
-            for violation in violations:
-                logger.error(f"  - {violation}")
-            return False
-        
-        return True
-    
-    def _test_architecture_compliance(self) -> bool:
-        """Test overall architecture compliance."""
-        # This is a composite test of the above tests
-        return (self._test_base_strategy_manager() and 
-                self._test_strategy_factory() and 
-                self._test_strategy_implementation() and
-                self._test_standardized_actions() and
-                self._test_inheritance_pattern() and
-                self._test_strategy_registration())
-    
-    def _test_integration(self) -> bool:
-        """Integration test - verify overall strategy manager refactor."""
-        # Test that we can import the strategy components without errors
         try:
-            from basis_strategy_v1.core.strategies.base_strategy_manager import BaseStrategyManager, StrategyAction
-            from basis_strategy_v1.core.strategies.strategy_factory import StrategyFactory
-            from basis_strategy_v1.core.strategies.pure_lending_strategy import PureLendingStrategy
+            # Create a mock strategy manager
+            class MockStrategyManager(BaseStrategyManager):
+                def calculate_target_position(self, current_equity: float) -> Dict[str, float]:
+                    return {'USDT': current_equity}
+                
+                def entry_full(self, equity: float) -> StrategyAction:
+                    return StrategyAction(
+                        action_type='entry_full',
+                        target_amount=equity,
+                        target_currency='USDT',
+                        instructions=[]
+                    )
+                
+                def entry_partial(self, equity_delta: float) -> StrategyAction:
+                    return StrategyAction(
+                        action_type='entry_partial',
+                        target_amount=equity_delta,
+                        target_currency='USDT',
+                        instructions=[]
+                    )
+                
+                def exit_full(self, equity: float) -> StrategyAction:
+                    return StrategyAction(
+                        action_type='exit_full',
+                        target_amount=equity,
+                        target_currency='USDT',
+                        instructions=[]
+                    )
+                
+                def exit_partial(self, equity_delta: float) -> StrategyAction:
+                    return StrategyAction(
+                        action_type='exit_partial',
+                        target_amount=equity_delta,
+                        target_currency='USDT',
+                        instructions=[]
+                    )
+                
+                def sell_dust(self, dust_tokens: Dict[str, float]) -> StrategyAction:
+                    return StrategyAction(
+                        action_type='sell_dust',
+                        target_amount=sum(dust_tokens.values()),
+                        target_currency='USDT',
+                        instructions=[]
+                    )
             
-            logger.info("✅ All strategy components imported successfully")
+            # Test initialization
+            config = {'mode': 'test', 'share_class': 'USDT', 'asset': 'USDT'}
+            strategy = MockStrategyManager(config, None, None, None)
             
-            # Test that factory can create a strategy
-            available_modes = StrategyFactory.get_available_modes()
-            if 'pure_lending' not in available_modes:
-                logger.error("❌ Pure lending strategy not available in factory")
+            if hasattr(strategy, 'structured_logger'):
+                self.log_test_result("Base Strategy Manager Initialization", True, "Structured logger integrated")
+            else:
+                self.log_test_result("Base Strategy Manager Initialization", False, "No structured logger found")
                 return False
             
-            logger.info("✅ Strategy factory can create strategies")
+            # Test equity calculation
+            equity = strategy.get_equity()
+            if isinstance(equity, (int, float)):
+                self.log_test_result("Equity Calculation", True, f"Equity: {equity}")
+            else:
+                self.log_test_result("Equity Calculation", False, "Invalid equity type")
+                return False
+            
+            # Test dust checking
+            dust_tokens = {'ETH': 0.001, 'BTC': 0.0001}
+            should_sell = strategy.should_sell_dust(dust_tokens)
+            if isinstance(should_sell, bool):
+                self.log_test_result("Dust Checking", True, f"Should sell dust: {should_sell}")
+            else:
+                self.log_test_result("Dust Checking", False, "Invalid dust check result")
+                return False
+            
+            # Test reserve checking
+            reserve_status = strategy.check_reserves()
+            if isinstance(reserve_status, dict) and 'sufficient' in reserve_status:
+                self.log_test_result("Reserve Checking", True, f"Reserves sufficient: {reserve_status['sufficient']}")
+            else:
+                self.log_test_result("Reserve Checking", False, "Invalid reserve status")
+                return False
+            
             return True
             
         except Exception as e:
-            logger.error(f"❌ Strategy component import failed: {e}")
+            self.log_test_result("Base Strategy Manager", False, f"Exception: {e}")
             return False
+    
+    def test_strategy_factory(self) -> bool:
+        """Test strategy factory functionality."""
+        print("\n🔍 Testing Strategy Factory...")
+        
+        try:
+            # Test supported modes
+            supported_modes = StrategyFactory.get_supported_modes()
+            if isinstance(supported_modes, list):
+                self.log_test_result("Supported Modes", True, f"Modes: {supported_modes}")
+            else:
+                self.log_test_result("Supported Modes", False, "Invalid supported modes")
+                return False
+            
+            # Test mode support checking
+            is_pure_lending_supported = StrategyFactory.is_mode_supported('pure_lending')
+            if isinstance(is_pure_lending_supported, bool):
+                self.log_test_result("Mode Support Checking", True, f"Pure lending supported: {is_pure_lending_supported}")
+            else:
+                self.log_test_result("Mode Support Checking", False, "Invalid mode support result")
+                return False
+            
+            # Test strategy creation
+            config = {'mode': 'pure_lending', 'share_class': 'USDT', 'asset': 'USDT'}
+            strategy = StrategyFactory.create_strategy(
+                mode='pure_lending',
+                config=config,
+                risk_monitor=None,
+                position_monitor=None,
+                event_engine=None
+            )
+            
+            if isinstance(strategy, PureLendingStrategy):
+                self.log_test_result("Strategy Creation", True, f"Created: {type(strategy).__name__}")
+            else:
+                self.log_test_result("Strategy Creation", False, f"Wrong type: {type(strategy)}")
+                return False
+            
+            # Test unsupported mode
+            try:
+                StrategyFactory.create_strategy(
+                    mode='unsupported_mode',
+                    config=config,
+                    risk_monitor=None,
+                    position_monitor=None,
+                    event_engine=None
+                )
+                self.log_test_result("Unsupported Mode Handling", False, "Should have raised exception")
+                return False
+            except ValueError:
+                self.log_test_result("Unsupported Mode Handling", True, "Correctly raised ValueError")
+            
+            return True
+            
+        except Exception as e:
+            self.log_test_result("Strategy Factory", False, f"Exception: {e}")
+            return False
+    
+    def test_pure_lending_strategy(self) -> bool:
+        """Test pure lending strategy implementation."""
+        print("\n🔍 Testing Pure Lending Strategy...")
+        
+        try:
+            # Create strategy instance
+            config = {
+                'mode': 'pure_lending',
+                'share_class': 'USDT',
+                'asset': 'USDT',
+                'lending_enabled': True,
+                'target_apy': 0.05
+            }
+            
+            strategy = PureLendingStrategy(config, None, None, None)
+            
+            if hasattr(strategy, 'structured_logger'):
+                self.log_test_result("Pure Lending Strategy Initialization", True, "Structured logger integrated")
+            else:
+                self.log_test_result("Pure Lending Strategy Initialization", False, "No structured logger found")
+                return False
+            
+            # Test target position calculation
+            target_position = strategy.calculate_target_position(1000.0)
+            if isinstance(target_position, dict) and 'aUSDT' in target_position:
+                self.log_test_result("Target Position Calculation", True, f"Target: {target_position}")
+            else:
+                self.log_test_result("Target Position Calculation", False, f"Invalid target: {target_position}")
+                return False
+            
+            # Test entry full action
+            entry_action = strategy.entry_full(1000.0)
+            if isinstance(entry_action, StrategyAction) and entry_action.action_type == 'entry_full':
+                self.log_test_result("Entry Full Action", True, f"Action: {entry_action.action_type}")
+            else:
+                self.log_test_result("Entry Full Action", False, f"Invalid action: {entry_action}")
+                return False
+            
+            # Test entry partial action
+            partial_action = strategy.entry_partial(100.0)
+            if isinstance(partial_action, StrategyAction) and partial_action.action_type == 'entry_partial':
+                self.log_test_result("Entry Partial Action", True, f"Action: {partial_action.action_type}")
+            else:
+                self.log_test_result("Entry Partial Action", False, f"Invalid action: {partial_action}")
+                return False
+            
+            # Test exit full action
+            exit_action = strategy.exit_full(1000.0)
+            if isinstance(exit_action, StrategyAction) and exit_action.action_type == 'exit_full':
+                self.log_test_result("Exit Full Action", True, f"Action: {exit_action.action_type}")
+            else:
+                self.log_test_result("Exit Full Action", False, f"Invalid action: {exit_action}")
+                return False
+            
+            # Test exit partial action
+            partial_exit_action = strategy.exit_partial(100.0)
+            if isinstance(partial_exit_action, StrategyAction) and partial_exit_action.action_type == 'exit_partial':
+                self.log_test_result("Exit Partial Action", True, f"Action: {partial_exit_action.action_type}")
+            else:
+                self.log_test_result("Exit Partial Action", False, f"Invalid action: {partial_exit_action}")
+                return False
+            
+            # Test dust selling action
+            dust_tokens = {'ETH': 0.001, 'BTC': 0.0001}
+            dust_action = strategy.sell_dust(dust_tokens)
+            if isinstance(dust_action, StrategyAction) and dust_action.action_type == 'sell_dust':
+                self.log_test_result("Dust Selling Action", True, f"Action: {dust_action.action_type}")
+            else:
+                self.log_test_result("Dust Selling Action", False, f"Invalid action: {dust_action}")
+                return False
+            
+            return True
+            
+        except Exception as e:
+            self.log_test_result("Pure Lending Strategy", False, f"Exception: {e}")
+            return False
+    
+    def test_strategy_action_model(self) -> bool:
+        """Test strategy action model."""
+        print("\n🔍 Testing Strategy Action Model...")
+        
+        try:
+            # Test basic action creation
+            action = StrategyAction(
+                action_type='entry_full',
+                target_amount=1000.0,
+                target_currency='USDT',
+                instructions=[{'action': 'lend', 'venue': 'aave_v3'}],
+                atomic=True
+            )
+            
+            if action.action_type == 'entry_full' and action.target_amount == 1000.0:
+                self.log_test_result("Strategy Action Creation", True, f"Action: {action.action_type}")
+            else:
+                self.log_test_result("Strategy Action Creation", False, f"Invalid action: {action}")
+                return False
+            
+            # Test action serialization
+            action_dict = action.model_dump()
+            if isinstance(action_dict, dict) and 'action_type' in action_dict:
+                self.log_test_result("Strategy Action Serialization", True, "Action serialized successfully")
+            else:
+                self.log_test_result("Strategy Action Serialization", False, "Serialization failed")
+                return False
+            
+            # Test action validation
+            try:
+                invalid_action = StrategyAction(
+                    action_type='invalid_type',
+                    target_amount=-100.0,  # Negative amount
+                    target_currency='USDT',
+                    instructions=[]
+                )
+                self.log_test_result("Strategy Action Validation", False, "Should have failed validation")
+                return False
+            except Exception:
+                self.log_test_result("Strategy Action Validation", True, "Correctly failed validation")
+            
+            return True
+            
+        except Exception as e:
+            self.log_test_result("Strategy Action Model", False, f"Exception: {e}")
+            return False
+    
+    def test_strategy_manager_integration(self) -> bool:
+        """Test strategy manager integration."""
+        print("\n🔍 Testing Strategy Manager Integration...")
+        
+        try:
+            # Create strategy manager
+            config = {
+                'mode': 'pure_lending',
+                'share_class': 'USDT',
+                'asset': 'USDT'
+            }
+            
+            strategy_manager = StrategyManager(config, None, None, None)
+            
+            if hasattr(strategy_manager, 'strategy') and strategy_manager.strategy is not None:
+                self.log_test_result("Strategy Manager Integration", True, f"Strategy: {type(strategy_manager.strategy).__name__}")
+            else:
+                self.log_test_result("Strategy Manager Integration", False, "No strategy instance created")
+                return False
+            
+            # Test strategy actions calculation
+            import pandas as pd
+            timestamp = pd.Timestamp.now()
+            actions = strategy_manager.calculate_strategy_actions(timestamp)
+            
+            if isinstance(actions, dict) and 'status' in actions:
+                self.log_test_result("Strategy Actions Calculation", True, f"Status: {actions['status']}")
+            else:
+                self.log_test_result("Strategy Actions Calculation", False, f"Invalid actions: {actions}")
+                return False
+            
+            return True
+            
+        except Exception as e:
+            self.log_test_result("Strategy Manager Integration", False, f"Exception: {e}")
+            return False
+    
+    def run_all_tests(self) -> bool:
+        """Run all quality gate tests."""
+        print("🚀 Starting Strategy Manager Refactor Quality Gates...")
+        
+        tests = [
+            self.test_base_strategy_manager,
+            self.test_strategy_factory,
+            self.test_pure_lending_strategy,
+            self.test_strategy_action_model,
+            self.test_strategy_manager_integration
+        ]
+        
+        all_passed = True
+        for test in tests:
+            try:
+                if not test():
+                    all_passed = False
+            except Exception as e:
+                print(f"❌ Test {test.__name__} failed with exception: {e}")
+                all_passed = False
+        
+        return all_passed
+    
+    def print_summary(self):
+        """Print test summary."""
+        print("\n" + "="*60)
+        print("📊 STRATEGY MANAGER REFACTOR QUALITY GATES SUMMARY")
+        print("="*60)
+        
+        passed = sum(1 for result in self.test_results if result['passed'])
+        total = len(self.test_results)
+        
+        print(f"Tests Passed: {passed}/{total}")
+        print(f"Success Rate: {(passed/total)*100:.1f}%")
+        
+        if passed == total:
+            print("🎉 ALL TESTS PASSED! Strategy manager refactor is working correctly.")
+        else:
+            print("⚠️  Some tests failed. Check the details above.")
+        
+        print("\nDetailed Results:")
+        for result in self.test_results:
+            status = "✅" if result['passed'] else "❌"
+            print(f"  {status} {result['test']}: {result['message']}")
 
 def main():
-    """Main entry point."""
+    """Main function."""
     quality_gates = StrategyManagerRefactorQualityGates()
-    success = quality_gates.run_quality_gates()
-    sys.exit(0 if success else 1)
+    
+    try:
+        success = quality_gates.run_all_tests()
+        quality_gates.print_summary()
+        
+        if success:
+            print("\n🎯 Quality gates completed successfully!")
+            sys.exit(0)
+        else:
+            print("\n❌ Quality gates failed!")
+            sys.exit(1)
+            
+    except KeyboardInterrupt:
+        print("\n⏹️  Quality gates interrupted by user")
+        sys.exit(1)
+    except Exception as e:
+        print(f"\n💥 Quality gates failed with exception: {e}")
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()
-

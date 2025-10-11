@@ -13,6 +13,8 @@ import logging
 import pandas as pd
 from datetime import datetime
 
+from ....infrastructure.logging.structured_logger import get_risk_monitor_logger
+
 logger = logging.getLogger(__name__)
 
 class RiskMonitor:
@@ -32,15 +34,18 @@ class RiskMonitor:
         self.data_provider = data_provider
         self.utility_manager = utility_manager
         
+        # Initialize structured logger
+        self.structured_logger = get_risk_monitor_logger()
+        
         # Load AAVE risk parameters from data provider (as per spec)
         self._load_aave_risk_parameters()
-        
-        # Calculate target_ltv from AAVE risk parameters (as per spec)
-        self.target_ltv = self._calculate_target_ltv()
         
         # Use fallback values for modes that don't need them
         self.max_drawdown = config.get('max_drawdown', 0.2)  # 20% default
         self.leverage_enabled = config.get('leverage_enabled', False)  # False default
+        
+        # Calculate target_ltv from AAVE risk parameters (as per spec)
+        self.target_ltv = self._calculate_target_ltv()
         
         # Load venue configuration with fallbacks
         self.venues = config.get('venues', {})
@@ -50,7 +55,13 @@ class RiskMonitor:
         self.last_calculation_timestamp = None
         self.risk_history = []
         
-        logger.info("RiskMonitor initialized successfully")
+        self.structured_logger.info(
+            "RiskMonitor initialized successfully",
+            event_type="component_initialization",
+            component="risk_monitor",
+            target_ltv=self.target_ltv,
+            leverage_enabled=self.leverage_enabled
+        )
     
     def _load_aave_risk_parameters(self):
         """Load AAVE risk parameters from data provider (as per spec)."""
