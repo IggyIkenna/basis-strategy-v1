@@ -20,23 +20,7 @@ reserve_ratio: 0.1
 position_deviation_threshold: 0.02  # 2% deviation from target triggers rebalancing
 
 # Execution parameters
-venues:
-  aave_v3:
-    enabled: true
-    max_leverage: 1.0
-    min_amount: 1.0
-  binance:
-    enabled: false
-    max_leverage: 1.0
-    min_amount: 1.0
-  bybit:
-    enabled: false
-    max_leverage: 1.0
-    min_amount: 1.0
-  okx:
-    enabled: false
-    max_leverage: 1.0
-    min_amount: 1.0
+# Venues are handled through separate venue configurations
 
 # Risk parameters
 margin_ratio_target: 1.0  # Not applicable (no CEX margin, no borrowing)

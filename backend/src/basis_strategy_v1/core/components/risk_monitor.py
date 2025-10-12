@@ -53,8 +53,9 @@ class RiskMonitor:
         # Calculate target_ltv from AAVE risk parameters (as per spec)
         self.target_ltv = self._calculate_target_ltv()
         
-        # Load venue configuration with fail-fast behavior
-        self.venues = config['venues']
+        # Load venue configuration - venues are handled through separate venue configs
+        # For now, use empty dict as venues are not part of mode config
+        self.venues = config.get('venues', {})
         
         # Load component-specific configuration with fail-fast behavior
         component_config = config['component_config']

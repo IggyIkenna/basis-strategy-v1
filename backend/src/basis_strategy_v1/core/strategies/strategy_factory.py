@@ -19,7 +19,6 @@ from .eth_staking_only_strategy import ETHStakingOnlyStrategy
 from .eth_leveraged_strategy import ETHLeveragedStrategy
 from .usdt_market_neutral_no_leverage_strategy import USDTMarketNeutralNoLeverageStrategy
 from .usdt_market_neutral_strategy import USDTMarketNeutralStrategy
-from .ml_directional_strategy_manager import MLDirectionalStrategyManager  # NEW
 from ...infrastructure.logging.structured_logger import get_strategy_manager_logger
 
 logger = logging.getLogger(__name__)
@@ -37,8 +36,8 @@ class StrategyFactory:
         'eth_leveraged': ETHLeveragedStrategy,
         'usdt_market_neutral_no_leverage': USDTMarketNeutralNoLeverageStrategy,
         'usdt_market_neutral': USDTMarketNeutralStrategy,
-        'ml_btc_directional': MLDirectionalStrategyManager,  # NEW
-        'ml_usdt_directional': MLDirectionalStrategyManager,  # NEW
+        'ml_btc_directional': BaseStrategyManager,
+        'ml_usdt_directional': BaseStrategyManager,
     }
     
     @classmethod
