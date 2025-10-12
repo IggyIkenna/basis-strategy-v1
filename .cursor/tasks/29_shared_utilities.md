@@ -8,6 +8,11 @@
 ## Overview
 Implement shared utilities for the frontend including centralized API client, TypeScript interfaces, and utility functions for formatting, validation, and common operations.
 
+## QUALITY GATE
+**Quality Gate Script**: `scripts/test_mode_agnostic_design_quality_gates.py`
+**Validation**: Shared utilities, centralized functions, mode-agnostic design
+**Status**: 🟡 GENERIC
+
 ## Requirements
 
 ### Shared Utilities Components

@@ -8,6 +8,11 @@ BTC basis strategy currently 8/10 quality gates passing (80.0%), need to fix the
 2) Read docs/specs/06_CEX_EXECUTION_MANAGER.md for CEX execution specifications
 3) Read docs/specs/08_EXECUTION_INTERFACES.md for interface requirements
 4) Fix trade execution issues preventing proper BTC basis trades
+## QUALITY GATE
+**Quality Gate Script**: `scripts/test_btc_basis_quality_gates.py`
+**Validation**: BTC basis strategy, trade execution, CEX interface, data loading
+**Status**: 🟡 PARTIAL
+
 5) Ensure CEX interface context dependency issues are resolved
 6) Target 10/10 quality gates passing (100%)
 

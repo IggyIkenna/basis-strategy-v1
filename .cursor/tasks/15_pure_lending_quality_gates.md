@@ -8,6 +8,11 @@ Pure lending strategy shows 1166% APY (7% yield in 10 days) instead of required 
 2) Read docs/specs/04_PNL_CALCULATOR.md for P&L calculation specifications
 3) Read docs/QUALITY_GATES.md for APY validation requirements
 4) Fix P&L calculation to use proper balance changes from aUSDT liquidity index
+## QUALITY GATE
+**Quality Gate Script**: `scripts/test_pure_lending_quality_gates.py`
+**Validation**: Strategy execution, yield calculation, component integration
+**Status**: 🟡 PARTIAL
+
 5) Balance changes = aUSDT from previous period vs current period, each converted to USDT by multiplying by liquidity index
 6) Only account for tokens actually in wallet, not locked in AAVE/Lido/EtherFi smart contracts
 7) APY must be within 3-8% range (NOT 2-50%)
