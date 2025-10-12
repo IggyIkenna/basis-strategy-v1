@@ -16,8 +16,10 @@ from typing import Dict, List, Any, Optional, Tuple
 from functools import lru_cache
 import logging
 
-# from .config_models import ConfigSchema, load_and_validate_config
-# from .config_validator import validate_configuration, ValidationResult
+from .models import (
+    validate_mode_config, validate_venue_config, validate_share_class_config,
+    validate_complete_configuration, ConfigurationSet, ConfigurationValidationError
+)
 # Health check functions removed - now handled by unified health manager
 # from ..monitoring.logging import log_structured_error
 
@@ -237,15 +239,15 @@ class ConfigManager:
             return value
         
         if var_name == 'BASIS_DEPLOYMENT_MODE':
-            if value not in ['local', 'docker']:
+            if value not in ['local', 'docker', 'staging', 'prod']:
                 logger.error(f"CONFIG-MGR-004: Invalid deployment mode value for {var_name}: {value}")
-                raise ValueError(f"Invalid deployment mode value for {var_name}: {value}. Must be local or docker")
+                raise ValueError(f"Invalid deployment mode value for {var_name}: {value}. Must be local, docker, staging, or prod")
             return value
         
         if var_name == 'BASIS_DEPLOYMENT_MACHINE':
-            if value not in ['local_mac', 'gcloud_linux_vm']:
+            if value not in ['local_mac', 'gcloud_linux_vm', 'staging_server', 'prod_server']:
                 logger.error(f"CONFIG-MGR-004: Invalid deployment machine value for {var_name}: {value}")
-                raise ValueError(f"Invalid deployment machine value for {var_name}: {value}. Must be local_mac or gcloud_linux_vm")
+                raise ValueError(f"Invalid deployment machine value for {var_name}: {value}. Must be local_mac, gcloud_linux_vm, staging_server, or prod_server")
             return value
         
         if var_name == 'BASIS_DATA_MODE':
@@ -333,11 +335,15 @@ class ConfigManager:
         config = self.config_cache['base'].copy()
         
         if mode:
-            mode_config = self.config_cache['modes'].get(mode, {})
+            if mode not in self.config_cache['modes']:
+                raise KeyError(f"Mode '{mode}' not found in configuration")
+            mode_config = self.config_cache['modes'][mode]
             config = self._deep_merge(config, mode_config)
         
         if venue:
-            venue_config = self.config_cache['venues'].get(venue, {})
+            if venue not in self.config_cache['venues']:
+                raise KeyError(f"Venue '{venue}' not found in configuration")
+            venue_config = self.config_cache['venues'][venue]
             config = self._deep_merge(config, venue_config)
         
         return config
@@ -345,6 +351,24 @@ class ConfigManager:
     def get_available_strategies(self) -> List[str]:
         """Get list of all available strategy names."""
         return list(self.config_cache['modes'].keys())
+    
+    def get_mode_config(self, mode_name: str) -> Dict[str, Any]:
+        """Get mode configuration with fail-fast access."""
+        if mode_name not in self.config_cache['modes']:
+            raise KeyError(f"Mode '{mode_name}' not found. Available modes: {list(self.config_cache['modes'].keys())}")
+        return self.config_cache['modes'][mode_name]
+    
+    def get_venue_config(self, venue_name: str) -> Dict[str, Any]:
+        """Get venue configuration with fail-fast access."""
+        if venue_name not in self.config_cache['venues']:
+            raise KeyError(f"Venue '{venue_name}' not found. Available venues: {list(self.config_cache['venues'].keys())}")
+        return self.config_cache['venues'][venue_name]
+    
+    def get_share_class_config(self, share_class_name: str) -> Dict[str, Any]:
+        """Get share class configuration with fail-fast access."""
+        if share_class_name not in self.config_cache['share_classes']:
+            raise KeyError(f"Share class '{share_class_name}' not found. Available share classes: {list(self.config_cache['share_classes'].keys())}")
+        return self.config_cache['share_classes'][share_class_name]
     
     def strategy_exists(self, strategy_name: str) -> bool:
         """Check if a strategy exists."""
@@ -360,15 +384,26 @@ class ConfigManager:
             )
     
     def _validate_config(self):
-        """Validate the loaded configuration."""
+        """Validate the loaded configuration with cross-reference validation."""
         logger.info("🔍 Validating loaded configuration...")
         
         # Basic validation - check that required configs are loaded
-        # Note: base config is now empty (JSON configs eliminated), so just check it exists
         if 'base' not in self.config_cache:
             raise ValueError("Base configuration cache not initialized")
         if not self.config_cache.get('env'):
             raise ValueError("Environment variables not loaded")
+        
+        # Validate cross-references between configurations
+        try:
+            validated_config = validate_complete_configuration(
+                modes=self.config_cache['modes'],
+                venues=self.config_cache['venues'],
+                share_classes=self.config_cache['share_classes']
+            )
+            logger.info("✅ Cross-reference validation passed")
+        except ConfigurationValidationError as e:
+            logger.error(f"CONFIG-MGR-005: Cross-reference validation failed: {str(e)}")
+            raise ValueError(f"Cross-reference validation failed: {e}")
         
         logger.info("✅ Configuration validation passed")
     
@@ -389,62 +424,86 @@ class ConfigManager:
         return {}  # Empty base config since everything is in environment variables or hardcoded
     
     def _load_all_mode_configs(self) -> Dict[str, Any]:
-        """Load all mode configurations from configs/modes/."""
+        """Load all mode configurations from configs/modes/ with Pydantic validation."""
         modes_dir = self.base_dir / "configs" / "modes"
         modes = {}
         
         if not modes_dir.exists():
-            logger.warning(f"Modes directory not found: {modes_dir}")
-            return modes
+            logger.error(f"CONFIG-MGR-003: Modes directory not found: {modes_dir}")
+            raise FileNotFoundError(f"Modes directory not found: {modes_dir}")
         
         for yaml_file in modes_dir.glob("*.yaml"):
             try:
                 with open(yaml_file, 'r') as f:
                     mode_name = yaml_file.stem
-                    modes[mode_name] = yaml.safe_load(f) or {}
+                    config_dict = yaml.safe_load(f) or {}
+                    
+                    # Validate with Pydantic model
+                    validated_config = validate_mode_config(config_dict, mode_name)
+                    modes[mode_name] = validated_config.model_dump()
+                    
             except (yaml.YAMLError, IOError) as e:
                 logger.error(f"CONFIG-MGR-004: Failed to parse mode configuration: {str(e)}")
                 raise ValueError(f"Failed to parse mode configuration {yaml_file}: {e}")
+            except ConfigurationValidationError as e:
+                logger.error(f"CONFIG-MGR-005: Mode configuration validation failed: {str(e)}")
+                raise ValueError(f"Mode configuration validation failed for {yaml_file}: {e}")
         
         return modes
     
     def _load_all_venue_configs(self) -> Dict[str, Any]:
-        """Load all venue configurations from configs/venues/."""
+        """Load all venue configurations from configs/venues/ with Pydantic validation."""
         venues_dir = self.base_dir / "configs" / "venues"
         venues = {}
         
         if not venues_dir.exists():
-            logger.warning(f"Venues directory not found: {venues_dir}")
-            return venues
+            logger.error(f"CONFIG-MGR-003: Venues directory not found: {venues_dir}")
+            raise FileNotFoundError(f"Venues directory not found: {venues_dir}")
         
         for yaml_file in venues_dir.glob("*.yaml"):
             try:
                 with open(yaml_file, 'r') as f:
                     venue_name = yaml_file.stem
-                    venues[venue_name] = yaml.safe_load(f) or {}
+                    config_dict = yaml.safe_load(f) or {}
+                    
+                    # Validate with Pydantic model
+                    validated_config = validate_venue_config(config_dict, venue_name)
+                    venues[venue_name] = validated_config.model_dump()
+                    
             except (yaml.YAMLError, IOError) as e:
                 logger.error(f"CONFIG-MGR-004: Failed to parse venue configuration: {str(e)}")
                 raise ValueError(f"Failed to parse venue configuration {yaml_file}: {e}")
+            except ConfigurationValidationError as e:
+                logger.error(f"CONFIG-MGR-005: Venue configuration validation failed: {str(e)}")
+                raise ValueError(f"Venue configuration validation failed for {yaml_file}: {e}")
         
         return venues
     
     def _load_all_share_class_configs(self) -> Dict[str, Any]:
-        """Load all share class configurations from configs/share_classes/."""
+        """Load all share class configurations from configs/share_classes/ with Pydantic validation."""
         share_classes_dir = self.base_dir / "configs" / "share_classes"
         share_classes = {}
         
         if not share_classes_dir.exists():
-            logger.warning(f"Share classes directory not found: {share_classes_dir}")
-            return share_classes
+            logger.error(f"CONFIG-MGR-003: Share classes directory not found: {share_classes_dir}")
+            raise FileNotFoundError(f"Share classes directory not found: {share_classes_dir}")
         
         for yaml_file in share_classes_dir.glob("*.yaml"):
             try:
                 with open(yaml_file, 'r') as f:
                     share_class_name = yaml_file.stem
-                    share_classes[share_class_name] = yaml.safe_load(f) or {}
+                    config_dict = yaml.safe_load(f) or {}
+                    
+                    # Validate with Pydantic model
+                    validated_config = validate_share_class_config(config_dict, share_class_name)
+                    share_classes[share_class_name] = validated_config.model_dump()
+                    
             except (yaml.YAMLError, IOError) as e:
                 logger.error(f"CONFIG-MGR-004: Failed to parse share class configuration: {str(e)}")
                 raise ValueError(f"Failed to parse share class configuration {yaml_file}: {e}")
+            except ConfigurationValidationError as e:
+                logger.error(f"CONFIG-MGR-005: Share class configuration validation failed: {str(e)}")
+                raise ValueError(f"Share class configuration validation failed for {yaml_file}: {e}")
         
         return share_classes
     

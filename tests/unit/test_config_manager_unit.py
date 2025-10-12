@@ -29,6 +29,9 @@ class TestConfigManagerEnvironmentSwitching:
         
         # Create test environment files
         self._create_test_env_files()
+        
+        # Create test configuration directories
+        self._create_test_config_directories()
     
     def teardown_method(self):
         """Clean up test environment."""
@@ -84,11 +87,11 @@ BASIS_API_CORS_ORIGINS=http://localhost:3000,http://localhost:5173
         # Create env.staging
         staging_content = """# Staging environment
 BASIS_ENVIRONMENT=staging
-BASIS_DEPLOYMENT_MODE=docker
-BASIS_DEPLOYMENT_MACHINE=gcloud_linux_vm
-BASIS_DATA_DIR=/app/data
+BASIS_DEPLOYMENT_MODE=staging
+BASIS_DEPLOYMENT_MACHINE=staging_server
+BASIS_DATA_DIR=/staging/data
 BASIS_DATA_MODE=csv
-BASIS_RESULTS_DIR=/app/results
+BASIS_RESULTS_DIR=/staging/results
 BASIS_DEBUG=false
 BASIS_LOG_LEVEL=INFO
 BASIS_EXECUTION_MODE=backtest
@@ -98,18 +101,18 @@ HEALTH_CHECK_INTERVAL=30s
 HEALTH_CHECK_ENDPOINT=/health
 BASIS_API_PORT=8001
 BASIS_API_HOST=0.0.0.0
-BASIS_API_CORS_ORIGINS=https://staging.your-domain.com
+BASIS_API_CORS_ORIGINS=http://localhost:3000,http://localhost:5173
 """
         (self.temp_path / "env.staging").write_text(staging_content)
         
         # Create env.prod
         prod_content = """# Production environment
 BASIS_ENVIRONMENT=prod
-BASIS_DEPLOYMENT_MODE=docker
-BASIS_DEPLOYMENT_MACHINE=gcloud_linux_vm
-BASIS_DATA_DIR=/app/data
-BASIS_DATA_MODE=csv
-BASIS_RESULTS_DIR=/app/results
+BASIS_DEPLOYMENT_MODE=prod
+BASIS_DEPLOYMENT_MACHINE=prod_server
+BASIS_DATA_DIR=/prod/data
+BASIS_DATA_MODE=db
+BASIS_RESULTS_DIR=/prod/results
 BASIS_DEBUG=false
 BASIS_LOG_LEVEL=WARNING
 BASIS_EXECUTION_MODE=live
@@ -119,9 +122,16 @@ HEALTH_CHECK_INTERVAL=30s
 HEALTH_CHECK_ENDPOINT=/health
 BASIS_API_PORT=8001
 BASIS_API_HOST=0.0.0.0
-BASIS_API_CORS_ORIGINS=https://your-domain.com
+BASIS_API_CORS_ORIGINS=http://localhost:3000,http://localhost:5173
 """
         (self.temp_path / "env.prod").write_text(prod_content)
+    
+    def _create_test_config_directories(self):
+        """Create test configuration directories."""
+        # Create configs directory structure
+        (self.temp_path / "configs" / "modes").mkdir(parents=True)
+        (self.temp_path / "configs" / "venues").mkdir(parents=True)
+        (self.temp_path / "configs" / "share_classes").mkdir(parents=True)
     
     @patch('basis_strategy_v1.infrastructure.config.config_manager.Path')
     def test_environment_switching_dev(self, mock_path):

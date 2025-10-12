@@ -9,13 +9,19 @@
 mode: "ml_usdt_directional"
 share_class: "USDT"
 asset: "USDT"
-market_neutral: false  # Directional strategy
+enable_market_impact: true
 lending_enabled: false
 staking_enabled: false
 basis_trade_enabled: false
-borrowing_enabled: false
+borrowing_enabled: true  # Required for leverage_enabled
 leverage_enabled: true  # Perp futures
-initial_capital: 10000.0  # 10k USDT
+max_ltv: 0.8  # Required for borrowing_enabled
+rewards_mode: "base_only"  # Required field
+reserve_ratio: 0.1  # Required field
+position_deviation_threshold: 0.05  # Required field
+margin_ratio_target: 0.5  # Required field
+target_apy: 0.12  # Required field (12% target for USDT directional strategy)
+time_throttle_interval: 300  # Required field (5 minutes)
 
 # ML-specific parameters
 ml_config:

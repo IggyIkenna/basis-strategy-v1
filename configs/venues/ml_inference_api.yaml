@@ -5,8 +5,8 @@
 #
 # TODO: Set BASIS_ML_API_TOKEN environment variable for live mode
 
-venue_name: "ml_inference_api"
-venue_type: "api"
+venue: "ml_inference_api"
+type: "infrastructure"
 enabled: true
 
 # API endpoints (predictions only - features handled internally)
