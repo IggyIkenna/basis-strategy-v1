@@ -30,7 +30,8 @@ class PureLendingStrategy(BaseStrategyManager):
         super().__init__(config, risk_monitor, position_monitor, event_engine)
         
         # Pure lending specific configuration
-        self.lending_venues = config.get('lending_venues', ['aave', 'morpho'])
+        venues_config = config.get('venues', {})
+        self.lending_venues = [venue for venue, settings in venues_config.items() if settings.get('enabled', False)]
         
         # Pure lending doesn't use LTV (no borrowing/leverage)
         # LTV values are not applicable for pure lending strategies
