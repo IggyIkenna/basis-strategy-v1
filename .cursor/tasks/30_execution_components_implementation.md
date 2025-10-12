@@ -13,6 +13,11 @@ This task implements the missing execution infrastructure components identified 
 **Reference**: `docs/VENUE_ARCHITECTURE.md` - Three-way venue interaction  
 **Reference**: `docs/IMPLEMENTATION_GAP_REPORT.md` - Component gap analysis
 
+## QUALITY GATE
+**Quality Gate Script**: `scripts/test_btc_basis_quality_gates.py` + `scripts/test_eth_basis_quality_gates.py`
+**Validation**: Execution components, trade execution, CEX interfaces
+**Status**: 🟡 GENERIC
+
 ## CRITICAL REQUIREMENTS
 
 ### 1. Execution Interface Manager Implementation

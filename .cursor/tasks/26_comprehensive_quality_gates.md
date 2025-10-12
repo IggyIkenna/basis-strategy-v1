@@ -13,6 +13,11 @@ This task validates the existing service layer implementations against canonical
 ## CONTEXT
 Current quality gates: 12/24 tests passing (50%). Need to improve to 20/24 tests passing (80%+) through service layer validation and comprehensive quality gate implementation.
 
+## QUALITY GATE
+**Quality Gate Script**: `scripts/run_quality_gates.py`
+**Validation**: Comprehensive quality gate validation, overall system health
+**Status**: 🟡 PARTIAL
+
 ## CRITICAL REQUIREMENTS
 
 ### 1. Backtest Service Validation

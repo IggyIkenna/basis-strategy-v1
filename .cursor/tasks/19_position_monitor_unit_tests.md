@@ -9,6 +9,11 @@ This task aligns the existing Position Monitor implementation with canonical spe
 **Reference**: `docs/IMPLEMENTATION_GAP_REPORT.md` - Component gap analysis  
 **Reference**: `tests/unit/` - Existing unit test structure
 
+## QUALITY GATE
+**Quality Gate Script**: `scripts/monitor_quality_gates.py` + `scripts/test_position_monitor_persistence_quality_gates.py`
+**Validation**: Position monitoring, balance tracking, persistence, unit tests
+**Status**: 🟡 GENERIC
+
 ## CRITICAL REQUIREMENTS
 
 ### 1. Config-Driven Architecture Alignment
