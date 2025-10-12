@@ -84,6 +84,11 @@ component_config:
     rebalancing_interval: "5min"
     position_deviation_threshold: 0.05
     actions: ["entry_long", "entry_short", "exit_position", "update_stops"]
+    rebalancing_triggers: ["ml_signal", "time_interval", "risk_breach"]
+    position_calculation:
+      method: "ml_signal_based"
+      max_position_size: 1.0
+      signal_threshold: 0.70
     
   execution_manager:
     supported_actions: ["open_perp_long", "open_perp_short", "close_perp", "update_stop_loss", "update_take_profit"]
@@ -91,3 +96,15 @@ component_config:
       open_perp_long: ["binance_perp"]
       open_perp_short: ["binance_perp"]
       close_perp: ["binance_perp"]
+      
+  results_store:
+    result_types: ["pnl", "positions", "trades", "risk_metrics"]
+    balance_sheet_assets: ["USDT", "BTC", "USDT_PERP"]
+    pnl_attribution_types: ["funding_pnl", "price_change_pnl", "transaction_costs"]
+    leverage_tracking: true
+    dust_tracking_tokens: []
+    
+  strategy_factory:
+    timeout: 30
+    max_retries: 3
+    validation_strict: true

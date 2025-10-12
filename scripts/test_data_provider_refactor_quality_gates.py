@@ -118,11 +118,11 @@ class DataProviderRefactorQualityGates:
             
             # Test CSV mode
             provider = create_data_provider(
-                data_dir='data',
+                
                 execution_mode='backtest',
-                data_mode='csv',
-                config={'mode': 'pure_lending'},
-                mode='pure_lending'
+                
+                config={'mode': 'pure_lending', 'data_requirements': ['aave_lending_rates', 'aave_indexes']}, data_dir='data',
+                
             )
             
             if not hasattr(provider, '_data_loaded'):
@@ -136,11 +136,11 @@ class DataProviderRefactorQualityGates:
             # Test DB mode (should raise NotImplementedError)
             try:
                 create_data_provider(
-                    data_dir='data',
+                    
                     execution_mode='backtest',
                     data_mode='db',
-                    config={'mode': 'pure_lending'},
-                    mode='pure_lending'
+                    config={'mode': 'pure_lending', 'data_requirements': ['aave_lending_rates', 'aave_indexes']}, data_dir='data',
+                    
                 )
                 logger.error("Expected NotImplementedError for db mode")
                 return False
@@ -149,11 +149,11 @@ class DataProviderRefactorQualityGates:
             
             # Test live mode
             provider_live = create_data_provider(
-                data_dir='data',
+                
                 execution_mode='live',
-                data_mode='csv',  # Should be ignored
-                config={'mode': 'pure_lending'},
-                mode='pure_lending'
+                  # Should be ignored
+                config={'mode': 'pure_lending', 'data_requirements': ['aave_lending_rates', 'aave_indexes']}, data_dir='data',
+                
             )
             
             if not hasattr(provider_live, 'config'):
@@ -188,18 +188,18 @@ class DataProviderRefactorQualityGates:
             
             # Test pure_lending mode
             provider = create_data_provider(
-                data_dir='data',
+                
                 execution_mode='backtest',
-                data_mode='csv',
-                config=config_dict,
-                mode='pure_lending'
+                
+                config=config_dict, data_dir='data',
+                
             )
             
             # Load data on-demand
-            provider.load_data_for_backtest('pure_lending', '2024-06-01', '2024-06-02')
+            provider.load_data()
             
             if not provider._data_loaded:
-                logger.error("Data should be loaded after load_data_for_backtest")
+                logger.error("Data should be loaded after load_data")
                 return False
             
             if len(provider.data) == 0:
@@ -209,7 +209,7 @@ class DataProviderRefactorQualityGates:
             # Test that data is accessible
             try:
                 test_timestamp = pd.Timestamp('2024-06-01 12:00:00', tz='UTC')
-                market_data = provider.get_market_data_snapshot(test_timestamp)
+                market_data = provider.get_data(test_timestamp)
                 if not isinstance(market_data, dict):
                     logger.error("Market data should be a dictionary")
                     return False
@@ -243,16 +243,16 @@ class DataProviderRefactorQualityGates:
             config_dict = mode_config.model_dump()
             
             provider = create_data_provider(
-                data_dir='data',
+                
                 execution_mode='backtest',
-                data_mode='csv',
-                config=config_dict,
-                mode='pure_lending'
+                
+                config=config_dict, data_dir='data',
+                
             )
             
             # Test date range before available data
             try:
-                provider.load_data_for_backtest('pure_lending', '2024-01-01', '2024-01-02')
+                provider.load_data()
                 logger.error("Expected DataProviderError for date before available range")
                 return False
             except DataProviderError as e:
@@ -262,7 +262,7 @@ class DataProviderRefactorQualityGates:
             
             # Test date range after available data
             try:
-                provider.load_data_for_backtest('pure_lending', '2025-12-01', '2025-12-02')
+                provider.load_data()
                 logger.error("Expected DataProviderError for date after available range")
                 return False
             except DataProviderError as e:
@@ -272,7 +272,7 @@ class DataProviderRefactorQualityGates:
             
             # Test valid date range
             try:
-                provider.load_data_for_backtest('pure_lending', '2024-06-01', '2024-06-02')
+                provider.load_data()
                 # Should not raise exception
             except Exception as e:
                 logger.error(f"Unexpected error for valid date range: {e}")
@@ -299,11 +299,11 @@ class DataProviderRefactorQualityGates:
             
             # Create uninitialized provider
             provider = create_data_provider(
-                data_dir='data',
+                
                 execution_mode='backtest',
-                data_mode='csv',
-                config={'mode': 'pure_lending'},
-                mode='pure_lending'
+                
+                config={'mode': 'pure_lending', 'data_requirements': ['aave_lending_rates', 'aave_indexes']}, data_dir='data',
+                
             )
             
             # Test health checker
@@ -353,11 +353,11 @@ class DataProviderRefactorQualityGates:
             # Test that create_data_provider doesn't load data without parameters
             try:
                 provider = create_data_provider(
-                    data_dir='data',
+                    
                     execution_mode='backtest',
-                    data_mode='csv',
-                    config={'mode': 'pure_lending'},
-                    mode='pure_lending'
+                    
+                    config={'mode': 'pure_lending', 'data_requirements': ['aave_lending_rates', 'aave_indexes']}, data_dir='data',
+                    
                 )
                 if hasattr(provider, '_data_loaded') and provider._data_loaded:
                     logger.error("Provider should not have data loaded without parameters")
@@ -386,16 +386,16 @@ class DataProviderRefactorQualityGates:
             from basis_strategy_v1.infrastructure.data.historical_data_provider import DataProviderError
             
             provider = create_data_provider(
-                data_dir='data',
+                
                 execution_mode='backtest',
-                data_mode='csv',
-                config={'mode': 'pure_lending'},
-                mode='pure_lending'
+                
+                config={'mode': 'pure_lending', 'data_requirements': ['aave_lending_rates', 'aave_indexes']}, data_dir='data',
+                
             )
             
             # Test missing start date
             try:
-                provider.load_data_for_backtest('pure_lending', None, '2024-06-02')
+                provider.load_data()
                 logger.error("Expected DataProviderError for missing start date")
                 return False
             except DataProviderError as e:
@@ -405,7 +405,7 @@ class DataProviderRefactorQualityGates:
             
             # Test missing end date
             try:
-                provider.load_data_for_backtest('pure_lending', '2024-06-01', None)
+                provider.load_data()
                 logger.error("Expected DataProviderError for missing end date")
                 return False
             except DataProviderError as e:
@@ -439,23 +439,23 @@ class DataProviderRefactorQualityGates:
             config_dict = mode_config.model_dump()
             
             provider = create_data_provider(
-                data_dir='data',
+                
                 execution_mode='backtest',
-                data_mode='csv',
-                config=config_dict,
-                mode='pure_lending'
+                
+                config=config_dict, data_dir='data',
+                
             )
             
             # Load data first
-            provider.load_data_for_backtest('pure_lending', '2024-06-01', '2024-06-02')
+            provider.load_data()
             
             # Test that existing methods still work
             test_timestamp = pd.Timestamp('2024-06-01 12:00:00', tz='UTC')
             
-            # Test get_market_data_snapshot
-            market_data = provider.get_market_data_snapshot(test_timestamp)
+            # Test get_data
+            market_data = provider.get_data(test_timestamp)
             if not isinstance(market_data, dict):
-                logger.error("get_market_data_snapshot should return dict")
+                logger.error("get_data should return dict")
                 return False
             
             # Test get_health_status
