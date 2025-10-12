@@ -159,7 +159,10 @@ class ConfigValidator:
             'VITE_API_MODE'
         ]
         
-        
+        # Live trading variables (only validate if BASIS_EXECUTION_MODE=live)
+        execution_mode = os.getenv('BASIS_EXECUTION_MODE', 'backtest')
+        if execution_mode == 'live':
+            self._validate_live_trading_variables()
         
         for var in core_vars:
             if not os.getenv(var):
@@ -645,6 +648,54 @@ class ConfigValidator:
         
         return errors
     
+    def _validate_live_trading_variables(self):
+        """Validate live trading environment variables."""
+        logger.debug("Validating live trading environment variables...")
+        
+        # Live trading variables with defaults
+        live_trading_vars = {
+            'BASIS_LIVE_TRADING__ENABLED': os.getenv('BASIS_LIVE_TRADING__ENABLED', 'false'),
+            'BASIS_LIVE_TRADING__READ_ONLY': os.getenv('BASIS_LIVE_TRADING__READ_ONLY', 'true'),
+            'BASIS_LIVE_TRADING__MAX_TRADE_SIZE_USD': os.getenv('BASIS_LIVE_TRADING__MAX_TRADE_SIZE_USD', '100'),
+            'BASIS_LIVE_TRADING__EMERGENCY_STOP_LOSS_PCT': os.getenv('BASIS_LIVE_TRADING__EMERGENCY_STOP_LOSS_PCT', '0.15'),
+            'BASIS_LIVE_TRADING__HEARTBEAT_TIMEOUT_SECONDS': os.getenv('BASIS_LIVE_TRADING__HEARTBEAT_TIMEOUT_SECONDS', '300'),
+            'BASIS_LIVE_TRADING__CIRCUIT_BREAKER_ENABLED': os.getenv('BASIS_LIVE_TRADING__CIRCUIT_BREAKER_ENABLED', 'true')
+        }
+        
+        # Validate boolean variables
+        boolean_vars = ['BASIS_LIVE_TRADING__ENABLED', 'BASIS_LIVE_TRADING__READ_ONLY', 'BASIS_LIVE_TRADING__CIRCUIT_BREAKER_ENABLED']
+        for var in boolean_vars:
+            value = live_trading_vars[var].lower()
+            if value not in ['true', 'false']:
+                self.errors.append(f"Invalid {var}: {live_trading_vars[var]}. Must be 'true' or 'false'")
+        
+        # Validate numeric variables
+        try:
+            max_trade_size = float(live_trading_vars['BASIS_LIVE_TRADING__MAX_TRADE_SIZE_USD'])
+            if max_trade_size <= 0:
+                self.errors.append(f"BASIS_LIVE_TRADING__MAX_TRADE_SIZE_USD must be positive, got: {max_trade_size}")
+        except ValueError:
+            self.errors.append(f"Invalid BASIS_LIVE_TRADING__MAX_TRADE_SIZE_USD: {live_trading_vars['BASIS_LIVE_TRADING__MAX_TRADE_SIZE_USD']}")
+        
+        try:
+            stop_loss_pct = float(live_trading_vars['BASIS_LIVE_TRADING__EMERGENCY_STOP_LOSS_PCT'])
+            if stop_loss_pct <= 0 or stop_loss_pct > 1:
+                self.errors.append(f"BASIS_LIVE_TRADING__EMERGENCY_STOP_LOSS_PCT must be between 0 and 1, got: {stop_loss_pct}")
+        except ValueError:
+            self.errors.append(f"Invalid BASIS_LIVE_TRADING__EMERGENCY_STOP_LOSS_PCT: {live_trading_vars['BASIS_LIVE_TRADING__EMERGENCY_STOP_LOSS_PCT']}")
+        
+        try:
+            heartbeat_timeout = int(live_trading_vars['BASIS_LIVE_TRADING__HEARTBEAT_TIMEOUT_SECONDS'])
+            if heartbeat_timeout <= 0:
+                self.errors.append(f"BASIS_LIVE_TRADING__HEARTBEAT_TIMEOUT_SECONDS must be positive, got: {heartbeat_timeout}")
+        except ValueError:
+            self.errors.append(f"Invalid BASIS_LIVE_TRADING__HEARTBEAT_TIMEOUT_SECONDS: {live_trading_vars['BASIS_LIVE_TRADING__HEARTBEAT_TIMEOUT_SECONDS']}")
+        
+        # Log current live trading configuration
+        logger.info(f"Live trading configuration: enabled={live_trading_vars['BASIS_LIVE_TRADING__ENABLED']}, "
+                   f"read_only={live_trading_vars['BASIS_LIVE_TRADING__READ_ONLY']}, "
+                   f"max_trade_size=${live_trading_vars['BASIS_LIVE_TRADING__MAX_TRADE_SIZE_USD']}")
+
     def _get_file_pattern_for_requirement(self, requirement: str) -> Optional[str]:
         """Map data requirement to file pattern."""
         mapping = {

@@ -14,18 +14,33 @@ from pathlib import Path
 from typing import Dict, Any, List, Optional
 import os
 
-from ...data_provider.base_data_provider import BaseDataProvider
 from .data_validator import DataValidator
-from .historical_data_provider import _validate_data_file, DataProviderError
+from .historical_data_provider import _validate_data_file, DataProviderError, DataProvider
+from .base_data_provider import BaseDataProvider
 
 logger = logging.getLogger(__name__)
 
 
-class ConfigDrivenHistoricalDataProvider(BaseDataProvider):
+class ConfigDrivenHistoricalDataProvider(DataProvider):
     """Historical data provider with config-driven loading"""
     
+    _instance = None
+    
+    def __new__(cls, *args, **kwargs):
+        if cls._instance is None:
+            cls._instance = super(ConfigDrivenHistoricalDataProvider, cls).__new__(cls)
+        return cls._instance
+    
     def __init__(self, execution_mode: str, config: Dict[str, Any]):
-        super().__init__(execution_mode, config)
+        # Get data directory from config or use default
+        data_dir = config.get('data_dir', 'data/')
+        mode = config.get('mode', 'pure_lending')
+        
+        super().__init__(
+            data_dir=data_dir,
+            mode=mode,
+            config=config
+        )
         self.available_data_types = [
             'eth_prices', 'btc_prices', 'usdt_prices',
             'weeth_prices', 'wsteth_prices',
@@ -33,8 +48,27 @@ class ConfigDrivenHistoricalDataProvider(BaseDataProvider):
             'eth_futures', 'btc_futures', 'funding_rates',
             'gas_costs', 'execution_costs', 'aave_risk_params'
         ]
+        self.data_requirements = config.get('data_requirements', [])
         self.data = {}
-        self.validator = DataValidator(config)
+        self.validator = DataValidator(data_dir)
+    
+    def _validate_timestamp_alignment(self, df, data_name):
+        """Validate that a dataframe has proper timestamp alignment."""
+        if not isinstance(df, pd.DataFrame):
+            return
+        
+        if not df.index.name == 'timestamp':
+            raise ValueError(f"{data_name}: Index must be 'timestamp'")
+        
+        # Check hourly alignment
+        if not all(df.index.minute == 0):
+            raise ValueError(f"{data_name}: All timestamps must be on the hour (minute=0)")
+        
+        # Check for gaps
+        if len(df) > 1:
+            time_diff = df.index[1] - df.index[0]
+            if time_diff != pd.Timedelta(hours=1):
+                logger.warning(f"{data_name}: Non-hourly time difference detected: {time_diff}")
     
     def validate_data_requirements(self, data_requirements: List[str]) -> None:
         """
@@ -185,8 +219,15 @@ class ConfigDrivenHistoricalDataProvider(BaseDataProvider):
             'funding_rates': self._load_funding_rates,
             'gas_costs': self._load_gas_costs,
             'execution_costs': self._load_execution_costs,
+            'execution_costs_lookup': self._load_execution_costs_lookup,
             'aave_risk_params': self._load_aave_risk_parameters
         }
+        
+        # Always load critical datasets regardless of requirements
+        critical_datasets = ['execution_costs_lookup', 'aave_risk_params']
+        for dataset in critical_datasets:
+            if dataset not in self.data_requirements:
+                self.data_requirements.append(dataset)
         
         # Load data for each requirement
         for requirement in self.data_requirements:
@@ -419,6 +460,45 @@ class ConfigDrivenHistoricalDataProvider(BaseDataProvider):
         self.data['aave_risk_params'] = aave_risk_params
         logger.info("Loaded AAVE risk parameters")
     
+    def _load_execution_costs_lookup(self):
+        """Load execution costs lookup table for backtesting."""
+        import json
+
+        file_path = Path(self.data_dir) / 'execution_costs/lookup_tables/execution_costs_lookup.json'
+        if not file_path.exists():
+            raise FileNotFoundError(
+                f"Required execution costs lookup table not found: {file_path}")
+
+        try:
+            with open(file_path, 'r') as f:
+                lookup_data = json.load(f)
+
+            if not lookup_data:
+                raise ValueError(
+                    f"Execution costs lookup table is empty: {file_path}")
+
+            # Validate required trading pairs
+            required_pairs = ['ETH_USDT', 'BTCUSDT-PERP', 'ETHUSDT-PERP']
+            missing_pairs = [
+                pair for pair in required_pairs if pair not in lookup_data]
+            if missing_pairs:
+                raise ValueError(
+                    f"Missing required trading pairs in execution costs lookup: {missing_pairs}")
+
+            # Validate size buckets
+            for pair in required_pairs:
+                if '10k' not in lookup_data[pair]:
+                    raise ValueError(
+                        f"Missing 10k size bucket for {pair} in execution costs lookup")
+
+            self.data['execution_costs_lookup'] = lookup_data
+            logger.info(
+                f"Loaded execution costs lookup table: {len(lookup_data)} trading pairs")
+
+        except json.JSONDecodeError as e:
+            raise ValueError(
+                f"Invalid JSON in execution costs lookup table: {e}")
+    
     def _validate_loaded_data(self) -> None:
         """Validate all required data is loaded."""
         # This is a simplified validation - in practice, you'd check against data_requirements
@@ -435,3 +515,16 @@ class ConfigDrivenHistoricalDataProvider(BaseDataProvider):
             )
         
         logger.info("✅ All config-driven data requirements satisfied")
+    
+    def get_timestamps(self, start_date: str, end_date: str) -> List[pd.Timestamp]:
+        """
+        Get available timestamps for backtest period.
+        
+        Args:
+            start_date: Start date in YYYY-MM-DD format
+            end_date: End date in YYYY-MM-DD format
+            
+        Returns:
+            List of timestamps
+        """
+        return pd.date_range(start=start_date, end=end_date, freq='H', tz='UTC').tolist()

@@ -17,6 +17,13 @@ logger = logging.getLogger(__name__)
 class UtilityManager:
     """Centralized utility methods for all components"""
     
+    _instance = None
+    
+    def __new__(cls, *args, **kwargs):
+        if cls._instance is None:
+            cls._instance = super(UtilityManager, cls).__new__(cls)
+        return cls._instance
+    
     def __init__(self, config: Dict[str, Any], data_provider):
         """
         Initialize utility manager.
@@ -32,7 +39,7 @@ class UtilityManager:
     
     def get_liquidity_index(self, token: str, timestamp: pd.Timestamp) -> float:
         """
-        Get liquidity index for a token at a specific timestamp.
+        Get liquidity index for a token at a specific timestamp using canonical pattern.
         
         Args:
             token: Token symbol (e.g., 'aUSDT', 'aETH')
@@ -42,10 +49,14 @@ class UtilityManager:
             Liquidity index value
         """
         try:
-            if hasattr(self.data_provider, 'get_liquidity_index'):
-                return self.data_provider.get_liquidity_index(token, timestamp)
+            # Get data using canonical pattern
+            data = self.data_provider.get_data(timestamp)
+            aave_indexes = data['protocol_data']['aave_indexes']
+            
+            if token in aave_indexes:
+                return aave_indexes[token]
             else:
-                logger.warning(f"Data provider does not support liquidity index for {token}")
+                logger.warning(f"Liquidity index not found for {token}")
                 return 1.0  # Default to 1.0 if not available
         except Exception as e:
             logger.error(f"Error getting liquidity index for {token}: {e}")
@@ -53,7 +64,7 @@ class UtilityManager:
     
     def get_market_price(self, token: str, currency: str, timestamp: pd.Timestamp) -> float:
         """
-        Get market price for token in specified currency at timestamp.
+        Get market price for token in specified currency at timestamp using canonical pattern.
         
         Args:
             token: Token symbol (e.g., 'ETH', 'BTC', 'USDT')
@@ -64,10 +75,15 @@ class UtilityManager:
             Market price value
         """
         try:
-            if hasattr(self.data_provider, 'get_market_price'):
-                return self.data_provider.get_market_price(token, currency, timestamp)
+            # Get data using canonical pattern
+            data = self.data_provider.get_data(timestamp)
+            prices = data['market_data']['prices']
+            
+            # Look for the specific token price
+            if token in prices:
+                return prices[token]
             else:
-                logger.warning(f"Data provider does not support market price for {token}/{currency}")
+                logger.warning(f"Market price not found for {token}")
                 return 1.0  # Default to 1.0 if not available
         except Exception as e:
             logger.error(f"Error getting market price for {token}/{currency}: {e}")

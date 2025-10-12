@@ -136,6 +136,11 @@ def __init__(self, ...):
 - `asset`: str - 'USDT' | 'ETH' | 'BTC'
 
 ### Component-Specific Config (from component_config.exposure_monitor)
+- `exposure_monitor`: Dict - Exposure monitor configuration
+  - **Usage**: Used in `exposure_monitor.py:42` to extract component-specific settings
+  - **Required**: Yes
+  - **Used in**: `exposure_monitor.py:42`
+
 - `exposure_currency`: str - Currency for exposure calculations
   - **Usage**: Determines final exposure currency (USDT or ETH)
   - **Required**: Yes

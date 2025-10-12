@@ -41,13 +41,13 @@ import os
 import uuid
 
 # Import the new components
-from ..strategies.components.position_monitor import PositionMonitor
-from ..strategies.components.event_logger import EventLogger
-from ..strategies.components.exposure_monitor import ExposureMonitor
-from ..strategies.components.risk_monitor import RiskMonitor
+from ..components.position_monitor import PositionMonitor
+from ...infrastructure.logging.event_logger import EventLogger
+from ..components.exposure_monitor import ExposureMonitor
+from ..components.risk_monitor import RiskMonitor
 from ..math.pnl_calculator import PnLCalculator
-from ..strategies.components.strategy_manager import StrategyManager
-from ..strategies.components.position_update_handler import PositionUpdateHandler
+from ..strategies.base_strategy_manager import BaseStrategyManager
+from ..components.position_update_handler import PositionUpdateHandler
 # Legacy execution managers removed - using new execution interfaces instead
 from ..interfaces.execution_interface_factory import ExecutionInterfaceFactory
 from ...infrastructure.persistence.async_results_store import AsyncResultsStore
@@ -288,12 +288,13 @@ class EventDrivenStrategyEngine:
         try:
             # Component 6: Strategy Manager (depends on exposure_monitor and risk_monitor)
             logger.info("Initializing Strategy Manager...")
-            self.strategy_manager = StrategyManager(
+            from ..strategies.strategy_factory import StrategyFactory
+            self.strategy_manager = StrategyFactory.create_strategy(
+                mode=self.config.get('mode', 'pure_lending'),
                 config=self.config,
-                data_provider=self.data_provider,
-                utility_manager=self.utility_manager,
-                exposure_monitor=self.exposure_monitor,
-                risk_monitor=self.risk_monitor
+                risk_monitor=self.risk_monitor,
+                position_monitor=self.position_monitor,
+                event_engine=self
             )
             # Component health now handled by unified health manager
             initialized_components.append('strategy_manager')
@@ -458,7 +459,9 @@ class EventDrivenStrategyEngine:
             # Phase 3: Data provider is already loaded with all data at startup
             # No need to reload data - just verify it's available for the date range
             try:
-                test_snapshot = self.data_provider.get_market_data_snapshot(start_dt)
+                # Get data using canonical pattern
+                data = self.data_provider.get_data(start_dt)
+                test_snapshot = data['market_data']
                 if not test_snapshot or len(test_snapshot) <= 1:  # Only timestamp
                     raise ValueError(f"No market data available for start date {start_date}")
             except Exception as e:
@@ -479,11 +482,19 @@ class EventDrivenStrategyEngine:
                 'end_date': end_date
             }
             
-            # Generate hourly timestamps for backtest
+            # Generate timestamps for backtest based on strategy mode
+            # ML strategies use 5-minute intervals, others use hourly
+            if self.mode in ['ml_btc_directional', 'ml_usdt_directional']:
+                freq = '5min'  # 5-minute intervals for ML strategies
+                logger.info("Using 5-minute intervals for ML strategy")
+            else:
+                freq = 'H'  # Hourly intervals for traditional strategies
+                logger.info("Using hourly intervals for traditional strategy")
+            
             timestamps = pd.date_range(
                 start=start_dt,
                 end=end_dt,
-                freq='H',
+                freq=freq,
                 tz='UTC'
             )
             
@@ -492,8 +503,9 @@ class EventDrivenStrategyEngine:
             # Run backtest loop with component orchestration
             for timestamp in timestamps:
                 try:
-                    # Get market data snapshot for this timestamp
-                    market_data = self.data_provider.get_market_data_snapshot(timestamp)
+                    # Get market data snapshot for this timestamp using canonical pattern
+                    data = self.data_provider.get_data(timestamp)
+                    market_data = data['market_data']
                     self._process_timestep(timestamp, market_data, request_id)
                 except Exception as e:
                     logger.warning(f"Skipping timestamp {timestamp} due to missing data: {e}")
@@ -692,12 +704,14 @@ class EventDrivenStrategyEngine:
         
         try:
             while self.is_running:
-                # Get current market data
-                current_data = await self.data_provider.get_current_data()
+                # Get current market data using canonical pattern
+                current_timestamp = pd.Timestamp.now(tz='UTC')
+                data = self.data_provider.get_data(current_timestamp)
+                current_data = data['market_data']
                 
                 # Process current timestep
                 await self._process_timestep(
-                    pd.Timestamp.now(tz='UTC'),
+                    current_timestamp,
                     current_data,
                     {}
                 )
@@ -715,6 +729,24 @@ class EventDrivenStrategyEngine:
         """Stop the live strategy execution."""
         self.is_running = False
         logger.info("Strategy execution stopped")
+    
+    def get_current_timestamp(self) -> pd.Timestamp:
+        """
+        Get the current timestamp for ML strategies.
+        
+        Returns:
+            Current timestamp (backtest: from loop, live: current time)
+        """
+        if self.execution_mode == 'backtest':
+            # In backtest mode, return the current timestamp from the loop
+            if self.current_timestamp is not None:
+                return self.current_timestamp
+            else:
+                # Fallback to current time if not in backtest loop
+                return pd.Timestamp.now(tz='UTC')
+        else:
+            # In live mode, return current time
+            return pd.Timestamp.now(tz='UTC')
     
     def trigger_tight_loop(self):
         """
@@ -947,28 +979,28 @@ class EventDrivenStrategyEngine:
 
     def _create_position_monitor(self):
         """Create position monitor component."""
-        from ..strategies.components.position_monitor import PositionMonitor
+        from ..components.position_monitor import PositionMonitor
         from ...core.utilities.utility_manager import UtilityManager
         utility_manager = UtilityManager(self.config, self.data_provider)
         return PositionMonitor(self.config, self.data_provider, utility_manager)
     
     def _create_event_logger(self):
         """Create event logger component."""
-        from ..strategies.components.event_logger import EventLogger
+        from ...infrastructure.logging.event_logger import EventLogger
         from ...core.utilities.utility_manager import UtilityManager
         utility_manager = UtilityManager(self.config, self.data_provider)
         return EventLogger(self.config, self.data_provider, utility_manager)
     
     def _create_exposure_monitor(self):
         """Create exposure monitor component."""
-        from ..strategies.components.exposure_monitor import ExposureMonitor
+        from ..components.exposure_monitor import ExposureMonitor
         from ...core.utilities.utility_manager import UtilityManager
         utility_manager = UtilityManager(self.config, self.data_provider)
         return ExposureMonitor(self.config, self.data_provider, utility_manager)
     
     def _create_risk_monitor(self):
         """Create risk monitor component."""
-        from ..strategies.components.risk_monitor import RiskMonitor
+        from ..components.risk_monitor import RiskMonitor
         from ...core.utilities.utility_manager import UtilityManager
         utility_manager = UtilityManager(self.config, self.data_provider)
         return RiskMonitor(self.config, self.data_provider, utility_manager)
@@ -980,14 +1012,18 @@ class EventDrivenStrategyEngine:
     
     def _create_strategy_manager(self):
         """Create strategy manager component."""
-        from ..strategies.components.strategy_manager import StrategyManager
-        from ...core.utilities.utility_manager import UtilityManager
-        utility_manager = UtilityManager(self.config, self.data_provider)
-        return StrategyManager(self.config, self.data_provider, utility_manager)
+        from ..strategies.strategy_factory import StrategyFactory
+        return StrategyFactory.create_strategy(
+            mode=self.config.get('mode', 'pure_lending'),
+            config=self.config,
+            risk_monitor=self.risk_monitor,
+            position_monitor=self.position_monitor,
+            event_engine=self
+        )
     
     def _create_position_update_handler(self):
         """Create position update handler component."""
-        from ..strategies.components.position_update_handler import PositionUpdateHandler
+        from ..components.position_update_handler import PositionUpdateHandler
         return PositionUpdateHandler(
             self.config,
             self.position_monitor,

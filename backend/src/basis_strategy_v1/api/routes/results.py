@@ -11,10 +11,6 @@ import os
 
 from ..models.responses import StandardResponse, BacktestResultResponse
 from ..dependencies import get_backtest_service
-from ...core.services.backtest_service import BacktestService
-from ...infrastructure.persistence.result_store import ResultStore
-from ...infrastructure.visualization.chart_generator import ChartGenerator
-from ...infrastructure.config.config_manager import get_settings
 from pathlib import Path
 import re
 import csv

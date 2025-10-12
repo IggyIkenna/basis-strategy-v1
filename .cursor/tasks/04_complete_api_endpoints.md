@@ -9,7 +9,7 @@ This task implements all missing API endpoints from the specifications to provid
 **Reference**: `backend/src/basis_strategy_v1/api/` - Existing API structure
 
 ## QUALITY GATE
-**Quality Gate Script**: `scripts/test_api_endpoints_quality_gates.py`
+**Quality Gate Script**: `tests/unit/test_api_endpoints_unit.py`
 **Validation**: API endpoint functionality, response validation, error handling
 **Status**: ✅ PASSING
 
@@ -160,7 +160,7 @@ async def get_environment_info():
 
 ### 1. API Endpoints Quality Gate
 ```bash
-# scripts/test_api_endpoints_quality_gates.py
+# tests/unit/test_api_endpoints_unit.py
 def test_api_endpoints():
     # Test all strategy selection endpoints
     # Test all backtest execution endpoints
@@ -210,7 +210,7 @@ def test_api_endpoints():
 
 ## QUALITY GATE SCRIPT
 
-The quality gate script `scripts/test_api_endpoints_quality_gates.py` will:
+The quality gate script `tests/unit/test_api_endpoints_unit.py` will:
 
 1. **Test Strategy Selection Endpoints**
    - Verify all strategy selection endpoints respond correctly

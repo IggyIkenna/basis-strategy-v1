@@ -89,9 +89,6 @@
 - `BASIS_DEBUG` (Category: Core Startup, Purpose: Development vs production, Component: All components)
 - `BASIS_LOG_LEVEL` (Category: Core Startup, Purpose: Debug vs production logging, Component: All components)
 - `BASIS_DATA_START_DATE` (Category: Core Startup, Purpose: Historical data range start, Component: Data Provider)
-- `BASIS_CONFIG__VALIDATION_STRICT` (Category: Core Startup, Purpose: Enable fail-fast config validation, Component: Configuration)
-- `BASIS_CONFIG__CACHE_SIZE` (Category: Core Startup, Purpose: Maximum config entries to cache, Component: Configuration)
-- `BASIS_CONFIG__RELOAD_INTERVAL` (Category: Core Startup, Purpose: How often to check for config changes, Component: Configuration)
 - `BASIS_DATA_END_DATE` (Category: Core Startup, Purpose: Historical data range end, Component: Data Provider)
 
 ### Frontend Deployment Configuration (6 used in deployment)

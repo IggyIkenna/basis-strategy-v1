@@ -9,7 +9,7 @@ Refactor the strategy manager architecture to use inheritance-based strategy mod
 **Reference**: `docs/REFERENCE_ARCHITECTURE_CANONICAL.md` - Section 7 (Generic vs Mode-Specific)
 
 ## QUALITY GATE
-**Quality Gate Script**: `scripts/test_strategy_manager_refactor_quality_gates.py`
+**Quality Gate Script**: `tests/unit/test_strategy_manager_unit.py`
 **Validation**: Inheritance-based architecture, standardized actions, factory pattern
 **Status**: ✅ PASSING
 

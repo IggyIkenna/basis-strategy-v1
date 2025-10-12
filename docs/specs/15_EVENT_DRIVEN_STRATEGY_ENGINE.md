@@ -214,7 +214,7 @@ The Event-Driven Strategy Engine integrates with factory patterns for component 
 class EventDrivenStrategyEngine:
     """Orchestrates all components using factory-based initialization"""
     
-    def __init__(self, config: Dict[str, Any], execution_mode: str, data_provider: BaseBaseDataProvider, **components):
+    def __init__(self, config: Dict[str, Any], execution_mode: str, data_provider: BaseDataProvider, **components):
         # Store references (NEVER modified)
         self.config = config
         self.data_provider = data_provider
@@ -299,7 +299,7 @@ class EventDrivenStrategyEngine:
 ```python
 # Example usage in services
 class BacktestService:
-    def _create_components(self, config: Dict[str, Any], data_provider: BaseBaseDataProvider) -> Dict[str, Any]:
+    def _create_components(self, config: Dict[str, Any], data_provider: BaseDataProvider) -> Dict[str, Any]:
         """Create components using factory pattern"""
         return ComponentFactory.create_all(
             config=config,
@@ -308,7 +308,7 @@ class BacktestService:
         )
 
 class LiveTradingService:
-    def _create_components(self, config: Dict[str, Any], data_provider: BaseBaseDataProvider) -> Dict[str, Any]:
+    def _create_components(self, config: Dict[str, Any], data_provider: BaseDataProvider) -> Dict[str, Any]:
         """Create components using factory pattern"""
         return ComponentFactory.create_all(
             config=config,
@@ -319,16 +319,33 @@ class LiveTradingService:
 
 ## Data Provider Queries
 
+### Canonical Data Provider Pattern
+Event Driven Strategy Engine uses the canonical `get_data(timestamp)` pattern to access market data:
+
+```python
+# Canonical pattern - single get_data call
+data = self.data_provider.get_data(timestamp)
+market_data = data['market_data']
+```
+
 ### Market Data Queries
-- **prices**: Current market prices for all tokens
-- **orderbook**: Order book data for price impact calculation
-- **funding_rates**: Funding rates for perpetual contracts
-- **liquidity**: Liquidity data for DEX swaps
+- **market_data.prices**: Current market prices for all tokens
+- **market_data.rates.funding**: Funding rates for perpetual contracts
+- **market_data.rates.lending**: Lending/borrowing rates from protocols
 
 ### Protocol Data Queries
-- **protocol_rates**: Lending/borrowing rates from protocols
-- **stake_rates**: Staking rewards and rates
-- **protocol_balances**: Current balances in protocols
+- **protocol_data.aave_indexes**: AAVE liquidity indexes
+- **protocol_data.oracle_prices**: LST oracle prices
+- **protocol_data.perp_prices**: Perpetual contract prices
+
+### Staking Data Queries
+- **staking_data.rewards**: Staking rewards and rates
+- **staking_data.apr**: Annual percentage rates
+
+### Legacy Methods Removed
+The following legacy methods have been replaced with canonical pattern:
+- ~~`get_market_data_snapshot()`~~ → `get_data()['market_data']`
+- ~~`get_current_data()`~~ → `get_data()['market_data']`
 
 ### Data NOT Available from BaseDataProvider
 - **Component state** - handled by individual components
@@ -443,6 +460,14 @@ self.event_logger.log_event(
 - **Orchestration Failed**: When component orchestration fails
 - **Component Timeout**: When component times out
 - **Strategy Engine Failed**: When strategy engine fails
+
+#### 5. Timestep Event Patterns
+- **`timestep`**: Logs when each timestep is processed
+  - **Usage**: Logged after each timestep processing completes
+  - **Data**: venue, token, exposure, risk, pnl, decision
+- **`event`**: Logs general engine events
+  - **Usage**: Logged for engine lifecycle and error events
+  - **Data**: error details, stack trace, severity
 
 ### Event Retention & Output Formats
 
@@ -1499,8 +1524,7 @@ Following [Quality Gate Validation](QUALITY_GATES.md) <!-- Redirected from 17_qu
 
 1. **Run Component Quality Gates**:
    ```bash
-   python scripts/test_pure_lending_quality_gates.py
-   python scripts/test_btc_basis_quality_gates.py
+   python scripts/run_quality_gates.py --category e2e_strategies
    ```
 
 2. **Verify Architecture Compliance**:

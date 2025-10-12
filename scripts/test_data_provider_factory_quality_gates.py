@@ -16,12 +16,18 @@ from pathlib import Path
 from typing import Dict, List, Any
 import pandas as pd
 
+# Load environment variables from .env files
+sys.path.insert(0, str(Path(__file__).parent))
+from load_env import load_quality_gates_env
+load_quality_gates_env()
+
 # Add project root to path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root / 'backend' / 'src'))
 
 from basis_strategy_v1.infrastructure.data.data_provider_factory import create_data_provider
-from basis_strategy_v1.data_provider.base_data_provider import BaseDataProvider
+from basis_strategy_v1.infrastructure.data.base_data_provider import BaseDataProvider
+from basis_strategy_v1.infrastructure.data.pure_lending_data_provider import PureLendingDataProvider
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +47,9 @@ class DataProviderFactoryTester:
                 'data_requirements': ['usdt_prices', 'aave_lending_rates', 'gas_costs', 'execution_costs'],
                 'data_dir': 'data',
                 'share_class': 'USDT',
-                'asset': 'USDT'
+                'asset': 'USDT',
+                'backtest_start_date': '2024-05-01',
+                'backtest_end_date': '2024-06-02'
             },
             'btc_basis': {
                 'mode': 'btc_basis',
@@ -49,7 +57,9 @@ class DataProviderFactoryTester:
                 'data_dir': 'data',
                 'hedge_venues': ['binance', 'bybit', 'okx'],
                 'share_class': 'USDT',
-                'asset': 'BTC'
+                'asset': 'BTC',
+                'backtest_start_date': '2024-05-01',
+                'backtest_end_date': '2024-06-02'
             },
             'eth_basis': {
                 'mode': 'eth_basis',
@@ -57,7 +67,9 @@ class DataProviderFactoryTester:
                 'data_dir': 'data',
                 'hedge_venues': ['binance', 'bybit', 'okx'],
                 'share_class': 'USDT',
-                'asset': 'ETH'
+                'asset': 'ETH',
+                'backtest_start_date': '2024-05-01',
+                'backtest_end_date': '2024-06-02'
             },
             'eth_leveraged': {
                 'mode': 'eth_leveraged',
@@ -66,7 +78,9 @@ class DataProviderFactoryTester:
                 'lst_type': 'weeth',
                 'rewards_mode': 'base_eigen',
                 'share_class': 'ETH',
-                'asset': 'ETH'
+                'asset': 'ETH',
+                'backtest_start_date': '2024-05-01',
+                'backtest_end_date': '2024-06-02'
             },
             'eth_staking_only': {
                 'mode': 'eth_staking_only',
@@ -74,7 +88,9 @@ class DataProviderFactoryTester:
                 'data_dir': 'data',
                 'lst_type': 'weeth',
                 'share_class': 'ETH',
-                'asset': 'ETH'
+                'asset': 'ETH',
+                'backtest_start_date': '2024-05-01',
+                'backtest_end_date': '2024-06-02'
             },
             'usdt_market_neutral_no_leverage': {
                 'mode': 'usdt_market_neutral_no_leverage',
@@ -83,7 +99,9 @@ class DataProviderFactoryTester:
                 'lst_type': 'weeth',
                 'hedge_venues': ['binance', 'bybit', 'okx'],
                 'share_class': 'USDT',
-                'asset': 'ETH'
+                'asset': 'ETH',
+                'backtest_start_date': '2024-05-01',
+                'backtest_end_date': '2024-06-02'
             },
             'usdt_market_neutral': {
                 'mode': 'usdt_market_neutral',
@@ -93,7 +111,27 @@ class DataProviderFactoryTester:
                 'rewards_mode': 'base_eigen',
                 'hedge_venues': ['binance', 'bybit', 'okx'],
                 'share_class': 'USDT',
-                'asset': 'ETH'
+                'asset': 'ETH',
+                'backtest_start_date': '2024-05-01',
+                'backtest_end_date': '2024-06-02'
+            },
+            'ml_btc_directional': {
+                'mode': 'ml_btc_directional',
+                'data_requirements': ['ml_ohlcv_5min', 'ml_predictions', 'btc_usd_prices', 'gas_costs', 'execution_costs'],
+                'data_dir': 'data',
+                'share_class': 'BTC',
+                'asset': 'BTC',
+                'backtest_start_date': '2024-05-01',
+                'backtest_end_date': '2024-06-02'
+            },
+            'ml_usdt_directional': {
+                'mode': 'ml_usdt_directional',
+                'data_requirements': ['ml_ohlcv_5min', 'ml_predictions', 'usdt_usd_prices', 'gas_costs', 'execution_costs'],
+                'data_dir': 'data',
+                'share_class': 'USDT',
+                'asset': 'USDT',
+                'backtest_start_date': '2024-05-01',
+                'backtest_end_date': '2024-06-02'
             }
         }
     
@@ -118,13 +156,17 @@ class DataProviderFactoryTester:
                     config=config
                 )
                 
-                # Validate provider type
+                # Validate provider type (canonical architecture)
                 if not isinstance(provider, BaseDataProvider):
-                    raise ValueError(f"Provider is not instance of BaseDataProvider: {type(provider)}")
+                    raise ValueError(f"Provider is not BaseDataProvider instance: {type(provider)}")
+                
+                # Validate canonical methods
+                if not hasattr(provider, 'get_data') or not hasattr(provider, 'validate_data_requirements'):
+                    raise ValueError(f"Provider missing canonical methods: {type(provider)}")
                 
                 # Validate provider mode
-                if provider.mode != mode:
-                    raise ValueError(f"Provider mode mismatch: expected {mode}, got {provider.mode}")
+                if provider.config.get('mode') != mode:
+                    raise ValueError(f"Provider mode mismatch: expected {mode}, got {provider.config.get('mode')}")
                 
                 # Validate data requirements
                 if provider.data_requirements != config['data_requirements']:
@@ -152,6 +194,77 @@ class DataProviderFactoryTester:
                     'error': str(e)
                 }
                 results['failed_tests'] += 1
+        
+        return results
+    
+    def test_canonical_data_structure(self) -> Dict[str, Any]:
+        """Test that providers return canonical data structure."""
+        logger.info("🏗️  Testing canonical data structure...")
+        
+        results = {
+            'total_tests': 0,
+            'passed_tests': 0,
+            'failed_tests': 0,
+            'test_results': {}
+        }
+        
+        # Test with pure_lending mode (has canonical implementation)
+        test_config = self.test_configs['pure_lending']
+        
+        try:
+            logger.info("📊 Testing canonical data structure for pure_lending mode...")
+            
+            # Create provider
+            provider = create_data_provider(
+                execution_mode='backtest',
+                config=test_config
+            )
+            
+            # Test get_data method returns canonical structure
+            import pandas as pd
+            test_timestamp = pd.Timestamp('2024-05-01 12:00:00', tz='UTC')
+            data = provider.get_data(test_timestamp)
+            
+            # Validate canonical structure
+            required_sections = ['market_data', 'protocol_data', 'staking_data', 'execution_data']
+            for section in required_sections:
+                if section not in data:
+                    raise ValueError(f"Missing required section: {section}")
+            
+            # Validate market_data structure
+            if 'prices' not in data['market_data'] or 'rates' not in data['market_data']:
+                raise ValueError("market_data missing required subsections: prices, rates")
+            
+            # Validate protocol_data structure
+            if 'aave_indexes' not in data['protocol_data'] or 'oracle_prices' not in data['protocol_data'] or 'perp_prices' not in data['protocol_data']:
+                raise ValueError("protocol_data missing required subsections: aave_indexes, oracle_prices, perp_prices")
+            
+            # Validate execution_data structure
+            required_execution_keys = ['wallet_balances', 'smart_contract_balances', 'cex_spot_balances', 'cex_derivatives_balances', 'gas_costs', 'execution_costs']
+            for key in required_execution_keys:
+                if key not in data['execution_data']:
+                    raise ValueError(f"execution_data missing required key: {key}")
+            
+            results['test_results']['canonical_structure'] = {
+                'status': 'passed',
+                'data_sections': list(data.keys()),
+                'market_data_keys': list(data['market_data'].keys()),
+                'protocol_data_keys': list(data['protocol_data'].keys()),
+                'execution_data_keys': list(data['execution_data'].keys())
+            }
+            results['passed_tests'] += 1
+            results['total_tests'] += 1
+            
+            logger.info("✅ Canonical data structure test passed")
+            
+        except Exception as e:
+            logger.error(f"❌ Canonical data structure test failed: {e}")
+            results['test_results']['canonical_structure'] = {
+                'status': 'failed',
+                'error': str(e)
+            }
+            results['failed_tests'] += 1
+            results['total_tests'] += 1
         
         return results
     
@@ -229,8 +342,8 @@ class DataProviderFactoryTester:
             'test_results': {}
         }
         
-        # Test timestamp
-        test_timestamp = pd.Timestamp('2024-01-01 12:00:00', tz='UTC')
+        # Test timestamp - use May 2024 to match available data
+        test_timestamp = pd.Timestamp('2024-05-15 12:00:00', tz='UTC')
         
         for mode, config in self.test_configs.items():
             logger.info(f"📊 Testing data structure for mode: {mode}")
@@ -242,12 +355,12 @@ class DataProviderFactoryTester:
                     config=config
                 )
                 
-                # Test get_data method (should work even without loaded data in some cases)
+                # Test get_data method (canonical architecture)
                 try:
                     data = provider.get_data(test_timestamp)
                     
                     # Validate structure
-                    required_keys = ['timestamp', 'market_data', 'protocol_data', 'execution_data']
+                    required_keys = ['market_data', 'protocol_data', 'staking_data', 'execution_data']
                     for key in required_keys:
                         if key not in data:
                             raise ValueError(f"Missing required key in data structure: {key}")
@@ -257,12 +370,12 @@ class DataProviderFactoryTester:
                         raise ValueError("market_data should be a dictionary")
                     if not isinstance(data['protocol_data'], dict):
                         raise ValueError("protocol_data should be a dictionary")
+                    if not isinstance(data['staking_data'], dict):
+                        raise ValueError("staking_data should be a dictionary")
                     if not isinstance(data['execution_data'], dict):
                         raise ValueError("execution_data should be a dictionary")
                     
-                    # Validate timestamp
-                    if data['timestamp'] != test_timestamp:
-                        raise ValueError(f"Timestamp mismatch: expected {test_timestamp}, got {data['timestamp']}")
+                    # Note: timestamp is passed as parameter to get_data(), not included in returned data
                     
                     results['test_results'][mode] = {
                         'status': 'passed',
@@ -367,6 +480,7 @@ class DataProviderFactoryTester:
         all_results = {
             'timestamp': pd.Timestamp.now().isoformat(),
             'factory_creation': self.test_factory_creation(),
+            'canonical_data_structure': self.test_canonical_data_structure(),
             'data_requirements_validation': self.test_data_requirements_validation(),
             'standardized_data_structure': self.test_standardized_data_structure(),
             'error_handling': self.test_error_handling()

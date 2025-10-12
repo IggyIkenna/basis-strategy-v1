@@ -33,8 +33,9 @@ class ApiClient {
   private maxRetries: number = 3;
   private retryDelay: number = 1000;
 
-  constructor(baseUrl: string = '/api/v1') {
-    this.baseUrl = baseUrl;
+  constructor(baseUrl?: string) {
+    // Use VITE_API_BASE_URL environment variable with fallback to '/api/v1'
+    this.baseUrl = baseUrl || import.meta.env.VITE_API_BASE_URL || '/api/v1';
   }
 
   private async getAuthToken(): Promise<string | null> {

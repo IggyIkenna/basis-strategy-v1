@@ -10,9 +10,9 @@ This task aligns the existing Position Monitor implementation with canonical spe
 **Reference**: `tests/unit/` - Existing unit test structure
 
 ## QUALITY GATE
-**Quality Gate Script**: `scripts/monitor_quality_gates.py` + `scripts/test_position_monitor_persistence_quality_gates.py`
+**Quality Gate Script**: `tests/unit/test_position_monitor_unit.py`
 **Validation**: Position monitoring, balance tracking, persistence, unit tests
-**Status**: 🟡 GENERIC
+**Status**: ✅ IMPLEMENTED
 
 ## CRITICAL REQUIREMENTS
 
@@ -151,7 +151,7 @@ class TestPositionMonitorFunctionality:
 
 ### 5. Quality Gate Implementation
 ```python
-# scripts/test_position_monitor_unit_tests_quality_gates.py
+# tests/unit/test_position_monitor_unit.py
 class PositionMonitorUnitTestQualityGates:
     def __init__(self):
         self.test_suite = self.setup_test_suite()
@@ -197,7 +197,7 @@ class PositionMonitorUnitTestQualityGates:
 
 ### 1. Unit Test Quality Gate
 ```bash
-# scripts/test_position_monitor_unit_tests_quality_gates.py
+# tests/unit/test_position_monitor_unit.py
 def test_position_monitor_unit_tests():
     # Run all position monitor unit tests
     # Validate test coverage meets target
@@ -246,7 +246,7 @@ def test_position_monitor_unit_tests():
 
 ## QUALITY GATE SCRIPT
 
-The quality gate script `scripts/test_position_monitor_unit_tests_quality_gates.py` will:
+The quality gate script `tests/unit/test_position_monitor_unit.py` will:
 
 1. **Test Component Signatures**
    - Verify all method signatures match specification

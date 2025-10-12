@@ -121,7 +121,7 @@ See: 19_CONFIGURATION.md for complete mode configs, REFERENCE_ARCHITECTURE_CANON
 
 ## Strategy Mode Specifications
 
-**Note**: There are 7 YAML configs and 7 documented strategies. All strategy modes are documented below.
+**Note**: There are 9 YAML configs and 9 documented strategies. All strategy modes are documented below.
 
 ### 1. Pure Lending Mode (`pure_lending`)
 
@@ -686,6 +686,118 @@ See: 19_CONFIGURATION.md for complete mode configs, REFERENCE_ARCHITECTURE_CANON
 - Perp funding rates (all venues)
 - Gas costs
 - Execution costs
+
+---
+
+### 7. ML BTC Directional Mode (`ml_btc_directional`)
+
+**Objective**: ML-driven directional BTC strategy with long/short perp trading on 5-minute intervals.
+
+**Strategy Description**:
+- Use ML predictions for entry/exit signals (long/short/neutral)
+- Trade BTC/USDT perp futures on 5-minute intervals
+- Full position sizing (100% of equity per signal)
+- Take-profit and stop-loss orders for risk management
+- BTC share class (P&L in BTC terms)
+
+**Config Constraints**:
+- `share_class == asset` ("BTC" == "BTC"): No hedging required
+- `market_neutral: false`: Directional strategy
+- `leverage_enabled: true`: Perp futures trading
+- `lending_enabled: false`, `staking_enabled: false`: Pure perp strategy
+- `borrowing_enabled: false`: No borrowing
+
+**Required Execution Venues**:
+- **Binance**: BTC perp futures trading
+- **No DeFi venues**: No lending, staking, or on-chain operations
+
+**Key Parameters**:
+- `share_class`: "BTC"
+- `asset`: "BTC"
+- `market_neutral`: false
+- `leverage_enabled`: true
+- `lending_enabled`: false
+- `staking_enabled`: false
+- `basis_trade_enabled`: false
+- `borrowing_enabled`: false
+- `initial_capital`: 1.0 (1 BTC)
+- `ml_config.signal_threshold`: 0.65 (min confidence to trade)
+- `ml_config.max_position_size`: 1.0 (100% of equity)
+
+**Execution Flow**:
+1. **Entry**: At start of 5-min candle based on ML signal (long/short)
+2. **Exit**: Stop-loss (priority 1) → Take-profit (priority 2) → End of candle (priority 3)
+3. **Position sizing**: Full position (100% equity) per signal
+4. **Hold logic**: If new signal matches current position, hold (no action)
+
+**Data Requirements**:
+- `ml_ohlcv_5min`: OHLCV 5-min bars
+- `ml_predictions`: ML signals (long/short/neutral + TP/SL)
+- `btc_usd_prices`: For PnL calculation
+- `gas_costs`, `execution_costs`: For cost tracking
+
+**Risk Profile**:
+- **Market Risk**: High (directional exposure)
+- **ML Risk**: Model prediction accuracy
+- **Liquidation Risk**: Perp margin requirements
+- **Exchange Risk**: CEX counterparty risk
+- **Max Drawdown**: 20% (directional strategy)
+
+---
+
+### 8. ML USDT Directional Mode (`ml_usdt_directional`)
+
+**Objective**: ML-driven directional USDT strategy with long/short perp trading on 5-minute intervals.
+
+**Strategy Description**:
+- Use ML predictions for entry/exit signals (long/short/neutral)
+- Trade USDT perp futures on 5-minute intervals
+- Full position sizing (100% of equity per signal)
+- Take-profit and stop-loss orders for risk management
+- USDT share class (P&L in USDT terms)
+
+**Config Constraints**:
+- `share_class == asset` ("USDT" == "USDT"): No hedging required
+- `market_neutral: false`: Directional strategy
+- `leverage_enabled: true`: Perp futures trading
+- `lending_enabled: false`, `staking_enabled: false`: Pure perp strategy
+- `borrowing_enabled: false`: No borrowing
+
+**Required Execution Venues**:
+- **Binance**: USDT perp futures trading
+- **No DeFi venues**: No lending, staking, or on-chain operations
+
+**Key Parameters**:
+- `share_class`: "USDT"
+- `asset`: "USDT"
+- `market_neutral`: false
+- `leverage_enabled`: true
+- `lending_enabled`: false
+- `staking_enabled`: false
+- `basis_trade_enabled`: false
+- `borrowing_enabled`: false
+- `initial_capital`: 10000.0 (10k USDT)
+- `ml_config.signal_threshold`: 0.70 (higher threshold for USDT)
+- `ml_config.max_position_size`: 1.0 (100% of equity)
+
+**Execution Flow**:
+1. **Entry**: At start of 5-min candle based on ML signal (long/short)
+2. **Exit**: Stop-loss (priority 1) → Take-profit (priority 2) → End of candle (priority 3)
+3. **Position sizing**: Full position (100% equity) per signal
+4. **Hold logic**: If new signal matches current position, hold (no action)
+
+**Data Requirements**:
+- `ml_ohlcv_5min`: OHLCV 5-min bars
+- `ml_predictions`: ML signals (long/short/neutral + TP/SL)
+- `usdt_usd_prices`: For PnL calculation
+- `gas_costs`, `execution_costs`: For cost tracking
+
+**Risk Profile**:
+- **Market Risk**: High (directional exposure)
+- **ML Risk**: Model prediction accuracy
+- **Liquidation Risk**: Perp margin requirements
+- **Exchange Risk**: CEX counterparty risk
+- **Max Drawdown**: 20% (directional strategy)
 
 ---
 

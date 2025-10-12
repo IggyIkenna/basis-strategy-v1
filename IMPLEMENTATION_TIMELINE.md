@@ -18,7 +18,7 @@ This document provides a detailed implementation timeline for completing the Bas
 #### Task 01: Environment File Switching & Fail-Fast (2 hours)
 - **Agent**: Primary
 - **Files**: `backend/src/basis_strategy_v1/infrastructure/config/`, `env.unified`, `env.dev`, `env.staging`, `env.prod`
-- **Quality Gate**: `scripts/test_environment_switching_quality_gates.py`
+- **Quality Gate**: `python scripts/run_quality_gates.py --category unit`
 - **Success Criteria**:
   - [ ] BASIS_ENVIRONMENT switching works (dev/staging/prod)
   - [ ] Fail-fast on missing env files
@@ -28,7 +28,7 @@ This document provides a detailed implementation timeline for completing the Bas
 #### Task 02: Full Config Loading & Validation (2 hours)
 - **Agent**: Primary (sequential with Task 01)
 - **Files**: `backend/src/basis_strategy_v1/core/config/config_loader.py`, `configs/`
-- **Quality Gate**: `scripts/test_config_validation_quality_gates.py`
+- **Quality Gate**: `python scripts/run_quality_gates.py --category unit`
 - **Success Criteria**:
   - [ ] All YAML files load correctly (modes/venues/share_classes)
   - [ ] Pydantic validation works
@@ -40,8 +40,8 @@ This document provides a detailed implementation timeline for completing the Bas
 
 #### Task 03: Data Loading Quality Gate (4 hours)
 - **Agent**: Primary (can run parallel with Phase 2A setup)
-- **Files**: `scripts/test_data_availability_quality_gates.py` (NEW)
-- **Quality Gate**: Uses existing `test_data_provider_refactor_quality_gates.py`
+- **Files**: `tests/unit/test_data_provider_unit.py` (NEW)
+- **Quality Gate**: `python scripts/run_quality_gates.py --category unit`
 - **Success Criteria**:
   - [ ] All data files exist and are accessible
   - [ ] Data completeness validated for all strategy modes
@@ -63,7 +63,7 @@ This document provides a detailed implementation timeline for completing the Bas
 #### Task 07: Fix Async/Await Violations (2-3 hours)
 - **Agent**: Primary
 - **Files**: `position_monitor.py`, `risk_monitor.py`, `strategy_manager.py`, `pnl_calculator.py`, `position_update_handler.py`
-- **Quality Gate**: `scripts/test_async_await_quality_gates.py`
+- **Quality Gate**: `python scripts/run_quality_gates.py --category unit`
 - **Success Criteria**:
   - [ ] Remove async/await from internal component methods (ADR-006)
   - [ ] Keep async only for Event Logger, Results Store, API entry points
@@ -72,7 +72,7 @@ This document provides a detailed implementation timeline for completing the Bas
 #### Task 10: Fix Reference-Based Architecture (2-3 hours)
 - **Agent**: Primary (sequential with Task 07 - overlapping files)
 - **Files**: All component files
-- **Quality Gate**: `scripts/test_reference_based_architecture_quality_gates.py`
+- **Quality Gate**: `python scripts/run_quality_gates.py --category unit`
 - **Success Criteria**:
   - [ ] Store references in `__init__`, never pass as runtime parameters
   - [ ] Ensure singleton pattern per request
@@ -81,7 +81,7 @@ This document provides a detailed implementation timeline for completing the Bas
 #### Task 11: Enforce Singleton Pattern (2-3 hours)
 - **Agent**: Primary (sequential with Task 10)
 - **Files**: `event_driven_strategy_engine.py`, all component files
-- **Quality Gate**: `scripts/test_singleton_pattern_quality_gates.py`
+- **Quality Gate**: `python scripts/run_quality_gates.py --category unit`
 - **Success Criteria**:
   - [ ] Single instance per component per request
   - [ ] Shared config and data_provider instances
@@ -93,7 +93,7 @@ This document provides a detailed implementation timeline for completing the Bas
 #### Task 06: Strategy Manager Refactor (3-4 hours)
 - **Agent**: Agent A
 - **Files**: `strategy_manager.py`, `transfer_manager.py` (DELETE), new strategy files
-- **Quality Gate**: `scripts/test_strategy_manager_refactor_quality_gates.py`
+- **Quality Gate**: `python scripts/run_quality_gates.py --category unit`
 - **Success Criteria**:
   - [ ] Delete transfer_manager.py (1068 lines)
   - [ ] Create BaseStrategyManager with 5 standardized actions
@@ -103,7 +103,7 @@ This document provides a detailed implementation timeline for completing the Bas
 #### Task 08: Mode-Agnostic Architecture (3-4 hours)
 - **Agent**: Agent B (parallel with Task 06)
 - **Files**: `exposure_monitor.py`, `pnl_calculator.py`, new `utility_manager.py`
-- **Quality Gate**: `scripts/test_mode_agnostic_architecture_quality_gates.py`
+- **Quality Gate**: `python scripts/run_quality_gates.py --category unit`
 - **Success Criteria**:
   - [ ] Fix generic vs mode-specific violations
   - [ ] Use config parameters (asset, share_class, lst_type) instead of mode checks
@@ -112,7 +112,7 @@ This document provides a detailed implementation timeline for completing the Bas
 #### Task 09: Fail-Fast Configuration (2-3 hours)
 - **Agent**: Agent C (parallel with Tasks 06-08)
 - **Files**: `risk_monitor.py`
-- **Quality Gate**: `scripts/test_fail_fast_configuration_quality_gates.py`
+- **Quality Gate**: `python scripts/run_quality_gates.py --category unit`
 - **Success Criteria**:
   - [ ] Replace .get() with direct access in risk_monitor.py (62 instances)
   - [ ] Implement fail-fast configuration access
@@ -262,7 +262,7 @@ This document provides a detailed implementation timeline for completing the Bas
 
 #### Task 19: Position Monitor Unit Tests (2-3 hours)
 - **Agent**: Agent A
-- **Files**: `tests/unit/test_position_monitor_detailed.py`
+- **Files**: `scripts/unit_tests/test_position_monitor_unit.py`
 - **Quality Gate**: `scripts/test_position_monitor_unit_tests_quality_gates.py`
 - **Success Criteria**:
   - [ ] Test component signatures match spec
@@ -272,7 +272,7 @@ This document provides a detailed implementation timeline for completing the Bas
 
 #### Task 20: Exposure Monitor Unit Tests (2-3 hours)
 - **Agent**: Agent B (parallel with Task 19)
-- **Files**: `tests/unit/test_exposure_monitor_detailed.py`
+- **Files**: `scripts/unit_tests/test_exposure_monitor_unit.py`
 - **Quality Gate**: `scripts/test_exposure_monitor_unit_tests_quality_gates.py`
 - **Success Criteria**:
   - [ ] Test exposure calculations
@@ -282,7 +282,7 @@ This document provides a detailed implementation timeline for completing the Bas
 
 #### Task 21: Risk Monitor Unit Tests (2-3 hours)
 - **Agent**: Agent C (parallel with Tasks 19-20)
-- **Files**: `tests/unit/test_risk_monitor_detailed.py`
+- **Files**: `scripts/unit_tests/test_risk_monitor_unit.py`
 - **Quality Gate**: `scripts/test_risk_monitor_unit_tests_quality_gates.py`
 - **Success Criteria**:
   - [ ] Test risk calculations
@@ -292,7 +292,7 @@ This document provides a detailed implementation timeline for completing the Bas
 
 #### Task 22: Strategy Manager Unit Tests (2-3 hours)
 - **Agent**: Agent D (parallel with Tasks 19-21)
-- **Files**: `tests/unit/test_strategy_manager_detailed.py`
+- **Files**: `scripts/unit_tests/test_strategy_manager_unit.py`
 - **Quality Gate**: `scripts/test_strategy_manager_unit_tests_quality_gates.py`
 - **Success Criteria**:
   - [ ] Test 5 standardized actions
@@ -302,7 +302,7 @@ This document provides a detailed implementation timeline for completing the Bas
 
 #### Task 23: P&L Calculator Unit Tests (2-3 hours)
 - **Agent**: Agent E (parallel with Tasks 19-22)
-- **Files**: `tests/unit/test_pnl_calculator_detailed.py`
+- **Files**: `scripts/unit_tests/test_pnl_calculator_unit.py`
 - **Quality Gate**: `scripts/test_pnl_calculator_unit_tests_quality_gates.py`
 - **Success Criteria**:
   - [ ] Test mode-agnostic P&L calculations
@@ -350,7 +350,7 @@ This document provides a detailed implementation timeline for completing the Bas
 #### Task 26: Comprehensive Quality Gates (2-3 hours)
 - **Agent**: Primary (runs at end)
 - **Files**: `scripts/run_quality_gates.py`
-- **Quality Gate**: `scripts/run_quality_gates.py`
+- **Quality Gate**: `python scripts/run_quality_gates.py`
 - **Success Criteria**:
   - [ ] Run full quality gate suite
   - [ ] Target: 20/24 passing (83%)

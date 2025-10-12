@@ -148,6 +148,17 @@ def __init__(self, ...):
   - **Default**: 'both'
   - **Validation**: Must be 'csv', 'json', or 'both'
 
+### Logging Configuration Fields
+- `log_format`: str - Log format specification
+  - **Usage**: Used in `event_logger.py:58` to set the format for log output
+  - **Required**: Yes
+  - **Used in**: `event_logger.py:58`
+
+- `log_path`: str - Log file path
+  - **Usage**: Used in `event_logger.py:53` to set the path where log files are written
+  - **Required**: Yes
+  - **Used in**: `event_logger.py:53`
+
 ### Config Access Pattern
 ```python
 def log_event(self, timestamp: pd.Timestamp, event_type: str, component: str, data: Dict):
@@ -278,6 +289,20 @@ self.event_logger.log_event(
 - **Event Logging Failed**: When event logging fails
 - **Global Order Assignment Failed**: When order assignment fails
 - **Event Export Failed**: When event export fails
+
+#### 5. Infrastructure Event Patterns
+- **`data`**: Logs data-related events
+  - **Usage**: Logged for data provider operations and data updates
+  - **Data**: data_type, source, timestamp, data_quality_metrics
+- **`risk`**: Logs risk-related events
+  - **Usage**: Logged when risk thresholds are exceeded
+  - **Data**: risk_type, severity, threshold_value, current_value, component
+- **`event`**: Logs event system updates
+  - **Usage**: Logged for event system state changes
+  - **Data**: event_count, system_status, performance_metrics
+- **`business`**: Logs business-related events
+  - **Usage**: Logged for business logic events
+  - **Data**: business metrics, performance data, operational events
 
 ### Event Retention & Output Formats
 

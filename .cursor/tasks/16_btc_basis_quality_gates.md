@@ -9,7 +9,7 @@ BTC basis strategy currently 8/10 quality gates passing (80.0%), need to fix the
 3) Read docs/specs/08_EXECUTION_INTERFACES.md for interface requirements
 4) Fix trade execution issues preventing proper BTC basis trades
 ## QUALITY GATE
-**Quality Gate Script**: `scripts/test_btc_basis_quality_gates.py`
+**Quality Gate Script**: `tests/e2e/test_btc_basis_e2e.py`
 **Validation**: BTC basis strategy, trade execution, CEX interface, data loading
 **Status**: 🟡 PARTIAL
 
@@ -22,18 +22,18 @@ BTC basis strategy currently 8/10 quality gates passing (80.0%), need to fix the
 - docs/specs/08_EXECUTION_INTERFACES.md
 - backend/src/basis_strategy_v1/core/interfaces/cex_execution_interface.py
 - backend/src/basis_strategy_v1/infrastructure/data/historical_data_provider.py
-- scripts/test_btc_basis_quality_gates.py
+- tests/e2e/test_btc_basis_e2e.py
 
 ## EXECUTION STEPS
 1) Health check: curl -s http://localhost:8001/health/
-2) Run: python scripts/test_btc_basis_quality_gates.py
+2) Run: python scripts/run_quality_gates.py --category e2e_strategies
 3) Identify which 2 quality gates are failing
 4) Check backend logs: tail -f backend/logs/api.log
 5) Fix the failing quality gates:
    - Check CEX execution interface: backend/src/basis_strategy_v1/core/interfaces/cex_execution_interface.py
    - Check historical data provider: backend/src/basis_strategy_v1/infrastructure/data/historical_data_provider.py
    - Verify trade execution flow
-6) Test fix: python scripts/test_btc_basis_quality_gates.py
+6) Test fix: python scripts/run_quality_gates.py --category e2e_strategies
 7) Verify all 10 quality gates pass
 
 ## SUCCESS CRITERIA
@@ -47,7 +47,7 @@ BTC basis strategy currently 8/10 quality gates passing (80.0%), need to fix the
 
 1. **Run BTC Basis Quality Gates**:
    ```bash
-   python scripts/test_btc_basis_quality_gates.py
+   python scripts/run_quality_gates.py --category e2e_strategies
    ```
 
 2. **Verify BTC Basis Pass Rate**:

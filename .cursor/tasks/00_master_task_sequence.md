@@ -44,17 +44,29 @@ This is the complete sequence of tasks to execute based on the 6-day implementat
 21. **21_risk_monitor_unit_tests.md** - Risk monitor alignment & unit tests (8-10 hours)
 22. **22_strategy_manager_unit_tests.md** - Strategy manager unit tests (8-10 hours)
 23. **23_pnl_calculator_unit_tests.md** - P&L calculator alignment & unit tests (8-10 hours)
+32. **32_event_logger_unit_tests.md** - Event logger component testing (4-6 hours)
+33. **33_results_store_unit_tests.md** - Results store component testing (4-6 hours)
+34. **34_health_system_unit_tests.md** - Health monitoring testing (4-6 hours)
+35. **35_api_endpoints_unit_tests.md** - API layer testing (4-6 hours)
 
 ### Day 6: Execution Infrastructure & Service Validation (12-16 hours)
 24. **30_execution_components_implementation.md** - Execution components implementation (8-10 hours)
 25. **26_comprehensive_quality_gates.md** - Service layer & engine validation (6-8 hours)
 26. **25_live_mode_quality_gates.md** - Live mode quality gates (6-8 hours)
+36. **36_data_flow_position_to_exposure.md** - Position→Exposure workflow (4-6 hours)
+37. **37_data_flow_exposure_to_risk.md** - Exposure→Risk workflow (4-6 hours)
+38. **38_data_flow_risk_to_strategy.md** - Risk→Strategy workflow (4-6 hours)
+39. **39_data_flow_strategy_to_execution.md** - Strategy→Execution workflow (4-6 hours)
+40. **40_tight_loop_reconciliation.md** - Tight loop architecture validation (4-6 hours)
 
 ### Day 7: Infrastructure & Frontend Completion (12-16 hours)
 27. **31_infrastructure_components_completion.md** - Infrastructure components completion (6-8 hours)
 28. **24_frontend_implementation.md** - Frontend implementation completion (6-8 hours)
 29. **27_authentication_system.md** - Authentication system implementation (4-6 hours)
 30. **28_live_trading_ui.md** - Live trading UI implementation (6-8 hours)
+41. **41_eth_staking_only_e2e.md** - ETH staking only strategy (4-6 hours)
+42. **42_eth_leveraged_staking_e2e.md** - ETH leveraged staking strategy (4-6 hours)
+43. **43_usdt_market_neutral_no_leverage_e2e.md** - USDT market neutral without leverage (4-6 hours)
 
 ## EXECUTION INSTRUCTIONS
 1) **FOLLOW 6-DAY TIMELINE** - Execute tasks in day order (Day 1 → Day 6)
@@ -179,7 +191,7 @@ This is the complete sequence of tasks to execute based on the 6-day implementat
 - [ ] System ready for staging deployment
 
 ## OVERALL SUCCESS CRITERIA
-- [ ] All 30 tasks completed successfully
+- [ ] All 43 tasks completed successfully
 - [ ] All 20 component implementation gaps addressed
 - [ ] Quality gates improved from 12/24 to 20/24+ passing
 - [ ] All tests passing with 80% coverage

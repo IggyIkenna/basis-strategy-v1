@@ -128,6 +128,51 @@ When conflicts arise, the following hierarchy determines canonical sources:
 
 **Timeline**: 4-6 hours
 
+#### **Agent 5.5: Environment & Config Usage Sync Validation** (NEW)
+**Purpose**: Validate that all environment variables, config fields, data queries, and event logging used in components are properly documented
+
+**What it does**:
+- Scans all component implementations for environment variable usage
+- Extracts all config field references by component
+- Identifies all data provider queries by component
+- Maps all event logging patterns by component
+- Compares usage against documentation in ENVIRONMENT_VARIABLES.md and component specs
+- Reports undocumented usage and unused documentation
+- Ensures 100% sync between code and documentation
+
+**Validation Categories**:
+1. Environment Variable Sync (ENVIRONMENT_VARIABLES.md)
+2. Config Field Sync (component spec section 6)
+3. Data Provider Query Sync (component spec section 7)
+4. Event Logging Requirements Sync (component spec section 10)
+
+**Output**: Comprehensive usage sync report with gaps and remediation steps
+
+**Timeline**: 1-2 hours
+
+**Quality Gate**: `scripts/test_env_config_usage_sync_quality_gates.py`
+
+#### **Agent 5.6: Repository Structure Validation & Documentation** (NEW)
+**Purpose**: Validate actual repository structure against canonical documentation and generate updated TARGET_REPOSITORY_STRUCTURE.md
+
+**What it does**:
+- Scans backend/src/basis_strategy_v1/ directory structure
+- Compares actual structure against specs, CODE_STRUCTURE_PATTERNS.md, and REFERENCE_ARCHITECTURE_CANONICAL.md
+- Identifies files that are correctly placed, misplaced, missing, or obsolete
+- Generates updated TARGET_REPOSITORY_STRUCTURE.md with file annotations:
+  - [KEEP]: File in correct location, following patterns
+  - [DELETE]: Obsolete file, should be removed
+  - [UPDATE]: File exists but needs architecture compliance fixes
+  - [MOVE]: File in wrong location, should be relocated
+  - [CREATE]: Missing file, should be created
+- Provides migration paths and justifications for each annotation
+
+**Output**: Updated docs/TARGET_REPOSITORY_STRUCTURE.md with comprehensive structure documentation
+
+**Timeline**: 2-3 hours
+
+**Quality Gate**: `scripts/test_repo_structure_quality_gates.py`
+
 #### **Agent 6: Integration Alignment Agent** - **TRIGGERED AFTER QUALITY GATES PASS**
 **Purpose**: Ensure 100% integration alignment across component specifications, API documentation, configuration systems, and canonical architectural principles
 
@@ -419,6 +464,13 @@ Each phase must meet specific success criteria before proceeding:
 - All API endpoints referenced
 - **NEW**: All component specs follow 18-section standardized format
 - **NEW**: All components have proper Event Logging Requirements and Error Codes sections
+- **NEW**: 100% environment variable usage documented in ENVIRONMENT_VARIABLES.md
+- **NEW**: 100% config field usage documented in component specs (section 6)
+- **NEW**: 100% data provider queries documented in component specs (section 7)
+- **NEW**: 100% event logging patterns documented in component specs (section 10)
+- **NEW**: Repository structure validated against canonical documentation
+- **NEW**: TARGET_REPOSITORY_STRUCTURE.md updated with current state and required changes
+- **NEW**: All component files correctly mapped to expected locations per specs
 
 **Phase 4 Success**:
 - All logical inconsistencies identified and resolved
@@ -443,8 +495,17 @@ python scripts/test_integration_alignment_quality_gates.py
 # Validate 18-section component specification format (NEW)
 python scripts/test_docs_structure_validation_quality_gates.py
 
+# Validate environment variable and config field usage sync (NEW)
+python scripts/test_env_config_usage_sync_quality_gates.py
+
+# Validate repository structure alignment (NEW)
+python scripts/test_repo_structure_quality_gates.py
+
 # Run all quality gates including integration alignment
 python scripts/run_quality_gates.py --category integration
+
+# Run repository structure quality gates via main runner
+python scripts/run_quality_gates.py --category repo_structure
 
 # Check for broken links
 grep -r "\[.*\](" docs/ | grep -v "http"
@@ -459,6 +520,9 @@ grep -r "REFACTOR REQUIRED" backend/src/
 grep -r "async def" backend/src/basis_strategy_v1/ | grep -v "event_logger\|results_store\|api"
 grep -r "\.get(" backend/src/basis_strategy_v1/ | grep -v "test\|__pycache__"
 grep -r "TODO-REFACTOR" backend/src/basis_strategy_v1/
+
+# Check for undocumented environment variables (NEW)
+grep -r "os.getenv\|os.environ\[" backend/src/basis_strategy_v1/ | grep -v test
 
 # Validate system health before integration alignment
 curl -s http://localhost:8001/health/detailed
@@ -563,6 +627,13 @@ Before starting any refactor, ensure:
 - **Traceability**: 100% of refactor areas have complete traceability
 - **NEW**: 18-Section Format Compliance: 100% of component specs follow standardized format
 - **NEW**: Event Logging Integration: 100% of components have proper logging and error handling
+- **NEW**: Environment Variable Documentation: 100% of used env vars are documented
+- **NEW**: Config Field Documentation: 100% of used config fields are documented per component
+- **NEW**: Data Query Documentation: 100% of data provider queries are documented per component
+- **NEW**: Event Logging Documentation: 100% of event patterns are documented per component
+- **NEW**: Repository Structure Alignment: 100% of components in correct locations
+- **NEW**: File Annotation Documentation: All files annotated with action status
+- **NEW**: Migration Path Documentation: Clear paths for all [MOVE] files
 
 ### **Quality Improvements**
 - **Architecture Compliance**: Reduced violations over time

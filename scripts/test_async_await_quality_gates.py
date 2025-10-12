@@ -33,14 +33,14 @@ class AsyncAwaitQualityGates:
     def __init__(self):
         self.backend_src = Path(__file__).parent.parent / "backend" / "src"
         self.component_files = [
-            "basis_strategy_v1/core/strategies/components/position_monitor.py",
-            "basis_strategy_v1/core/strategies/components/risk_monitor.py", 
+            "basis_strategy_v1/core/components/position_monitor.py",
+            "basis_strategy_v1/core/components/risk_monitor.py", 
             "basis_strategy_v1/core/strategies/components/strategy_manager.py",
-            "basis_strategy_v1/core/strategies/components/position_update_handler.py",
+            "basis_strategy_v1/core/components/position_update_handler.py",
             "basis_strategy_v1/core/math/pnl_calculator.py"
         ]
         self.io_files = [
-            "basis_strategy_v1/core/strategies/components/event_logger.py",
+            "basis_strategy_v1/infrastructure/logging/event_logger.py",
             "basis_strategy_v1/core/strategies/components/results_store.py"
         ]
         self.api_files = [

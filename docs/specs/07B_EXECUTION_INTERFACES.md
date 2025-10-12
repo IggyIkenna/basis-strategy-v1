@@ -236,16 +236,28 @@ def _validate_credentials(self, credentials: Dict) -> bool:
 
 ## Data Provider Queries
 
-### Market Data Queries
-- **prices**: Current market prices for all tokens
-- **orderbook**: Order book data for price impact calculation
-- **funding_rates**: Funding rates for perpetual contracts
-- **liquidity**: Liquidity data for DEX swaps
+### Canonical Data Provider Pattern
+Execution Interfaces use the canonical `get_data(timestamp)` pattern to access data for cost calculations:
 
-### Protocol Data Queries
-- **protocol_rates**: Lending/borrowing rates from protocols
-- **stake_rates**: Staking rewards and rates
-- **protocol_balances**: Current balances in protocols
+```python
+# Canonical pattern - single get_data call
+data = self.data_provider.get_data(timestamp)
+execution_costs = data['execution_data']['execution_costs']
+gas_costs = data['execution_data']['gas_costs']
+```
+
+### Market Data Queries
+- **market_data.prices**: Current market prices for all tokens
+- **market_data.rates.funding**: Funding rates for perpetual contracts
+
+### Execution Data Queries
+- **execution_data.execution_costs**: Execution costs for venue operations
+- **execution_data.gas_costs**: Gas costs for blockchain operations
+
+### Legacy Methods Removed
+The following legacy methods have been replaced with canonical pattern:
+- ~~`get_execution_cost()`~~ → `get_data()['execution_data']['execution_costs']`
+- ~~`get_gas_cost()`~~ → `get_data()['execution_data']['gas_costs']`
 
 ### Data NOT Available from BaseDataProvider
 - **Order execution results** - handled by venue APIs

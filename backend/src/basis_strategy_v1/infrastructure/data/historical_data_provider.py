@@ -188,6 +188,13 @@ def _validate_data_file(
 
 class DataProvider:
     """Provides market data with hourly alignment enforcement."""
+    
+    _instance = None
+    
+    def __new__(cls, *args, **kwargs):
+        if cls._instance is None:
+            cls._instance = super(DataProvider, cls).__new__(cls)
+        return cls._instance
 
     def __init__(
             self,

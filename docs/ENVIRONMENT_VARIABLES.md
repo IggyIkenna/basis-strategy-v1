@@ -147,6 +147,9 @@ BASIS_PROD__CEX__BINANCE_SPOT_API_KEY=
 BASIS_PROD__CEX__BINANCE_SPOT_SECRET=
 BASIS_PROD__CEX__BINANCE_FUTURES_API_KEY=
 BASIS_PROD__CEX__BINANCE_FUTURES_SECRET=
+
+# ML Inference API (for ML strategies)
+BASIS_ML_API_TOKEN=
 ```
 
 **Reference**: `docs/DEPLOYMENT_GUIDE.md` - Unified Environment Configuration section
@@ -209,9 +212,9 @@ Each strategy mode has specific venue requirements based on its configuration:
 | `BASIS_LOG_LEVEL` | Logging verbosity | All components | Debug vs production logging |
 | `BASIS_EXECUTION_MODE` | Execution mode | All components | Controls venue execution behavior (backtest vs live) |
 | `BASIS_DATA_START_DATE` | Data start date | Data Provider | Historical data range start |
-| `BASIS_CONFIG__VALIDATION_STRICT` | Strict config validation | Configuration | Enable fail-fast config validation per ADR-040 |
-| `BASIS_CONFIG__CACHE_SIZE` | Config cache size | Configuration | Maximum config entries to cache |
-| `BASIS_CONFIG__RELOAD_INTERVAL` | Config reload interval (seconds) | Configuration | How often to check for config changes |
+
+
+
 | `BASIS_DATA_END_DATE` | Data end date | Data Provider | Historical data range end |
 
 **Critical**: These variables MUST be set in override files - no defaults in `env.unified`.
@@ -221,24 +224,11 @@ Each strategy mode has specific venue requirements based on its configuration:
 - **`./platform.sh backtest`**: **Always forces backtest mode** regardless of env file setting
 - **Default env files**: `dev` and `staging` = backtest, `production` = live
 
-**Configuration System Variables**:
-- **`BASIS_CONFIG__VALIDATION_STRICT`**: Enable strict configuration validation (default: true)
-  - **Usage**: Controls fail-fast behavior per ADR-040
-  - **Values**: true | false
-  - **Recommended**: true (catch configuration errors early)
-  - **Impact**: When true, missing config keys raise KeyError instead of returning defaults
 
-- **`BASIS_CONFIG__CACHE_SIZE`**: Configuration cache size (default: 1000)
-  - **Usage**: Limits memory usage for cached config slices
-  - **Values**: Integer > 0
-  - **Recommended**: 1000
-  - **Impact**: Higher values = more memory, faster repeated config access
 
-- **`BASIS_CONFIG__RELOAD_INTERVAL`**: Config reload interval in seconds (default: 300)
-  - **Usage**: How often system checks for config file changes
-  - **Values**: Integer >= 60
-  - **Recommended**: 300 (5 minutes)
-  - **Impact**: Lower values = more frequent checks, higher I/O overhead
+
+
+
 
 ### **2. Frontend Deployment Configuration (OPTIONAL if running backend only)**
 
@@ -346,7 +336,54 @@ Each strategy mode has specific venue requirements based on its configuration:
 
 ---
 
-### **8. Health Monitoring Configuration**
+### **7.5. ML Inference API**
+
+| Variable | Usage | Component | Purpose |
+|----------|-------|-----------|---------|
+| `BASIS_ML_API_TOKEN` | ML API authentication token | ML Data Provider | Live ML prediction API access |
+
+**Usage**: Required for ML strategies in live mode to fetch predictions from external ML inference API.
+
+**Environment**: Used by ML strategies (`ml_btc_directional`, `ml_usdt_directional`) when `BASIS_EXECUTION_MODE=live`.
+
+**Fallback**: If not set, ML strategies return neutral signals with warning logs.
+
+---
+
+### **8. Storage and Data Management**
+
+| Variable | Usage | Component | Purpose |
+|----------|-------|-----------|---------|
+| `BASIS_STORAGE_TYPE` | Storage backend type | Storage Infrastructure | Storage backend selection (default: filesystem) |
+
+**Storage Types**:
+- **filesystem**: Local file system storage (default)
+- **s3**: AWS S3 storage (future implementation)
+- **database**: Database storage (future implementation)
+
+---
+
+### **9. Live Data and Retry Configuration**
+
+| Variable | Usage | Component | Purpose |
+|----------|-------|-----------|---------|
+| `BASIS_LIVE_DATA__MAX_RETRIES` | Maximum retry attempts | Live Data Provider | Retry limit for live data connections (default: 3) |
+
+**Usage**: Controls retry behavior for live data provider when connecting to external APIs.
+
+---
+
+### **10. Authentication and Security**
+
+| Variable | Usage | Component | Purpose |
+|----------|-------|-----------|---------|
+| `JWT_SECRET_KEY` | JWT signing secret | API Authentication | JWT token signing for API authentication |
+
+**Security**: Required for JWT token generation and validation. Must be set to a secure random string in production.
+
+---
+
+### **11. Health Monitoring Configuration**
 | Variable | Usage | Component | Purpose |
 |----------|-------|-----------|---------|
 | `HEALTH_CHECK_INTERVAL` | Health check frequency | Docker healthcheck + health monitor script | How often to check backend health (format: "30s", "1m", etc.) |
@@ -361,7 +398,7 @@ Each strategy mode has specific venue requirements based on its configuration:
 
 ---
 
-### **9. Component-Specific Configuration**
+### **12. Component-Specific Configuration**
 | Variable | Usage | Component | Purpose |
 |----------|-------|-----------|---------|
 | `DATA_LOAD_TIMEOUT` | Data loading timeout (seconds) | Data Provider | Max time for data loading (default: 300) |

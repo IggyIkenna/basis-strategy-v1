@@ -209,6 +209,57 @@ def __init__(self, ...):
   - **Fields**: target_position, max_position, calculation_method
   - **Validation**: Must have required calculation fields
 
+### Strategy-Specific Config Fields
+- `lst_type`: str - Liquid staking token type
+  - **Usage**: Used in strategy initialization to set default LST type for staking operations
+  - **Required**: Yes
+  - **Used in**: `usdt_market_neutral_strategy.py:52`, `eth_leveraged_strategy.py:51`, etc.
+
+- `staking_protocol`: str - Staking protocol selection
+  - **Usage**: Used in strategy initialization to set default staking protocol
+  - **Required**: Yes
+  - **Used in**: `usdt_market_neutral_strategy.py:54`, `eth_leveraged_strategy.py:52`, etc.
+
+- `lending_protocol`: str - Lending protocol selection
+  - **Usage**: Used in strategy initialization to set default lending protocol
+  - **Required**: Yes
+  - **Used in**: `usdt_market_neutral_strategy.py:53`, `usdt_market_neutral_no_leverage_strategy.py:52`
+
+- `eth_allocation`: float - ETH allocation percentage
+  - **Usage**: Used in strategy initialization to set ETH allocation percentage
+  - **Required**: Yes
+  - **Used in**: `usdt_market_neutral_strategy.py:50`, `eth_leveraged_strategy.py:49`, etc.
+
+- `btc_allocation`: float - BTC allocation percentage
+  - **Usage**: Used in strategy initialization to set BTC allocation percentage
+  - **Required**: Yes
+  - **Used in**: `btc_basis_strategy.py:49`
+
+- `usdt_allocation`: float - USDT allocation percentage
+  - **Usage**: Used in strategy initialization to set USDT allocation percentage
+  - **Required**: Yes
+  - **Used in**: `usdt_market_neutral_strategy.py:49`, `usdt_market_neutral_no_leverage_strategy.py:49`
+
+- `funding_threshold`: float - Minimum funding rate threshold for basis trades
+  - **Usage**: Used in basis strategy initialization to set funding rate threshold
+  - **Required**: Yes
+  - **Used in**: `eth_basis_strategy.py:50`, `btc_basis_strategy.py:50`
+
+- `max_leverage`: float - Maximum leverage allowed
+  - **Usage**: Used in strategy initialization to set maximum leverage limit
+  - **Required**: Yes
+  - **Used in**: `eth_basis_strategy.py:51`, `btc_basis_strategy.py:51`
+
+- `hedge_allocation`: float - Hedge allocation percentage
+  - **Usage**: Used in leveraged strategy initialization to set hedge allocation
+  - **Required**: Yes
+  - **Used in**: `eth_leveraged_strategy.py:53`
+
+- `leverage_multiplier`: float - Leverage multiplier factor
+  - **Usage**: Used in strategy initialization to set leverage multiplier
+  - **Required**: Yes
+  - **Used in**: `usdt_market_neutral_strategy.py:51`, `eth_leveraged_strategy.py:50`
+
 ### Config Access Pattern
 ```python
 def update_state(self, timestamp: pd.Timestamp, trigger_source: str):
@@ -258,6 +309,13 @@ Data Provider → market_data → Strategy Manager → execution_instructions �
   - **Tokens needed**: ETH, USDT, BTC, LST tokens
   - **Update frequency**: 1min
   - **Usage**: Strategy decision making and market analysis
+
+#### ML Data (ML Strategy Manager Only)
+- **`get_ml_prediction`**: Get ML prediction for specific asset
+  - **Usage**: Used by MLDirectionalStrategyManager for trading signals
+  - **Parameters**: timestamp (pd.Timestamp), asset (str)
+  - **Returns**: Dict - ML prediction with signal and confidence
+  - **Implementation**: Calls data provider's get_ml_prediction method
 
 ### Query Pattern
 ```python
@@ -984,6 +1042,14 @@ self.event_logger.log_event(
 #### 4. Component-Specific Critical Events
 - **Action Decision Failed**: When strategy decision fails
 - **Instruction Block Generation Failed**: When instruction block creation fails
+
+#### 5. Event Patterns
+- **`event`**: Logs when strategy is created
+  - **Usage**: Logged during strategy factory creation
+  - **Data**: strategy_type, mode, config_hash, creation_time
+- **`event`**: Logs when strategy creation fails
+  - **Usage**: Logged when strategy creation encounters errors
+  - **Data**: error_message, strategy_type, mode, error_details
 - **Strategy Mode Invalid**: When strategy mode is invalid
 
 ### Event Retention & Output Formats
@@ -1305,6 +1371,57 @@ def decide_action(self, timestamp, current_exposure, risk_metrics, market_data):
         else:
             return 'entry_partial'  # Increase leverage
 ```
+
+### ML Directional Mode (BTC/USDT)
+```python
+def decide_action(self, timestamp, current_exposure, risk_metrics, market_data):
+    # Get ML prediction for current timestamp
+    ml_prediction = self.data_provider.get_ml_prediction(timestamp, self.asset)
+    
+    if not ml_prediction or ml_prediction['confidence'] < self.signal_threshold:
+        return 'sell_dust'  # No valid signal
+    
+    signal = ml_prediction['signal']
+    confidence = ml_prediction['confidence']
+    
+    if signal == 'long':
+        if current_exposure['perp_position'] <= 0:  # No long position
+            return 'entry_full'  # Enter long position
+        else:
+            return 'sell_dust'  # Already long, hold
+    elif signal == 'short':
+        if current_exposure['perp_position'] >= 0:  # No short position
+            return 'entry_full'  # Enter short position
+        else:
+            return 'sell_dust'  # Already short, hold
+    elif signal == 'neutral':
+        if current_exposure['perp_position'] != 0:  # Has position
+            return 'exit_full'  # Close position
+        else:
+            return 'sell_dust'  # Already neutral
+    else:  # 'hold'
+        return 'sell_dust'  # Hold current position
+```
+
+**ML-Specific Configuration**:
+```yaml
+ml_config:
+  signal_threshold: 0.65  # Minimum confidence to trade
+  max_position_size: 1.0  # 100% of equity per signal
+  candle_interval: "5min"  # 5-minute intervals
+```
+
+**Data Requirements**:
+- `ml_ohlcv_5min`: 5-minute OHLCV bars
+- `ml_predictions`: ML signals (long/short/neutral + TP/SL)
+- Asset prices for PnL calculation
+
+**Execution Actions**:
+- `open_perp_long`: Open long perp position with TP/SL
+- `open_perp_short`: Open short perp position with TP/SL
+- `close_perp`: Close existing perp position
+- `update_stop_loss`: Update stop-loss order
+- `update_take_profit`: Update take-profit order
 
 ---
 

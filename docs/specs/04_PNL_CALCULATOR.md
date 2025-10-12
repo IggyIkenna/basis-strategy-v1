@@ -134,6 +134,11 @@ def __init__(self, ...):
 - `initial_capital`: float - Starting capital
 
 ### Component-Specific Config (from component_config.pnl_calculator)
+- `pnl_calculator`: Dict - PnL calculator configuration
+  - **Usage**: Used in `pnl_calculator.py:179` to extract component-specific settings
+  - **Required**: Yes
+  - **Used in**: `pnl_calculator.py:179`
+
 - `attribution_types`: List[str] - Attribution types to calculate
   - **Usage**: Determines which attribution calculations to perform
   - **Required**: Yes
@@ -187,25 +192,39 @@ Data Provider → market_data → P&L Calculator → pnl_data → Results Store
 
 ## Data Provider Queries
 
+### Canonical Data Provider Pattern
+P&L Calculator uses the canonical `get_data(timestamp)` pattern to access all required data:
+
+```python
+# Canonical pattern - single get_data call
+data = self.data_provider.get_data(timestamp)
+prices = data['market_data']['prices']
+funding_rates = data['market_data']['rates']['funding']
+aave_indexes = data['protocol_data']['aave_indexes']
+```
+
 ### Data Types Requested
-`data = self.data_provider.get_data(timestamp)`
 
 #### Market Data
-- `prices`: Dict[str, float] - Token prices in USD
+- `market_data.prices`: Dict[str, float] - Token prices in USD
   - **Tokens needed**: ETH, USDT, BTC, LST tokens, AAVE tokens
   - **Update frequency**: 1min
   - **Usage**: P&L calculations and position valuation
 
-- `funding_rates`: Dict[str, float] - CEX funding rates
+- `market_data.rates.funding`: Dict[str, float] - CEX funding rates
   - **Rates needed**: BTC/ETH perp funding rates per venue
   - **Update frequency**: 8 hours (0/8/16 UTC)
   - **Usage**: Funding P&L calculations
 
 #### Protocol Data
-- `aave_indexes`: Dict[str, float] - AAVE liquidity indexes
+- `protocol_data.aave_indexes`: Dict[str, float] - AAVE liquidity indexes
   - **Tokens needed**: aETH, aUSDT, aBTC, variableDebtETH, etc.
   - **Update frequency**: 1min
   - **Usage**: AAVE position P&L calculations
+
+### Legacy Methods Removed
+The following legacy methods have been replaced with canonical pattern:
+- ~~`get_funding_rate()`~~ → `get_data()['market_data']['rates']['funding']`
 
 - `oracle_prices`: Dict[str, float] - LST oracle prices
   - **Tokens needed**: weETH, wstETH oracle prices

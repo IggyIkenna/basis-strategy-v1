@@ -12,7 +12,7 @@ This task implements complete configuration loading from YAML files (modes/venue
 **Reference**: `docs/IMPLEMENTATION_GAP_REPORT.md` - Component gap analysis
 
 ## QUALITY GATE
-**Quality Gate Script**: `scripts/test_config_validation_quality_gates.py`
+**Quality Gate Script**: `tests/unit/test_config_manager_unit.py`
 **Validation**: YAML config loading, Pydantic validation, fail-fast access
 **Status**: ✅ PASSING
 
@@ -97,7 +97,7 @@ This task implements complete configuration loading from YAML files (modes/venue
 
 ### 1. Configuration Loading Quality Gate
 ```bash
-# scripts/test_config_validation_quality_gates.py
+# tests/unit/test_config_manager_unit.py
 def test_config_loading():
     # Test all configuration files load correctly
     # Test Pydantic validation works
@@ -140,7 +140,7 @@ def test_config_loading():
 
 ## QUALITY GATE SCRIPT
 
-The quality gate script `scripts/test_config_validation_quality_gates.py` will:
+The quality gate script `tests/unit/test_config_manager_unit.py` will:
 
 1. **Test Configuration File Loading**
    - Verify all YAML files in configs/ directories load correctly

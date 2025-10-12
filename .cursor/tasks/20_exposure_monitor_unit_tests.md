@@ -10,9 +10,9 @@ This task aligns the existing Exposure Monitor implementation with canonical spe
 **Reference**: `tests/unit/` - Existing unit test structure
 
 ## QUALITY GATE
-**Quality Gate Script**: `scripts/monitor_quality_gates.py`
+**Quality Gate Script**: `tests/unit/test_exposure_monitor_unit.py`
 **Validation**: Exposure monitoring, asset filtering, unit tests
-**Status**: 🟡 GENERIC
+**Status**: ✅ IMPLEMENTED
 
 ## CRITICAL REQUIREMENTS
 
@@ -156,7 +156,7 @@ class TestExposureMonitorFunctionality:
 
 ### 5. Quality Gate Implementation
 ```python
-# scripts/test_exposure_monitor_unit_tests_quality_gates.py
+# tests/unit/test_exposure_monitor_unit.py
 class ExposureMonitorUnitTestQualityGates:
     def __init__(self):
         self.test_suite = self.setup_test_suite()
@@ -202,7 +202,7 @@ class ExposureMonitorUnitTestQualityGates:
 
 ### 1. Unit Test Quality Gate
 ```bash
-# scripts/test_exposure_monitor_unit_tests_quality_gates.py
+# tests/unit/test_exposure_monitor_unit.py
 def test_exposure_monitor_unit_tests():
     # Run all exposure monitor unit tests
     # Validate test coverage meets target
@@ -251,7 +251,7 @@ def test_exposure_monitor_unit_tests():
 
 ## QUALITY GATE SCRIPT
 
-The quality gate script `scripts/test_exposure_monitor_unit_tests_quality_gates.py` will:
+The quality gate script `tests/unit/test_exposure_monitor_unit.py` will:
 
 1. **Test Exposure Calculations**
    - Verify exposure calculations for all asset types

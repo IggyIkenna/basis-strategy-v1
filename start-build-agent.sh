@@ -132,7 +132,7 @@ execute_task() {
     log "Reading task requirements from: $task_file"
     
     # Extract quality gate script if mentioned
-    local qg_script=$(grep -o "scripts/test_[a-zA-Z_]*_quality_gates.py" "$task_file" | head -1)
+    local qg_script=$(grep -o "tests/[a-zA-Z_/]*test_[a-zA-Z_]*\.py" "$task_file" | head -1)
     
     if [ -n "$qg_script" ] && [ -f "$qg_script" ]; then
         log "Running task-specific quality gate: $qg_script"

@@ -47,6 +47,13 @@ def analyze_data_flow_patterns(file_path: str) -> Dict[str, any]:
         with open(file_path, 'r', encoding='utf-8') as f:
             content = f.read()
         
+        # Check for canonical data provider patterns
+        canonical_patterns = {
+            'uses_get_data': bool(re.search(r'data_provider\.get_data\(|self\.data_provider\.get_data\(', content)),
+            'uses_standardized_structure': bool(re.search(r"market_data\['prices'\]|market_data\['rates'\]|protocol_data\['aave_indexes'\]|execution_data\['wallet_balances'\]", content)),
+            'non_canonical_patterns': len(re.findall(r'data_provider\.get_([a-zA-Z_]+)\(|self\.data_provider\.get_([a-zA-Z_]+)\(', content))
+        }
+        
         # Parse AST
         tree = ast.parse(content)
         
@@ -56,7 +63,8 @@ def analyze_data_flow_patterns(file_path: str) -> Dict[str, any]:
             'parameter_usage': [],
             'data_flow_violations': [],
             'method_signatures': [],
-            'data_flow_compliant': True
+            'data_flow_compliant': True,
+            'canonical_patterns': canonical_patterns
         }
         
         # Find all method definitions

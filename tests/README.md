@@ -1,306 +1,173 @@
-# Testing Overview 🧪
+# Basis Strategy Test Suite
 
-## 🎯 **Testing Strategy**
+## Overview
 
-This directory contains all tests for the Basis Strategy platform, organized by type and component.
+This directory contains the complete test suite for the Basis Strategy project, organized into a conventional 3-tier testing structure that replaces the previous monolithic quality gates.
 
----
+## 3-Tier Testing Philosophy
 
-## 📁 **Directory Structure**
+### 1. Unit Tests (`tests/unit/`)
+- **Purpose**: Component isolation with mocked dependencies
+- **Scope**: Individual component behavior testing
+- **Dependencies**: Minimal, using pytest fixtures and mocks
+- **Execution Time**: Fast (~10s for all unit tests)
+- **Critical**: Yes - must pass for system to be considered functional
 
-### **Unit Tests** (`tests/unit/`)
-Fast, isolated tests for individual components:
-- `components/` - Component unit tests
-- `math/` - Mathematical calculation tests  
-- `services/` - Service layer tests
+### 2. Integration Tests (`tests/integration/`)
+- **Purpose**: Component data flow validation per WORKFLOW_GUIDE.md
+- **Scope**: Component interaction patterns and data flows
+- **Dependencies**: Real components with minimal real data
+- **Execution Time**: Medium (~60s for all integration tests)
+- **Critical**: Yes - validates component interactions
 
-### **Integration Tests** (`tests/integration/`)
-Component coordination and interaction tests:
-- Component integration tests
-- API integration tests
-- Database integration tests
+### 3. E2E Tests (`tests/e2e/`)
+- **Purpose**: Full strategy execution with real data
+- **Scope**: Complete strategy workflows
+- **Dependencies**: Full system with real data
+- **Execution Time**: Slow (~120s for all E2E tests)
+- **Critical**: No - only run when unit + integration tests pass
 
-### **End-to-End Tests** (`tests/e2e/`)
-Full workflow and user journey tests:
-- Frontend wizard flow tests
-- Complete backtest workflow tests
-- Deployment and production tests
+## Directory Structure
 
-### **Test Data & Fixtures** (`tests/fixtures/`)
-- `test_data/` - Sample data files for testing
-- `mock_responses/` - Mock API responses
-- `sample_configs/` - Test configuration files
+```
+tests/
+├── unit/                          # 8 component isolation tests
+│   ├── conftest.py               # Shared pytest fixtures
+│   ├── test_position_monitor_unit.py
+│   ├── test_exposure_monitor_unit.py
+│   ├── test_risk_monitor_unit.py
+│   ├── test_pnl_calculator_unit.py
+│   ├── test_strategy_manager_unit.py
+│   ├── test_execution_manager_unit.py
+│   ├── test_data_provider_unit.py
+│   └── test_config_manager_unit.py
+├── integration/                   # 5 component data flow tests
+│   ├── conftest.py               # Real component fixtures
+│   ├── test_data_flow_position_to_exposure.py
+│   ├── test_data_flow_exposure_to_risk.py
+│   ├── test_data_flow_risk_to_strategy.py
+│   ├── test_data_flow_strategy_to_execution.py
+│   └── test_tight_loop_reconciliation.py
+└── e2e/                          # 4 strategy execution tests
+    ├── test_pure_lending_e2e.py
+    ├── test_btc_basis_e2e.py
+    ├── test_eth_basis_e2e.py
+    └── test_usdt_market_neutral_e2e.py
+```
 
-### **Test Utilities** (`tests/mocks/` & `tests/helpers/`)
-- `mocks/` - Mock objects and test doubles
-- `helpers/` - Test helper functions and utilities
+## Running Tests
 
----
-
-## 🚀 **Running Tests**
-
-### **Run All Tests**
+### Run All Tests
 ```bash
-pytest
+python scripts/run_quality_gates.py
 ```
 
-### **Run by Category**
+### Run Unit Tests Only
 ```bash
-# Unit tests only
-pytest tests/unit/
-
-# Integration tests only
-pytest tests/integration/
-
-# E2E tests only
-pytest tests/e2e/
-
-# Specific component tests
-pytest tests/unit/components/test_position_monitor.py
+python scripts/run_quality_gates.py --category unit
 ```
 
-### **Frontend Testing with Docker**
-For frontend testing with proper dependency management:
-
+### Run Integration Tests Only
 ```bash
-# Start frontend test environment (includes backend)
-./deploy/test-frontend.sh
-
-# Frontend available at: http://localhost:5173
-# Backend available at: http://localhost:8001
+python scripts/run_quality_gates.py --category integration_data_flows
 ```
 
-**Docker Setup Files**:
-- `deploy/Dockerfile.frontend-test` - Frontend testing environment
-- `deploy/docker-compose.frontend-test.yml` - Complete test environment
-- `deploy/test-frontend.sh` - Easy testing script
-
-**Benefits**:
-- ✅ Consistent dependency management
-- ✅ Isolated testing environment
-- ✅ No local Node.js/npm installation required
-- ✅ Backend integration testing included
-
-### **Run with Coverage**
+### Run E2E Tests Only
 ```bash
-pytest --cov=backend/src tests/
+python scripts/run_quality_gates.py --category e2e_strategies
 ```
 
-### **Run Specific Test**
+### Run Specific Test File
 ```bash
-pytest tests/unit/components/test_position_monitor.py::TestPositionMonitor::test_balance_tracking
+python -m pytest tests/unit/test_position_monitor_unit.py -v
 ```
 
----
+## Smart Skipping Logic
 
-## 📋 **Test Categories**
+E2E tests are automatically skipped if:
+- Unit tests < 80% passing
+- Integration tests < 80% passing
 
-### **Component Tests**
-- **Position Monitor** - Token and derivative balance tracking
-- **Exposure Monitor** - AAVE conversion and net delta calculation
-- **Risk Monitor** - LTV, margin, and liquidation risk assessment
-- **P&L Calculator** - Balance and attribution P&L calculation
-- **Strategy Manager** - Mode detection and orchestration
-- **CEX Execution Manager** - Spot and perpetual futures trading
-- **OnChain Execution Manager** - AAVE and staking operations
-- **Event Logger** - Audit-grade event tracking
-- **Data Provider** - Historical data loading and caching
+This prevents wasting time on E2E tests when the foundation is broken.
 
-### **Integration Tests**
-- **EventDrivenStrategyEngine** - Component coordination
-- **API Endpoints** - Backend API integration
-- **Component Chain** - Position → Exposure → Risk → P&L flow
+## Migration from Scripts
 
-### **E2E Tests**
-- **Frontend Wizard** - Complete wizard flow
-- **Frontend Results** - Results display and interaction
-- **Backtest Workflow** - End-to-end backtesting
-- **Deployment** - Production deployment validation
+This test structure replaces the previous `scripts/` quality gates:
 
----
+### Before (Scripts):
+- **2/23 passing (8.7%)** - misleading due to cascading failures
+- 40+ scripts, poorly organized
+- Massive codependency issues
+- Can't identify root causes
+- Tests take 150+ seconds
+- Most failures due to integration issues
 
-## 🧪 **Test Requirements**
+### After (Tests):
+- **Clear 3-tier structure**: Unit → Integration → E2E
+- **Pinpoint failures**: Unit tests identify exact component issues
+- **Data flow validation**: Integration tests validate WORKFLOW_GUIDE.md patterns
+- **Meaningful E2E**: Only run when foundation solid
+- **Faster execution**: Unit tests run in parallel (~10s), skip E2E if foundation broken
+- **Expected passing rate**: 80%+ for unit tests, 70%+ for integration, E2E depends on fixes
 
-### **Unit Tests Must Include**
-- ✅ Component initialization
-- ✅ Core functionality
-- ✅ Error handling
-- ✅ Edge cases
-- ✅ Input validation
-- ✅ Output verification
+## Quality Gate Integration
 
-### **Integration Tests Must Include**
-- ✅ Component interactions
-- ✅ Data flow between components
-- ✅ Error propagation
-- ✅ Performance requirements
-- ✅ Direct method calls
-- ✅ Event ordering
+The quality gate runner (`scripts/run_quality_gates.py`) automatically:
+1. Runs unit tests first (critical)
+2. Runs integration tests second (critical)
+3. Runs E2E tests last (non-critical, only if foundation solid)
+4. Provides clear tier-based reporting
+5. Skips E2E tests if unit/integration < 80% passing
 
-### **E2E Tests Must Include**
-- ✅ Complete user workflows
-- ✅ Frontend-backend integration
-- ✅ API endpoint functionality
-- ✅ Data persistence
-- ✅ Performance benchmarks
-- ✅ Error recovery
+## Adding New Tests
 
----
+### For Unit Tests:
+1. Create test file in `tests/unit/`
+2. Use fixtures from `conftest.py`
+3. Test component in isolation with mocks
+4. Add to `unit` category in `run_quality_gates.py`
 
-## 📊 **Test Data**
+### For Integration Tests:
+1. Create test file in `tests/integration/`
+2. Use real component fixtures
+3. Test component interactions and data flows
+4. Add to `integration_data_flows` category
 
-### **Sample Data Files**
-- `test_event_log.csv` - Sample event log data
-- Mock market data for backtesting
-- Sample configuration files
-- Test user scenarios
+### For E2E Tests:
+1. Create test file in `tests/e2e/`
+2. Test complete strategy execution
+3. Use real data and full system
+4. Add to `e2e_strategies` category
 
-### **Mock Objects**
-- Mock data providers
-- Mock position monitors
-- Mock event loggers
-- Mock external APIs
+## Troubleshooting
 
----
+### Unit Tests Failing:
+1. Check component initialization
+2. Verify mock fixtures are correct
+3. Check component configuration
+4. Review component error handling
 
-## 🔧 **Test Configuration**
+### Integration Tests Failing:
+1. Check component data flows
+2. Verify real data availability
+3. Check component interactions
+4. Review WORKFLOW_GUIDE.md patterns
 
-### **pytest.ini**
-```ini
-[tool:pytest]
-testpaths = tests
-python_files = test_*.py
-python_classes = Test*
-python_functions = test_*
-addopts = -v --tb=short
-```
+### E2E Tests Failing:
+1. Check if unit/integration tests pass first
+2. Verify real data availability
+3. Check strategy configuration
+4. Review complete system setup
 
-### **conftest.py**
-Shared fixtures and test configuration for all tests.
+### All Tests Failing:
+1. Check data directory exists
+2. Verify backend dependencies
+3. Check configuration files
+4. Review system requirements
 
----
+## Reference Documentation
 
-## 📈 **Test Coverage Goals**
-
-- **Unit Tests**: 90%+ coverage for all components
-- **Integration Tests**: 80%+ coverage for component interactions
-- **E2E Tests**: 100% coverage for critical user workflows
-
----
-
-## 🚨 **Test Failures**
-
-### **Current Status** (October 3, 2025)
-- ✅ **Unit Tests**: 9/9 component tests passing (all async issues fixed)
-- ✅ **Integration Tests**: 4/4 passing (all async decorators added, data paths fixed)
-- ❌ **E2E Tests**: Not yet implemented
-- ✅ **Import Paths**: All fixed and working
-- ✅ **Data Path Resolution**: Fixed for all test execution directories
-- ✅ **Async Test Support**: All tests now properly decorated with @pytest.mark.asyncio
-
-### **Common Issues**
-1. **Import Errors** - ✅ FIXED: All import paths corrected
-2. **Component Communication** - Using direct method calls
-3. **Data Files** - ✅ FIXED: Data path resolution works from any directory
-4. **Environment Variables** - Check configuration
-5. **Async Tests** - ✅ FIXED: All async tests now have proper decorators
-6. **Data Path Resolution** - ✅ FIXED: Integration tests use absolute paths
-
-### **Debugging**
-```bash
-# Run with verbose output
-pytest -v -s
-
-# Run single test with debugging
-pytest -v -s tests/unit/components/test_position_monitor.py::TestPositionMonitor::test_balance_tracking
-
-# Check test discovery
-pytest --collect-only
-```
-
----
-
-## 📝 **Writing Tests**
-
-### **Test Naming Convention**
-- Files: `test_<component_name>.py`
-- Classes: `Test<ComponentName>`
-- Methods: `test_<functionality>`
-
-### **Test Structure**
-```python
-import pytest
-from unittest.mock import Mock, AsyncMock
-
-class TestComponentName:
-    """Test suite for ComponentName."""
-    
-    @pytest.fixture
-    def mock_dependency(self):
-        """Create mock dependency."""
-        return Mock()
-    
-    @pytest.mark.asyncio
-    async def test_core_functionality(self, mock_dependency):
-        """Test core component functionality."""
-        # Arrange
-        component = ComponentName(mock_dependency)
-        
-        # Act
-        result = await component.some_method()
-        
-        # Assert
-        assert result is not None
-        assert result['status'] == 'success'
-```
-
----
-
-## 🎯 **Success Criteria**
-
-Tests are considered successful when:
-- ✅ All tests pass
-- ✅ Coverage targets met
-- ✅ Performance benchmarks met
-- ✅ No flaky tests
-- ✅ Clear error messages
-- ✅ Fast execution time
-
-**Total Test Files**: 18+ test files across all categories
-**Target Coverage**: 90%+ for critical components
-**Execution Time**: < 5 minutes for full test suite
-
----
-
-## 🔄 **Next Steps for Testing**
-
-### **Immediate Priorities**
-1. ✅ **Async Test Issues** - FIXED: All async tests now working with proper decorators
-
-2. **Create E2E Tests** - Implement comprehensive end-to-end tests
-   - Frontend wizard flow tests
-   - Complete backtest workflow tests
-   - API integration tests
-
-3. **Frontend Testing** - Use Docker setup for frontend testing
-   ```bash
-   ./deploy/test-frontend.sh
-   ```
-
-4. **Test Data Organization** - Consider creating separate test fixtures
-   - Move test-specific data to `tests/fixtures/`
-   - Keep real data in `data/` for integration tests
-   - Create mock data for unit tests
-
-### **Testing Roadmap**
-- **Week 1**: ✅ COMPLETE - Fixed async tests, all tests passing
-- **Week 2**: Create E2E test framework, implement frontend integration tests
-- **Week 3**: Performance testing and optimization
-- **Week 4**: Production deployment testing
-
-### **Recent Fixes Applied**
-- ✅ **Async Test Decorators**: Added `@pytest.mark.asyncio` to all async test functions
-- ✅ **Data Path Resolution**: Fixed integration tests to use absolute paths for data directory
-- ✅ **Import Path Corrections**: Updated all import statements after file reorganization
-- ✅ **Method Name Fixes**: Corrected test method calls to match actual implementation
-- ✅ **Test Structure**: All 13 tests now passing (9 unit + 4 integration)
+- **Test Organization Guide**: `scripts/TEST_ORGANIZATION.md`
+- **Component Workflows**: `docs/WORKFLOW_GUIDE.md`
+- **Architecture Reference**: `docs/REFERENCE_ARCHITECTURE_CANONICAL.md`
+- **Quality Gates**: `scripts/run_quality_gates.py`

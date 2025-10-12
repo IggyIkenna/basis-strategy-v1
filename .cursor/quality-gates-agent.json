@@ -4,7 +4,7 @@
   "web_browser_mode": true,
   "compatible_with_web_agent": true,
   "focus_areas": [
-    "scripts/",
+    "tests/",
     "docs/QUALITY_GATES.md",
     "tests/",
     "backend/src/basis_strategy_v1/"
@@ -12,7 +12,9 @@
   "context_files": [
     "docs/QUALITY_GATES.md",
     "scripts/run_quality_gates.py",
-    "scripts/test_*.py",
+    "tests/unit/test_*.py",
+    "tests/integration/test_*.py",
+    "tests/e2e/test_*.py",
     "tests/",
     "backend/src/basis_strategy_v1/",
     ".cursor/tasks/"

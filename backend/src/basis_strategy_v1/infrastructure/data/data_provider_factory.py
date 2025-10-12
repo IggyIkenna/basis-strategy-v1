@@ -86,7 +86,7 @@ def create_data_provider(
 
 def _create_mode_specific_provider(execution_mode: str, config: Dict[str, Any]) -> 'BaseDataProvider':
     """
-    Create mode-specific data provider.
+    Create mode-specific data provider using canonical architecture.
     
     Args:
         execution_mode: 'backtest' or 'live'
@@ -97,34 +97,56 @@ def _create_mode_specific_provider(execution_mode: str, config: Dict[str, Any]) 
     """
     mode = config['mode']
     
-    # Import mode-specific providers
-    if mode == 'pure_lending':
-        from ...data_provider.pure_lending_data_provider import PureLendingDataProvider
-        return PureLendingDataProvider(execution_mode, config)
+    # Create mode-specific provider using canonical architecture
+    provider_map = {
+        'pure_lending': 'PureLendingDataProvider',
+        'btc_basis': 'BTCBasisDataProvider',
+        'eth_basis': 'ETHBasisDataProvider',
+        'eth_staking_only': 'ETHStakingOnlyDataProvider',
+        'eth_leveraged': 'ETHLeveragedDataProvider',
+        'usdt_market_neutral_no_leverage': 'USDTMarketNeutralNoLeverageDataProvider',
+        'usdt_market_neutral': 'USDTMarketNeutralDataProvider',
+        'ml_btc_directional': 'MLDirectionalDataProvider',  # NEW
+        'ml_usdt_directional': 'MLDirectionalDataProvider'  # NEW
+    }
     
-    elif mode == 'btc_basis':
-        from ...data_provider.btc_basis_data_provider import BTCBasisDataProvider
-        return BTCBasisDataProvider(execution_mode, config)
+    if mode not in provider_map:
+        raise ValueError(f"Unknown strategy mode: {mode}")
     
-    elif mode == 'eth_basis':
-        from ...data_provider.eth_basis_data_provider import ETHBasisDataProvider
-        return ETHBasisDataProvider(execution_mode, config)
-    
-    elif mode == 'eth_leveraged':
-        from ...data_provider.eth_leveraged_data_provider import ETHLeveragedDataProvider
-        return ETHLeveragedDataProvider(execution_mode, config)
-    
-    elif mode == 'eth_staking_only':
-        from ...data_provider.eth_staking_only_data_provider import ETHStakingOnlyDataProvider
-        return ETHStakingOnlyDataProvider(execution_mode, config)
-    
-    elif mode == 'usdt_market_neutral_no_leverage':
-        from ...data_provider.usdt_market_neutral_no_leverage_data_provider import USDTMarketNeutralNoLeverageDataProvider
-        return USDTMarketNeutralNoLeverageDataProvider(execution_mode, config)
-    
-    elif mode == 'usdt_market_neutral':
-        from ...data_provider.usdt_market_neutral_data_provider import USDTMarketNeutralDataProvider
-        return USDTMarketNeutralDataProvider(execution_mode, config)
-    
+    # Import and create the appropriate provider
+    if execution_mode == 'live':
+        # For live mode, use live data provider (to be implemented)
+        from .live_data_provider import LiveDataProvider
+        return LiveDataProvider(config=config, mode=mode)
     else:
-        raise ValueError(f"Unknown mode: {mode}. Supported modes: pure_lending, btc_basis, eth_basis, eth_leveraged, eth_staking_only, usdt_market_neutral_no_leverage, usdt_market_neutral")
+        # For backtest mode, use mode-specific historical providers
+        if mode == 'pure_lending':
+            from .pure_lending_data_provider import PureLendingDataProvider
+            return PureLendingDataProvider(execution_mode, config)
+        elif mode == 'btc_basis':
+            from .btc_basis_data_provider import BTCBasisDataProvider
+            return BTCBasisDataProvider(execution_mode, config)
+        elif mode == 'eth_basis':
+            from .eth_basis_data_provider import ETHBasisDataProvider
+            return ETHBasisDataProvider(execution_mode, config)
+        elif mode == 'eth_staking_only':
+            from .eth_staking_only_data_provider import ETHStakingOnlyDataProvider
+            return ETHStakingOnlyDataProvider(execution_mode, config)
+        elif mode == 'eth_leveraged':
+            from .eth_leveraged_data_provider import ETHLeveragedDataProvider
+            return ETHLeveragedDataProvider(execution_mode, config)
+        elif mode == 'usdt_market_neutral_no_leverage':
+            from .usdt_market_neutral_no_leverage_data_provider import USDTMarketNeutralNoLeverageDataProvider
+            return USDTMarketNeutralNoLeverageDataProvider(execution_mode, config)
+        elif mode == 'usdt_market_neutral':
+            from .usdt_market_neutral_data_provider import USDTMarketNeutralDataProvider
+            return USDTMarketNeutralDataProvider(execution_mode, config)
+        elif mode in ['ml_btc_directional', 'ml_usdt_directional']:
+            # TODO: Create MLDirectionalDataProvider class
+            from .ml_directional_data_provider import MLDirectionalDataProvider
+            return MLDirectionalDataProvider(execution_mode, config)
+        else:
+            # Fallback to config-driven historical data provider (legacy)
+            from .config_driven_historical_data_provider import ConfigDrivenHistoricalDataProvider
+            return ConfigDrivenHistoricalDataProvider(execution_mode, config)
+    

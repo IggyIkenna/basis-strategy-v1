@@ -1,6 +1,6 @@
 # Data Provider Component Specification
 
-**Last Reviewed**: October 10, 2025
+**Last Reviewed**: October 12, 2025
 
 ## Purpose
 Load and provide market data with hourly alignment enforcement and comprehensive validation for both backtest and live modes.
@@ -92,12 +92,245 @@ class DataProviderFactory:
             provider = PureLendingDataProvider(execution_mode, config)
         elif mode == 'btc_basis':
             provider = BTCBasisDataProvider(execution_mode, config)
-        # ... etc
+        elif mode == 'eth_basis':
+            provider = ETHBasisDataProvider(execution_mode, config)
+        elif mode == 'eth_staking_only':
+            provider = ETHStakingOnlyDataProvider(execution_mode, config)
+        elif mode == 'eth_leveraged':
+            provider = ETHLeveragedDataProvider(execution_mode, config)
+        elif mode == 'usdt_market_neutral_no_leverage':
+            provider = USDTMarketNeutralNoLeverageDataProvider(execution_mode, config)
+        elif mode == 'usdt_market_neutral':
+            provider = USDTMarketNeutralDataProvider(execution_mode, config)
         
         # Validate that provider can satisfy data requirements
         provider.validate_data_requirements(data_requirements)
         return provider
 ```
+
+## Mode-Specific Provider Implementations
+
+### 1. PureLendingDataProvider
+**Available Data Types**: `usdt_prices`, `aave_lending_rates`, `aave_indexes`, `gas_costs`, `execution_costs`
+
+**Canonical Data Structure**:
+```python
+{
+    'market_data': {
+        'prices': {'USDT': 1.0, 'ETH': 3000.0},
+        'rates': {'aave_usdt_supply': 0.05}
+    },
+    'protocol_data': {
+        'aave_indexes': {'aUSDT': 1.05}
+    },
+    'staking_data': {},
+    'execution_data': {
+        'wallet_balances': {...},
+        'smart_contract_balances': {...},
+        'gas_costs': {...},
+        'execution_costs': {...}
+    }
+}
+```
+
+### 2. BTCBasisDataProvider
+**Available Data Types**: `btc_prices`, `btc_futures`, `funding_rates`, `gas_costs`, `execution_costs`
+
+**Canonical Data Structure**:
+```python
+{
+    'market_data': {
+        'prices': {'BTC': 45000.0, 'USDT': 1.0, 'ETH': 3000.0},
+        'rates': {'funding': {'BTC_binance': 0.0001, 'BTC_bybit': 0.0001}}
+    },
+    'protocol_data': {
+        'perp_prices': {'BTC_binance': 45000.0, 'BTC_bybit': 45000.0}
+    },
+    'staking_data': {},
+    'execution_data': {
+        'wallet_balances': {...},
+        'cex_spot_balances': {...},
+        'cex_derivatives_balances': {...},
+        'gas_costs': {...},
+        'execution_costs': {...}
+    }
+}
+```
+
+### 3. ETHBasisDataProvider
+**Available Data Types**: `eth_prices`, `eth_futures`, `funding_rates`, `gas_costs`, `execution_costs`
+
+**Canonical Data Structure**:
+```python
+{
+    'market_data': {
+        'prices': {'ETH': 3000.0, 'USDT': 1.0, 'BTC': 45000.0},
+        'rates': {'funding': {'ETH_binance': 0.0001, 'ETH_bybit': 0.0001}}
+    },
+    'protocol_data': {
+        'perp_prices': {'ETH_binance': 3000.0, 'ETH_bybit': 3000.0}
+    },
+    'staking_data': {},
+    'execution_data': {
+        'wallet_balances': {...},
+        'cex_spot_balances': {...},
+        'cex_derivatives_balances': {...},
+        'gas_costs': {...},
+        'execution_costs': {...}
+    }
+}
+```
+
+### 4. ETHStakingOnlyDataProvider
+**Available Data Types**: `eth_prices`, `weeth_prices`, `staking_rewards`, `gas_costs`, `execution_costs`
+
+**Canonical Data Structure**:
+```python
+{
+    'market_data': {
+        'prices': {'ETH': 3000.0, 'weETH': 3000.0, 'USDT': 1.0},
+        'rates': {}
+    },
+    'protocol_data': {
+        'aave_indexes': {},
+        'oracle_prices': {},
+        'perp_prices': {}
+    },
+    'staking_data': {
+        'rewards': {'ETH': 0.001, 'EIGEN': 0.0001},
+        'apr': {'ETH': 0.05, 'EIGEN': 0.10}
+    },
+    'execution_data': {
+        'wallet_balances': {...},
+        'smart_contract_balances': {...},
+        'gas_costs': {...},
+        'execution_costs': {...}
+    }
+}
+```
+
+### 5. ETHLeveragedDataProvider
+**Available Data Types**: `eth_prices`, `weeth_prices`, `aave_lending_rates`, `staking_rewards`, `eigen_rewards`, `gas_costs`, `execution_costs`, `aave_risk_params`
+
+**Canonical Data Structure**:
+```python
+{
+    'market_data': {
+        'prices': {'ETH': 3000.0, 'weETH': 3000.0, 'USDT': 1.0},
+        'rates': {'aave_eth_supply': 0.03}
+    },
+    'protocol_data': {
+        'aave_indexes': {'aETH': 1.05, 'variableDebtWETH': 1.02},
+        'risk_params': {'ltv': 0.8, 'liquidation_threshold': 0.85}
+    },
+    'staking_data': {
+        'rewards': {'ETH': 0.001},
+        'eigen_rewards': {'EIGEN': 0.0001}
+    },
+    'execution_data': {
+        'wallet_balances': {...},
+        'smart_contract_balances': {...},
+        'gas_costs': {...},
+        'execution_costs': {...}
+    }
+}
+```
+
+### 6. USDTMarketNeutralNoLeverageDataProvider
+**Available Data Types**: `eth_prices`, `weeth_prices`, `eth_futures`, `funding_rates`, `staking_rewards`, `gas_costs`, `execution_costs`
+
+**Canonical Data Structure**:
+```python
+{
+    'market_data': {
+        'prices': {'ETH': 3000.0, 'weETH': 3000.0, 'USDT': 1.0},
+        'rates': {'funding': {'ETH_binance': 0.0001, 'ETH_bybit': 0.0001}}
+    },
+    'protocol_data': {
+        'perp_prices': {'ETH_binance': 3000.0, 'ETH_bybit': 3000.0}
+    },
+    'staking_data': {
+        'rewards': {'ETH': 0.001, 'EIGEN': 0.0001}
+    },
+    'execution_data': {
+        'wallet_balances': {...},
+        'cex_derivatives_balances': {...},
+        'gas_costs': {...},
+        'execution_costs': {...}
+    }
+}
+```
+
+### 7. USDTMarketNeutralDataProvider
+**Available Data Types**: `eth_prices`, `weeth_prices`, `eth_futures`, `funding_rates`, `aave_lending_rates`, `staking_rewards`, `gas_costs`, `execution_costs`, `aave_risk_params`
+
+**Canonical Data Structure**:
+```python
+{
+    'market_data': {
+        'prices': {'ETH': 3000.0, 'weETH': 3000.0, 'USDT': 1.0},
+        'rates': {
+            'funding': {'ETH_binance': 0.0001, 'ETH_bybit': 0.0001},
+            'aave_eth_supply': 0.03
+        }
+    },
+    'protocol_data': {
+        'aave_indexes': {'aETH': 1.05, 'variableDebtWETH': 1.02},
+        'perp_prices': {'ETH_binance': 3000.0, 'ETH_bybit': 3000.0},
+        'risk_params': {'ltv': 0.8, 'liquidation_threshold': 0.85}
+    },
+    'staking_data': {
+        'rewards': {'ETH': 0.001, 'EIGEN': 0.0001}
+    },
+    'execution_data': {
+        'wallet_balances': {...},
+        'smart_contract_balances': {...},
+        'cex_derivatives_balances': {...},
+        'gas_costs': {...},
+        'execution_costs': {...}
+    }
+}
+```
+
+### 8. MLDirectionalDataProvider
+**Available Data Types**: `ml_ohlcv_5min`, `ml_predictions`, `btc_usd_prices`, `eth_usd_prices`, `usdt_usd_prices`, `gas_costs`, `execution_costs`
+
+**Canonical Data Structure**:
+```python
+{
+    'market_data': {
+        'prices': {'BTC': 50000.0, 'USDT': 1.0},  # Asset-specific
+        'rates': {}  # No funding rates for directional strategies
+    },
+    'protocol_data': {
+        'perp_prices': {'BTC-PERP': 50000.0}  # Asset-specific perp
+    },
+    'staking_data': {},  # No staking for ML directional
+    'execution_data': {
+        'wallet_balances': {},
+        'smart_contract_balances': {},
+        'cex_spot_balances': {},
+        'cex_derivatives_balances': {},
+        'gas_costs': {'binance_perp': 0.0001, 'bybit_perp': 0.0001, 'okx_perp': 0.0001},
+        'execution_costs': {'binance_perp': 0.0001, 'bybit_perp': 0.0001, 'okx_perp': 0.0001}
+    }
+}
+```
+
+**ML-Specific Methods**:
+```python
+def get_ml_ohlcv(self, timestamp: pd.Timestamp, symbol: str) -> Optional[Dict]:
+    """Get 5-min OHLCV bar for ML strategies"""
+    
+def get_ml_prediction(self, timestamp: pd.Timestamp, symbol: str) -> Optional[Dict]:
+    """Get ML prediction (signal, confidence, TP/SL)"""
+```
+
+**Data Sources**:
+- **Backtest**: CSV files in `data/market_data/ml/` and `data/ml_data/predictions/`
+- **Live**: External ML inference API via `BASIS_ML_API_TOKEN`
+
+**Supported Modes**: `ml_btc_directional`, `ml_usdt_directional`
 
 ## State
 - data: Dict[str, pd.DataFrame] (loaded data by type)
@@ -141,6 +374,22 @@ Components NEVER receive these as method parameters during runtime.
   - **backtest_data_range**: Backtest data date range
   - **live_update_interval**: Live data update interval
 
+### Infrastructure Config Fields
+- `hedge_venues`: List[str] - List of venues used for hedging operations
+  - **Usage**: Used in `historical_data_provider.py:385-386` to load futures data and funding rates for ETH hedging
+  - **Required**: Yes
+  - **Used in**: `historical_data_provider.py:385-386`
+
+- `lst_type`: str - Liquid staking token type
+  - **Usage**: Used in `historical_data_provider.py:369` to determine LST type for data loading
+  - **Required**: Yes
+  - **Used in**: `historical_data_provider.py:369`
+
+- `rewards_mode`: str - Rewards calculation mode
+  - **Usage**: Used in data provider to determine how rewards are calculated and distributed
+  - **Required**: Yes
+  - **Used in**: Data provider reward calculations
+
 ## Data Provider Queries
 
 ### Market Data Queries
@@ -153,6 +402,30 @@ Components NEVER receive these as method parameters during runtime.
 - **protocol_rates**: Lending/borrowing rates from protocols
 - **stake_rates**: Staking rewards and rates
 - **protocol_balances**: Current balances in protocols
+
+### Additional Data Provider Queries
+- `current_data` - Current market data snapshot
+- `funding_rate` - Current funding rate data
+- `gas_cost` - Gas cost estimates
+- `execution_cost` - Execution cost estimates
+- `wallet_balances` - Wallet balance data
+- `cex_spot_balances` - CEX spot balance data
+- `cex_derivatives_balances` - CEX derivatives balance data
+- `smart_contract_balances` - Smart contract balance data
+- `market_price` - Current market price data
+- `liquidity_index` - Liquidity index data
+- `market_data_snapshot` - Market data snapshot
+- `get_current_data` - Get current data method
+- `get_funding_rate` - Get funding rate method
+- `get_gas_cost` - Get gas cost method
+- `get_execution_cost` - Get execution cost method
+- `get_wallet_balances` - Get wallet balances method
+- `get_cex_spot_balances` - Get CEX spot balances method
+- `get_cex_derivatives_balances` - Get CEX derivatives balances method
+- `get_smart_contract_balances` - Get smart contract balances method
+- `get_market_price` - Get market price method
+- `get_liquidity_index` - Get liquidity index method
+- `get_market_data_snapshot` - Get market data snapshot method
 
 ### Data NOT Available from DataProvider
 - **Component state** - handled by individual components
@@ -269,6 +542,11 @@ self.event_logger.log_event(
 - **Data Loading Failed**: When data loading fails
 - **Data Validation Failed**: When data validation fails
 - **Data Alignment Failed**: When hourly alignment fails
+
+#### 5. Strategy Event Patterns
+- **`strategy`**: Logs strategy-related data events
+  - **Usage**: Logged for strategy-specific data operations
+  - **Data**: strategy_type, mode, data_requirements, performance_metrics
 
 ### Event Retention & Output Formats
 

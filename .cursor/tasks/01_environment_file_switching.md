@@ -9,7 +9,7 @@ This task implements proper environment file switching with BASIS_ENVIRONMENT va
 **Reference**: `env.dev`, `env.staging`, `env.prod`, `env.unified` - Environment files
 
 ## QUALITY GATE
-**Quality Gate Script**: `scripts/test_environment_switching_quality_gates.py`
+**Quality Gate Script**: `tests/unit/test_config_manager_unit.py`
 **Validation**: Environment file switching, fail-fast validation, variable loading
 **Status**: ✅ PASSING
 
@@ -93,7 +93,7 @@ This task implements proper environment file switching with BASIS_ENVIRONMENT va
 
 ### 1. Environment Switching Quality Gate
 ```bash
-# scripts/test_environment_switching_quality_gates.py
+# tests/unit/test_config_manager_unit.py
 def test_environment_switching():
     # Test dev environment loading
     # Test staging environment loading  
@@ -138,7 +138,7 @@ def test_environment_switching():
 
 ## QUALITY GATE SCRIPT
 
-The quality gate script `scripts/test_environment_switching_quality_gates.py` will:
+The quality gate script `tests/unit/test_config_manager_unit.py` will:
 
 1. **Test Environment File Loading**
    - Verify each environment file loads correctly

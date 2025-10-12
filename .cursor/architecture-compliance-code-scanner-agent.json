@@ -7,7 +7,7 @@
     "backend/src/basis_strategy_v1/",
     "docs/REFERENCE_ARCHITECTURE_CANONICAL.md",
     "docs/ARCHITECTURAL_DECISION_RECORDS.md",
-    "scripts/"
+    "tests/"
   ],
   "context_files": [
     "docs/REFERENCE_ARCHITECTURE_CANONICAL.md",
@@ -15,7 +15,7 @@
     "docs/MODES.md",
     "docs/VENUE_ARCHITECTURE.md",
     "docs/specs/",
-    "scripts/",
+    "tests/",
     ".cursor/tasks/",
     ".cursor/rules.json",
     "backend/src/basis_strategy_v1/"

@@ -8,7 +8,7 @@ Update all component specifications to use parameter-based data flow instead of 
 **Reference**: `docs/DEVIATIONS_AND_CORRECTIONS.md` - Lines 193-206 (Component Data Flow Architecture)
 
 ## QUALITY GATE
-**Quality Gate Script**: `scripts/test_component_data_flow_architecture_quality_gates.py`
+**Quality Gate Script**: `tests/integration/test_data_flow_position_to_exposure.py`
 **Validation**: Parameter-based data flow, component isolation, data passing patterns
 **Status**: ❌ FAILING
 

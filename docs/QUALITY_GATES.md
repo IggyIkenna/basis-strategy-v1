@@ -29,9 +29,9 @@ The Quality Gates System provides **comprehensive validation** of the entire Bas
 python3 scripts/run_quality_gates.py
 
 # Run specific categories
-python3 scripts/run_quality_gates.py --category strategy
-python3 scripts/run_quality_gates.py --category components
-python3 scripts/run_quality_gates.py --category performance
+python3 scripts/run_quality_gates.py --category unit
+python3 scripts/run_quality_gates.py --category integration_data_flows
+python3 scripts/run_quality_gates.py --category e2e_strategies
 
 # Run test coverage analysis
 python3 scripts/analyze_test_coverage.py

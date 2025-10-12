@@ -10,9 +10,9 @@ This task aligns the existing Risk Monitor implementation with canonical specifi
 **Reference**: `tests/unit/` - Existing unit test structure
 
 ## QUALITY GATE
-**Quality Gate Script**: `scripts/risk_monitor_quality_gates.py`
+**Quality Gate Script**: `tests/unit/test_risk_monitor_unit.py`
 **Validation**: Risk monitoring, risk calculations, unit tests
-**Status**: 🟡 GENERIC
+**Status**: ✅ IMPLEMENTED
 
 ## CRITICAL REQUIREMENTS
 
@@ -156,7 +156,7 @@ class TestRiskMonitorFunctionality:
 
 ### 5. Quality Gate Implementation
 ```python
-# scripts/test_risk_monitor_unit_tests_quality_gates.py
+# tests/unit/test_risk_monitor_unit.py
 class RiskMonitorUnitTestQualityGates:
     def __init__(self):
         self.test_suite = self.setup_test_suite()
@@ -202,7 +202,7 @@ class RiskMonitorUnitTestQualityGates:
 
 ### 1. Unit Test Quality Gate
 ```bash
-# scripts/test_risk_monitor_unit_tests_quality_gates.py
+# tests/unit/test_risk_monitor_unit.py
 def test_risk_monitor_unit_tests():
     # Run all risk monitor unit tests
     # Validate test coverage meets target
@@ -251,7 +251,7 @@ def test_risk_monitor_unit_tests():
 
 ## QUALITY GATE SCRIPT
 
-The quality gate script `scripts/test_risk_monitor_unit_tests_quality_gates.py` will:
+The quality gate script `tests/unit/test_risk_monitor_unit.py` will:
 
 1. **Test Risk Calculations**
    - Verify risk calculations for all risk types

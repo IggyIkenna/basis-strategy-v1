@@ -244,6 +244,27 @@ except ValueError as e:
   - **execution_manager**: Execution action configuration
   - **results_store**: Results storage configuration
 
+### Component Config Fields Used in Code
+- `exposure_monitor`: Dict - Exposure monitor configuration
+  - **Usage**: Used in `exposure_monitor.py:41` to extract component-specific settings
+  - **Required**: Yes
+  - **Used in**: `exposure_monitor.py:41`
+
+- `risk_monitor`: Dict - Risk monitor configuration
+  - **Usage**: Used in `risk_monitor.py:61` to extract risk monitor specific settings
+  - **Required**: Yes
+  - **Used in**: `risk_monitor.py:61`
+
+- `pnl_calculator`: Dict - PnL calculator configuration
+  - **Usage**: Used in `pnl_calculator.py:178` to extract PnL calculator specific settings
+  - **Required**: Yes
+  - **Used in**: `pnl_calculator.py:178`
+
+- `data_dir`: str - Directory path for data storage
+  - **Usage**: Used in `data_provider_factory.py:62` and `risk_monitor.py:86` for data file paths
+  - **Required**: Yes
+  - **Used in**: `data_provider_factory.py:62`, `risk_monitor.py:86`
+
 ### Component-Specific Config
 - **config_settings**: Dict (configuration-specific settings)
   - **validation_strict**: Strict validation mode
@@ -4036,7 +4057,7 @@ liquidation_threshold: 0.95  # E-mode for weETH/WETH
 
 **Automatic Validation** (at startup):
 ```bash
-python -m pytest tests/unit/config/test_config_validation.py -v
+python -m pytest tests/unit/test_config_manager_unit.py -v
 ```
 
 **Manual Validation**:
@@ -4265,13 +4286,13 @@ BASIS_PROD__CEX__BINANCE_SPOT_API_KEY=mainnet_key
 ### **Configuration Testing**:
 ```bash
 # Test validation
-pytest tests/unit/config/test_config_validation.py -v
+pytest tests/unit/test_config_manager_unit.py -v
 
 # Test loading
-pytest tests/unit/config/test_config_loader.py -v
+pytest tests/unit/test_data_provider_unit.py -v
 
 # Test health
-pytest tests/unit/config/test_health_check.py -v
+pytest tests/unit/test_risk_monitor_unit.py -v
 ```
 
 ---

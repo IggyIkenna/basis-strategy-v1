@@ -125,17 +125,94 @@ Components NEVER receive these as method parameters during runtime.
   - **ltv_thresholds**: LTV calculation thresholds
   - **margin_requirements**: Margin calculation requirements
 
+### LTV Calculator Config Fields
+- `basis_risk_buffer`: float - Basis risk buffer percentage for LTV calculations
+  - **Usage**: Used in `calculate_ltv` method to apply risk buffer to LTV calculations
+  - **Required**: Yes
+  - **Used in**: `ltv_calculator.py:118`
+
+- `leverage_factor`: float - Leverage factor for strategy calculations
+  - **Usage**: Used in `calculate_ltv` method to determine leverage impact on LTV
+  - **Required**: Yes
+  - **Used in**: `ltv_calculator.py:214`
+
+- `ltv`: Dict[str, Any] - LTV configuration parameters
+  - **Usage**: Used in LTV calculation methods to access LTV-specific settings
+  - **Required**: Yes
+  - **Used in**: `ltv_calculator.py` and `margin_calculator.py`
+
+### Margin Calculator Config Fields
+- `basis_leverage_factor`: float - Basis leverage factor for margin calculations
+  - **Usage**: Used in `calculate_margin` method to determine leverage impact on margin requirements
+  - **Required**: Yes
+  - **Used in**: `margin_calculator.py:126`
+
+- `basis_trade_margin_buffer`: float - Basis trade margin buffer percentage
+  - **Usage**: Used in `calculate_margin` method to apply margin buffer for basis trades
+  - **Required**: Yes
+  - **Used in**: `margin_calculator.py:165`
+
+- `bybit_initial_margin_pct`: float - Bybit initial margin percentage
+  - **Usage**: Used in `calculate_margin` method to set Bybit-specific margin requirements
+  - **Required**: Yes
+  - **Used in**: `margin_calculator.py:163`
+
+- `emode_limits`: Dict[str, Any] - E-mode liquidation limits
+  - **Usage**: Used in LTV calculation to access E-mode specific limits
+  - **Required**: Yes
+  - **Used in**: `ltv_calculator.py:116`
+
+- `market_risk_buffer`: float - Market risk buffer percentage
+  - **Usage**: Used in LTV calculation to apply market risk buffer
+  - **Required**: Yes
+  - **Used in**: `ltv_calculator.py:117`
+
+- `price_buffer_pct`: float - Price buffer percentage for safety
+  - **Usage**: Used in margin calculation to apply price buffer for safety margins
+  - **Required**: Yes
+  - **Used in**: `margin_calculator.py:164`
+
+- `standard_borrowing`: float - Standard borrowing configuration
+  - **Usage**: Used in LTV and margin calculations to set standard borrowing limits
+  - **Required**: Yes
+  - **Used in**: `ltv_calculator.py:218`, `margin_calculator.py:88`
+
+- `standard_limits`: Dict[str, float] - Standard risk limits
+  - **Usage**: Used in LTV and margin calculations to access standard risk limits by asset
+  - **Required**: Yes
+  - **Used in**: `ltv_calculator.py:112,115`, `margin_calculator.py:83`
+
 ## Data Provider Queries
 
+### Canonical Data Provider Pattern
+Math Utilities (UtilityManager) uses the canonical `get_data(timestamp)` pattern to access data:
+
+```python
+# Canonical pattern - single get_data call
+data = self.data_provider.get_data(timestamp)
+prices = data['market_data']['prices']
+aave_indexes = data['protocol_data']['aave_indexes']
+```
+
+### Additional Data Provider Methods
+- **`get_liquidity_index`**: Get liquidity index for specific token
+  - **Usage**: Used by OnChainExecutionInterface for AAVE token conversions
+  - **Parameters**: token (str), timestamp (pd.Timestamp)
+  - **Returns**: float - liquidity index value
+  - **Implementation**: Calls data provider's get_liquidity_index method
+
 ### Market Data Queries
-- **prices**: Current market prices for calculations
-- **orderbook**: Order book data for price calculations
-- **funding_rates**: Funding rates for calculations
+- **market_data.prices**: Current market prices for calculations
+- **market_data.rates.funding**: Funding rates for calculations
+- **market_data.rates.lending**: Lending/borrowing rates for calculations
 
 ### Protocol Data Queries
-- **protocol_rates**: Lending/borrowing rates for calculations
-- **stake_rates**: Staking rewards and rates for calculations
-- **protocol_balances**: Current balances for calculations
+- **protocol_data.aave_indexes**: AAVE liquidity indexes for calculations
+- **protocol_data.oracle_prices**: LST oracle prices for calculations
+
+### Legacy Methods Removed
+The following legacy methods have been replaced with canonical pattern:
+- ~~`get_market_price()`~~ → `get_data()['market_data']['prices']`
 
 ### Data NOT Available from DataProvider
 - **Calculation results** - handled by Math Utilities
@@ -1301,8 +1378,7 @@ Following [Quality Gate Validation](QUALITY_GATES.md) <!-- Redirected from 17_qu
 
 1. **Run Math Utilities Quality Gates**:
    ```bash
-   python scripts/test_pure_lending_quality_gates.py
-   python scripts/test_btc_basis_quality_gates.py
+   python scripts/run_quality_gates.py --category e2e_strategies
    ```
 
 2. **Verify Mode-Agnostic P&L Calculator**:

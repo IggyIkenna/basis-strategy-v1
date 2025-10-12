@@ -758,6 +758,7 @@ def get_data(self, timestamp: pd.Timestamp) -> Dict[str, Any]:
 | ADR-041 | Component Data Flow Architecture | 2025-01-06 | Accepted | Aligned with canonical patterns: Shared Clock, Reference-Based Architecture, Request Isolation. |
 | ADR-043 | BacktestService Configuration Integration | 2025-01-06 | Accepted | BacktestService must use existing config infrastructure for dynamic configuration loading. |
 | ADR-044 | Live Trading Data Flow Integration | 2025-01-06 | Accepted | Strategy Manager receives real-time market data as input parameter for unified interface. |
+| ADR-057 | ML Strategy Integration Architecture | 2025-01-10 | Accepted | Extend platform with ML strategy modes using optional data provider methods, new strategy manager implementations, and graceful degradation for missing ML data/APIs. |
 
 ### Service Architecture ADRs
 

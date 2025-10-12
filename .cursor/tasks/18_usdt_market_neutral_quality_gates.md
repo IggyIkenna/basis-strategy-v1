@@ -9,7 +9,7 @@ This task implements comprehensive end-to-end quality gates for the USDT market 
 **Reference**: `docs/REFERENCE_ARCHITECTURE_CANONICAL.md` - Section 7 (Generic vs Mode-Specific)
 
 ## QUALITY GATE
-**Quality Gate Script**: `scripts/test_usdt_market_neutral_quality_gates.py`
+**Quality Gate Script**: `tests/e2e/test_usdt_market_neutral_e2e.py`
 **Validation**: USDT market neutral strategy, execution, risk management
 **Status**: ✅ PASSING
 
@@ -141,7 +141,7 @@ class CapitalAllocator:
 
 ### 5. Quality Gate Implementation
 ```python
-# scripts/test_usdt_market_neutral_quality_gates.py
+# tests/e2e/test_usdt_market_neutral_e2e.py
 class USDTMarketNeutralQualityGates:
     def __init__(self):
         self.config = self.load_usdt_market_neutral_config()
@@ -197,7 +197,7 @@ class USDTMarketNeutralQualityGates:
 
 ### 1. Leverage Mechanics Quality Gate
 ```bash
-# scripts/test_usdt_market_neutral_quality_gates.py
+# tests/e2e/test_usdt_market_neutral_e2e.py
 def test_leverage_mechanics():
     # Test leverage calculations and risk controls
     # Test margin requirements
@@ -265,7 +265,7 @@ def test_leverage_mechanics():
 
 ## QUALITY GATE SCRIPT
 
-The quality gate script `scripts/test_usdt_market_neutral_quality_gates.py` will:
+The quality gate script `tests/e2e/test_usdt_market_neutral_e2e.py` will:
 
 1. **Test Leverage Mechanics**
    - Verify leverage calculations and risk controls

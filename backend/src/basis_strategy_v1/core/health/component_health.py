@@ -231,12 +231,13 @@ class DataProviderHealthChecker(ComponentHealthChecker):
             # Check if data provider is initialized
             checks["initialized"] = hasattr(self.data_provider, 'data')
             
-            # Check if data is loaded (new architecture: data loaded on-demand)
-            if hasattr(self.data_provider, '_data_loaded'):
-                checks["data_loaded"] = self.data_provider._data_loaded
-            else:
-                # Legacy check for backward compatibility
-                checks["data_loaded"] = hasattr(self.data_provider, 'data') and len(self.data_provider.data) > 0
+            # Check if data is available using canonical pattern
+            try:
+                test_timestamp = pd.Timestamp('2024-06-01', tz='UTC')
+                test_data = self.data_provider.get_data(test_timestamp)
+                checks["data_loaded"] = test_data is not None and len(test_data) > 0
+            except Exception:
+                checks["data_loaded"] = False
             
             # Check environment variables
             import os
@@ -247,7 +248,9 @@ class DataProviderHealthChecker(ComponentHealthChecker):
             if checks["data_loaded"]:
                 try:
                     test_timestamp = pd.Timestamp('2024-06-01', tz='UTC')
-                    market_data = self.data_provider.get_market_data_snapshot(test_timestamp)
+                    # Get data using canonical pattern
+                    data = self.data_provider.get_data(test_timestamp)
+                    market_data = data['market_data']
                     checks["market_data_available"] = isinstance(market_data, dict) and len(market_data) > 0
                 except:
                     checks["market_data_available"] = False

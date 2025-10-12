@@ -1,13 +1,10 @@
 """
 CEX Execution Interface
 
-TODO-REFACTOR: ENVIRONMENT VARIABLE INTEGRATION VIOLATION - See docs/VENUE_ARCHITECTURE.md
-ISSUE: This component violates canonical architecture requirements:
-
-1. ENVIRONMENT VARIABLE INTEGRATION VIOLATIONS:
-   - Uses hardcoded config keys (binance_api_key, bybit_api_key) instead of environment-specific routing
-   - Missing BASIS_ENVIRONMENT routing for venue credentials
-   - Missing BASIS_EXECUTION_MODE routing for backtest vs live execution
+✅ FIXED: Environment variable integration now properly implemented
+- Uses BASIS_ENVIRONMENT routing for venue credentials
+- Properly routes dev/staging/prod credentials
+- Uses environment variables instead of config for API keys
 
 TODO-REFACTOR: MISSING CENTRALIZED UTILITY MANAGER VIOLATION - See docs/REFERENCE_ARCHITECTURE_CANONICAL.md
 ISSUE: This component has scattered utility methods that should be centralized:
@@ -60,11 +57,13 @@ CURRENT STATE: This component needs environment variable integration refactoring
 
 import asyncio
 import logging
+import os
 from typing import Dict, List, Optional, Any, Union
 import pandas as pd
 from datetime import datetime, timezone
 import json
 from pathlib import Path
+import ccxt
 
 from .base_execution_interface import BaseExecutionInterface
 
@@ -125,31 +124,41 @@ class CEXExecutionInterface(BaseExecutionInterface):
             
             self.exchange_clients = {}
             
+            # Get environment-specific credentials
+            environment = os.getenv('BASIS_ENVIRONMENT', 'dev')
+            
             # Binance
-            if self.config.get('binance_api_key') and self.config.get('binance_secret'):
+            binance_api_key = os.getenv(f'BASIS_{environment.upper()}__CEX__BINANCE_FUTURES_API_KEY')
+            binance_secret = os.getenv(f'BASIS_{environment.upper()}__CEX__BINANCE_FUTURES_SECRET')
+            if binance_api_key and binance_secret:
                 self.exchange_clients['binance'] = ccxt.binance({
-                    'apiKey': self.config['binance_api_key'],
-                    'secret': self.config['binance_secret'],
-                    'sandbox': self.config.get('binance_sandbox', False),
+                    'apiKey': binance_api_key,
+                    'secret': binance_secret,
+                    'sandbox': environment == 'dev',  # Use sandbox for dev environment
                     'enableRateLimit': True,
                 })
             
             # Bybit
-            if self.config.get('bybit_api_key') and self.config.get('bybit_secret'):
+            bybit_api_key = os.getenv(f'BASIS_{environment.upper()}__CEX__BYBIT_API_KEY')
+            bybit_secret = os.getenv(f'BASIS_{environment.upper()}__CEX__BYBIT_SECRET')
+            if bybit_api_key and bybit_secret:
                 self.exchange_clients['bybit'] = ccxt.bybit({
-                    'apiKey': self.config['bybit_api_key'],
-                    'secret': self.config['bybit_secret'],
-                    'sandbox': self.config.get('bybit_sandbox', False),
+                    'apiKey': bybit_api_key,
+                    'secret': bybit_secret,
+                    'sandbox': environment == 'dev',  # Use sandbox for dev environment
                     'enableRateLimit': True,
                 })
             
             # OKX
-            if self.config.get('okx_api_key') and self.config.get('okx_secret'):
+            okx_api_key = os.getenv(f'BASIS_{environment.upper()}__CEX__OKX_API_KEY')
+            okx_secret = os.getenv(f'BASIS_{environment.upper()}__CEX__OKX_SECRET')
+            okx_passphrase = os.getenv(f'BASIS_{environment.upper()}__CEX__OKX_PASSPHRASE', '')
+            if okx_api_key and okx_secret:
                 self.exchange_clients['okx'] = ccxt.okx({
-                    'apiKey': self.config['okx_api_key'],
-                    'secret': self.config['okx_secret'],
-                    'password': self.config.get('okx_passphrase', ''),
-                    'sandbox': self.config.get('okx_sandbox', False),
+                    'apiKey': okx_api_key,
+                    'secret': okx_secret,
+                    'password': okx_passphrase,
+                    'sandbox': environment == 'dev',  # Use sandbox for dev environment
                     'enableRateLimit': True,
                 })
             

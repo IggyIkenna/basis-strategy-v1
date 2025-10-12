@@ -9,9 +9,9 @@ This task implements comprehensive unit tests for the Strategy Manager component
 **Reference**: `tests/unit/` - Existing unit test structure
 
 ## QUALITY GATE
-**Quality Gate Script**: `scripts/test_strategy_manager_refactor_quality_gates.py`
+**Quality Gate Script**: `tests/unit/test_strategy_manager_unit.py`
 **Validation**: Strategy manager refactor, unit tests, factory pattern
-**Status**: 🟡 GENERIC
+**Status**: ✅ IMPLEMENTED
 
 ## CRITICAL REQUIREMENTS
 
@@ -157,7 +157,7 @@ class TestStrategyManagerFunctionality:
 
 ### 5. Quality Gate Implementation
 ```python
-# scripts/test_strategy_manager_unit_tests_quality_gates.py
+# tests/unit/test_strategy_manager_unit.py
 class StrategyManagerUnitTestQualityGates:
     def __init__(self):
         self.test_suite = self.setup_test_suite()
@@ -203,7 +203,7 @@ class StrategyManagerUnitTestQualityGates:
 
 ### 1. Unit Test Quality Gate
 ```bash
-# scripts/test_strategy_manager_unit_tests_quality_gates.py
+# tests/unit/test_strategy_manager_unit.py
 def test_strategy_manager_unit_tests():
     # Run all strategy manager unit tests
     # Validate test coverage meets target
@@ -252,7 +252,7 @@ def test_strategy_manager_unit_tests():
 
 ## QUALITY GATE SCRIPT
 
-The quality gate script `scripts/test_strategy_manager_unit_tests_quality_gates.py` will:
+The quality gate script `tests/unit/test_strategy_manager_unit.py` will:
 
 1. **Test Standardized Actions**
    - Verify all 5 standardized actions work correctly

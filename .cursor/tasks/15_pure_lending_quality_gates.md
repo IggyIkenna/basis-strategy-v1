@@ -9,9 +9,9 @@ Pure lending strategy shows 1166% APY (7% yield in 10 days) instead of required 
 3) Read docs/QUALITY_GATES.md for APY validation requirements
 4) Fix P&L calculation to use proper balance changes from aUSDT liquidity index
 ## QUALITY GATE
-**Quality Gate Script**: `scripts/test_pure_lending_quality_gates.py`
+**Quality Gate Script**: `tests/e2e/test_pure_lending_e2e.py`
 **Validation**: Strategy execution, yield calculation, component integration
-**Status**: 🟡 PARTIAL
+**Status**: ✅ IMPLEMENTED
 
 5) Balance changes = aUSDT from previous period vs current period, each converted to USDT by multiplying by liquidity index
 6) Only account for tokens actually in wallet, not locked in AAVE/Lido/EtherFi smart contracts
@@ -22,14 +22,14 @@ Pure lending strategy shows 1166% APY (7% yield in 10 days) instead of required 
 - docs/specs/04_PNL_CALCULATOR.md
 - docs/QUALITY_GATES.md
 - backend/src/basis_strategy_v1/core/math/pnl_calculator.py
-- scripts/test_pure_lending_quality_gates.py
+- tests/e2e/test_pure_lending_e2e.py
 
 ## EXECUTION STEPS
 1) Health check: curl -s http://localhost:8001/health/
-2) Run: python scripts/test_pure_lending_quality_gates.py
+2) Run: python scripts/run_quality_gates.py --category e2e_strategies
 3) Analyze the 1166% APY error in logs
 4) Fix backend/src/basis_strategy_v1/core/math/pnl_calculator.py
-5) Test fix: python scripts/test_pure_lending_quality_gates.py
+5) Test fix: python scripts/run_quality_gates.py --category e2e_strategies
 6) Verify APY is now 3-8%
 7) Report final APY percentage achieved
 
@@ -43,7 +43,7 @@ Pure lending strategy shows 1166% APY (7% yield in 10 days) instead of required 
 
 1. **Run Pure Lending Quality Gates**:
    ```bash
-   python scripts/test_pure_lending_quality_gates.py
+   python scripts/run_quality_gates.py --category e2e_strategies
    ```
 
 2. **Verify APY is within 3-8% range**:

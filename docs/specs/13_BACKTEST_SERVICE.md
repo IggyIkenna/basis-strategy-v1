@@ -1502,8 +1502,7 @@ Following [Quality Gate Validation](QUALITY_GATES.md) <!-- Redirected from 17_qu
 
 1. **Run Backtest Quality Gates**:
    ```bash
-   python scripts/test_pure_lending_quality_gates.py
-   python scripts/test_btc_basis_quality_gates.py
+   python scripts/run_quality_gates.py --category e2e_strategies
    ```
 
 2. **Verify Backtest Mode Validation**:

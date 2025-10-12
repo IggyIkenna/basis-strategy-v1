@@ -131,15 +131,27 @@ Components NEVER receive these as method parameters during runtime.
 
 ## Data Provider Queries
 
+### Canonical Data Provider Pattern
+Health & Error Systems use the canonical `get_data(timestamp)` pattern to access data for health checks:
+
+```python
+# Canonical pattern - single get_data call
+data = self.data_provider.get_data(timestamp)
+market_data = data['market_data']
+```
+
 ### Market Data Queries
-- **prices**: Current market prices for health calculations
-- **orderbook**: Order book data for health monitoring
-- **funding_rates**: Funding rates for health checks
+- **market_data.prices**: Current market prices for health calculations
+- **market_data.rates.funding**: Funding rates for health checks
+- **market_data.rates.lending**: Lending/borrowing rates for health monitoring
 
 ### Protocol Data Queries
-- **protocol_rates**: Lending/borrowing rates for health monitoring
-- **stake_rates**: Staking rewards and rates for health checks
-- **protocol_balances**: Current balances for health monitoring
+- **protocol_data.aave_indexes**: AAVE liquidity indexes for health monitoring
+- **protocol_data.oracle_prices**: LST oracle prices for health checks
+
+### Legacy Methods Removed
+The following legacy methods have been replaced with canonical pattern:
+- ~~`get_market_data_snapshot()`~~ → `get_data()['market_data']`
 
 ### Data NOT Available from DataProvider
 - **Component health status** - handled by Health & Error Systems
@@ -1176,8 +1188,7 @@ Following [Quality Gate Validation](QUALITY_GATES.md) <!-- Redirected from 17_qu
 
 1. **Run Health & Error Systems Quality Gates**:
    ```bash
-   python scripts/test_pure_lending_quality_gates.py
-   python scripts/test_btc_basis_quality_gates.py
+   python scripts/run_quality_gates.py --category e2e_strategies
    ```
 
 2. **Verify Singleton Pattern Validation**:

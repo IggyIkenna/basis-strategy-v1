@@ -96,6 +96,8 @@ component_config:
 
 ## Environment Variables
 
+**Validation**: This section is validated by `test_env_config_usage_sync_quality_gates.py` to ensure 100% sync with actual code usage.
+
 ### System-Level Variables (Read at Initialization)
 - `BASIS_EXECUTION_MODE`: backtest | live
   - **Usage**: Determines simulated vs real API behavior
@@ -134,6 +136,8 @@ def __init__(self, ...):
 
 ## Config Fields Used
 
+**Validation**: This section is validated by `test_env_config_usage_sync_quality_gates.py` to ensure 100% sync with actual code usage.
+
 ### Universal Config (All Components)
 - `mode`: str - e.g., 'eth_basis', 'pure_lending' (NOT 'mode')
 - `share_class`: str - 'USDT' | 'ETH'
@@ -158,6 +162,8 @@ def method_name(self, timestamp: pd.Timestamp, trigger_source: str):
 - [Behavior 2] ([why it's hardcoded])
 
 ## Data Provider Queries
+
+**Validation**: This section is validated by `test_env_config_usage_sync_quality_gates.py` to ensure 100% sync with actual code usage.
 
 ### Data Types Requested
 `data = self.data_provider.get_data(timestamp)`
@@ -439,6 +445,8 @@ class ComponentFactory:
 ---
 
 ## Event Logging Requirements
+
+**Validation**: This section is validated by `test_env_config_usage_sync_quality_gates.py` to ensure 100% sync with actual code usage.
 
 ### Component Event Log File
 **Separate log file** for this component's events:

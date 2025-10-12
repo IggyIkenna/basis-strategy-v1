@@ -21,7 +21,7 @@ class TaskValidator:
         """Run unit tests for component."""
         try:
             result = subprocess.run(
-                ["python", "-m", "pytest", f"tests/unit/test_{self.component_name.lower()}.py", "-v"],
+                ["python", "-m", "pytest", f"tests/unit/test_{self.component_name.lower()}_unit.py", "-v"],
                 capture_output=True, text=True
             )
             passed = result.returncode == 0

@@ -133,7 +133,38 @@ def __init__(self, ...):
 - `share_class`: str - 'USDT' | 'ETH'
 - `asset`: str - 'USDT' | 'ETH' | 'BTC'
 
+### Risk Monitor Specific Config
+- `max_drawdown`: float - Maximum allowed drawdown percentage
+  - **Usage**: Used in `__init__` to set risk threshold for drawdown monitoring
+  - **Required**: Yes
+  - **Used in**: `risk_monitor.py:50`
+
+- `leverage_enabled`: bool - Whether leverage is enabled for this strategy
+  - **Usage**: Used in `__init__` to determine if leverage-related risk calculations should be performed
+  - **Required**: Yes
+  - **Used in**: `risk_monitor.py:51`
+
+- `venues`: Dict[str, Any] - Venue configuration for risk monitoring
+  - **Usage**: Used in `__init__` to configure venue-specific risk parameters
+  - **Required**: Yes
+  - **Used in**: `risk_monitor.py:57`
+
+- `data_dir`: str - Directory path for data storage
+  - **Usage**: Used in `_load_aave_risk_parameters` to locate AAVE risk parameter files
+  - **Required**: Yes
+  - **Used in**: `risk_monitor.py:86`
+
+- `component_config`: Dict[str, Any] - Component-specific configuration
+  - **Usage**: Used in `__init__` to extract risk monitor specific settings
+  - **Required**: Yes
+  - **Used in**: `risk_monitor.py:60`
+
 ### Component-Specific Config (from component_config.risk_monitor)
+- `risk_monitor`: Dict - Risk monitor configuration
+  - **Usage**: Used in `risk_monitor.py:61` to extract risk monitor specific settings
+  - **Required**: Yes
+  - **Used in**: `risk_monitor.py:61`
+
 - `enabled_risk_types`: List[str] - Risk types to calculate
   - **Usage**: Determines which risk calculations to perform
   - **Required**: Yes
@@ -209,6 +240,30 @@ Data Provider → market_data → Risk Monitor → risk_metrics → Strategy Man
   - **Instruments needed**: BTC/ETH perps per venue (if basis trading enabled)
   - **Update frequency**: Hourly (backtest) or real-time (live)
   - **Usage**: Margin ratio and basis risk calculations
+
+### Additional Data Provider Queries
+- `current_data` - Current market data snapshot
+- `funding_rate` - Current funding rate data
+- `gas_cost` - Gas cost estimates
+- `execution_cost` - Execution cost estimates
+- `wallet_balances` - Wallet balance data
+- `cex_spot_balances` - CEX spot balance data
+- `cex_derivatives_balances` - CEX derivatives balance data
+- `smart_contract_balances` - Smart contract balance data
+- `market_price` - Current market price data
+- `liquidity_index` - Liquidity index data
+- `market_data_snapshot` - Market data snapshot
+- `get_current_data` - Get current data method
+- `get_funding_rate` - Get funding rate method
+- `get_gas_cost` - Get gas cost method
+- `get_execution_cost` - Get execution cost method
+- `get_wallet_balances` - Get wallet balances method
+- `get_cex_spot_balances` - Get CEX spot balances method
+- `get_cex_derivatives_balances` - Get CEX derivatives balances method
+- `get_smart_contract_balances` - Get smart contract balances method
+- `get_market_price` - Get market price method
+- `get_liquidity_index` - Get liquidity index method
+- `get_market_data_snapshot` - Get market data snapshot method
 
 ### Query Pattern (FAIL-FAST per ADR-040)
 ```python

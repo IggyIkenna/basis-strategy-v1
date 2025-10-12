@@ -1902,6 +1902,51 @@ while self.is_running:
 
 **References**: COMPONENT_SPECS_INDEX.md, all component specs
 
+## ADR-057: ML Strategy Integration Architecture
+
+**Date**: 2025-01-10  
+**Status**: Accepted  
+**Context**: Need to integrate ML-driven trading strategies into the existing basis-strategy-v1 platform while maintaining backward compatibility and following canonical architectural principles.
+
+**Decision**: Extend the platform with ML strategy modes using optional data provider methods, new strategy manager implementations, and graceful degradation for missing ML data/APIs.
+
+**Consequences**:
+- **Positive**: Adds ML-driven directional trading capabilities
+- **Positive**: Maintains full backward compatibility with existing strategies
+- **Positive**: Follows canonical architecture patterns (reference-based, config-driven)
+- **Positive**: Graceful degradation when ML data/APIs unavailable
+- **Positive**: 5-minute interval support for high-frequency ML strategies
+- **Negative**: Adds complexity with new data types and execution methods
+- **Negative**: Requires ML data infrastructure setup for full functionality
+
+**Implementation**:
+- **Data Provider Extension**: Added optional ML methods (`get_ml_ohlcv`, `get_ml_prediction`) to BaseDataProvider
+- **New Strategy Modes**: `ml_btc_directional` and `ml_usdt_directional` with ML signal-driven logic
+- **ML Strategy Manager**: `MLDirectionalStrategyManager` implementing 5-action interface with ML predictions
+- **Execution Manager Extension**: Added perp trading methods (`open_perp_long`, `open_perp_short`, `close_perp`, `update_stop_loss`, `update_take_profit`)
+- **Event Engine Update**: 5-minute interval support for ML strategies vs hourly for traditional
+- **Data Sources**: CSV files for backtest, external API for live mode via `BASIS_ML_API_TOKEN`
+- **Graceful Degradation**: Returns neutral signals when ML data/API unavailable
+- **Testing Strategy**: Comprehensive tests with skip decorators for missing dependencies
+
+**Architecture Compliance**:
+- **Reference-Based**: Components store references at init, never pass as runtime parameters
+- **Config-Driven**: ML strategies use `ml_config` section for behavior determination
+- **Mode-Agnostic Components**: Position/Exposure/Risk/PnL monitors work across all modes
+- **Mode-Specific Components**: Strategy Manager and Data Provider have ML-specific implementations
+- **Request Isolation**: Each backtest/live request creates fresh component instances
+- **Shared Clock**: Event engine owns authoritative timestamp for ML strategies
+
+**Data Requirements**:
+- `ml_ohlcv_5min`: 5-minute OHLCV bars for ML strategies
+- `ml_predictions`: ML signals (long/short/neutral + take_profit/stop_loss)
+- Asset prices for PnL calculation (BTC/USDT specific)
+
+**Environment Variables**:
+- `BASIS_ML_API_TOKEN`: Required for live ML API access, graceful fallback if missing
+
+**References**: MODES.md (modes 7 & 8), ML_STRATEGY_INTEGRATION_SUMMARY.md, data/ml_data/README.md
+
 ## Decision Index
 
 | ADR | Title | Date | Status | Impact |
@@ -1962,3 +2007,4 @@ while self.is_running:
 | ADR-054 | Graceful Data Handling in Components | 2025-10-11 | Accepted | High |
 | ADR-055 | Component Factory with Config Validation | 2025-10-11 | Accepted | High |
 | ADR-056 | Core vs Supporting Components Architecture | 2025-10-11 | Accepted | High |
+| ADR-057 | ML Strategy Integration Architecture | 2025-01-10 | Accepted | High |

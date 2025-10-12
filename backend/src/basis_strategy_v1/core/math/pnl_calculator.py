@@ -693,7 +693,7 @@ class PnLCalculator:
         return total_funding_pnl
     
     def _get_btc_funding_rate(self, venue: str, timestamp: pd.Timestamp) -> float:
-        """Get actual BTC funding rate for venue from data provider (NO FALLBACKS)."""
+        """Get actual BTC funding rate for venue from data provider using canonical pattern."""
         # This would need to be injected from the data provider
         # For now, we'll raise an error if no data provider is available
         if not hasattr(self, 'data_provider') or not self.data_provider:
@@ -703,7 +703,21 @@ class PnLCalculator:
             )
         
         try:
-            return self.data_provider.get_funding_rate('BTC', venue, timestamp)
+            # Get data using canonical pattern
+            data = self.data_provider.get_data(timestamp)
+            funding_rates = data['market_data']['rates']['funding']
+            
+            # Look for BTC funding rate for the specific venue
+            venue_key = f"BTC_{venue}"
+            if venue_key in funding_rates:
+                return funding_rates[venue_key]
+            elif 'BTC' in funding_rates:
+                return funding_rates['BTC']
+            else:
+                raise PnLCalculatorError(
+                    'PNL-BTC-001',
+                    f"No BTC funding rate found for venue {venue}"
+                )
         except Exception as e:
             raise PnLCalculatorError(
                 'PNL-BTC-001',

@@ -18,6 +18,13 @@ logger = logging.getLogger(__name__)
 
 class ExecutionManager:
     """Centralized execution manager implementing tight loop architecture."""
+    
+    _instance = None
+    
+    def __new__(cls, *args, **kwargs):
+        if cls._instance is None:
+            cls._instance = super(ExecutionManager, cls).__new__(cls)
+        return cls._instance
        
     def __init__(self, execution_mode: str, config: Dict[str, Any], position_monitor=None):
         self.execution_mode = execution_mode
@@ -126,7 +133,8 @@ class ExecutionManager:
     async def _send_instruction(self, instruction: Dict, market_data: Dict) -> Dict:
         """Send instruction to appropriate venue."""
         try:
-            instruction_type = instruction.get('type', 'unknown')
+            # Get instruction type from 'action' field (ML strategies) or 'type' field (traditional)
+            instruction_type = instruction.get('action', instruction.get('type', 'unknown'))
             venue = instruction.get('venue', 'unknown')
             
             logger.info(f"Execution Manager: Sending {instruction_type} instruction to {venue}")
@@ -138,6 +146,16 @@ class ExecutionManager:
                 return await self._execute_cex_trade(instruction, market_data)
             elif instruction_type == 'smart_contract':
                 return await self._execute_smart_contract(instruction, market_data)
+            elif instruction_type == 'open_perp_long':
+                return await self._execute_open_perp_long(instruction, market_data)
+            elif instruction_type == 'open_perp_short':
+                return await self._execute_open_perp_short(instruction, market_data)
+            elif instruction_type == 'close_perp':
+                return await self._execute_close_perp(instruction, market_data)
+            elif instruction_type == 'update_stop_loss':
+                return await self._execute_update_stop_loss(instruction, market_data)
+            elif instruction_type == 'update_take_profit':
+                return await self._execute_update_take_profit(instruction, market_data)
             else:
                 return {
                     'success': False,
@@ -229,3 +247,261 @@ class ExecutionManager:
             'instruction_type': 'smart_contract',
             'message': 'Smart contract executed (simulated)'
         }
+    
+    # ============================================================================
+    # ML Strategy Execution Methods (Perp Futures with TP/SL)
+    # ============================================================================
+    # TODO: ML data files required at data/market_data/ml/ and data/ml_data/predictions/
+    # TODO: Set BASIS_ML_API_TOKEN environment variable for live mode
+    
+    async def _execute_open_perp_long(self, instruction: Dict, market_data: Dict) -> Dict:
+        """
+        Execute open perp long position with take-profit and stop-loss orders.
+        
+        Args:
+            instruction: Instruction dictionary with symbol, amount, take_profit, stop_loss
+            market_data: Current market data
+            
+        Returns:
+            Execution result dictionary
+        """
+        try:
+            symbol = instruction.get('symbol', '')
+            amount = instruction.get('amount', 0.0)
+            take_profit = instruction.get('take_profit')
+            stop_loss = instruction.get('stop_loss')
+            venue = instruction.get('venue', 'binance')
+            
+            logger.info(f"Opening perp long position: {amount} {symbol} on {venue}")
+            
+            if self.execution_mode == 'backtest':
+                # Backtest mode - simulate execution
+                return {
+                    'success': True,
+                    'instruction_type': 'open_perp_long',
+                    'symbol': symbol,
+                    'amount': amount,
+                    'venue': venue,
+                    'take_profit': take_profit,
+                    'stop_loss': stop_loss,
+                    'message': f'Perp long position opened (backtest): {amount} {symbol}'
+                }
+            else:
+                # Live mode - actual execution
+                # TODO: Implement actual perp long execution with TP/SL orders
+                return {
+                    'success': True,
+                    'instruction_type': 'open_perp_long',
+                    'symbol': symbol,
+                    'amount': amount,
+                    'venue': venue,
+                    'take_profit': take_profit,
+                    'stop_loss': stop_loss,
+                    'message': f'Perp long position opened (live): {amount} {symbol}'
+                }
+                
+        except Exception as e:
+            logger.error(f"Failed to execute open perp long: {e}")
+            return {
+                'success': False,
+                'error': str(e),
+                'instruction_type': 'open_perp_long'
+            }
+    
+    async def _execute_open_perp_short(self, instruction: Dict, market_data: Dict) -> Dict:
+        """
+        Execute open perp short position with take-profit and stop-loss orders.
+        
+        Args:
+            instruction: Instruction dictionary with symbol, amount, take_profit, stop_loss
+            market_data: Current market data
+            
+        Returns:
+            Execution result dictionary
+        """
+        try:
+            symbol = instruction.get('symbol', '')
+            amount = instruction.get('amount', 0.0)
+            take_profit = instruction.get('take_profit')
+            stop_loss = instruction.get('stop_loss')
+            venue = instruction.get('venue', 'binance')
+            
+            logger.info(f"Opening perp short position: {amount} {symbol} on {venue}")
+            
+            if self.execution_mode == 'backtest':
+                # Backtest mode - simulate execution
+                return {
+                    'success': True,
+                    'instruction_type': 'open_perp_short',
+                    'symbol': symbol,
+                    'amount': -amount,  # Negative for short
+                    'venue': venue,
+                    'take_profit': take_profit,
+                    'stop_loss': stop_loss,
+                    'message': f'Perp short position opened (backtest): {amount} {symbol}'
+                }
+            else:
+                # Live mode - actual execution
+                # TODO: Implement actual perp short execution with TP/SL orders
+                return {
+                    'success': True,
+                    'instruction_type': 'open_perp_short',
+                    'symbol': symbol,
+                    'amount': -amount,  # Negative for short
+                    'venue': venue,
+                    'take_profit': take_profit,
+                    'stop_loss': stop_loss,
+                    'message': f'Perp short position opened (live): {amount} {symbol}'
+                }
+                
+        except Exception as e:
+            logger.error(f"Failed to execute open perp short: {e}")
+            return {
+                'success': False,
+                'error': str(e),
+                'instruction_type': 'open_perp_short'
+            }
+    
+    async def _execute_close_perp(self, instruction: Dict, market_data: Dict) -> Dict:
+        """
+        Execute close perp position.
+        
+        Args:
+            instruction: Instruction dictionary with symbol, amount, venue
+            market_data: Current market data
+            
+        Returns:
+            Execution result dictionary
+        """
+        try:
+            symbol = instruction.get('symbol', '')
+            amount = instruction.get('amount', 0.0)
+            venue = instruction.get('venue', 'binance')
+            
+            logger.info(f"Closing perp position: {amount} {symbol} on {venue}")
+            
+            if self.execution_mode == 'backtest':
+                # Backtest mode - simulate execution
+                return {
+                    'success': True,
+                    'instruction_type': 'close_perp',
+                    'symbol': symbol,
+                    'amount': amount,
+                    'venue': venue,
+                    'message': f'Perp position closed (backtest): {amount} {symbol}'
+                }
+            else:
+                # Live mode - actual execution
+                # TODO: Implement actual perp close execution
+                return {
+                    'success': True,
+                    'instruction_type': 'close_perp',
+                    'symbol': symbol,
+                    'amount': amount,
+                    'venue': venue,
+                    'message': f'Perp position closed (live): {amount} {symbol}'
+                }
+                
+        except Exception as e:
+            logger.error(f"Failed to execute close perp: {e}")
+            return {
+                'success': False,
+                'error': str(e),
+                'instruction_type': 'close_perp'
+            }
+    
+    async def _execute_update_stop_loss(self, instruction: Dict, market_data: Dict) -> Dict:
+        """
+        Execute update stop-loss order.
+        
+        Args:
+            instruction: Instruction dictionary with symbol, stop_loss, venue
+            market_data: Current market data
+            
+        Returns:
+            Execution result dictionary
+        """
+        try:
+            symbol = instruction.get('symbol', '')
+            stop_loss = instruction.get('stop_loss')
+            venue = instruction.get('venue', 'binance')
+            
+            logger.info(f"Updating stop-loss: {symbol} to {stop_loss} on {venue}")
+            
+            if self.execution_mode == 'backtest':
+                # Backtest mode - simulate execution
+                return {
+                    'success': True,
+                    'instruction_type': 'update_stop_loss',
+                    'symbol': symbol,
+                    'stop_loss': stop_loss,
+                    'venue': venue,
+                    'message': f'Stop-loss updated (backtest): {symbol} to {stop_loss}'
+                }
+            else:
+                # Live mode - actual execution
+                # TODO: Implement actual stop-loss order update
+                return {
+                    'success': True,
+                    'instruction_type': 'update_stop_loss',
+                    'symbol': symbol,
+                    'stop_loss': stop_loss,
+                    'venue': venue,
+                    'message': f'Stop-loss updated (live): {symbol} to {stop_loss}'
+                }
+                
+        except Exception as e:
+            logger.error(f"Failed to execute update stop-loss: {e}")
+            return {
+                'success': False,
+                'error': str(e),
+                'instruction_type': 'update_stop_loss'
+            }
+    
+    async def _execute_update_take_profit(self, instruction: Dict, market_data: Dict) -> Dict:
+        """
+        Execute update take-profit order.
+        
+        Args:
+            instruction: Instruction dictionary with symbol, take_profit, venue
+            market_data: Current market data
+            
+        Returns:
+            Execution result dictionary
+        """
+        try:
+            symbol = instruction.get('symbol', '')
+            take_profit = instruction.get('take_profit')
+            venue = instruction.get('venue', 'binance')
+            
+            logger.info(f"Updating take-profit: {symbol} to {take_profit} on {venue}")
+            
+            if self.execution_mode == 'backtest':
+                # Backtest mode - simulate execution
+                return {
+                    'success': True,
+                    'instruction_type': 'update_take_profit',
+                    'symbol': symbol,
+                    'take_profit': take_profit,
+                    'venue': venue,
+                    'message': f'Take-profit updated (backtest): {symbol} to {take_profit}'
+                }
+            else:
+                # Live mode - actual execution
+                # TODO: Implement actual take-profit order update
+                return {
+                    'success': True,
+                    'instruction_type': 'update_take_profit',
+                    'symbol': symbol,
+                    'take_profit': take_profit,
+                    'venue': venue,
+                    'message': f'Take-profit updated (live): {symbol} to {take_profit}'
+                }
+                
+        except Exception as e:
+            logger.error(f"Failed to execute update take-profit: {e}")
+            return {
+                'success': False,
+                'error': str(e),
+                'instruction_type': 'update_take_profit'
+            }

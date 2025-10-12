@@ -1,6 +1,6 @@
 # Position Monitor Component Specification
 
-**Last Reviewed**: October 11, 2025
+**Last Reviewed**: October 12, 2025
 
 ## Purpose
 Track raw ERC-20/token balances across all venues with NO conversions, NO valuations, using config-driven asset tracking and mode-agnostic architecture.
@@ -171,11 +171,32 @@ Data Provider → market_data → Position Monitor → position_data → Exposur
 
 ## Data Provider Queries
 
+### Canonical Data Provider Pattern
+Position Monitor uses the canonical `get_data(timestamp)` pattern to access balance data:
+
+```python
+# Canonical pattern - single get_data call
+data = self.data_provider.get_data(timestamp)
+wallet_balances = data['execution_data']['wallet_balances']
+smart_contract_balances = data['execution_data']['smart_contract_balances']
+cex_spot_balances = data['execution_data']['cex_spot_balances']
+cex_derivatives_balances = data['execution_data']['cex_derivatives_balances']
+```
+
 ### Data Types Requested
+- `execution_data.wallet_balances` - Raw wallet token balances
+- `execution_data.smart_contract_balances` - Protocol positions (AAVE, etc.)
+- `execution_data.cex_spot_balances` - CEX spot account balances
+- `execution_data.cex_derivatives_balances` - CEX derivatives positions
+
 **CLARIFICATION**: Position Monitor does NOT query DataProvider for prices or valuations. Position Monitor tracks raw token balances only. Exposure Monitor handles all conversions and valuations.
 
-### Data NOT Available from DataProvider
-Position Monitor does not query DataProvider - it tracks raw balances and receives execution deltas from Execution Manager.
+### Legacy Methods Removed
+The following legacy methods have been replaced with canonical pattern:
+- ~~`get_wallet_balances()`~~ → `get_data()['execution_data']['wallet_balances']`
+- ~~`get_smart_contract_balances()`~~ → `get_data()['execution_data']['smart_contract_balances']`
+- ~~`get_cex_spot_balances()`~~ → `get_data()['execution_data']['cex_spot_balances']`
+- ~~`get_cex_derivatives_balances()`~~ → `get_data()['execution_data']['cex_derivatives_balances']`
 
 ## Core Methods
 
@@ -499,6 +520,16 @@ class ComponentFactory:
 - `execution_deltas_processed`: When execution deltas are processed
 - `unknown_asset_detected`: When unknown asset appears (if fail_on_unknown_asset=false)
 - `position_snapshot_created`: When position snapshot is created
+- `position_calculation_error`: When position calculation fails
+- `position_mismatch`: When position reconciliation detects mismatches
+
+### Event Logging Patterns
+- **`position`**: Logs position-related events
+  - **Usage**: Logged for position updates and calculations
+  - **Data**: position data, calculations, errors
+- **`event`**: Logs general component events
+  - **Usage**: Logged for component lifecycle events
+  - **Data**: initialization, state changes, errors
 
 ### Event Data Structure
 ```json

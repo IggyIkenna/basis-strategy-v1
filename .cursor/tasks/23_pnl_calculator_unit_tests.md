@@ -10,9 +10,9 @@ This task aligns the existing P&L Calculator implementation with canonical speci
 **Reference**: `tests/unit/` - Existing unit test structure
 
 ## QUALITY GATE
-**Quality Gate Script**: `scripts/monitor_quality_gates.py`
+**Quality Gate Script**: `tests/unit/test_pnl_calculator_unit.py`
 **Validation**: P&L calculation, attribution, unit tests
-**Status**: 🟡 GENERIC
+**Status**: ✅ IMPLEMENTED
 
 ## CRITICAL REQUIREMENTS
 
@@ -156,7 +156,7 @@ class TestPNLCalculatorFunctionality:
 
 ### 5. Quality Gate Implementation
 ```python
-# scripts/test_pnl_calculator_unit_tests_quality_gates.py
+# tests/unit/test_pnl_calculator_unit.py
 class PNLCalculatorUnitTestQualityGates:
     def __init__(self):
         self.test_suite = self.setup_test_suite()
@@ -202,7 +202,7 @@ class PNLCalculatorUnitTestQualityGates:
 
 ### 1. Unit Test Quality Gate
 ```bash
-# scripts/test_pnl_calculator_unit_tests_quality_gates.py
+# tests/unit/test_pnl_calculator_unit.py
 def test_pnl_calculator_unit_tests():
     # Run all P&L calculator unit tests
     # Validate test coverage meets target
@@ -251,7 +251,7 @@ def test_pnl_calculator_unit_tests():
 
 ## QUALITY GATE SCRIPT
 
-The quality gate script `scripts/test_pnl_calculator_unit_tests_quality_gates.py` will:
+The quality gate script `tests/unit/test_pnl_calculator_unit.py` will:
 
 1. **Test Mode-Agnostic P&L Calculations**
    - Verify P&L calculations for all strategy modes

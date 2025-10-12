@@ -67,6 +67,13 @@ class ConfigManager:
     CURRENT STATE: This component needs environment variable naming clarification.
     """
     
+    _instance = None
+    
+    def __new__(cls, *args, **kwargs):
+        if cls._instance is None:
+            cls._instance = super(ConfigManager, cls).__new__(cls)
+        return cls._instance
+    
     def __init__(self):
         self.base_dir = Path(__file__).parent.parent.parent.parent.parent.parent
         self.config_cache: Dict[str, Any] = {}

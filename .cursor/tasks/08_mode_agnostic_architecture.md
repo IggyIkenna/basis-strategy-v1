@@ -11,7 +11,7 @@ Components must be mode-agnostic where appropriate, but strategy mode-specific w
 **Reference**: `scripts/test_implementation_gap_quality_gates.py` - Implementation gap detection
 
 ## QUALITY GATE
-**Quality Gate Script**: `scripts/test_mode_agnostic_design_quality_gates.py`
+**Quality Gate Script**: `tests/unit/test_pnl_calculator_unit.py`
 **Validation**: Mode-agnostic components, centralized utilities, universal patterns
 **Status**: ✅ PASSING
 

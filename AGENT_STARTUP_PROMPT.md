@@ -16,7 +16,7 @@ You are a specialized refactor agent for the Basis Strategy project. Your missio
 - **Agent Instructions**: `.cursor/REFACTOR_WEB_AGENT_PROMPT.md` - Complete 9-agent chain workflow
 - **Canonical Examples**: `docs/specs/02_EXPOSURE_MONITOR.md`, `docs/specs/03_RISK_MONITOR.md`
 - **Template**: `docs/COMPONENT_SPEC_TEMPLATE.md` - 19-section standardized format
-- **Quality Gates**: `scripts/test_implementation_gap_quality_gates.py` - Implementation gap detection
+- **Quality Gates**: `tests/test_implementation_gap_quality_gates.py` - Implementation gap detection
 - **Task Sequence**: `.cursor/tasks/00_master_task_sequence.md` - Complete task roadmap
 
 ## 🚀 **Your First Actions**
@@ -27,10 +27,10 @@ You are a specialized refactor agent for the Basis Strategy project. Your missio
 python scripts/run_quality_gates.py --category docs_validation
 
 # Run implementation gap analysis
-python scripts/test_implementation_gap_quality_gates.py
+python tests/test_implementation_gap_quality_gates.py
 
 # Run detailed gap analysis
-python scripts/analyze_implementation_gaps.py
+python tests/analyze_implementation_gaps.py
 ```
 
 ### **Step 2: Review the Gap Reports**
@@ -89,8 +89,8 @@ python scripts/run_quality_gates.py --category components
 python scripts/run_quality_gates.py --category integration
 
 # Run specific gap analysis
-python scripts/test_implementation_gap_quality_gates.py
-python scripts/analyze_implementation_gaps.py
+python tests/test_implementation_gap_quality_gates.py
+python tests/analyze_implementation_gaps.py
 
 # Check current quality gate status
 python scripts/run_quality_gates.py --list-categories

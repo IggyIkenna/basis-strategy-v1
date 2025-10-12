@@ -212,14 +212,20 @@ class BaseExecutionInterface(ABC):
                 eth_price = market_data.get('eth_usd_price', 0)
                 notional = amount * eth_price
                 
-                logger.debug(f"Base Interface: Calling data_provider.get_execution_cost with pair={pair}, notional={notional}, venue={venue}, trade_type={trade_type}")
+                logger.debug(f"Base Interface: Getting execution cost using canonical pattern for pair={pair}, notional={notional}, venue={venue}, trade_type={trade_type}")
                 
-                return self.data_provider.get_execution_cost(
-                    pair=pair,
-                    notional=notional,
-                    venue=venue,
-                    trade_type=trade_type
-                )
+                # Get data using canonical pattern
+                data = self.data_provider.get_data(market_data.get('timestamp'))
+                execution_costs = data['execution_data']['execution_costs']
+                
+                # Look for the specific execution cost
+                cost_key = f"{pair}_{venue}_{trade_type}"
+                if cost_key in execution_costs:
+                    return execution_costs[cost_key]
+                elif pair in execution_costs:
+                    return execution_costs[pair]
+                else:
+                    return 0.0  # Default if not found
             return 0.0
             
         except Exception as e:
@@ -229,11 +235,20 @@ class BaseExecutionInterface(ABC):
             raise
     
     def _get_gas_cost(self, operation: str, market_data: Dict[str, Any]) -> float:
-        """Get gas cost for operation."""
+        """Get gas cost for operation using canonical pattern."""
         if self.data_provider:
             timestamp = market_data.get('timestamp')
             if timestamp is None:
                 # Use current timestamp if not provided
                 timestamp = pd.Timestamp.now(tz='UTC')
-            return self.data_provider.get_gas_cost(operation, timestamp)
+            
+            # Get data using canonical pattern
+            data = self.data_provider.get_data(timestamp)
+            gas_costs = data['execution_data']['gas_costs']
+            
+            # Look for the specific operation gas cost
+            if operation in gas_costs:
+                return gas_costs[operation]
+            else:
+                return 0.0  # Default if not found
         return 0.001  # Default 0.001 ETH

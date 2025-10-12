@@ -203,6 +203,7 @@ python scripts/run_quality_gates.py --phase 1
 - **Unit Tests** - `tests/unit/` - Component-level tests
 - **Integration Tests** - `tests/integration/` - Component coordination
 - **E2E Tests** - `tests/e2e/` - Full workflow tests
+- **Quality Gates** - `scripts/run_quality_gates.py` - Comprehensive validation
 
 ### **Run Tests**
 ```bash
@@ -210,12 +211,17 @@ python scripts/run_quality_gates.py --phase 1
 pytest
 
 # By category
-pytest tests/unit/
-pytest tests/integration/
-pytest tests/e2e/
+# Quality gates (comprehensive testing)
+python scripts/run_quality_gates.py
 
-# With coverage
-pytest --cov=backend/src tests/
+# Unit tests
+python -m pytest tests/unit/
+
+# Integration tests  
+python -m pytest tests/integration/
+
+# E2E tests
+python -m pytest tests/e2e/
 ```
 
 ---

@@ -14,7 +14,7 @@ This task implements the missing execution infrastructure components identified 
 **Reference**: `docs/IMPLEMENTATION_GAP_REPORT.md` - Component gap analysis
 
 ## QUALITY GATE
-**Quality Gate Script**: `scripts/test_btc_basis_quality_gates.py` + `scripts/test_eth_basis_quality_gates.py`
+**Quality Gate Script**: `tests/e2e/test_btc_basis_e2e.py` + `tests/e2e/test_eth_basis_e2e.py`
 **Validation**: Execution components, trade execution, CEX interfaces
 **Status**: 🟡 GENERIC
 
@@ -313,7 +313,7 @@ class PositionUpdateHandler:
 
 ### 1. Execution Components Quality Gate
 ```bash
-# scripts/test_execution_components_quality_gates.py
+# tests/e2e/test_execution_components_e2e.py
 def test_execution_components():
     # Test execution interface manager
     # Test execution interfaces
@@ -379,7 +379,7 @@ def test_execution_components():
 
 ## QUALITY GATE SCRIPT
 
-The quality gate script `scripts/test_execution_components_quality_gates.py` will:
+The quality gate script `tests/e2e/test_execution_components_e2e.py` will:
 
 1. **Test Execution Interface Manager**
    - Verify instruction routing for all types

@@ -18,6 +18,8 @@ asset: "BTC"
 lst_type: null
 rewards_mode: "base_only"
 btc_allocation: 1.0  # 100% allocation to BTC basis strategy
+funding_threshold: 0.0001  # 0.01% funding threshold
+max_leverage: 1.0  # No leverage for BTC basis
 
 # Execution parameters
 hedge_venues: ["binance", "bybit", "okx"]

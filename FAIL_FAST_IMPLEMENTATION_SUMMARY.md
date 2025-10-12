@@ -117,7 +117,7 @@ Service layer files were not modified as they primarily handle:
 ## Testing
 
 ### Test File Updated
-**File**: `tests/unit/components/test_risk_monitor_fail_fast.py`
+**File**: `tests/unit/test_risk_monitor_unit.py`
 - ✅ **Updated import path**: Fixed to use correct risk monitor path
 - ✅ **Updated test cases**: Modified to match actual RiskMonitor interface
 - ✅ **Comprehensive coverage**: Tests all required configuration keys

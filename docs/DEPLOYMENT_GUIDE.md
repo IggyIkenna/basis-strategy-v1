@@ -83,9 +83,7 @@ See: REFERENCE_ARCHITECTURE_CANONICAL.md Section II for config-driven architectu
 - **`BASIS_ENVIRONMENT`**: `dev` vs `staging` vs `production` (controls venue credentials AND deployment infrastructure like hosts, ports, API endpoints)
 - **`BASIS_DATA_MODE`**: `csv` vs `db` (data source: CSV vs DB)
 - **`BASIS_EXECUTION_MODE`**: `backtest` vs `live` (venue execution: simulated in backtest vs real)
-- **`BASIS_CONFIG__VALIDATION_STRICT`**: `true` vs `false` (fail-fast config validation per ADR-040)
-- **`BASIS_CONFIG__CACHE_SIZE`**: Integer (config cache size, default: 1000)
-- **`BASIS_CONFIG__RELOAD_INTERVAL`**: Integer seconds (config reload interval, default: 300)
+
 
 **Critical Distinction**:
 - **Deployment Mode**: Controls how services are deployed (local vs containerized)
@@ -474,7 +472,6 @@ BASIS_DEPLOYMENT_MODE=
 BASIS_DATA_DIR=
 BASIS_DATA_MODE=
 BASIS_RESULTS_DIR=
-BASIS_REDIS_URL=
 BASIS_DEBUG=
 BASIS_LOG_LEVEL=
 BASIS_EXECUTION_MODE=

@@ -25,7 +25,7 @@ def run_coverage_analysis() -> Dict[str, Any]:
             "--cov=backend/src/basis_strategy_v1",
             "--cov-report=json",
             "--cov-report=term-missing",
-            "tests/",
+            "scripts/unit_tests/",
             "-v"
         ], capture_output=True, text=True, cwd=Path(__file__).parent.parent)
         
@@ -193,7 +193,7 @@ def generate_coverage_report(coverage_data: Dict[str, Any], component_coverage: 
     print(f"\n📁 TEST FILE ANALYSIS:")
     print("-" * 80)
     
-    test_dir = Path(__file__).parent.parent / "tests"
+    test_dir = Path(__file__).parent / "unit_tests"
     test_files = list(test_dir.rglob("test_*.py"))
     unit_tests = [f for f in test_files if "unit" in str(f)]
     integration_tests = [f for f in test_files if "integration" in str(f)]
@@ -218,7 +218,7 @@ def generate_coverage_report(coverage_data: Dict[str, Any], component_coverage: 
         
         # Check if test file exists
         rel_path = py_file.relative_to(src_dir)
-        test_path = test_dir / "unit" / f"test_{rel_path.name}"
+        test_path = test_dir / f"test_{rel_path.name}"
         
         if not test_path.exists():
             missing_tests.append(str(rel_path))

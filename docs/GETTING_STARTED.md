@@ -443,8 +443,7 @@ aave_weeth_supply_usd       # × ETH price
 - Unit tests: `tests/unit/`
 - Integration tests: `tests/integration/`
 - E2E tests: `tests/e2e/`
-- Fixtures: `tests/tools/`
-- Mocks: `tests/tools/mocks/`
+- Quality gates: `scripts/run_quality_gates.py`
 
 **See**: [tests/README.md](../tests/README.md) for testing guidelines
 

@@ -1868,10 +1868,10 @@ position_monitor → exposure_monitor → risk_monitor → pnl_monitor
 
 | Component | Method | Purpose | Input | Output |
 |-----------|--------|---------|-------|--------|
-| **Position Monitor** | `get_snapshot()` | Get current positions | None | Position dict |
+| **Position Monitor** | `get_current_positions()` | Get current positions | None | Position dict |
 | **Exposure Monitor** | `calculate_exposure()` | Convert to share class | timestamp, position, market_data | Exposure dict |
 | **Risk Monitor** | `assess_risk()` | Calculate risk metrics | exposure, market_data | Risk dict |
-| **P&L Monitor** | `calculate_pnl()` | Calculate performance | exposure, timestamp | P&L dict |
+| **P&L Monitor** | `calculate_pnl()` | Calculate performance | timestamp, trigger_source, market_data | P&L dict |
 
 ### **State Persistence Requirements**
 
@@ -1891,7 +1891,7 @@ position_monitor → exposure_monitor → risk_monitor → pnl_monitor
 
 ### **Code References**
 - **Tight Loop Processing**: `backend/src/basis_strategy_v1/core/event_engine/event_driven_strategy_engine.py:_process_timestep()`
-- **Position Monitor**: `backend/src/basis_strategy_v1/core/strategies/components/position_monitor.py:get_snapshot()`
+- **Position Monitor**: `backend/src/basis_strategy_v1/core/strategies/components/position_monitor.py:get_current_positions()`
 - **Exposure Monitor**: `backend/src/basis_strategy_v1/core/strategies/components/exposure_monitor.py:calculate_exposure()`
 - **Risk Monitor**: `backend/src/basis_strategy_v1/core/strategies/components/risk_monitor.py:assess_risk()`
 - **P&L Monitor**: `backend/src/basis_strategy_v1/core/math/pnl_calculator.py:calculate_pnl()`
@@ -2120,7 +2120,7 @@ graph TD
 ### **Code References**
 - **Event Logging**: `backend/src/basis_strategy_v1/core/strategies/components/event_logger.py:log_event()`
 - **Event Storage**: `backend/src/basis_strategy_v1/core/strategies/components/event_logger.py:_store_event()`
-- **Position Snapshots**: `backend/src/basis_strategy_v1/core/strategies/components/position_monitor.py:get_snapshot()`
+- **Position Snapshots**: `backend/src/basis_strategy_v1/core/strategies/components/position_monitor.py:get_current_positions()`
 
 ---
 

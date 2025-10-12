@@ -10,7 +10,7 @@ This task implements a comprehensive pre-check quality gate for all data files t
 **Reference**: `scripts/test_data_provider_refactor_quality_gates.py` - Existing data quality gates
 
 ## QUALITY GATE
-**Quality Gate Script**: `scripts/test_data_availability_quality_gates.py`
+**Quality Gate Script**: `tests/unit/test_data_provider_unit.py`
 **Validation**: Data completeness, alignment, availability for all strategy modes
 **Status**: ✅ PASSING
 
@@ -57,7 +57,7 @@ This task implements a comprehensive pre-check quality gate for all data files t
 
 ### 1. Data Availability Checker
 ```python
-# scripts/test_data_availability_quality_gates.py
+# tests/unit/test_data_provider_unit.py
 class DataAvailabilityChecker:
     def __init__(self, data_dir: str = "data"):
         self.data_dir = data_dir
@@ -138,7 +138,7 @@ STRATEGY_DATA_REQUIREMENTS = {
 
 ### 1. Data Availability Quality Gate
 ```bash
-# scripts/test_data_availability_quality_gates.py
+# tests/unit/test_data_provider_unit.py
 def test_data_availability():
     # Test all data files exist and are accessible
     # Test data completeness for all strategy modes
@@ -182,7 +182,7 @@ def test_data_availability():
 
 ## QUALITY GATE SCRIPT
 
-The quality gate script `scripts/test_data_availability_quality_gates.py` will:
+The quality gate script `tests/unit/test_data_provider_unit.py` will:
 
 1. **Test Data File Availability**
    - Verify all required data files exist and are accessible

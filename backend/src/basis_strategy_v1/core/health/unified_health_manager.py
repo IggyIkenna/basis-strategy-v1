@@ -38,6 +38,13 @@ logger = logging.getLogger(__name__)
 class UnifiedHealthManager:
     """Unified health manager that consolidates all health checking."""
     
+    _instance = None
+    
+    def __new__(cls, *args, **kwargs):
+        if cls._instance is None:
+            cls._instance = super(UnifiedHealthManager, cls).__new__(cls)
+        return cls._instance
+    
     def __init__(self):
         self.start_time = datetime.utcnow()
         self.last_check_timestamp = None
@@ -269,25 +276,25 @@ class UnifiedHealthManager:
             if not os.getenv('BASIS_EXECUTION_MODE'):
                 return "unhealthy"
             
-            # Check if data is loaded (new architecture: data loaded on-demand)
-            if hasattr(self.data_provider, '_data_loaded'):
-                if not self.data_provider._data_loaded:
-                    return "not_ready"  # Provider is ready but no data loaded yet
-            else:
-                # Legacy check for backward compatibility
-                if not self.data_provider.data:
-                    return "not_ready"
+            # Check if data is available using canonical pattern
+            try:
+                test_timestamp = pd.Timestamp('2024-06-01', tz='UTC')
+                test_data = self.data_provider.get_data(test_timestamp)
+                if not test_data:
+                    return "not_ready"  # Provider is ready but no data available
+            except Exception:
+                return "not_ready"  # Data not available
             
-            # Check if data provider can provide market data (only if data is loaded)
-            if hasattr(self.data_provider, '_data_loaded') and self.data_provider._data_loaded:
-                try:
-                    test_timestamp = pd.Timestamp('2024-06-01', tz='UTC')
-                    market_data = self.data_provider.get_market_data_snapshot(test_timestamp)
-                    if not isinstance(market_data, dict) or len(market_data) == 0:
-                        return "unhealthy"
-                except Exception as e:
-                    logger.warning(f"Data provider market data check failed: {e}")
+            # Check if data provider can provide market data
+            try:
+                # Get data using canonical pattern
+                data = self.data_provider.get_data(test_timestamp)
+                market_data = data['market_data']
+                if not isinstance(market_data, dict) or len(market_data) == 0:
                     return "unhealthy"
+            except Exception as e:
+                logger.warning(f"Data provider market data check failed: {e}")
+                return "unhealthy"
             
             return "healthy"
             

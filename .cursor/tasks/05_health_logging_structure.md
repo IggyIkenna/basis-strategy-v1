@@ -9,7 +9,7 @@ This task implements a unified health system with standardized health check endp
 **Reference**: `backend/src/basis_strategy_v1/infrastructure/health/` - Health system structure
 
 ## QUALITY GATE
-**Quality Gate Script**: `scripts/test_health_logging_quality_gates.py`
+**Quality Gate Script**: `tests/unit/test_health_logging_unit.py`
 **Validation**: Health monitoring, logging structure, error tracking
 **Status**: ✅ PASSING
 
@@ -140,7 +140,7 @@ class StructuredLogger:
 
 ### 1. Health System Quality Gate
 ```bash
-# scripts/test_health_logging_quality_gates.py
+# tests/unit/test_health_logging_unit.py
 def test_health_system():
     # Test basic health endpoint
     # Test detailed health endpoint
@@ -186,7 +186,7 @@ def test_health_system():
 
 ## QUALITY GATE SCRIPT
 
-The quality gate script `scripts/test_health_logging_quality_gates.py` will:
+The quality gate script `tests/unit/test_health_logging_unit.py` will:
 
 1. **Test Health System**
    - Verify basic health endpoint returns correct status

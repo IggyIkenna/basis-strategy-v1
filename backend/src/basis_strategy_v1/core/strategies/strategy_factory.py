@@ -19,6 +19,7 @@ from .eth_staking_only_strategy import ETHStakingOnlyStrategy
 from .eth_leveraged_strategy import ETHLeveragedStrategy
 from .usdt_market_neutral_no_leverage_strategy import USDTMarketNeutralNoLeverageStrategy
 from .usdt_market_neutral_strategy import USDTMarketNeutralStrategy
+from .ml_directional_strategy_manager import MLDirectionalStrategyManager  # NEW
 from ...infrastructure.logging.structured_logger import get_strategy_manager_logger
 
 logger = logging.getLogger(__name__)
@@ -36,6 +37,8 @@ class StrategyFactory:
         'eth_leveraged': ETHLeveragedStrategy,
         'usdt_market_neutral_no_leverage': USDTMarketNeutralNoLeverageStrategy,
         'usdt_market_neutral': USDTMarketNeutralStrategy,
+        'ml_btc_directional': MLDirectionalStrategyManager,  # NEW
+        'ml_usdt_directional': MLDirectionalStrategyManager,  # NEW
     }
     
     @classmethod
@@ -45,7 +48,8 @@ class StrategyFactory:
         config: Dict[str, Any], 
         risk_monitor, 
         position_monitor, 
-        event_engine
+        event_engine,
+        data_provider=None  # NEW: Optional data provider for ML strategies
     ) -> BaseStrategyManager:
         """
         Create strategy instance based on mode.
@@ -56,6 +60,7 @@ class StrategyFactory:
             risk_monitor: Risk monitor instance
             position_monitor: Position monitor instance
             event_engine: Event engine instance
+            data_provider: Data provider instance (required for ML strategies)
             
         Returns:
             Strategy manager instance
@@ -76,12 +81,25 @@ class StrategyFactory:
                 raise ValueError(f"Strategy mode '{mode}' is not yet implemented")
             
             # Create strategy instance
-            strategy = strategy_class(
-                config=config,
-                risk_monitor=risk_monitor,
-                position_monitor=position_monitor,
-                event_engine=event_engine
-            )
+            if mode in ['ml_btc_directional', 'ml_usdt_directional']:
+                # ML strategies require data provider
+                if data_provider is None:
+                    raise ValueError(f"Data provider required for ML strategy: {mode}")
+                strategy = strategy_class(
+                    config=config,
+                    risk_monitor=risk_monitor,
+                    position_monitor=position_monitor,
+                    event_engine=event_engine,
+                    data_provider=data_provider
+                )
+            else:
+                # Traditional strategies don't need data provider
+                strategy = strategy_class(
+                    config=config,
+                    risk_monitor=risk_monitor,
+                    position_monitor=position_monitor,
+                    event_engine=event_engine
+                )
             
             structured_logger.info(
                 f"Strategy created successfully: {mode}",
@@ -153,7 +171,8 @@ def create_strategy(
     config: Dict[str, Any],
     risk_monitor,
     position_monitor,
-    event_engine
+    event_engine,
+    data_provider=None  # NEW: Optional data provider for ML strategies
 ) -> BaseStrategyManager:
     """
     Convenience function to create strategy instance.
@@ -173,5 +192,6 @@ def create_strategy(
         config=config,
         risk_monitor=risk_monitor,
         position_monitor=position_monitor,
-        event_engine=event_engine
+        event_engine=event_engine,
+        data_provider=data_provider
     )

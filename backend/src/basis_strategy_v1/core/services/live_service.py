@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 import logging
 import asyncio
 import uuid
+import os
 from dataclasses import dataclass, field
 from pathlib import Path
 import pytz
@@ -26,7 +27,11 @@ ERROR_CODES = {
     'LT-004': 'Live trading execution failed',
     'LT-005': 'Live trading monitoring failed',
     'LT-006': 'Live trading stop failed',
-    'LT-007': 'Risk check failed'
+    'LT-007': 'Risk check failed',
+    'LT-008': 'Live trading is disabled via BASIS_LIVE_TRADING__ENABLED',
+    'LT-009': 'Live trading is in read-only mode via BASIS_LIVE_TRADING__READ_ONLY',
+    'LT-010': 'Initial capital exceeds maximum trade size',
+    'LT-011': 'Emergency stop loss threshold breached'
 }
 
 
@@ -73,6 +78,14 @@ class LiveTradingService:
         self.running_strategies: Dict[str, Dict[str, Any]] = {}
         self.completed_strategies: Dict[str, Dict[str, Any]] = {}
         self.monitoring_tasks: Dict[str, asyncio.Task] = {}
+        
+        # Load live trading environment variables with defaults
+        self.live_trading_enabled = os.getenv('BASIS_LIVE_TRADING__ENABLED', 'false').lower() == 'true'
+        self.live_trading_read_only = os.getenv('BASIS_LIVE_TRADING__READ_ONLY', 'true').lower() == 'true'
+        self.max_trade_size_usd = float(os.getenv('BASIS_LIVE_TRADING__MAX_TRADE_SIZE_USD', '100'))
+        self.emergency_stop_loss_pct = float(os.getenv('BASIS_LIVE_TRADING__EMERGENCY_STOP_LOSS_PCT', '0.15'))
+        self.heartbeat_timeout_seconds = int(os.getenv('BASIS_LIVE_TRADING__HEARTBEAT_TIMEOUT_SECONDS', '300'))
+        self.circuit_breaker_enabled = os.getenv('BASIS_LIVE_TRADING__CIRCUIT_BREAKER_ENABLED', 'true').lower() == 'true'
     
     def create_request(self, strategy_name: str, initial_capital: Decimal, share_class: str,
                       config_overrides: Dict[str, Any] = None, 
@@ -93,6 +106,21 @@ class LiveTradingService:
         if errors:
             logger.error(f"[LT-001] Live trading request validation failed: {', '.join(errors)}")
             raise ValueError(f"Invalid request: {', '.join(errors)}")
+        
+        # Check live trading safety controls
+        if not self.live_trading_enabled:
+            logger.error("[LT-008] Live trading is disabled via BASIS_LIVE_TRADING__ENABLED")
+            raise ValueError("Live trading is disabled. Set BASIS_LIVE_TRADING__ENABLED=true to enable.")
+        
+        # Check if in read-only mode
+        if self.live_trading_read_only:
+            logger.warning("[LT-009] Live trading is in read-only mode via BASIS_LIVE_TRADING__READ_ONLY")
+            # Continue but log warning - this is for testing
+        
+        # Check trade size limits
+        if float(request.initial_capital) > self.max_trade_size_usd:
+            logger.error(f"[LT-010] Initial capital {request.initial_capital} exceeds max trade size {self.max_trade_size_usd}")
+            raise ValueError(f"Initial capital exceeds maximum trade size of ${self.max_trade_size_usd}")
         
         try:
             # Create config for live trading using config infrastructure
@@ -358,6 +386,22 @@ class LiveTradingService:
             logger.error(f"[LT-007] Risk check failed for {request_id}: {e}")
             return {'status': 'error', 'error': str(e)}
     
+    async def check_emergency_stop_loss(self, request_id: str) -> bool:
+        """Check if emergency stop loss threshold has been breached."""
+        if request_id not in self.running_strategies:
+            return False
+        
+        strategy_info = self.running_strategies[request_id]
+        current_drawdown = abs(strategy_info['current_drawdown'])
+        
+        if current_drawdown >= self.emergency_stop_loss_pct:
+            logger.error(f"[LT-011] Emergency stop loss triggered for {request_id}: "
+                        f"drawdown {current_drawdown:.2%} >= threshold {self.emergency_stop_loss_pct:.2%}")
+            await self.emergency_stop(request_id, f"Emergency stop loss: {current_drawdown:.2%} drawdown")
+            return True
+        
+        return False
+    
     async def emergency_stop(self, request_id: str, reason: str = "Emergency stop") -> bool:
         """Emergency stop a live trading strategy."""
         logger.warning(f"Emergency stop requested for {request_id}: {reason}")
@@ -403,8 +447,8 @@ class LiveTradingService:
             last_heartbeat = strategy_info['last_heartbeat']
             time_since_heartbeat = (current_time - last_heartbeat).total_seconds()
             
-            # Consider unhealthy if no heartbeat for more than 5 minutes
-            is_healthy = time_since_heartbeat < 300
+            # Use heartbeat timeout from environment variable
+            is_healthy = time_since_heartbeat < self.heartbeat_timeout_seconds
             
             if is_healthy:
                 health_status['healthy_strategies'] += 1

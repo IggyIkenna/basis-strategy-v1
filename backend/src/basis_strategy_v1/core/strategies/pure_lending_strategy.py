@@ -31,17 +31,18 @@ class PureLendingStrategy(BaseStrategyManager):
         
         # Pure lending specific configuration
         self.lending_venues = config.get('lending_venues', ['aave', 'morpho'])
-        self.target_ltv = config.get('target_ltv', 0.8)
-        self.max_ltv = config.get('max_ltv', 0.9)
+        
+        # Pure lending doesn't use LTV (no borrowing/leverage)
+        # LTV values are not applicable for pure lending strategies
         
         logger.info(f"PureLendingStrategy initialized for {self.share_class} {self.asset}")
     
     def calculate_target_position(self, current_equity: float) -> Dict[str, float]:
         """Calculate target position based on current equity"""
         try:
-            # For pure lending, target position is based on LTV
-            target_borrow = current_equity * self.target_ltv
-            target_supply = current_equity + target_borrow
+            # For pure lending, no borrowing - just supply the full equity
+            target_supply = current_equity
+            target_borrow = 0.0  # No borrowing in pure lending
             
             return {
                 'supply': target_supply,

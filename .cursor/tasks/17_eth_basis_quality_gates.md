@@ -9,7 +9,7 @@ This task implements comprehensive end-to-end quality gates for the ETH basis st
 **Reference**: `docs/REFERENCE_ARCHITECTURE_CANONICAL.md` - Section 7 (Generic vs Mode-Specific)
 
 ## QUALITY GATE
-**Quality Gate Script**: `scripts/test_eth_basis_quality_gates.py`
+**Quality Gate Script**: `tests/e2e/test_eth_basis_e2e.py`
 **Validation**: ETH basis strategy, funding rates, LST integration, data files
 **Status**: 🟡 PARTIAL
 
@@ -110,7 +110,7 @@ class ETHMechanics:
 
 ### 4. Quality Gate Implementation
 ```python
-# scripts/test_eth_basis_quality_gates.py
+# tests/e2e/test_eth_basis_e2e.py
 class EthBasisQualityGates:
     def __init__(self):
         self.config = self.load_eth_basis_config()
@@ -160,7 +160,7 @@ class EthBasisQualityGates:
 
 ### 1. ETH Basis Strategy Quality Gate
 ```bash
-# scripts/test_eth_basis_quality_gates.py
+# tests/e2e/test_eth_basis_e2e.py
 def test_eth_basis_strategy():
     # Test ETH funding rate mechanics
     # Test ETH futures and spot integration
@@ -218,7 +218,7 @@ def test_eth_basis_strategy():
 
 ## QUALITY GATE SCRIPT
 
-The quality gate script `scripts/test_eth_basis_quality_gates.py` will:
+The quality gate script `tests/e2e/test_eth_basis_e2e.py` will:
 
 1. **Test ETH Basis Strategy**
    - Verify ETH funding rate calculations and arbitrage

@@ -1,0 +1,31 @@
+{
+  "agent_name": "Repository Structure Validation Agent",
+  "background_mode": true,
+  "web_browser_mode": true,
+  "compatible_with_web_agent": true,
+  "focus_areas": [
+    "backend/src/basis_strategy_v1/",
+    "docs/specs/",
+    "docs/TARGET_REPOSITORY_STRUCTURE.md",
+    "docs/REFERENCE_ARCHITECTURE_CANONICAL.md",
+    "docs/CODE_STRUCTURE_PATTERNS.md"
+  ],
+  "context_files": [
+    "docs/specs/",
+    "docs/TARGET_REPOSITORY_STRUCTURE.md",
+    "docs/REFERENCE_ARCHITECTURE_CANONICAL.md",
+    "docs/CODE_STRUCTURE_PATTERNS.md",
+    "docs/VENUE_ARCHITECTURE.md",
+    "scripts/test_repo_structure_quality_gates.py"
+  ],
+  "primary_mission": "Validate repository structure against canonical documentation and generate updated TARGET_REPOSITORY_STRUCTURE.md with file annotations",
+  "validation_checks": [
+    "Component file locations vs specs",
+    "Directory structure vs canonical patterns",
+    "Missing components identification",
+    "Obsolete files identification",
+    "Misplaced files identification"
+  ],
+  "output_format": "Updated TARGET_REPOSITORY_STRUCTURE.md with [KEEP]/[DELETE]/[UPDATE]/[MOVE]/[CREATE] annotations",
+  "success_criteria": "100% repository structure documented with accurate annotations and migration paths"
+}

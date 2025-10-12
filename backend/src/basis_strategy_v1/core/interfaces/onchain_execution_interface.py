@@ -1,13 +1,10 @@
 """
 OnChain Execution Interface
 
-TODO-REFACTOR: ENVIRONMENT VARIABLE INTEGRATION VIOLATION - See docs/VENUE_ARCHITECTURE.md
-ISSUE: This component violates canonical architecture requirements:
-
-1. ENVIRONMENT VARIABLE INTEGRATION VIOLATIONS:
-   - Uses hardcoded config keys instead of environment-specific routing
-   - Missing BASIS_ENVIRONMENT routing for venue credentials
-   - Missing BASIS_EXECUTION_MODE routing for backtest vs live execution
+✅ FIXED: Environment variable integration now properly implemented
+- Uses BASIS_ENVIRONMENT routing for venue credentials
+- Properly routes dev/staging/prod credentials
+- Uses environment variables instead of config for API keys
 
 TODO-REFACTOR: MISSING CENTRALIZED UTILITY MANAGER VIOLATION - See docs/REFERENCE_ARCHITECTURE_CANONICAL.md
 ISSUE: This component has scattered utility methods that should be centralized:
@@ -60,6 +57,7 @@ CURRENT STATE: This component needs environment variable integration refactoring
 
 import asyncio
 import logging
+import os
 from typing import Dict, List, Optional, Any, Union
 import pandas as pd
 from datetime import datetime, timezone
@@ -131,9 +129,13 @@ class OnChainExecutionInterface(BaseExecutionInterface):
             self.web3_clients = {}
             self.contracts = {}
             
+            # Get environment-specific credentials
+            environment = os.getenv('BASIS_ENVIRONMENT', 'dev')
+            alchemy_api_key = os.getenv(f'BASIS_{environment.upper()}__ALCHEMY__API_KEY')
+            
             # Ethereum mainnet
-            if self.config.get('alchemy_api_key'):
-                w3 = Web3(Web3.HTTPProvider(f"https://eth-mainnet.g.alchemy.com/v2/{self.config['alchemy_api_key']}"))
+            if alchemy_api_key:
+                w3 = Web3(Web3.HTTPProvider(f"https://eth-mainnet.g.alchemy.com/v2/{alchemy_api_key}"))
                 w3.middleware_onion.inject(geth_poa_middleware, layer=0)
                 self.web3_clients['ethereum'] = w3
             

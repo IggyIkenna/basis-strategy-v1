@@ -1,0 +1,34 @@
+{
+  "agent_name": "Environment & Config Usage Sync Agent",
+  "background_mode": true,
+  "web_browser_mode": true,
+  "compatible_with_web_agent": true,
+  "focus_areas": [
+    "backend/src/basis_strategy_v1/",
+    "docs/ENVIRONMENT_VARIABLES.md",
+    "docs/specs/"
+  ],
+  "context_files": [
+    "docs/ENVIRONMENT_VARIABLES.md",
+    "docs/specs/",
+    "docs/REFERENCE_ARCHITECTURE_CANONICAL.md",
+    "scripts/test_env_config_usage_sync_quality_gates.py",
+    "docs/REFACTOR_STANDARD_PROCESS.md"
+  ],
+  "primary_mission": "Ensure 100% sync between environment variable/config field usage in code and their documentation",
+  "validation_checks": [
+    "Environment variable usage vs ENVIRONMENT_VARIABLES.md",
+    "Config field usage vs component spec section 6",
+    "Data provider queries vs component spec section 7",
+    "Event logging patterns vs component spec section 10"
+  ],
+  "output_format": "Comprehensive usage sync report with undocumented usage and unused documentation",
+  "success_criteria": "100% sync between code usage and documentation across all categories",
+  "web_agent_integration": {
+    "can_run_alongside": true,
+    "shares_context": true,
+    "priority": "high",
+    "triggers": ["after_quality_gates_pass", "before_integration_alignment"],
+    "prerequisites": ["quality_gates_60_percent_plus", "architecture_compliance_complete"]
+  }
+}

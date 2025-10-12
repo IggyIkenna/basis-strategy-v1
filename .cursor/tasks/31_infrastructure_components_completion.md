@@ -12,7 +12,7 @@ This task completes the missing infrastructure component implementations identif
 **Reference**: `docs/IMPLEMENTATION_GAP_REPORT.md` - Component gap analysis
 
 ## QUALITY GATE
-**Quality Gate Script**: `scripts/test_data_provider_factory_quality_gates.py`
+**Quality Gate Script**: `tests/unit/test_data_provider_unit.py`
 **Validation**: Infrastructure components, data providers, configuration
 **Status**: 🟡 GENERIC
 
@@ -389,7 +389,7 @@ class EventLogger:
 
 ### 1. Infrastructure Components Quality Gate
 ```bash
-# scripts/test_infrastructure_components_quality_gates.py
+# tests/unit/test_infrastructure_components_unit.py
 def test_infrastructure_components():
     # Test math utilities
     # Test health & error systems
@@ -455,7 +455,7 @@ def test_infrastructure_components():
 
 ## QUALITY GATE SCRIPT
 
-The quality gate script `scripts/test_infrastructure_components_quality_gates.py` will:
+The quality gate script `tests/unit/test_infrastructure_components_unit.py` will:
 
 1. **Test Math Utilities**
    - Verify centralized math functions

@@ -132,6 +132,145 @@ class PureLendingDataProvider(BaseDataProvider):
         return pd.date_range(start=start_date, end=end_date, freq='H', tz='UTC')
 ```
 
+### **Additional Mode-Specific DataProvider Examples**
+
+#### **BTCBasisDataProvider**
+```python
+class BTCBasisDataProvider(BaseDataProvider):
+    """Data provider for BTC basis trading mode"""
+    
+    def __init__(self, execution_mode: str, config: Dict):
+        super().__init__(execution_mode, config)
+        self.available_data_types = [
+            'btc_prices', 'btc_futures', 'funding_rates', 'gas_costs', 'execution_costs'
+        ]
+    
+    def get_data(self, timestamp: pd.Timestamp) -> Dict[str, Any]:
+        return {
+            'market_data': {
+                'prices': {
+                    'BTC': self._load_btc_price(timestamp),
+                    'USDT': 1.0,
+                    'ETH': self._load_eth_price(timestamp)
+                },
+                'rates': {
+                    'funding': {
+                        'BTC_binance': self._load_btc_funding_rate(timestamp, 'binance'),
+                        'BTC_bybit': self._load_btc_funding_rate(timestamp, 'bybit')
+                    }
+                }
+            },
+            'protocol_data': {
+                'perp_prices': {
+                    'BTC_binance': self._load_btc_perp_price(timestamp, 'binance'),
+                    'BTC_bybit': self._load_btc_perp_price(timestamp, 'bybit')
+                }
+            },
+            'staking_data': {},  # Empty for basis trading
+            'execution_data': {
+                'wallet_balances': self._load_wallet_balances(timestamp),
+                'cex_spot_balances': self._load_cex_spot_balances(timestamp),
+                'cex_derivatives_balances': self._load_cex_derivatives_balances(timestamp),
+                'gas_costs': self._load_gas_costs(timestamp),
+                'execution_costs': self._load_execution_costs(timestamp)
+            }
+        }
+```
+
+#### **ETHStakingOnlyDataProvider**
+```python
+class ETHStakingOnlyDataProvider(BaseDataProvider):
+    """Data provider for ETH staking only mode"""
+    
+    def __init__(self, execution_mode: str, config: Dict):
+        super().__init__(execution_mode, config)
+        self.available_data_types = [
+            'eth_prices', 'weeth_prices', 'staking_rewards', 'gas_costs', 'execution_costs'
+        ]
+    
+    def get_data(self, timestamp: pd.Timestamp) -> Dict[str, Any]:
+        return {
+            'market_data': {
+                'prices': {
+                    'ETH': self._load_eth_price(timestamp),
+                    'weETH': self._load_weeth_price(timestamp),
+                    'USDT': 1.0
+                }
+            },
+            'protocol_data': {
+                'oracle_prices': {
+                    'weETH': self._load_weeth_oracle_price(timestamp)
+                }
+            },
+            'staking_data': {
+                'rewards': {
+                    'ETH': self._load_eth_staking_rewards(timestamp),
+                    'EIGEN': self._load_eigen_rewards(timestamp)
+                },
+                'apr': {
+                    'ETH': self._load_eth_staking_apr(timestamp)
+                }
+            },
+            'execution_data': {
+                'wallet_balances': self._load_wallet_balances(timestamp),
+                'smart_contract_balances': self._load_smart_contract_balances(timestamp),
+                'gas_costs': self._load_gas_costs(timestamp),
+                'execution_costs': self._load_execution_costs(timestamp)
+            }
+        }
+```
+
+#### **ETHLeveragedDataProvider**
+```python
+class ETHLeveragedDataProvider(BaseDataProvider):
+    """Data provider for ETH leveraged staking mode"""
+    
+    def __init__(self, execution_mode: str, config: Dict):
+        super().__init__(execution_mode, config)
+        self.available_data_types = [
+            'eth_prices', 'weeth_prices', 'aave_lending_rates', 'staking_rewards', 
+            'eigen_rewards', 'gas_costs', 'execution_costs', 'aave_risk_params'
+        ]
+    
+    def get_data(self, timestamp: pd.Timestamp) -> Dict[str, Any]:
+        return {
+            'market_data': {
+                'prices': {
+                    'ETH': self._load_eth_price(timestamp),
+                    'weETH': self._load_weeth_price(timestamp),
+                    'USDT': 1.0
+                },
+                'rates': {
+                    'aave_eth_supply': self._load_aave_eth_rate(timestamp)
+                }
+            },
+            'protocol_data': {
+                'aave_indexes': {
+                    'aETH': self._load_aave_eth_index(timestamp),
+                    'variableDebtWETH': self._load_aave_variable_debt_eth_index(timestamp)
+                },
+                'risk_params': {
+                    'ltv': self._load_ltv(timestamp),
+                    'liquidation_threshold': self._load_liquidation_threshold(timestamp)
+                }
+            },
+            'staking_data': {
+                'rewards': {
+                    'ETH': self._load_eth_staking_rewards(timestamp)
+                },
+                'eigen_rewards': {
+                    'EIGEN': self._load_eigen_rewards(timestamp)
+                }
+            },
+            'execution_data': {
+                'wallet_balances': self._load_wallet_balances(timestamp),
+                'smart_contract_balances': self._load_smart_contract_balances(timestamp),
+                'gas_costs': self._load_gas_costs(timestamp),
+                'execution_costs': self._load_execution_costs(timestamp)
+            }
+        }
+```
+
 ### **DataProvider Factory**
 
 ```python

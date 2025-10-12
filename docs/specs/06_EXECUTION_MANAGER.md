@@ -402,6 +402,14 @@ self.event_logger.log_event(
 - **Reconciliation Timeout**: When reconciliation times out
 - **Execution Queue Overflow**: When execution queue exceeds limits
 
+#### 5. Execution Event Patterns
+- **`execution`**: Logs execution results for each instruction block
+  - **Usage**: Logged after each instruction block execution
+  - **Data**: execution_result, instruction_type, venue, success/failure status
+- **`transfer`**: Logs wallet transfer operations
+  - **Usage**: Logged for wallet transfer instructions
+  - **Data**: transfer_id, source_venue, target_venue, token, amount
+
 ### Event Retention & Output Formats
 
 #### Dual Logging Approach

@@ -413,7 +413,7 @@ run_tests() {
     # Run backend tests
     echo -e "${BLUE}🔧 Running backend tests...${NC}"
     cd backend
-    python -m pytest tests/ -v --tb=short
+    python scripts/run_quality_gates.py
     cd ..
     
     # Run frontend tests

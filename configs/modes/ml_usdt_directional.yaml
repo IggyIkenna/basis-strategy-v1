@@ -1,0 +1,87 @@
+# ML USDT Directional Strategy Configuration
+# 
+# ML-driven directional USDT strategy with long/short perp trading on 5-min intervals.
+# Uses ML predictions for entry/exit signals with take-profit and stop-loss orders.
+#
+# TODO: ML data files required at data/market_data/ml/ and data/ml_data/predictions/
+# TODO: Set BASIS_ML_API_TOKEN environment variable for live mode
+
+mode: "ml_usdt_directional"
+share_class: "USDT"
+asset: "USDT"
+market_neutral: false  # Directional strategy
+lending_enabled: false
+staking_enabled: false
+basis_trade_enabled: false
+borrowing_enabled: false
+leverage_enabled: true  # Perp futures
+initial_capital: 10000.0  # 10k USDT
+
+# ML-specific parameters
+ml_config:
+  model_registry: "mlflow"
+  model_name: "usdt_5min_strategy"
+  model_version: "production"
+  candle_interval: "5min"
+  signal_threshold: 0.70  # Higher threshold for USDT
+  max_position_size: 1.0  # 100% of equity
+
+# Execution venues (perp only)
+venues:
+  binance:
+    venue_type: "cex"
+    enabled: true
+    instruments: ["USDT-PERP"]
+    order_types: ["market", "limit", "stop_loss", "take_profit"]
+
+# Data requirements (NO FEATURES - handled externally)
+data_requirements:
+  - "ml_ohlcv_5min"       # OHLCV 5-min bars
+  - "ml_predictions"      # ML signals (long/short/neutral + TP/SL)
+  - "usdt_usd_prices"     # For PnL calculation
+  - "gas_costs"
+  - "execution_costs"
+
+# Component configs (mode-agnostic)
+component_config:
+  position_monitor:
+    track_assets: ["USDT", "BTC", "USDT_PERP"]
+    initial_balances:
+      wallet: {}
+      cex_accounts: ["binance"]
+      perp_positions: ["binance"]
+    fail_on_unknown_asset: true
+    
+  exposure_monitor:
+    exposure_currency: "USDT"
+    track_assets: ["USDT", "BTC", "USDT_PERP"]
+    conversion_methods:
+      USDT: "direct"
+      BTC: "usd_price"
+      USDT_PERP: "perp_mark_price"
+      
+  risk_monitor:
+    enabled_risk_types: ["cex_margin_ratio", "delta_risk"]
+    risk_limits:
+      target_margin_ratio: 0.5
+      cex_margin_ratio_min: 0.15
+      maintenance_margin_requirement: 0.10
+      delta_tolerance: 1.0  # 100% delta allowed (directional)
+      
+  pnl_calculator:
+    attribution_types: ["funding_pnl", "price_change_pnl", "transaction_costs"]
+    reporting_currency: "USDT"
+    reconciliation_tolerance: 0.02
+    
+  strategy_manager:
+    strategy_type: "ml_directional"
+    rebalancing_interval: "5min"
+    position_deviation_threshold: 0.05
+    actions: ["entry_long", "entry_short", "exit_position", "update_stops"]
+    
+  execution_manager:
+    supported_actions: ["open_perp_long", "open_perp_short", "close_perp", "update_stop_loss", "update_take_profit"]
+    action_mapping:
+      open_perp_long: ["binance_perp"]
+      open_perp_short: ["binance_perp"]
+      close_perp: ["binance_perp"]

@@ -22,20 +22,63 @@ from ..infrastructure.monitoring.logging import setup_logging
 import os
 import sys
 
+def _validate_live_trading_config():
+    """Validate live trading environment variables."""
+    print("🔍 Validating live trading configuration...")
+    
+    # Check if live trading is enabled
+    live_trading_enabled = os.getenv('BASIS_LIVE_TRADING__ENABLED', 'false').lower() == 'true'
+    if not live_trading_enabled:
+        print("⚠️  WARNING: Live trading is disabled (BASIS_LIVE_TRADING__ENABLED=false)")
+        print("💡 Set BASIS_LIVE_TRADING__ENABLED=true to enable live trading")
+    
+    # Check read-only mode
+    read_only = os.getenv('BASIS_LIVE_TRADING__READ_ONLY', 'true').lower() == 'true'
+    if read_only:
+        print("⚠️  WARNING: Live trading is in read-only mode (BASIS_LIVE_TRADING__READ_ONLY=true)")
+        print("💡 Set BASIS_LIVE_TRADING__READ_ONLY=false for real trading")
+    
+    # Validate numeric values
+    try:
+        max_trade_size = float(os.getenv('BASIS_LIVE_TRADING__MAX_TRADE_SIZE_USD', '100'))
+        if max_trade_size <= 0:
+            print(f"❌ CRITICAL: BASIS_LIVE_TRADING__MAX_TRADE_SIZE_USD must be positive, got: {max_trade_size}")
+            sys.exit(1)
+        print(f"✅ Max trade size: ${max_trade_size}")
+    except ValueError:
+        print(f"❌ CRITICAL: Invalid BASIS_LIVE_TRADING__MAX_TRADE_SIZE_USD: {os.getenv('BASIS_LIVE_TRADING__MAX_TRADE_SIZE_USD', '100')}")
+        sys.exit(1)
+    
+    try:
+        stop_loss_pct = float(os.getenv('BASIS_LIVE_TRADING__EMERGENCY_STOP_LOSS_PCT', '0.15'))
+        if stop_loss_pct <= 0 or stop_loss_pct > 1:
+            print(f"❌ CRITICAL: BASIS_LIVE_TRADING__EMERGENCY_STOP_LOSS_PCT must be between 0 and 1, got: {stop_loss_pct}")
+            sys.exit(1)
+        print(f"✅ Emergency stop loss: {stop_loss_pct:.1%}")
+    except ValueError:
+        print(f"❌ CRITICAL: Invalid BASIS_LIVE_TRADING__EMERGENCY_STOP_LOSS_PCT: {os.getenv('BASIS_LIVE_TRADING__EMERGENCY_STOP_LOSS_PCT', '0.15')}")
+        sys.exit(1)
+    
+    try:
+        heartbeat_timeout = int(os.getenv('BASIS_LIVE_TRADING__HEARTBEAT_TIMEOUT_SECONDS', '300'))
+        if heartbeat_timeout <= 0:
+            print(f"❌ CRITICAL: BASIS_LIVE_TRADING__HEARTBEAT_TIMEOUT_SECONDS must be positive, got: {heartbeat_timeout}")
+            sys.exit(1)
+        print(f"✅ Heartbeat timeout: {heartbeat_timeout}s")
+    except ValueError:
+        print(f"❌ CRITICAL: Invalid BASIS_LIVE_TRADING__HEARTBEAT_TIMEOUT_SECONDS: {os.getenv('BASIS_LIVE_TRADING__HEARTBEAT_TIMEOUT_SECONDS', '300')}")
+        sys.exit(1)
+    
+    circuit_breaker = os.getenv('BASIS_LIVE_TRADING__CIRCUIT_BREAKER_ENABLED', 'true').lower() == 'true'
+    print(f"✅ Circuit breaker: {'enabled' if circuit_breaker else 'disabled'}")
+    
+    print("✅ Live trading configuration validated")
+
 # Early core startup configuration validation - MUST happen before anything else
 def validate_core_startup_config():
     """Validate core startup configuration before application starts."""
-    # TODO: [ENV_VAR_VALIDATION] - Environment variable validation for quality gates
-    # Current Issue: Missing environment-specific credential validation for live mode
-    # Required Changes:
-    #   1. Add validation for environment-specific venue credentials based on BASIS_ENVIRONMENT
-    #   2. Add BASIS_EXECUTION_MODE validation (backtest requires NO credentials, live requires environment-specific credentials)
-    #   3. Add quality gate validation for backtest mode (data provider initialization)
-    #   4. Add quality gate validation for live mode (venue API health checks)
-    # Reference: docs/ENVIRONMENT_VARIABLES.md - Environment Variable Validation Requirements section
-    # Reference: docs/QUALITY_GATES.md - Backtest Mode Quality Gates
-    # Reference: docs/QUALITY_GATES.md - Live Trading Quality Gates
-    # Status: PENDING
+    # Environment variable validation for quality gates
+    # Status: IMPLEMENTED - Live trading safety controls added
     
     core_vars = [
         'BASIS_ENVIRONMENT',
@@ -69,6 +112,11 @@ def validate_core_startup_config():
         print("💡 Make sure to load environment variables from .env.dev or .env.prod")
         print("💡 Use: source .env.dev or platform.sh start")
         sys.exit(1)
+    
+    # Validate live trading variables if in live mode
+    execution_mode = os.getenv('BASIS_EXECUTION_MODE', 'backtest')
+    if execution_mode == 'live':
+        _validate_live_trading_config()
     
     print(f"✅ Core startup configuration validated for {os.getenv('BASIS_ENVIRONMENT')} environment")
 

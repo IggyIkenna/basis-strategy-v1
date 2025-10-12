@@ -65,6 +65,12 @@ Components NEVER receive these as method parameters during runtime.
   - **refresh_interval**: Position refresh interval
   - **validation_rules**: Position validation rules
 
+### Reconciliation Component Config Fields
+- `max_retry_attempts`: int - Maximum retry attempts for reconciliation
+  - **Usage**: Used in `reconciliation_component.py:63` to set maximum retry attempts for reconciliation operations
+  - **Required**: Yes
+  - **Used in**: `reconciliation_component.py:63`
+
 ## Config-Driven Behavior
 
 The Reconciliation Component is **mode-agnostic** by design - it validates position consistency without mode-specific logic:
@@ -376,6 +382,14 @@ self.event_logger.log_event(
 - **Reconciliation Failed**: When reconciliation fails
 - **Position Mismatch**: When positions don't match
 - **Retry Exhausted**: When retry attempts are exhausted
+
+#### 5. Transfer Event Patterns
+- **`transfer`**: Logs wallet transfer operations
+  - **Usage**: Logged for wallet transfer instructions during reconciliation
+  - **Data**: transfer_id, source_venue, target_venue, token, amount, execution_mode
+- **`position`**: Logs when position reconciliation detects mismatches
+  - **Usage**: Logged when positions don't match between expected and actual
+  - **Data**: expected_position, actual_position, venue, token, difference
 
 ### Event Retention & Output Formats
 

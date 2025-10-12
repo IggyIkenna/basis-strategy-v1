@@ -27,6 +27,13 @@ class StrategyAction(BaseModel):
 class BaseStrategyManager(ABC):
     """Base strategy manager with standardized interface"""
     
+    _instance = None
+    
+    def __new__(cls, *args, **kwargs):
+        if cls._instance is None:
+            cls._instance = super(BaseStrategyManager, cls).__new__(cls)
+        return cls._instance
+    
     def __init__(self, config: Dict[str, Any], risk_monitor, position_monitor, event_engine):
         """
         Initialize base strategy manager.

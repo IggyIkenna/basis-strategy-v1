@@ -5,17 +5,15 @@ All other components have been archived to keep the codebase clean.
 """
 
 # Core components (used by EventDrivenStrategyEngine)
-from .position_monitor import PositionMonitor
-from .event_logger import EventLogger
-from .exposure_monitor import ExposureMonitor
-from .strategy_manager import StrategyManager
-from .risk_monitor import RiskMonitor
-
+# Import from new locations
+from ....core.components.position_monitor import PositionMonitor
+from ....core.components.exposure_monitor import ExposureMonitor
+from ....core.components.risk_monitor import RiskMonitor
+from ....infrastructure.logging.event_logger import EventLogger
 __all__ = [
-    # Core components (8 total - legacy execution managers removed, risk monitor moved here)
+    # Core components (moved to canonical locations)
     'PositionMonitor',
-    'EventLogger',
     'ExposureMonitor',
-    'StrategyManager',
-    'RiskMonitor'
+    'RiskMonitor',
+    'EventLogger'
 ]

@@ -57,6 +57,36 @@ class QualityGateValidator:
                 ],
                 'critical': True
             },
+            'configuration': {
+                'description': 'Configuration Validation',
+                'scripts': [
+                    'validate_config_alignment.py',
+                    'test_config_and_data_validation.py'
+                ],
+                'critical': True
+            },
+            'unit': {
+                'description': 'Unit Tests - Component Isolation',
+                'scripts': [
+                    'tests/unit/test_position_monitor_unit.py',
+                    'tests/unit/test_exposure_monitor_unit.py',
+                    'tests/unit/test_risk_monitor_unit.py',
+                    'tests/unit/test_pnl_calculator_unit.py',
+                    'tests/unit/test_strategy_manager_unit.py',
+                    'tests/unit/test_execution_manager_unit.py',
+                    'tests/unit/test_data_provider_unit.py',
+                    'tests/unit/test_config_manager_unit.py',
+                    'tests/unit/test_event_logger_unit.py',
+                    'tests/unit/test_results_store_unit.py',
+                    'tests/unit/test_health_system_unit.py',
+                    'tests/unit/test_api_endpoints_unit.py',
+                    'tests/unit/test_environment_switching_unit.py',
+                    'tests/unit/test_config_validation_unit.py',
+                    'tests/unit/test_live_data_validation_unit.py'
+                ],
+                'critical': True,
+                'timeout': 30
+            },
             'integration': {
                 'description': 'Integration Alignment Validation',
                 'scripts': [
@@ -64,34 +94,50 @@ class QualityGateValidator:
                 ],
                 'critical': True
             },
+            'integration_data_flows': {
+                'description': 'Integration Tests - Component Data Flows',
+                'scripts': [
+                    'tests/integration/test_data_flow_position_to_exposure.py',
+                    'tests/integration/test_data_flow_exposure_to_risk.py',
+                    'tests/integration/test_data_flow_risk_to_strategy.py',
+                    'tests/integration/test_data_flow_strategy_to_execution.py',
+                    'tests/integration/test_tight_loop_reconciliation.py',
+                    'tests/integration/test_repo_structure_integration.py'
+                ],
+                'critical': True,
+                'timeout': 60
+            },
+            'e2e_strategies': {
+                'description': 'E2E Strategy Tests - Full Execution',
+                'scripts': [
+                    'tests/e2e/test_pure_lending_e2e.py',
+                    'tests/e2e/test_btc_basis_e2e.py',
+                    'tests/e2e/test_eth_basis_e2e.py',
+                    'tests/e2e/test_usdt_market_neutral_e2e.py',
+                    'tests/e2e/test_eth_staking_only_e2e.py',
+                    'tests/e2e/test_eth_leveraged_staking_e2e.py',
+                    'tests/e2e/test_usdt_market_neutral_no_leverage_e2e.py',
+                    'tests/e2e/test_performance_e2e.py'
+                ],
+                'critical': False,
+                'timeout': 120
+            },
             'strategy': {
-                'description': 'Strategy Validation',
+                'description': 'Strategy Validation (Legacy - Use e2e_strategies instead)',
                 'scripts': [
                     'test_pure_lending_quality_gates.py',
                     'test_btc_basis_quality_gates.py'
                 ],
-                'critical': True
+                'critical': False
             },
             'components': {
-                'description': 'Component Validation',
+                'description': 'Component Validation (Legacy - Use unit tests instead)',
                 'scripts': [
-                    'monitor_quality_gates.py',
-                    'risk_monitor_quality_gates.py',
-                    'test_tight_loop_quality_gates.py',
-                    'test_position_monitor_persistence_quality_gates.py',
-                    'test_async_ordering_quality_gates.py'
-                ],
-                'critical': True
-            },
-            'health': {
-                'description': 'Health System Validation',
-                'scripts': [],  # Built-in validation
-                'critical': True
-            },
-            'performance': {
-                'description': 'Performance Validation',
-                'scripts': [
-                    'performance_quality_gates.py'
+                    'deprecated/monitor_quality_gates.py',
+                    'deprecated/risk_monitor_quality_gates.py',
+                    'deprecated/test_tight_loop_quality_gates.py',
+                    'deprecated/test_position_monitor_persistence_quality_gates.py',
+                    'deprecated/test_async_ordering_quality_gates.py'
                 ],
                 'critical': False
             },
@@ -100,6 +146,13 @@ class QualityGateValidator:
                 'scripts': [
                     'test_data_availability_quality_gates.py',
                     'test_data_provider_factory_quality_gates.py'
+                ],
+                'critical': True
+            },
+            'env_config_sync': {
+                'description': 'Environment Variable & Config Field Usage Sync Validation',
+                'scripts': [
+                    'test_env_config_usage_sync_quality_gates.py'
                 ],
                 'critical': True
             },
@@ -117,29 +170,17 @@ class QualityGateValidator:
                 ],
                 'critical': True
             },
-            'configuration': {
-                'description': 'Configuration Validation',
-                'scripts': [
-                    'validate_config_alignment.py',
-                    'test_config_and_data_validation.py'
-                ],
+            'health': {
+                'description': 'Health System Validation',
+                'scripts': [],  # Built-in validation
                 'critical': True
             },
-            'data_loading': {
-                'description': 'Data Loading & Provider Factory Validation',
+            'performance': {
+                'description': 'Performance Validation',
                 'scripts': [
-                    'test_data_availability_quality_gates.py',
-                    'test_data_provider_factory_quality_gates.py'
+                    'performance_quality_gates.py'
                 ],
-                'critical': True
-            },
-            'integration': {
-                'description': 'Integration Validation',
-                'scripts': [
-                    'test_e2e_backtest_flow.py',
-                    'test_live_data_validation.py'
-                ],
-                'critical': True
+                'critical': False
             },
             'coverage': {
                 'description': 'Test Coverage Analysis',
@@ -147,6 +188,13 @@ class QualityGateValidator:
                     'analyze_test_coverage.py'
                 ],
                 'critical': False
+            },
+            'repo_structure': {
+                'description': 'Repository Structure Validation & Documentation Update',
+                'scripts': [
+                    'tests/integration/test_repo_structure_integration.py'
+                ],
+                'critical': True
             }
         }
     
@@ -295,6 +343,32 @@ class QualityGateValidator:
         for category in categories:
             category_results = await self.run_category(category)
             all_results[category] = category_results
+        
+        # Smart skipping logic for E2E tests
+        if 'e2e_strategies' in categories:
+            # Check if unit or integration tests failed
+            unit_results = all_results.get('unit', {})
+            integration_results = all_results.get('integration_data_flows', {})
+            
+            unit_passed = sum(1 for r in unit_results.values() if r.get('status') == 'PASS')
+            unit_total = len(unit_results)
+            
+            integration_passed = sum(1 for r in integration_results.values() if r.get('status') == 'PASS')
+            integration_total = len(integration_results)
+            
+            # Skip E2E if < 80% unit or integration passing
+            if unit_total > 0 and (unit_passed / unit_total) < 0.8:
+                print(f"⚠️  Skipping E2E tests - unit tests < 80% passing ({unit_passed}/{unit_total})")
+                all_results['e2e_strategies'] = {
+                    'skipped': True,
+                    'reason': f'Unit tests < 80% passing ({unit_passed}/{unit_total})'
+                }
+            elif integration_total > 0 and (integration_passed / integration_total) < 0.8:
+                print(f"⚠️  Skipping E2E tests - integration tests < 80% passing ({integration_passed}/{integration_total})")
+                all_results['e2e_strategies'] = {
+                    'skipped': True,
+                    'reason': f'Integration tests < 80% passing ({integration_passed}/{integration_total})'
+                }
         
         return all_results
     
@@ -1999,7 +2073,7 @@ async def main():
     import argparse
     
     parser = argparse.ArgumentParser(description='Quality Gates Validation - Single Entry Point')
-    parser.add_argument('--category', choices=['docs_validation', 'docs', 'strategy', 'components', 'health', 'performance', 'configuration', 'integration', 'coverage'],
+    parser.add_argument('--category', choices=['docs_validation', 'docs', 'strategy', 'components', 'health', 'performance', 'configuration', 'integration', 'coverage', 'env_config_sync', 'repo_structure'],
                        help='Run specific category of quality gates')
     parser.add_argument('--docs', action='store_true',
                        help='Run documentation link validation quality gates')

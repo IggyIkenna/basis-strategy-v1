@@ -58,10 +58,65 @@ live_trading_service:
 - **BASIS_LOG_LEVEL**: 'DEBUG' | 'INFO' | 'WARNING' | 'ERROR' (logging level)
 - **BASIS_DATA_DIR**: Path to data directory (for backtest mode)
 
-### Component-Specific Variables
-- **LIVE_TRADING_TIMEOUT**: Live trading execution timeout in seconds (default: 3600)
-- **LIVE_TRADING_MAX_CONCURRENT**: Maximum concurrent live strategies (default: 5)
-- **LIVE_TRADING_MEMORY_LIMIT**: Memory limit per strategy in MB (default: 1024)
+### Live Trading Safety Controls
+- **BASIS_LIVE_TRADING__ENABLED**: Enable/disable live trading (default: false)
+  - **Usage**: Master safety switch for live trading
+  - **Values**: true | false
+  - **Impact**: When false, all live trading requests are rejected
+  - **Safety**: Must be explicitly set to true to enable live trading
+
+- **BASIS_LIVE_TRADING__READ_ONLY**: Read-only mode for testing (default: true)
+  - **Usage**: Safe testing mode that prevents real trades
+  - **Values**: true | false
+  - **Impact**: When true, logs trades but doesn't execute them
+  - **Safety**: Recommended for initial testing
+
+- **BASIS_LIVE_TRADING__MAX_TRADE_SIZE_USD**: Maximum trade size in USD (default: 100)
+  - **Usage**: Risk management limit for trade sizes
+  - **Values**: Positive number
+  - **Impact**: Rejects trades exceeding this amount
+  - **Safety**: Prevents large accidental trades
+
+- **BASIS_LIVE_TRADING__EMERGENCY_STOP_LOSS_PCT**: Emergency stop loss threshold (default: 0.15)
+  - **Usage**: Automatic stop when drawdown exceeds threshold
+  - **Values**: 0.0 to 1.0 (percentage)
+  - **Impact**: Automatically stops strategy when breached
+  - **Safety**: Circuit breaker for large losses
+
+- **BASIS_LIVE_TRADING__HEARTBEAT_TIMEOUT_SECONDS**: Heartbeat timeout (default: 300)
+  - **Usage**: Health monitoring timeout
+  - **Values**: Positive integer (seconds)
+  - **Impact**: Considers strategy unhealthy if no heartbeat
+  - **Safety**: Early detection of strategy failures
+
+- **BASIS_LIVE_TRADING__CIRCUIT_BREAKER_ENABLED**: Enable circuit breaker (default: true)
+  - **Usage**: Enable automatic emergency stops
+  - **Values**: true | false
+  - **Impact**: When enabled, triggers emergency stops on breaches
+  - **Safety**: Additional safety layer for risk management
+
+### Safety Controls Implementation
+
+The live trading service implements comprehensive safety controls through environment variables:
+
+**Startup Validation**:
+- All live trading variables are validated at startup when `BASIS_EXECUTION_MODE=live`
+- Invalid values cause startup failure with clear error messages
+- Default values are applied for missing variables
+
+**Runtime Safety Checks**:
+- `BASIS_LIVE_TRADING__ENABLED` is checked before accepting any live trading requests
+- `BASIS_LIVE_TRADING__MAX_TRADE_SIZE_USD` is validated against initial capital
+- `BASIS_LIVE_TRADING__READ_ONLY` mode is enforced during execution
+- `BASIS_LIVE_TRADING__EMERGENCY_STOP_LOSS_PCT` triggers automatic stops
+- `BASIS_LIVE_TRADING__HEARTBEAT_TIMEOUT_SECONDS` is used for health monitoring
+- `BASIS_LIVE_TRADING__CIRCUIT_BREAKER_ENABLED` controls emergency stop behavior
+
+**Error Codes**:
+- `LT-008`: Live trading disabled via BASIS_LIVE_TRADING__ENABLED
+- `LT-009`: Live trading in read-only mode via BASIS_LIVE_TRADING__READ_ONLY
+- `LT-010`: Initial capital exceeds maximum trade size
+- `LT-011`: Emergency stop loss threshold breached
 
 ## Config Fields Used
 
@@ -1637,8 +1692,7 @@ Following [Quality Gate Validation](QUALITY_GATES.md) <!-- Redirected from 17_qu
 
 1. **Run Live Trading Quality Gates**:
    ```bash
-   python scripts/test_pure_lending_quality_gates.py
-   python scripts/test_btc_basis_quality_gates.py
+   python scripts/run_quality_gates.py --category e2e_strategies
    ```
 
 2. **Verify Live Trading Client Validation**:

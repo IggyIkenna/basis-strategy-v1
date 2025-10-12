@@ -24,6 +24,13 @@ class ReconciliationComponent:
     enabling execution manager to proceed only after successful reconciliation.
     """
     
+    _instance = None
+    
+    def __new__(cls, *args, **kwargs):
+        if cls._instance is None:
+            cls._instance = super(ReconciliationComponent, cls).__new__(cls)
+        return cls._instance
+    
     def __init__(self, config: Dict, execution_mode: str, position_monitor, event_logger=None, health_manager=None):
         """
         Initialize reconciliation component with references.
