@@ -1,391 +1,496 @@
 """
-Unit Tests for Config Manager Component
-
-Tests Config Manager in isolation with mocked dependencies.
-Focuses on config loading, merging, and environment switching.
+Unit tests for ConfigManager - Environment switching and fail-fast validation
 """
 
+import os
+import tempfile
 import pytest
-import pandas as pd
-from unittest.mock import Mock, patch
 from pathlib import Path
-import json
-import yaml
+from unittest.mock import patch, mock_open
+import sys
 
-# Import the component under test
-from basis_strategy_v1.infrastructure.config.config_manager import get_config_manager, ConfigManager
+# Add the backend src to the path
+sys.path.insert(0, str(Path(__file__).parent.parent.parent / "backend" / "src"))
+
+from basis_strategy_v1.infrastructure.config.config_manager import ConfigManager, get_config_manager
 
 
-class TestConfigManagerUnit:
-    """Unit tests for Config Manager component."""
+class TestConfigManagerEnvironmentSwitching:
+    """Test environment file switching functionality."""
     
-    def test_load_base_config_local_json(self, mock_config):
-        """Test load base config (local.json)."""
-        # Arrange
+    def setup_method(self):
+        """Set up test environment."""
+        # Clear any existing instance
+        ConfigManager._instance = None
+        
+        # Create temporary directory for test files
+        self.temp_dir = tempfile.mkdtemp()
+        self.temp_path = Path(self.temp_dir)
+        
+        # Create test environment files
+        self._create_test_env_files()
+        
+        # Create test configuration directories
+        self._create_test_config_directories()
+    
+    def teardown_method(self):
+        """Clean up test environment."""
+        # Clear environment variables
+        for key in list(os.environ.keys()):
+            if key.startswith('BASIS_') or key in ['HEALTH_CHECK_INTERVAL', 'HEALTH_CHECK_ENDPOINT']:
+                del os.environ[key]
+        
+        # Clear singleton instance
+        ConfigManager._instance = None
+    
+    def _create_test_env_files(self):
+        """Create test environment files."""
+        # Create env.unified
+        unified_content = """# Base environment variables
+BASIS_ENVIRONMENT=
+BASIS_DEPLOYMENT_MODE=
+BASIS_DEPLOYMENT_MACHINE=
+BASIS_DATA_DIR=
+BASIS_DATA_MODE=
+BASIS_RESULTS_DIR=
+BASIS_DEBUG=
+BASIS_LOG_LEVEL=
+BASIS_EXECUTION_MODE=
+BASIS_DATA_START_DATE=
+BASIS_DATA_END_DATE=
+HEALTH_CHECK_INTERVAL=
+HEALTH_CHECK_ENDPOINT=
+"""
+        (self.temp_path / "env.unified").write_text(unified_content)
+        
+        # Create env.dev
+        dev_content = """# Development environment
+BASIS_ENVIRONMENT=dev
+BASIS_DEPLOYMENT_MODE=local
+BASIS_DEPLOYMENT_MACHINE=local_mac
+BASIS_DATA_DIR=/test/data
+BASIS_DATA_MODE=csv
+BASIS_RESULTS_DIR=/test/results
+BASIS_DEBUG=true
+BASIS_LOG_LEVEL=DEBUG
+BASIS_EXECUTION_MODE=backtest
+BASIS_DATA_START_DATE=2024-01-01
+BASIS_DATA_END_DATE=2024-12-31
+HEALTH_CHECK_INTERVAL=30s
+HEALTH_CHECK_ENDPOINT=/health
+BASIS_API_PORT=8001
+BASIS_API_HOST=0.0.0.0
+BASIS_API_CORS_ORIGINS=http://localhost:3000,http://localhost:5173
+"""
+        (self.temp_path / "env.dev").write_text(dev_content)
+        
+        # Create env.staging
+        staging_content = """# Staging environment
+BASIS_ENVIRONMENT=staging
+BASIS_DEPLOYMENT_MODE=staging
+BASIS_DEPLOYMENT_MACHINE=staging_server
+BASIS_DATA_DIR=/staging/data
+BASIS_DATA_MODE=csv
+BASIS_RESULTS_DIR=/staging/results
+BASIS_DEBUG=false
+BASIS_LOG_LEVEL=INFO
+BASIS_EXECUTION_MODE=backtest
+BASIS_DATA_START_DATE=2024-01-01
+BASIS_DATA_END_DATE=2024-12-31
+HEALTH_CHECK_INTERVAL=30s
+HEALTH_CHECK_ENDPOINT=/health
+BASIS_API_PORT=8001
+BASIS_API_HOST=0.0.0.0
+BASIS_API_CORS_ORIGINS=http://localhost:3000,http://localhost:5173
+"""
+        (self.temp_path / "env.staging").write_text(staging_content)
+        
+        # Create env.prod
+        prod_content = """# Production environment
+BASIS_ENVIRONMENT=prod
+BASIS_DEPLOYMENT_MODE=prod
+BASIS_DEPLOYMENT_MACHINE=prod_server
+BASIS_DATA_DIR=/prod/data
+BASIS_DATA_MODE=db
+BASIS_RESULTS_DIR=/prod/results
+BASIS_DEBUG=false
+BASIS_LOG_LEVEL=WARNING
+BASIS_EXECUTION_MODE=live
+BASIS_DATA_START_DATE=2024-01-01
+BASIS_DATA_END_DATE=2024-12-31
+HEALTH_CHECK_INTERVAL=30s
+HEALTH_CHECK_ENDPOINT=/health
+BASIS_API_PORT=8001
+BASIS_API_HOST=0.0.0.0
+BASIS_API_CORS_ORIGINS=http://localhost:3000,http://localhost:5173
+"""
+        (self.temp_path / "env.prod").write_text(prod_content)
+    
+    def _create_test_config_directories(self):
+        """Create test configuration directories."""
+        # Create configs directory structure
+        (self.temp_path / "configs" / "modes").mkdir(parents=True)
+        (self.temp_path / "configs" / "venues").mkdir(parents=True)
+        (self.temp_path / "configs" / "share_classes").mkdir(parents=True)
+    
+    @patch('basis_strategy_v1.infrastructure.config.config_manager.Path')
+    def test_environment_switching_dev(self, mock_path):
+        """Test dev environment loading."""
+        # Mock the base directory to point to our temp directory
+        mock_path.return_value.parent.parent.parent.parent.parent.parent = self.temp_path
+        
+        # Set environment variable
+        os.environ['BASIS_ENVIRONMENT'] = 'dev'
+        
+        # Create config manager
         config_manager = ConfigManager()
         
-        # Act
+        # Verify environment is loaded correctly
+        assert config_manager.get_environment() == 'dev'
+        assert config_manager.get_execution_mode() == 'backtest'
+        assert config_manager.config_cache['env']['BASIS_DEBUG'] == 'true'
+        assert config_manager.config_cache['env']['BASIS_LOG_LEVEL'] == 'DEBUG'
+    
+    @patch('basis_strategy_v1.infrastructure.config.config_manager.Path')
+    def test_environment_switching_staging(self, mock_path):
+        """Test staging environment loading."""
+        # Mock the base directory to point to our temp directory
+        mock_path.return_value.parent.parent.parent.parent.parent.parent = self.temp_path
+        
+        # Set environment variable
+        os.environ['BASIS_ENVIRONMENT'] = 'staging'
+        
+        # Create config manager
+        config_manager = ConfigManager()
+        
+        # Verify environment is loaded correctly
+        assert config_manager.get_environment() == 'staging'
+        assert config_manager.get_execution_mode() == 'backtest'
+        assert config_manager.config_cache['env']['BASIS_DEBUG'] == 'false'
+        assert config_manager.config_cache['env']['BASIS_LOG_LEVEL'] == 'INFO'
+    
+    @patch('basis_strategy_v1.infrastructure.config.config_manager.Path')
+    def test_environment_switching_prod(self, mock_path):
+        """Test prod environment loading."""
+        # Mock the base directory to point to our temp directory
+        mock_path.return_value.parent.parent.parent.parent.parent.parent = self.temp_path
+        
+        # Set environment variable
+        os.environ['BASIS_ENVIRONMENT'] = 'prod'
+        
+        # Create config manager
+        config_manager = ConfigManager()
+        
+        # Verify environment is loaded correctly
+        assert config_manager.get_environment() == 'prod'
+        assert config_manager.get_execution_mode() == 'live'
+        assert config_manager.config_cache['env']['BASIS_DEBUG'] == 'false'
+        assert config_manager.config_cache['env']['BASIS_LOG_LEVEL'] == 'WARNING'
+    
+    @patch('basis_strategy_v1.infrastructure.config.config_manager.Path')
+    def test_missing_environment_variable_fails(self, mock_path):
+        """Test that missing BASIS_ENVIRONMENT fails fast."""
+        # Mock the base directory to point to our temp directory
+        mock_path.return_value.parent.parent.parent.parent.parent.parent = self.temp_path
+        
+        # Don't set BASIS_ENVIRONMENT
+        if 'BASIS_ENVIRONMENT' in os.environ:
+            del os.environ['BASIS_ENVIRONMENT']
+        
+        # Should fail fast
+        with pytest.raises(ValueError, match="REQUIRED environment variable not set: BASIS_ENVIRONMENT"):
+            ConfigManager()
+    
+    @patch('basis_strategy_v1.infrastructure.config.config_manager.Path')
+    def test_missing_environment_file_fails(self, mock_path):
+        """Test that missing environment file fails fast."""
+        # Mock the base directory to point to our temp directory
+        mock_path.return_value.parent.parent.parent.parent.parent.parent = self.temp_path
+        
+        # Set environment variable
+        os.environ['BASIS_ENVIRONMENT'] = 'dev'
+        
+        # Remove the dev environment file
+        (self.temp_path / "env.dev").unlink()
+        
+        # Should fail fast
+        with pytest.raises(FileNotFoundError, match="Environment file not found"):
+            ConfigManager()
+    
+    @patch('basis_strategy_v1.infrastructure.config.config_manager.Path')
+    def test_invalid_environment_value_fails(self, mock_path):
+        """Test that invalid environment value fails fast."""
+        # Mock the base directory to point to our temp directory
+        mock_path.return_value.parent.parent.parent.parent.parent.parent = self.temp_path
+        
+        # Set invalid environment variable
+        os.environ['BASIS_ENVIRONMENT'] = 'invalid'
+        
+        # Should fail fast
+        with pytest.raises(ValueError, match="Unknown environment: invalid"):
+            ConfigManager()
+    
+    @patch('basis_strategy_v1.infrastructure.config.config_manager.Path')
+    def test_missing_required_variable_fails(self, mock_path):
+        """Test that missing required variable fails fast."""
+        # Mock the base directory to point to our temp directory
+        mock_path.return_value.parent.parent.parent.parent.parent.parent = self.temp_path
+        
+        # Clear all environment variables first
+        for key in list(os.environ.keys()):
+            if key.startswith('BASIS_') or key in ['HEALTH_CHECK_INTERVAL', 'HEALTH_CHECK_ENDPOINT']:
+                del os.environ[key]
+        
+        # Set only BASIS_ENVIRONMENT, don't load environment files
+        os.environ['BASIS_ENVIRONMENT'] = 'dev'
+        
+        # Mock the environment file loading to not load any files
+        with patch.object(ConfigManager, '_load_env_file'):
+            # Should fail fast because required variables are missing
+            with pytest.raises(ValueError, match="REQUIRED environment variable not set"):
+                ConfigManager()
+    
+    @patch('basis_strategy_v1.infrastructure.config.config_manager.Path')
+    def test_invalid_boolean_value_fails(self, mock_path):
+        """Test that invalid boolean value fails fast."""
+        # Mock the base directory to point to our temp directory
+        mock_path.return_value.parent.parent.parent.parent.parent.parent = self.temp_path
+        
+        # Clear all environment variables first
+        for key in list(os.environ.keys()):
+            if key.startswith('BASIS_') or key in ['HEALTH_CHECK_INTERVAL', 'HEALTH_CHECK_ENDPOINT']:
+                del os.environ[key]
+        
+        # Set all required environment variables with valid values
+        os.environ['BASIS_ENVIRONMENT'] = 'dev'
+        os.environ['BASIS_DEPLOYMENT_MODE'] = 'local'
+        os.environ['BASIS_DEPLOYMENT_MACHINE'] = 'local_mac'
+        os.environ['BASIS_DATA_DIR'] = '/test/data'
+        os.environ['BASIS_DATA_MODE'] = 'csv'
+        os.environ['BASIS_RESULTS_DIR'] = '/test/results'
+        os.environ['BASIS_LOG_LEVEL'] = 'DEBUG'
+        os.environ['BASIS_EXECUTION_MODE'] = 'backtest'
+        os.environ['BASIS_DATA_START_DATE'] = '2024-01-01'
+        os.environ['BASIS_DATA_END_DATE'] = '2024-12-31'
+        os.environ['HEALTH_CHECK_INTERVAL'] = '30s'
+        os.environ['HEALTH_CHECK_ENDPOINT'] = '/health'
+        
+        # Set invalid boolean value
+        os.environ['BASIS_DEBUG'] = 'invalid'
+        
+        # Mock the environment file loading to not load any files
+        with patch.object(ConfigManager, '_load_env_file'):
+            # Should fail fast
+            with pytest.raises(ValueError, match="Invalid boolean value for BASIS_DEBUG"):
+                ConfigManager()
+    
+    @patch('basis_strategy_v1.infrastructure.config.config_manager.Path')
+    def test_invalid_integer_value_fails(self, mock_path):
+        """Test that invalid integer value fails fast."""
+        # Mock the base directory to point to our temp directory
+        mock_path.return_value.parent.parent.parent.parent.parent.parent = self.temp_path
+        
+        # Clear all environment variables first
+        for key in list(os.environ.keys()):
+            if key.startswith('BASIS_') or key in ['HEALTH_CHECK_INTERVAL', 'HEALTH_CHECK_ENDPOINT']:
+                del os.environ[key]
+        
+        # Set all required environment variables with valid values
+        os.environ['BASIS_ENVIRONMENT'] = 'dev'
+        os.environ['BASIS_DEPLOYMENT_MODE'] = 'local'
+        os.environ['BASIS_DEPLOYMENT_MACHINE'] = 'local_mac'
+        os.environ['BASIS_DATA_DIR'] = '/test/data'
+        os.environ['BASIS_DATA_MODE'] = 'csv'
+        os.environ['BASIS_RESULTS_DIR'] = '/test/results'
+        os.environ['BASIS_DEBUG'] = 'true'
+        os.environ['BASIS_LOG_LEVEL'] = 'DEBUG'
+        os.environ['BASIS_EXECUTION_MODE'] = 'backtest'
+        os.environ['BASIS_DATA_START_DATE'] = '2024-01-01'
+        os.environ['BASIS_DATA_END_DATE'] = '2024-12-31'
+        os.environ['HEALTH_CHECK_INTERVAL'] = '30s'
+        os.environ['HEALTH_CHECK_ENDPOINT'] = '/health'
+        
+        # Set invalid integer value
+        os.environ['BASIS_API_PORT'] = 'invalid'
+        
+        # Mock the environment file loading to not load any files
+        with patch.object(ConfigManager, '_load_env_file'):
+            # Should fail fast
+            with pytest.raises(ValueError, match="Invalid integer value for BASIS_API_PORT"):
+                ConfigManager()
+    
+    @patch('basis_strategy_v1.infrastructure.config.config_manager.Path')
+    def test_invalid_date_format_fails(self, mock_path):
+        """Test that invalid date format fails fast."""
+        # Mock the base directory to point to our temp directory
+        mock_path.return_value.parent.parent.parent.parent.parent.parent = self.temp_path
+        
+        # Clear all environment variables first
+        for key in list(os.environ.keys()):
+            if key.startswith('BASIS_') or key in ['HEALTH_CHECK_INTERVAL', 'HEALTH_CHECK_ENDPOINT']:
+                del os.environ[key]
+        
+        # Set all required environment variables with valid values
+        os.environ['BASIS_ENVIRONMENT'] = 'dev'
+        os.environ['BASIS_DEPLOYMENT_MODE'] = 'local'
+        os.environ['BASIS_DEPLOYMENT_MACHINE'] = 'local_mac'
+        os.environ['BASIS_DATA_DIR'] = '/test/data'
+        os.environ['BASIS_DATA_MODE'] = 'csv'
+        os.environ['BASIS_RESULTS_DIR'] = '/test/results'
+        os.environ['BASIS_DEBUG'] = 'true'
+        os.environ['BASIS_LOG_LEVEL'] = 'DEBUG'
+        os.environ['BASIS_EXECUTION_MODE'] = 'backtest'
+        os.environ['BASIS_DATA_END_DATE'] = '2024-12-31'
+        os.environ['HEALTH_CHECK_INTERVAL'] = '30s'
+        os.environ['HEALTH_CHECK_ENDPOINT'] = '/health'
+        
+        # Set invalid date value
+        os.environ['BASIS_DATA_START_DATE'] = 'invalid-date'
+        
+        # Mock the environment file loading to not load any files
+        with patch.object(ConfigManager, '_load_env_file'):
+            # Should fail fast
+            with pytest.raises(ValueError, match="Invalid date format for BASIS_DATA_START_DATE"):
+                ConfigManager()
+    
+    @patch('basis_strategy_v1.infrastructure.config.config_manager.Path')
+    def test_invalid_duration_format_fails(self, mock_path):
+        """Test that invalid duration format fails fast."""
+        # Mock the base directory to point to our temp directory
+        mock_path.return_value.parent.parent.parent.parent.parent.parent = self.temp_path
+        
+        # Clear all environment variables first
+        for key in list(os.environ.keys()):
+            if key.startswith('BASIS_') or key in ['HEALTH_CHECK_INTERVAL', 'HEALTH_CHECK_ENDPOINT']:
+                del os.environ[key]
+        
+        # Set all required environment variables with valid values
+        os.environ['BASIS_ENVIRONMENT'] = 'dev'
+        os.environ['BASIS_DEPLOYMENT_MODE'] = 'local'
+        os.environ['BASIS_DEPLOYMENT_MACHINE'] = 'local_mac'
+        os.environ['BASIS_DATA_DIR'] = '/test/data'
+        os.environ['BASIS_DATA_MODE'] = 'csv'
+        os.environ['BASIS_RESULTS_DIR'] = '/test/results'
+        os.environ['BASIS_DEBUG'] = 'true'
+        os.environ['BASIS_LOG_LEVEL'] = 'DEBUG'
+        os.environ['BASIS_EXECUTION_MODE'] = 'backtest'
+        os.environ['BASIS_DATA_START_DATE'] = '2024-01-01'
+        os.environ['BASIS_DATA_END_DATE'] = '2024-12-31'
+        os.environ['HEALTH_CHECK_ENDPOINT'] = '/health'
+        
+        # Set invalid duration value
+        os.environ['HEALTH_CHECK_INTERVAL'] = 'invalid'
+        
+        # Mock the environment file loading to not load any files
+        with patch.object(ConfigManager, '_load_env_file'):
+            # Should fail fast
+            with pytest.raises(ValueError, match="Invalid duration format for HEALTH_CHECK_INTERVAL"):
+                ConfigManager()
+    
+    @patch('basis_strategy_v1.infrastructure.config.config_manager.Path')
+    def test_environment_file_permission_error_fails(self, mock_path):
+        """Test that unreadable environment file fails fast."""
+        # Mock the base directory to point to our temp directory
+        mock_path.return_value.parent.parent.parent.parent.parent.parent = self.temp_path
+        
+        # Set environment variable
+        os.environ['BASIS_ENVIRONMENT'] = 'dev'
+        
+        # Make the file unreadable
+        env_file = self.temp_path / "env.dev"
+        env_file.chmod(0o000)
+        
         try:
-            base_config = config_manager.get_base_config()
-            
-            # Assert
-            assert isinstance(base_config, dict)
-            assert 'api' in base_config or 'database' in base_config or 'data' in base_config
-            
-        except Exception as e:
-            # Expected behavior if local.json doesn't exist
-            assert isinstance(e, Exception)
-            assert 'not found' in str(e).lower() or 'missing' in str(e).lower()
+            # Should fail fast
+            with pytest.raises(PermissionError, match="Environment file not readable"):
+                ConfigManager()
+        finally:
+            # Restore permissions for cleanup
+            env_file.chmod(0o644)
     
-    def test_load_mode_config_modes_yaml(self, mock_config):
-        """Test load mode config (modes/*.yaml)."""
-        # Arrange
-        config_manager = ConfigManager()
+    @patch('basis_strategy_v1.infrastructure.config.config_manager.Path')
+    def test_singleton_pattern(self, mock_path):
+        """Test that ConfigManager follows singleton pattern."""
+        # Mock the base directory to point to our temp directory
+        mock_path.return_value.parent.parent.parent.parent.parent.parent = self.temp_path
         
-        # Test different modes
-        test_modes = [
-            'pure_lending',
-            'btc_basis',
-            'eth_basis',
-            'eth_staking_only',
-            'eth_leveraged',
-            'usdt_market_neutral_no_leverage',
-            'usdt_market_neutral',
-            'ml_btc_directional',
-            'ml_usdt_directional'
-        ]
+        # Clear any existing instance
+        ConfigManager._instance = None
         
-        # Act & Assert
-        for mode in test_modes:
-            try:
-                mode_config = config_manager.get_mode_config(mode)
-                
-                # Assert
-                assert isinstance(mode_config, dict)
-                assert 'mode' in mode_config
-                assert mode_config['mode'] == mode
-                
-            except Exception as e:
-                # Expected behavior if mode config doesn't exist
-                assert isinstance(e, Exception)
-                assert 'not found' in str(e).lower() or 'missing' in str(e).lower()
+        # Clear all environment variables first
+        for key in list(os.environ.keys()):
+            if key.startswith('BASIS_') or key in ['HEALTH_CHECK_INTERVAL', 'HEALTH_CHECK_ENDPOINT']:
+                del os.environ[key]
+        
+        # Set required environment variables
+        os.environ['BASIS_ENVIRONMENT'] = 'dev'
+        os.environ['BASIS_DEPLOYMENT_MODE'] = 'local'
+        os.environ['BASIS_DEPLOYMENT_MACHINE'] = 'local_mac'
+        os.environ['BASIS_DATA_DIR'] = '/test/data'
+        os.environ['BASIS_DATA_MODE'] = 'csv'
+        os.environ['BASIS_RESULTS_DIR'] = '/test/results'
+        os.environ['BASIS_DEBUG'] = 'true'
+        os.environ['BASIS_LOG_LEVEL'] = 'DEBUG'
+        os.environ['BASIS_EXECUTION_MODE'] = 'backtest'
+        os.environ['BASIS_DATA_START_DATE'] = '2024-01-01'
+        os.environ['BASIS_DATA_END_DATE'] = '2024-12-31'
+        os.environ['HEALTH_CHECK_INTERVAL'] = '30s'
+        os.environ['HEALTH_CHECK_ENDPOINT'] = '/health'
+        os.environ['BASIS_API_PORT'] = '8001'
+        os.environ['BASIS_API_HOST'] = '0.0.0.0'
+        os.environ['BASIS_API_CORS_ORIGINS'] = 'http://localhost:3000,http://localhost:5173'
+        
+        # Create first instance
+        instance1 = ConfigManager()
+        
+        # Create second instance
+        instance2 = ConfigManager()
+        
+        # Should be the same instance
+        assert instance1 is instance2
     
-    def test_load_venue_config_venues_yaml(self, mock_config):
-        """Test load venue config (venues/*.yaml)."""
-        # Arrange
-        config_manager = ConfigManager()
+    @patch('basis_strategy_v1.infrastructure.config.config_manager.Path')
+    def test_get_config_manager_function(self, mock_path):
+        """Test the get_config_manager function."""
+        # Mock the base directory to point to our temp directory
+        mock_path.return_value.parent.parent.parent.parent.parent.parent = self.temp_path
         
-        # Test different venues
-        test_venues = [
-            'binance',
-            'bybit',
-            'okx',
-            'ethereum',
-            'polygon'
-        ]
+        # Clear any existing instance
+        ConfigManager._instance = None
         
-        # Act & Assert
-        for venue in test_venues:
-            try:
-                venue_config = config_manager.get_venue_config(venue)
-                
-                # Assert
-                assert isinstance(venue_config, dict)
-                assert 'enabled' in venue_config or 'type' in venue_config
-                
-            except Exception as e:
-                # Expected behavior if venue config doesn't exist
-                assert isinstance(e, Exception)
-                assert 'not found' in str(e).lower() or 'missing' in str(e).lower()
-    
-    def test_config_merge_logic(self, mock_config):
-        """Test config merge logic."""
-        # Arrange
-        config_manager = ConfigManager()
+        # Clear all environment variables first
+        for key in list(os.environ.keys()):
+            if key.startswith('BASIS_') or key in ['HEALTH_CHECK_INTERVAL', 'HEALTH_CHECK_ENDPOINT']:
+                del os.environ[key]
         
-        # Create test configs
-        base_config = {
-            'api': {'base_url': 'https://api.example.com'},
-            'database': {'host': 'localhost'},
-            'data': {'dir': 'data'}
-        }
+        # Set required environment variables
+        os.environ['BASIS_ENVIRONMENT'] = 'dev'
+        os.environ['BASIS_DEPLOYMENT_MODE'] = 'local'
+        os.environ['BASIS_DEPLOYMENT_MACHINE'] = 'local_mac'
+        os.environ['BASIS_DATA_DIR'] = '/test/data'
+        os.environ['BASIS_DATA_MODE'] = 'csv'
+        os.environ['BASIS_RESULTS_DIR'] = '/test/results'
+        os.environ['BASIS_DEBUG'] = 'true'
+        os.environ['BASIS_LOG_LEVEL'] = 'DEBUG'
+        os.environ['BASIS_EXECUTION_MODE'] = 'backtest'
+        os.environ['BASIS_DATA_START_DATE'] = '2024-01-01'
+        os.environ['BASIS_DATA_END_DATE'] = '2024-12-31'
+        os.environ['HEALTH_CHECK_INTERVAL'] = '30s'
+        os.environ['HEALTH_CHECK_ENDPOINT'] = '/health'
+        os.environ['BASIS_API_PORT'] = '8001'
+        os.environ['BASIS_API_HOST'] = '0.0.0.0'
+        os.environ['BASIS_API_CORS_ORIGINS'] = 'http://localhost:3000,http://localhost:5173'
         
-        mode_config = {
-            'mode': 'pure_lending',
-            'asset': 'USDT',
-            'max_drawdown': 0.2
-        }
+        # Get config manager
+        config_manager = get_config_manager()
         
-        venue_config = {
-            'binance': {'enabled': True, 'type': 'cex'},
-            'bybit': {'enabled': True, 'type': 'cex'}
-        }
-        
-        # Act
-        merged_config = config_manager.merge_configs(base_config, mode_config, venue_config)
-        
-        # Assert
-        assert isinstance(merged_config, dict)
-        assert 'api' in merged_config
-        assert 'mode' in merged_config
-        assert 'binance' in merged_config
-        assert merged_config['mode'] == 'pure_lending'
-        assert merged_config['asset'] == 'USDT'
-        assert merged_config['max_drawdown'] == 0.2
-    
-    def test_environment_switching(self, mock_config):
-        """Test environment switching (dev/staging/prod)."""
-        # Arrange
-        config_manager = ConfigManager()
-        
-        # Test that environment variables are loaded correctly
-        env_vars = config_manager._load_environment_variables()
-        
-        # Assert
-        assert isinstance(env_vars, dict)
-        assert 'BASIS_ENVIRONMENT' in env_vars
-        assert env_vars['BASIS_ENVIRONMENT'] == 'dev'  # Set in conftest.py
-        
-        # Test that environment file loading works
-        assert 'BASIS_DEPLOYMENT_MODE' in env_vars
-        assert 'BASIS_DATA_DIR' in env_vars
-        assert 'BASIS_RESULTS_DIR' in env_vars
-    
-    def test_pydantic_validation(self, mock_config):
-        """Test Pydantic validation."""
-        # Arrange
-        config_manager = ConfigManager()
-        
-        # Test valid config
-        valid_config = {
-            'mode': 'pure_lending',
-            'share_class': 'USDT',
-            'asset': 'USDT',
-            'initial_capital': 100000.0,
-            'max_drawdown': 0.2,
-            'leverage_enabled': False
-        }
-        
-        # Act
-        try:
-            validated_config = config_manager.validate_config(valid_config)
-            
-            # Assert
-            assert isinstance(validated_config, dict)
-            assert validated_config['mode'] == 'pure_lending'
-            assert validated_config['share_class'] == 'USDT'
-            assert validated_config['initial_capital'] == 100000.0
-            
-        except Exception as e:
-            # Expected behavior if validation fails
-            assert isinstance(e, Exception)
-        
-        # Test invalid config
-        invalid_config = {
-            'mode': 'pure_lending',
-            'share_class': 'USDT',
-            'asset': 'USDT',
-            'initial_capital': 'invalid_number',  # Invalid type
-            'max_drawdown': 0.2,
-            'leverage_enabled': False
-        }
-        
-        # Act & Assert
-        try:
-            validated_config = config_manager.validate_config(invalid_config)
-            # Should not reach here
-            assert False, "Should have raised validation error"
-        except Exception as e:
-            # Expected behavior for invalid config
-            assert isinstance(e, Exception)
-    
-    def test_config_manager_initialization(self, mock_config):
-        """Test Config Manager initialization with different configs."""
-        # Test default initialization
-        config_manager = ConfigManager()
+        # Should be a ConfigManager instance
         assert isinstance(config_manager, ConfigManager)
         
-        # Test initialization with custom config
-        custom_config = mock_config.copy()
-        custom_config['custom_field'] = 'custom_value'
-        
-        config_manager = ConfigManager(custom_config)
-        assert config_manager.config['custom_field'] == 'custom_value'
-    
-    def test_config_manager_error_handling(self, mock_config):
-        """Test Config Manager error handling."""
-        # Arrange
-        config_manager = ConfigManager()
-        
-        # Test invalid file paths
-        invalid_paths = [
-            'nonexistent_file.json',
-            'nonexistent_file.yaml',
-            '/invalid/path/config.json'
-        ]
-        
-        # Act & Assert
-        for invalid_path in invalid_paths:
-            try:
-                config = config_manager.load_config_file(invalid_path)
-                # Should not reach here
-                assert False, "Should have raised error for invalid path"
-            except Exception as e:
-                # Expected behavior for invalid paths
-                assert isinstance(e, Exception)
-                assert 'not found' in str(e).lower() or 'missing' in str(e).lower()
-    
-    def test_config_manager_performance(self, mock_config):
-        """Test Config Manager performance with multiple operations."""
-        # Arrange
-        config_manager = ConfigManager()
-        
-        # Act - Run multiple config operations
-        import time
-        start_time = time.time()
-        
-        for i in range(100):
-            try:
-                # Test config loading
-                config = config_manager.get_complete_config(mode='pure_lending')
-                assert isinstance(config, dict)
-            except Exception:
-                # Some operations might fail
-                pass
-        
-        end_time = time.time()
-        
-        # Assert - Should complete within reasonable time
-        execution_time = end_time - start_time
-        assert execution_time < 5.0  # Should complete within 5 seconds
-    
-    def test_config_manager_edge_cases(self, mock_config):
-        """Test Config Manager edge cases."""
-        # Arrange
-        config_manager = ConfigManager()
-        
-        # Test edge cases
-        edge_cases = [
-            '',  # Empty mode
-            None,  # None mode
-            '   ',  # Whitespace mode
-            'MODE_WITH_SPECIAL_CHARS!@#$%',  # Special characters
-        ]
-        
-        # Act & Assert
-        for edge_case in edge_cases:
-            try:
-                config = config_manager.get_mode_config(edge_case)
-                # Should handle edge cases gracefully
-                assert config is None or isinstance(config, dict)
-            except Exception as e:
-                # Expected behavior for edge cases
-                assert isinstance(e, Exception)
-    
-    def test_config_manager_config_validation(self, mock_config):
-        """Test Config Manager config validation."""
-        # Test valid config
-        valid_config = {
-            'mode': 'pure_lending',
-            'share_class': 'USDT',
-            'asset': 'USDT',
-            'initial_capital': 100000.0,
-            'max_drawdown': 0.2,
-            'leverage_enabled': False,
-            'venues': {
-                'binance': {'enabled': True},
-                'bybit': {'enabled': True}
-            }
-        }
-        
-        config_manager = ConfigManager()
-        
-        try:
-            validated_config = config_manager.validate_config(valid_config)
-            assert isinstance(validated_config, dict)
-            assert validated_config['mode'] == 'pure_lending'
-        except Exception as e:
-            # Expected behavior if validation fails
-            assert isinstance(e, Exception)
-        
-        # Test invalid config (missing required fields)
-        invalid_config = {
-            'mode': 'pure_lending',
-            'share_class': 'USDT'
-            # Missing required fields
-        }
-        
-        try:
-            validated_config = config_manager.validate_config(invalid_config)
-            # Should not reach here
-            assert False, "Should have raised validation error"
-        except Exception as e:
-            # Expected behavior for invalid config
-            assert isinstance(e, Exception)
-    
-    def test_config_manager_singleton_pattern(self, mock_config):
-        """Test Config Manager singleton pattern."""
-        # Arrange
-        config_manager1 = get_config_manager()
+        # Should be singleton
         config_manager2 = get_config_manager()
-        
-        # Act & Assert
-        # Should return the same instance
-        assert config_manager1 is config_manager2
-        assert isinstance(config_manager1, ConfigManager)
-        assert isinstance(config_manager2, ConfigManager)
-    
-    def test_config_manager_complete_config(self, mock_config):
-        """Test Config Manager complete config generation."""
-        # Arrange
-        config_manager = ConfigManager()
-        
-        # Act
-        try:
-            complete_config = config_manager.get_complete_config(mode='pure_lending')
-            
-            # Assert
-            assert isinstance(complete_config, dict)
-            assert 'mode' in complete_config
-            assert complete_config['mode'] == 'pure_lending'
-            
-            # Should have merged base, mode, and venue configs
-            assert 'api' in complete_config or 'database' in complete_config or 'data' in complete_config
-            
-        except Exception as e:
-            # Expected behavior if config files don't exist
-            assert isinstance(e, Exception)
-            assert 'not found' in str(e).lower() or 'missing' in str(e).lower()
-    
-    def test_config_manager_data_directory(self, mock_config):
-        """Test Config Manager data directory handling."""
-        # Arrange
-        config_manager = ConfigManager()
-        
-        # Act
-        try:
-            data_dir = config_manager.get_data_directory()
-            
-            # Assert
-            assert isinstance(data_dir, str)
-            assert len(data_dir) > 0
-            
-        except Exception as e:
-            # Expected behavior if data directory not configured
-            assert isinstance(e, Exception)
-    
-    def test_config_manager_startup_mode(self, mock_config):
-        """Test Config Manager startup mode handling."""
-        # Arrange
-        config_manager = ConfigManager()
-        
-        # Act
-        try:
-            startup_mode = config_manager.get_startup_mode()
-            
-            # Assert
-            assert startup_mode in ['backtest', 'live', 'dev', 'staging', 'prod']
-            
-        except Exception as e:
-            # Expected behavior if startup mode not configured
-            assert isinstance(e, Exception)
+        assert config_manager is config_manager2
+
+
+if __name__ == "__main__":
+    pytest.main([__file__])

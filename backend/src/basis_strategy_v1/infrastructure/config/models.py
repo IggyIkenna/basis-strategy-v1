@@ -242,7 +242,7 @@ class VenueConfig(BaseModel):
         """Validate venue name."""
         valid_venues = [
             'binance', 'bybit', 'okx', 'aave_v3', 'etherfi', 'lido', 
-            'morpho', 'alchemy', 'instadapp'
+            'morpho', 'alchemy', 'instadapp', 'ml_inference_api'
         ]
         if v not in valid_venues:
             raise ValueError(f"venue must be one of {valid_venues}, got: {v}")
@@ -282,7 +282,8 @@ class ShareClassConfig(BaseModel):
         """Validate supported strategies."""
         valid_strategies = [
             'pure_lending', 'btc_basis', 'eth_basis', 'eth_leveraged',
-            'eth_staking_only', 'usdt_market_neutral', 'usdt_market_neutral_no_leverage'
+            'eth_staking_only', 'usdt_market_neutral', 'usdt_market_neutral_no_leverage',
+            'ml_btc_directional', 'ml_usdt_directional'
         ]
         for strategy in v:
             if strategy not in valid_strategies:

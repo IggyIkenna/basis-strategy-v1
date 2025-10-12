@@ -21,6 +21,8 @@ supported_strategies:
   - "btc_basis"
   - "usdt_market_neutral"
   - "usdt_market_neutral_no_leverage"
+  - "ml_btc_directional"
+  - "ml_usdt_directional"
 
 # Share Class Features
 leverage_supported: true

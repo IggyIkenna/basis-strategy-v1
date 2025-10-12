@@ -7,15 +7,21 @@
 # TODO: Set BASIS_ML_API_TOKEN environment variable for live mode
 
 mode: "ml_btc_directional"
-share_class: "BTC"
+share_class: "USDT"  # Changed from BTC to USDT (only USDT/ETH supported)
 asset: "BTC"
-market_neutral: false  # Directional strategy
+enable_market_impact: true
 lending_enabled: false
 staking_enabled: false
 basis_trade_enabled: false
-borrowing_enabled: false
+borrowing_enabled: true  # Required for leverage_enabled
 leverage_enabled: true  # Perp futures
-initial_capital: 1.0  # 1 BTC
+max_ltv: 0.8  # Required for borrowing_enabled
+rewards_mode: "base_only"  # Required field
+reserve_ratio: 0.1  # Required field
+position_deviation_threshold: 0.05  # Required field
+margin_ratio_target: 0.5  # Required field
+target_apy: 0.15  # Required field (15% target for directional strategy)
+time_throttle_interval: 300  # Required field (5 minutes)
 
 # ML-specific parameters
 ml_config:

@@ -477,6 +477,33 @@ class BacktestService:
                 'difference': actual_abs - target_abs
             }
 
+    async def list_backtests(self) -> List[Dict[str, Any]]:
+        """List all backtest executions."""
+        backtests = []
+        
+        # Add running backtests
+        for request_id, backtest_data in self.running_backtests.items():
+            backtests.append({
+                "request_id": request_id,
+                "status": "running",
+                "strategy_name": backtest_data.get("strategy_name", "unknown"),
+                "started_at": backtest_data.get("started_at"),
+                "progress": backtest_data.get("progress", 0)
+            })
+        
+        # Add completed backtests
+        for request_id, backtest_data in self.completed_backtests.items():
+            backtests.append({
+                "request_id": request_id,
+                "status": "completed",
+                "strategy_name": backtest_data.get("strategy_name", "unknown"),
+                "started_at": backtest_data.get("started_at"),
+                "completed_at": backtest_data.get("completed_at"),
+                "result": backtest_data.get("result", {})
+            })
+        
+        return backtests
+
 
 class MockExecutionEngine:
     """Mock execution engine for backtesting."""

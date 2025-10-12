@@ -18,6 +18,39 @@ logger = structlog.get_logger()
 router = APIRouter()
 
 
+@router.get(
+    "/list",
+    response_model=StandardResponse[list],
+    summary="List backtests",
+    description="List all backtest executions"
+)
+async def list_backtests(
+    http_request: Request,
+    service: BacktestService = Depends(get_backtest_service)
+) -> StandardResponse[list]:
+    """
+    List all backtest executions.
+    """
+    correlation_id = getattr(http_request.state, "correlation_id", "unknown")
+    
+    try:
+        backtests = await service.list_backtests()
+        
+        return StandardResponse(
+            success=True,
+            data=backtests
+        )
+        
+    except Exception as e:
+        logger.error(
+            "Failed to list backtests",
+            correlation_id=correlation_id,
+            error=str(e),
+            exc_info=True
+        )
+        raise HTTPException(status_code=500, detail=f"Failed to list backtests: {str(e)}")
+
+
 @router.post(
     "/",
     response_model=StandardResponse[BacktestResponse],

@@ -124,6 +124,15 @@ class DataProviderHealthCheck(ComponentHealthCheck):
         
         # Check if data directory exists and is accessible
         data_dir = os.getenv('BASIS_DATA_DIR', 'data')
+        # Debug logging - use print for immediate visibility
+        print(f"DEBUG: Data provider health check - BASIS_DATA_DIR: {os.getenv('BASIS_DATA_DIR')}, data_dir: {data_dir}")
+        print(f"DEBUG: Current working directory: {os.getcwd()}")
+        print(f"DEBUG: All BASIS_ env vars: {[k for k in os.environ.keys() if k.startswith('BASIS_')]}")
+        # Resolve relative paths to absolute paths
+        if not os.path.isabs(data_dir):
+            data_dir = os.path.abspath(data_dir)
+        print(f"DEBUG: Resolved data_dir: {data_dir}, exists: {os.path.exists(data_dir)}")
+        
         if not os.path.exists(data_dir):
             return 'unhealthy', f'Data directory not found: {data_dir}', details
         
@@ -150,8 +159,15 @@ class DataProviderHealthCheck(ComponentHealthCheck):
             details['data_files'] = len(data_files)
             details['recent_files'] = len([f for f in data_files if f['age_hours'] < 24])
             
+            # Check execution mode - backtest mode doesn't require recent data
+            execution_mode = os.getenv('BASIS_EXECUTION_MODE', 'backtest')
+            details['execution_mode'] = execution_mode
+            
             if len(data_files) == 0:
                 return 'unhealthy', 'No data files found', details
+            elif execution_mode == 'backtest':
+                # For backtest mode, any data files are acceptable
+                return 'healthy', 'Data provider is healthy (backtest mode)', details
             elif len([f for f in data_files if f['age_hours'] < 24]) == 0:
                 return 'degraded', 'No recent data files found', details
             else:
