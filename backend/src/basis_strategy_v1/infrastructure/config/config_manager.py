@@ -111,38 +111,52 @@ class ConfigManager:
         # First load from env.unified
         self._load_env_file(self.base_dir / "env.unified")
         
-        # Then load override files based on deployment mode. If not set FAIL FAST
-        deployment_mode = os.getenv('BASIS_DEPLOYMENT_MODE')
+        # Then load override files based on BASIS_ENVIRONMENT. If not set FAIL FAST
+        environment = os.getenv('BASIS_ENVIRONMENT')
+        if not environment:
+            logger.error("CONFIG-MGR-002: REQUIRED environment variable not set: BASIS_ENVIRONMENT")
+            raise ValueError("REQUIRED environment variable not set: BASIS_ENVIRONMENT")
         
-        # TODO: [ENV_VAR_CREDENTIAL_ROUTING] - Environment-specific credential routing
-        # Current Issue: Missing environment-specific credential routing for venue clients
-        # Required Changes:
-        #   1. Add BASIS_ENVIRONMENT routing to select dev/staging/prod credentials
-        #   2. Route venue credentials based on environment (BASIS_DEV__CEX__BINANCE_SPOT_API_KEY vs BASIS_PROD__CEX__BINANCE_SPOT_API_KEY)
-        #   3. Add BASIS_EXECUTION_MODE routing for backtest vs live mode credential requirements
-        #   4. Implement venue client initialization based on environment-specific credentials
-        # Reference: docs/ENVIRONMENT_VARIABLES.md - Environment-Specific Credential Routing section
-        # Reference: docs/VENUE_ARCHITECTURE.md - Venue-Based Execution
-        # Status: PENDING
+        # Load environment-specific override file with FAIL FAST validation
+        env_file = None
+        if environment == 'dev':
+            env_file = self.base_dir / "env.dev"
+        elif environment == 'staging':
+            env_file = self.base_dir / "env.staging"
+        elif environment == 'prod':
+            env_file = self.base_dir / "env.prod"
+        else:
+            logger.error(f"CONFIG-MGR-002: Unknown environment: {environment}. Must be dev, staging, or prod")
+            raise ValueError(f"Unknown environment: {environment}. Must be dev, staging, or prod")
         
-        if deployment_mode == 'local' and (self.base_dir / ".env.dev").exists():
-            self._load_env_file(self.base_dir / ".env.dev")
-        elif deployment_mode == 'docker' and (self.base_dir / "deploy" / ".env.docker").exists():
-            self._load_env_file(self.base_dir / "deploy" / ".env.docker")
-        elif deployment_mode == 'production' and (self.base_dir / ".env.production").exists():
-            self._load_env_file(self.base_dir / ".env.production")
+        if not env_file.exists():
+            logger.error(f"CONFIG-MGR-003: Environment file not found: {env_file}")
+            raise FileNotFoundError(f"Environment file not found: {env_file}")
+        
+        if not os.access(env_file, os.R_OK):
+            logger.error(f"CONFIG-MGR-003: Environment file not readable: {env_file}")
+            raise PermissionError(f"Environment file not readable: {env_file}")
+        
+        self._load_env_file(env_file)
         
         env_vars = {}
         required_vars = [
             'BASIS_ENVIRONMENT',
             'BASIS_DEPLOYMENT_MODE', 
+            'BASIS_DEPLOYMENT_MACHINE',
             'BASIS_DATA_DIR',
+            'BASIS_DATA_MODE',
             'BASIS_RESULTS_DIR',
             'BASIS_DEBUG',
             'BASIS_LOG_LEVEL',
             'BASIS_EXECUTION_MODE',
             'BASIS_DATA_START_DATE',
-            'BASIS_DATA_END_DATE'
+            'BASIS_DATA_END_DATE',
+            'HEALTH_CHECK_INTERVAL',
+            'HEALTH_CHECK_ENDPOINT',
+            'BASIS_API_PORT',
+            'BASIS_API_HOST',
+            'BASIS_API_CORS_ORIGINS'
         ]
         
         for var in required_vars:
@@ -150,7 +164,10 @@ class ConfigManager:
             if not value:
                 logger.error(f"CONFIG-MGR-002: REQUIRED environment variable not set: {var}")
                 raise ValueError(f"REQUIRED environment variable not set: {var}")
-            env_vars[var] = value
+            
+            # Validate variable types and formats
+            validated_value = self._validate_environment_variable(var, value)
+            env_vars[var] = validated_value
         
         # Check execution mode for credential requirements
         execution_mode = env_vars.get('BASIS_EXECUTION_MODE', 'backtest')
@@ -183,9 +200,114 @@ class ConfigManager:
                     if value:  # Only set non-empty values
                         os.environ[key] = value
     
+    def _validate_environment_variable(self, var_name: str, value: str) -> str:
+        """Validate environment variable type and format."""
+        # Boolean validation
+        if var_name in ['BASIS_DEBUG', 'DATA_VALIDATION_STRICT']:
+            if value.lower() not in ['true', 'false']:
+                logger.error(f"CONFIG-MGR-004: Invalid boolean value for {var_name}: {value}")
+                raise ValueError(f"Invalid boolean value for {var_name}: {value}. Must be 'true' or 'false'")
+            return value.lower()
+        
+        # Integer validation
+        if var_name in ['BASIS_API_PORT', 'HTTP_PORT', 'HTTPS_PORT', 'DATA_LOAD_TIMEOUT', 'DATA_CACHE_SIZE', 
+                       'STRATEGY_MANAGER_TIMEOUT', 'STRATEGY_MANAGER_MAX_RETRIES', 'STRATEGY_FACTORY_TIMEOUT', 
+                       'STRATEGY_FACTORY_MAX_RETRIES', 'BASIS_LIVE_TRADING__HEARTBEAT_TIMEOUT_SECONDS']:
+            try:
+                int(value)
+            except ValueError:
+                logger.error(f"CONFIG-MGR-004: Invalid integer value for {var_name}: {value}")
+                raise ValueError(f"Invalid integer value for {var_name}: {value}")
+            return value
+        
+        # Float validation
+        if var_name in ['BASIS_LIVE_TRADING__MAX_TRADE_SIZE_USD', 'BASIS_LIVE_TRADING__EMERGENCY_STOP_LOSS_PCT']:
+            try:
+                float(value)
+            except ValueError:
+                logger.error(f"CONFIG-MGR-004: Invalid float value for {var_name}: {value}")
+                raise ValueError(f"Invalid float value for {var_name}: {value}")
+            return value
+        
+        # Enum validation
+        if var_name == 'BASIS_ENVIRONMENT':
+            if value not in ['dev', 'staging', 'prod']:
+                logger.error(f"CONFIG-MGR-004: Invalid environment value for {var_name}: {value}")
+                raise ValueError(f"Invalid environment value for {var_name}: {value}. Must be dev, staging, or prod")
+            return value
+        
+        if var_name == 'BASIS_DEPLOYMENT_MODE':
+            if value not in ['local', 'docker']:
+                logger.error(f"CONFIG-MGR-004: Invalid deployment mode value for {var_name}: {value}")
+                raise ValueError(f"Invalid deployment mode value for {var_name}: {value}. Must be local or docker")
+            return value
+        
+        if var_name == 'BASIS_DEPLOYMENT_MACHINE':
+            if value not in ['local_mac', 'gcloud_linux_vm']:
+                logger.error(f"CONFIG-MGR-004: Invalid deployment machine value for {var_name}: {value}")
+                raise ValueError(f"Invalid deployment machine value for {var_name}: {value}. Must be local_mac or gcloud_linux_vm")
+            return value
+        
+        if var_name == 'BASIS_DATA_MODE':
+            if value not in ['csv', 'db']:
+                logger.error(f"CONFIG-MGR-004: Invalid data mode value for {var_name}: {value}")
+                raise ValueError(f"Invalid data mode value for {var_name}: {value}. Must be csv or db")
+            return value
+        
+        if var_name == 'BASIS_EXECUTION_MODE':
+            if value not in ['backtest', 'live']:
+                logger.error(f"CONFIG-MGR-004: Invalid execution mode value for {var_name}: {value}")
+                raise ValueError(f"Invalid execution mode value for {var_name}: {value}. Must be backtest or live")
+            return value
+        
+        if var_name == 'BASIS_LOG_LEVEL':
+            if value not in ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']:
+                logger.error(f"CONFIG-MGR-004: Invalid log level value for {var_name}: {value}")
+                raise ValueError(f"Invalid log level value for {var_name}: {value}. Must be DEBUG, INFO, WARNING, ERROR, or CRITICAL")
+            return value
+        
+        # Date validation
+        if var_name in ['BASIS_DATA_START_DATE', 'BASIS_DATA_END_DATE']:
+            try:
+                from datetime import datetime
+                datetime.strptime(value, '%Y-%m-%d')
+            except ValueError:
+                logger.error(f"CONFIG-MGR-004: Invalid date format for {var_name}: {value}")
+                raise ValueError(f"Invalid date format for {var_name}: {value}. Must be YYYY-MM-DD")
+            return value
+        
+        # Duration validation
+        if var_name == 'HEALTH_CHECK_INTERVAL':
+            if not value.endswith(('s', 'm', 'h')):
+                logger.error(f"CONFIG-MGR-004: Invalid duration format for {var_name}: {value}")
+                raise ValueError(f"Invalid duration format for {var_name}: {value}. Must end with s, m, or h")
+            return value
+        
+        # Path validation
+        if var_name in ['BASIS_DATA_DIR', 'BASIS_RESULTS_DIR']:
+            if not value or value.isspace():
+                logger.error(f"CONFIG-MGR-004: Empty path for {var_name}")
+                raise ValueError(f"Empty path for {var_name}")
+            return value
+        
+        # URL validation
+        if var_name in ['BASIS_API_CORS_ORIGINS']:
+            # Basic URL validation - check if it contains valid characters
+            if not value or value.isspace():
+                logger.error(f"CONFIG-MGR-004: Empty CORS origins for {var_name}")
+                raise ValueError(f"Empty CORS origins for {var_name}")
+            return value
+        
+        # Default: return as-is
+        return value
+    
     def get_execution_mode(self) -> str:
         """Get startup mode from environment variables."""
         return self.config_cache['env']['BASIS_EXECUTION_MODE']
+    
+    def get_environment(self) -> str:
+        """Get current environment from environment variables."""
+        return self.config_cache['env']['BASIS_ENVIRONMENT']
     
     def get_data_directory(self) -> str:
         """Get data directory from environment variables."""
