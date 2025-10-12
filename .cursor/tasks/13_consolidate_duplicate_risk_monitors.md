@@ -11,6 +11,11 @@ The correct location is `backend/src/basis_strategy_v1/core/strategies/component
 **Reference**: `docs/specs/03_RISK_MONITOR.md` - Component specification  
 **Reference**: `docs/DEVIATIONS_AND_CORRECTIONS.md` - Lines 129-141 (Duplicate Risk Monitor Files)
 
+## QUALITY GATE
+**Quality Gate Script**: `scripts/test_consolidate_duplicate_risk_monitors_quality_gates.py`
+**Validation**: Single component instances, no duplicates, singleton compliance
+**Status**: ❌ FAILING
+
 ## CURRENT USAGE ANALYSIS
 
 ### Files Importing from CORRECT Location:

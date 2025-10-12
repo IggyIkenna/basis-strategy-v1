@@ -20,7 +20,8 @@ from pathlib import Path
 from typing import Dict, Any, List
 
 from .base_data_provider import BaseDataProvider
-from ..infrastructure.data.data_validator import DataValidator, DataProviderError
+from ..infrastructure.data.historical_data_provider import _validate_data_file, DataProviderError
+from ..infrastructure.data.data_validator import DataValidator
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +38,15 @@ class BTCBasisDataProvider(BaseDataProvider):
             'gas_costs',
             'execution_costs'
         ]
-        self.hedge_venues = config.get('hedge_venues', ['binance', 'bybit', 'okx'])
+        # Handle both Pydantic models and dictionaries
+        if hasattr(config, 'model_dump'):
+            # Pydantic model
+            config_dict = config.model_dump()
+            self.hedge_venues = config_dict.get('hedge_venues', ['binance', 'bybit', 'okx'])
+        else:
+            # Dictionary
+            self.hedge_venues = config.get('hedge_venues', ['binance', 'bybit', 'okx'])
+        
         self.data = {}
         self.validator = DataValidator(data_dir=self.data_dir)
         
@@ -242,3 +251,35 @@ class BTCBasisDataProvider(BaseDataProvider):
             )
         
         logger.info("✅ All BTC basis data requirements satisfied")
+    
+    def get_market_data_snapshot(self, timestamp: pd.Timestamp) -> Dict[str, Any]:
+        """
+        Get market data snapshot for a specific timestamp.
+        
+        Args:
+            timestamp: The timestamp to get data for
+            
+        Returns:
+            Dict containing market data snapshot
+        """
+        try:
+            # Get data for the timestamp
+            data = self.get_data(timestamp)
+            
+            # Return standardized market data snapshot
+            return {
+                'timestamp': timestamp,
+                'btc_spot_price': data.get('btc_prices', {}).get('binance', 0),
+                'btc_futures_prices': data.get('btc_futures', {}),
+                'funding_rates': data.get('funding_rates', {}),
+                'gas_costs': data.get('gas_costs', {}),
+                'execution_costs': data.get('execution_costs', {})
+            }
+        except Exception as e:
+            logger.error(f"Failed to get market data snapshot for {timestamp}: {e}")
+            raise DataProviderError(
+                error_code="DATA_SNAPSHOT_FAILED",
+                message=f"Failed to get market data snapshot: {str(e)}",
+                timestamp=timestamp,
+                mode=self.mode
+            )

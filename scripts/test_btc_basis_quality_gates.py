@@ -276,12 +276,43 @@ class BTCBasisQualityGates:
     async def _test_spot_trade_execution(self) -> Dict[str, Any]:
         """QG3: Test BTC spot trade execution."""
         try:
-            # This test would validate that BTC spot trades work
-            return {
-                'passed': False,  # Currently failing
-                'message': 'Spot trade execution currently failing with trade_type error',
-                'details': {'issue': 'CEX interface context dependency issue'}
+            # Test spot trade execution
+            from basis_strategy_v1.core.interfaces.cex_execution_interface import CEXExecutionInterface
+            
+            # Create CEX execution interface
+            cex_interface = CEXExecutionInterface(execution_mode='backtest', config={})
+            
+            # Create test instruction
+            instruction = {
+                'venue': 'binance',
+                'trade_type': 'SPOT',
+                'pair': 'BTC/USDT',
+                'side': 'BUY',
+                'amount': 0.01
             }
+            
+            # Test market data
+            market_data = {
+                'timestamp': '2024-05-12T00:00:00Z',
+                'btc_usd_price': 50000.0
+            }
+            
+            # Execute trade (should work in backtest mode)
+            result = await cex_interface.execute_trade(instruction, market_data)
+            
+            # Validate result
+            if result and result.get('status') == 'FILLED':
+                return {
+                    'passed': True,
+                    'message': 'Spot trade execution working correctly',
+                    'details': {'result': result}
+                }
+            else:
+                return {
+                    'passed': False,
+                    'message': f'Spot trade execution failed: {result}',
+                    'details': {'result': result}
+                }
             
         except Exception as e:
             return {
@@ -293,12 +324,43 @@ class BTCBasisQualityGates:
     async def _test_perp_trade_execution(self) -> Dict[str, Any]:
         """QG4: Test BTC perp trade execution."""
         try:
-            # This test would validate that BTC perp trades work
-            return {
-                'passed': False,  # Currently failing
-                'message': 'Perp trade execution currently failing with trade_type error',
-                'details': {'issue': 'CEX interface context dependency issue'}
+            # Test perp trade execution
+            from basis_strategy_v1.core.interfaces.cex_execution_interface import CEXExecutionInterface
+            
+            # Create CEX execution interface
+            cex_interface = CEXExecutionInterface(execution_mode='backtest', config={})
+            
+            # Create test instruction
+            instruction = {
+                'venue': 'binance',
+                'trade_type': 'PERP',
+                'pair': 'BTCUSDT',
+                'side': 'BUY',
+                'amount': 0.01
             }
+            
+            # Test market data
+            market_data = {
+                'timestamp': '2024-05-12T00:00:00Z',
+                'btc_usd_price': 50000.0
+            }
+            
+            # Execute trade (should work in backtest mode)
+            result = await cex_interface.execute_trade(instruction, market_data)
+            
+            # Validate result
+            if result and result.get('status') == 'FILLED':
+                return {
+                    'passed': True,
+                    'message': 'Perp trade execution working correctly',
+                    'details': {'result': result}
+                }
+            else:
+                return {
+                    'passed': False,
+                    'message': f'Perp trade execution failed: {result}',
+                    'details': {'result': result}
+                }
             
         except Exception as e:
             return {
@@ -476,11 +538,14 @@ class BTCBasisQualityGates:
         """QG10: Test end-to-end integration."""
         try:
             # Run a minimal backtest to test integration
+            test_config = self.config.copy()
+            test_config['mode'] = 'btc_basis'
+            test_config['data_requirements'] = ['btc_prices', 'btc_futures', 'funding_rates', 'gas_costs', 'execution_costs']
+            
             data_provider = create_data_provider(
+                execution_mode='backtest',
+                config=test_config,
                 data_dir=self.config_manager.get_data_directory(),
-                startup_mode='backtest',
-                config=self.config,
-                mode='btc_basis',
                 backtest_start_date='2024-06-01',
                 backtest_end_date='2024-06-02'
             )

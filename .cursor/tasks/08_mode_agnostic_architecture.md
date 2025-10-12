@@ -10,6 +10,11 @@ Components must be mode-agnostic where appropriate, but strategy mode-specific w
 **Reference**: `docs/specs/04_PNL_CALCULATOR.md` - Mode-agnostic P&L calculation
 **Reference**: `scripts/test_implementation_gap_quality_gates.py` - Implementation gap detection
 
+## QUALITY GATE
+**Quality Gate Script**: `scripts/test_mode_agnostic_design_quality_gates.py`
+**Validation**: Mode-agnostic components, centralized utilities, universal patterns
+**Status**: ✅ PASSING
+
 ## CRITICAL REQUIREMENTS
 
 ### 1. P&L Monitor Must Be Mode-Agnostic

@@ -9,6 +9,11 @@ All components must use the singleton pattern to ensure single instances across 
 **Reference**: `docs/specs/02_EXPOSURE_MONITOR.md` - Component specification  
 **Reference**: `docs/specs/03_RISK_MONITOR.md` - Component specification
 
+## QUALITY GATE
+**Quality Gate Script**: `scripts/test_singleton_pattern_quality_gates.py`
+**Validation**: Singleton implementation, single instances, state management
+**Status**: ✅ PASSING
+
 ## CRITICAL REQUIREMENTS
 
 ### 1. Single Instance Per Component

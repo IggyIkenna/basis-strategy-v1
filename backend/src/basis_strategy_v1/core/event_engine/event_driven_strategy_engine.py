@@ -716,6 +716,37 @@ class EventDrivenStrategyEngine:
         self.is_running = False
         logger.info("Strategy execution stopped")
     
+    def trigger_tight_loop(self):
+        """
+        Trigger tight loop execution reconciliation pattern.
+        
+        The tight loop ensures that each execution instruction is followed by
+        position reconciliation before proceeding to the next instruction.
+        
+        Tight Loop = execution → position_monitor → reconciliation → next instruction
+        """
+        try:
+            logger.info("Triggering tight loop reconciliation")
+            
+            # Get current position state
+            if self.position_monitor:
+                current_position = self.position_monitor.get_snapshot()
+                logger.debug(f"Current position state: {current_position}")
+            
+            # Verify position reconciliation
+            if self.position_monitor and hasattr(self.position_monitor, 'verify_reconciliation'):
+                reconciliation_result = self.position_monitor.verify_reconciliation()
+                if reconciliation_result.get('status') != 'success':
+                    logger.warning(f"Position reconciliation failed: {reconciliation_result}")
+                    return {'status': 'failed', 'reason': 'reconciliation_failed'}
+            
+            logger.info("Tight loop reconciliation completed successfully")
+            return {'status': 'success', 'message': 'Tight loop reconciliation completed'}
+            
+        except Exception as e:
+            logger.error(f"Tight loop reconciliation failed: {e}")
+            return {'status': 'failed', 'reason': str(e)}
+    
     async def get_status(self) -> Dict[str, Any]:
         """Get current status of all components with health information."""
         # Get system health report

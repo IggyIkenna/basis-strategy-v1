@@ -50,15 +50,15 @@ class StrategyManager:
         self.structured_logger = get_strategy_manager_logger()
         
         # Get strategy mode from config
-        self.mode = config.get('mode', 'pure_lending')
+        self.mode = config['mode']
         
         # Load component-specific configuration
-        component_config = config.get('component_config', {})
-        strategy_manager_config = component_config.get('strategy_manager', {})
-        self.strategy_type = strategy_manager_config.get('strategy_type', self.mode)
-        self.actions = strategy_manager_config.get('actions', [])
-        self.rebalancing_triggers = strategy_manager_config.get('rebalancing_triggers', [])
-        self.position_calculation = strategy_manager_config.get('position_calculation', {})
+        component_config = config['component_config']
+        strategy_manager_config = component_config['strategy_manager']
+        self.strategy_type = strategy_manager_config['strategy_type']
+        self.actions = strategy_manager_config['actions']
+        self.rebalancing_triggers = strategy_manager_config['rebalancing_triggers']
+        self.position_calculation = strategy_manager_config['position_calculation']
         
         # Create strategy instance using factory
         try:
@@ -124,7 +124,7 @@ class StrategyManager:
             return {
                 'action': 'hold',
                 'reason': 'No strategy decision logic implemented yet',
-                'timestamp': market_data.get('timestamp', pd.Timestamp.now()),
+                'timestamp': market_data['timestamp'],
                 'exposure': current_exposure,
                 'risk': risk_assessment
             }
@@ -133,7 +133,7 @@ class StrategyManager:
             return {
                 'action': 'hold',
                 'reason': f'Error: {str(e)}',
-                'timestamp': market_data.get('timestamp', pd.Timestamp.now()),
+                'timestamp': market_data['timestamp'],
                 'exposure': current_exposure,
                 'risk': risk_assessment
             }

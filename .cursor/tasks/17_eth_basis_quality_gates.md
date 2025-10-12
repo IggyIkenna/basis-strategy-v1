@@ -8,6 +8,11 @@ This task implements comprehensive end-to-end quality gates for the ETH basis st
 **Reference**: `docs/specs/05_STRATEGY_MANAGER.md` - Strategy manager specification  
 **Reference**: `docs/REFERENCE_ARCHITECTURE_CANONICAL.md` - Section 7 (Generic vs Mode-Specific)
 
+## QUALITY GATE
+**Quality Gate Script**: `scripts/test_eth_basis_quality_gates.py`
+**Validation**: ETH basis strategy, funding rates, LST integration, data files
+**Status**: 🟡 PARTIAL
+
 ## CRITICAL REQUIREMENTS
 
 ### 1. ETH Basis Strategy Validation

@@ -8,6 +8,11 @@ This task implements comprehensive unit tests for the Strategy Manager component
 **Reference**: `docs/ARCHITECTURAL_DECISION_RECORDS.md` - ADR-007 (11 Component Architecture)  
 **Reference**: `tests/unit/` - Existing unit test structure
 
+## QUALITY GATE
+**Quality Gate Script**: `scripts/test_strategy_manager_refactor_quality_gates.py`
+**Validation**: Strategy manager refactor, unit tests, factory pattern
+**Status**: 🟡 GENERIC
+
 ## CRITICAL REQUIREMENTS
 
 ### 1. Standardized Actions Testing

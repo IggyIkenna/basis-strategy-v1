@@ -153,6 +153,25 @@ def __init__(self, config: Dict, ...):
     self.risk_limits = self.risk_config.get('risk_limits', {})
 ```
 
+## Data Flow Pattern
+
+### Input Parameters
+- `positions`: Position data from position monitor
+- `exposure_data`: Exposure data from exposure monitor
+- `market_data`: Market data from data provider
+- `timestamp`: Current timestamp for data consistency
+
+### Output Data
+- `risk_metrics`: Calculated risk metrics
+- `risk_alerts`: Risk alerts and warnings
+
+### Data Flow
+```
+Position Monitor → positions → Risk Monitor → risk_metrics → Strategy Manager
+Exposure Monitor → exposure_data → Risk Monitor → risk_metrics → Strategy Manager
+Data Provider → market_data → Risk Monitor → risk_metrics → Strategy Manager
+```
+
 ### Behavior NOT Determinable from Config
 - Risk calculation formulas (hardcoded algorithms)
 - Data structure expectations (hardcoded field names)

@@ -20,9 +20,28 @@ reserve_ratio: 0.1
 position_deviation_threshold: 0.02  # 2% deviation from target triggers rebalancing
 
 # Execution parameters
+venues:
+  aave_v3:
+    enabled: true
+    max_leverage: 1.0
+    min_amount: 1.0
+  binance:
+    enabled: false
+    max_leverage: 1.0
+    min_amount: 1.0
+  bybit:
+    enabled: false
+    max_leverage: 1.0
+    min_amount: 1.0
+  okx:
+    enabled: false
+    max_leverage: 1.0
+    min_amount: 1.0
 
 # Risk parameters
 margin_ratio_target: 1.0  # Not applicable (no CEX margin, no borrowing)
+leverage_enabled: false  # No leverage in pure lending
+max_drawdown: 0.005  # 0.5% max drawdown (only gas/conversion costs)
 # NOTE: No AAVE borrowing in this mode, so no max_ltv/liquidation_threshold/max_stake_spread_move
 
 # Data requirements
@@ -39,7 +58,6 @@ time_throttle_interval: 60
 
 # Performance targets
 target_apy: 0.05  # 5% APY target
-max_drawdown: 0.005  # 0.5% max drawdown (only gas/conversion costs)
 
 # Component configuration
 component_config:

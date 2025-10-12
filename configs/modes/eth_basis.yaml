@@ -2,6 +2,7 @@
 # ETH basis trading strategy with short side hedging in Binance, Bybit, and OKX perps
 
 mode: "eth_basis"
+strategy_type: "eth_basis"
 
 # Strategy parameters
 lending_enabled: false
@@ -18,6 +19,20 @@ lst_type: null
 rewards_mode: "base_only"
 
 # Execution parameters
+venues:
+  binance:
+    enabled: true
+    max_leverage: 1.0
+    min_amount: 0.01
+  bybit:
+    enabled: true
+    max_leverage: 1.0
+    min_amount: 0.01
+  okx:
+    enabled: true
+    max_leverage: 1.0
+    min_amount: 0.01
+
 hedge_venues: ["binance", "bybit", "okx"]
 hedge_allocation_binance: 0.4
 hedge_allocation_bybit: 0.3
@@ -27,6 +42,7 @@ position_deviation_threshold: 0.02  # 2% deviation from target triggers rebalanc
 
 # Risk parameters
 margin_ratio_target: 0.8  # Target CEX margin ratio for futures (80% conservative)
+max_leverage: 1.0  # Maximum leverage for ETH basis strategy
 # NOTE: No AAVE in this mode, so no max_ltv/liquidation_threshold/max_stake_spread_move
 
 # Delta neutrality parameters

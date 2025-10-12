@@ -175,11 +175,11 @@ class PnLCalculator:
         self.utility_manager = utility_manager
         
         # Load component-specific configuration
-        component_config = config.get('component_config', {})
-        pnl_calculator_config = component_config.get('pnl_calculator', {})
-        self.attribution_types = pnl_calculator_config.get('attribution_types', [])
-        self.reporting_currency = pnl_calculator_config.get('reporting_currency', 'USDT')
-        self.reconciliation_tolerance = pnl_calculator_config.get('reconciliation_tolerance', 0.02)
+        component_config = config['component_config']
+        pnl_calculator_config = component_config['pnl_calculator']
+        self.attribution_types = pnl_calculator_config['attribution_types']
+        self.reporting_currency = pnl_calculator_config['reporting_currency']
+        self.reconciliation_tolerance = pnl_calculator_config['reconciliation_tolerance']
         
         # Track cumulative attribution components
         self.cumulative = {

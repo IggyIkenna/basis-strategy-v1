@@ -30,10 +30,21 @@ class BaseDataProvider(ABC):
         """
         self.execution_mode = execution_mode
         self.config = config
-        self.mode = config.get('mode')
-        self.data_requirements = config.get('data_requirements', [])
+        
+        # Handle both Pydantic models and dictionaries
+        if hasattr(config, 'model_dump'):
+            # Pydantic model
+            config_dict = config.model_dump()
+            self.mode = config_dict.get('mode')
+            self.data_requirements = config_dict.get('data_requirements', [])
+            self.data_dir = config_dict.get('data_dir', 'data')
+        else:
+            # Dictionary
+            self.mode = config.get('mode')
+            self.data_requirements = config.get('data_requirements', [])
+            self.data_dir = config.get('data_dir', 'data')
+        
         self.available_data_types = []
-        self.data_dir = config.get('data_dir', 'data')
         self._data_loaded = False
         
         # Validate required config fields

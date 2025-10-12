@@ -9,6 +9,11 @@ This task aligns the existing Risk Monitor implementation with canonical specifi
 **Reference**: `docs/IMPLEMENTATION_GAP_REPORT.md` - Component gap analysis  
 **Reference**: `tests/unit/` - Existing unit test structure
 
+## QUALITY GATE
+**Quality Gate Script**: `scripts/risk_monitor_quality_gates.py`
+**Validation**: Risk monitoring, risk calculations, unit tests
+**Status**: 🟡 GENERIC
+
 ## CRITICAL REQUIREMENTS
 
 ### 1. Mode-Agnostic Architecture Alignment

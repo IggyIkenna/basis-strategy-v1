@@ -7,6 +7,11 @@ Update all component specifications to use parameter-based data flow instead of 
 **Reference**: `docs/REFERENCE_ARCHITECTURE_CANONICAL.md` - Section 1, 2, 3  
 **Reference**: `docs/DEVIATIONS_AND_CORRECTIONS.md` - Lines 193-206 (Component Data Flow Architecture)
 
+## QUALITY GATE
+**Quality Gate Script**: `scripts/test_component_data_flow_architecture_quality_gates.py`
+**Validation**: Parameter-based data flow, component isolation, data passing patterns
+**Status**: ❌ FAILING
+
 ## CRITICAL REQUIREMENTS
 
 ### 1. Parameter-Based Data Flow

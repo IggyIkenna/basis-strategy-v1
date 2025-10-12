@@ -380,7 +380,15 @@ class DataValidator:
     def validate_data_provider_initialization(self, provider_name: str, config: Dict[str, Any]) -> None:
         """Validate data provider initialization (DATA-013)"""
         required_fields = ['mode', 'data_requirements']
-        missing_fields = [field for field in required_fields if field not in config]
+        
+        # Handle both Pydantic models and dictionaries
+        if hasattr(config, 'model_dump'):
+            # Pydantic model
+            config_dict = config.model_dump()
+            missing_fields = [field for field in required_fields if field not in config_dict]
+        else:
+            # Dictionary
+            missing_fields = [field for field in required_fields if field not in config]
         
         if missing_fields:
             raise DataProviderError(

@@ -147,6 +147,23 @@ def __init__(self, config: Dict, ...):
     self.fail_on_unknown = self.position_config.get('fail_on_unknown_asset', True)
 ```
 
+## Data Flow Pattern
+
+### Input Parameters
+- `execution_results`: Results from execution interfaces
+- `market_data`: Current market data from data provider
+- `timestamp`: Current timestamp for data consistency
+
+### Output Data
+- `position_data`: Current position data
+- `position_history`: Historical position data
+
+### Data Flow
+```
+Execution Interfaces → execution_results → Position Monitor → position_data → Exposure Monitor
+Data Provider → market_data → Position Monitor → position_data → Exposure Monitor
+```
+
 ### Behavior NOT Determinable from Config
 - Position update logic (hard-coded algorithms)
 - Data structure expectations (hard-coded field names)

@@ -8,6 +8,11 @@ This task implements comprehensive end-to-end quality gates for the USDT market 
 **Reference**: `docs/specs/05_STRATEGY_MANAGER.md` - Strategy manager specification  
 **Reference**: `docs/REFERENCE_ARCHITECTURE_CANONICAL.md` - Section 7 (Generic vs Mode-Specific)
 
+## QUALITY GATE
+**Quality Gate Script**: `scripts/test_usdt_market_neutral_quality_gates.py`
+**Validation**: USDT market neutral strategy, execution, risk management
+**Status**: ✅ PASSING
+
 ## CRITICAL REQUIREMENTS
 
 ### 1. Full Leverage Mechanics Validation

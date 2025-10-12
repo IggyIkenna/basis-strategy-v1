@@ -224,6 +224,25 @@ def update_state(self, timestamp: pd.Timestamp, trigger_source: str):
         self._execute_strategy_action(actions, target_position)
 ```
 
+## Data Flow Pattern
+
+### Input Parameters
+- `exposure_data`: Exposure data from exposure monitor
+- `risk_metrics`: Risk metrics from risk monitor
+- `market_data`: Market data from data provider
+- `timestamp`: Current timestamp for data consistency
+
+### Output Data
+- `execution_instructions`: Strategy execution instructions
+- `strategy_decisions`: Strategy decision data
+
+### Data Flow
+```
+Exposure Monitor → exposure_data → Strategy Manager → execution_instructions → Execution Manager
+Risk Monitor → risk_metrics → Strategy Manager → execution_instructions → Execution Manager
+Data Provider → market_data → Strategy Manager → execution_instructions → Execution Manager
+```
+
 ### Behavior NOT Determinable from Config
 - Strategy decision algorithms (inheritance-based logic)
 - Action selection rules (config-driven thresholds)

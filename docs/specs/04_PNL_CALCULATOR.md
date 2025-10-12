@@ -159,6 +159,27 @@ def __init__(self, config: Dict, ...):
     self.reconciliation_tolerance = self.pnl_config.get('reconciliation_tolerance', 0.02)
 ```
 
+## Data Flow Pattern
+
+### Input Parameters
+- `positions`: Position data from position monitor
+- `exposure_data`: Exposure data from exposure monitor
+- `risk_metrics`: Risk metrics from risk monitor
+- `market_data`: Market data from data provider
+- `timestamp`: Current timestamp for data consistency
+
+### Output Data
+- `pnl_data`: Calculated P&L data
+- `attribution_data`: P&L attribution data
+
+### Data Flow
+```
+Position Monitor → positions → P&L Calculator → pnl_data → Results Store
+Exposure Monitor → exposure_data → P&L Calculator → pnl_data → Results Store
+Risk Monitor → risk_metrics → P&L Calculator → pnl_data → Results Store
+Data Provider → market_data → P&L Calculator → pnl_data → Results Store
+```
+
 ### Behavior NOT Determinable from Config
 - P&L calculation formulas (hardcoded algorithms)
 - Attribution calculation logic (hardcoded rules)
