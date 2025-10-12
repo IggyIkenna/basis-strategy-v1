@@ -138,26 +138,18 @@ class TestConfigManagerUnit:
         # Arrange
         config_manager = ConfigManager()
         
-        # Test different environments
-        test_environments = ['dev', 'staging', 'prod']
+        # Test that environment variables are loaded correctly
+        env_vars = config_manager._load_environment_variables()
         
-        # Act & Assert
-        for env in test_environments:
-            try:
-                # Set environment
-                config_manager.set_environment(env)
-                
-                # Get config for environment
-                env_config = config_manager.get_environment_config(env)
-                
-                # Assert
-                assert isinstance(env_config, dict)
-                assert 'environment' in env_config or 'env' in env_config
-                
-            except Exception as e:
-                # Expected behavior if environment config doesn't exist
-                assert isinstance(e, Exception)
-                assert 'not found' in str(e).lower() or 'missing' in str(e).lower()
+        # Assert
+        assert isinstance(env_vars, dict)
+        assert 'BASIS_ENVIRONMENT' in env_vars
+        assert env_vars['BASIS_ENVIRONMENT'] == 'dev'  # Set in conftest.py
+        
+        # Test that environment file loading works
+        assert 'BASIS_DEPLOYMENT_MODE' in env_vars
+        assert 'BASIS_DATA_DIR' in env_vars
+        assert 'BASIS_RESULTS_DIR' in env_vars
     
     def test_pydantic_validation(self, mock_config):
         """Test Pydantic validation."""

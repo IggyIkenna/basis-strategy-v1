@@ -511,7 +511,9 @@ python scripts/run_quality_gates.py --category repo_structure
 grep -r "\[.*\](" docs/ | grep -v "http"
 
 # Verify task references
+```bash
 grep -r "\.cursor/tasks/" docs/
+```
 
 # Check docstring completeness
 grep -r "REFACTOR REQUIRED" backend/src/

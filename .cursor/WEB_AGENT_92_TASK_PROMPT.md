@@ -2,8 +2,8 @@
 
 ## How to Start This Agent
 
-Copy this entire prompt into your background agent setup. This agent will autonomously execute all 43 tasks to achieve:
-- 100% test coverage across all components and strategies
+Copy this entire prompt into your background agent setup. This agent will autonomously execute all 92 tasks to achieve:
+- 80% test coverage across critical components and strategies
 - All quality gates passing
 - Complete integration test suite
 - Full E2E test coverage for all 7 strategy modes
@@ -16,16 +16,25 @@ Copy this entire prompt into your background agent setup. This agent will autono
 **Execution Strategy:**
 - Tasks 01-03: Foundation (config, data)
 - Tasks 04-14: Architecture & core components
+- Tasks 15-18: E2E strategy tests
+- Tasks 19-23: Component unit tests
+- Tasks 24-31: Infrastructure & live mode
 - Tasks 32-35: Missing component tests
 - Tasks 36-40: Integration tests
-- Tasks 15-18, 41-43: E2E strategy tests
-- Tasks 19-23: Component unit tests
-- Tasks 24-31: Frontend & live mode
+- Tasks 41-43: Additional E2E strategy tests
+- Tasks 44-52: API routes unit tests
+- Tasks 53-61: Core strategies unit tests
+- Tasks 62-74: Infrastructure data provider unit tests
+- Tasks 75-78: Core math unit tests
+- Tasks 79-81: Execution interfaces unit tests
+- Tasks 82-92: Zero coverage components unit tests
+
+**Note**: Frontend tasks are excluded - frontend is a separate challenge.
 
 The agent will execute autonomously without approval requests between tasks.
 
 ## Agent Identity
-You are an autonomous web-based background agent executing the Basis Strategy implementation gap build plan. Your mission is to systematically address all 20 component implementation gaps across 7 days, achieving 20/24 quality gates passing (83%) and 80% unit test coverage.
+You are an autonomous web-based background agent executing the Basis Strategy implementation gap build plan. Your mission is to systematically address all 92 tasks across 12 days, achieving 80% test coverage and all quality gates passing.
 
 **CRITICAL**: You must strictly follow canonical documentation references in all tasks - DO NOT create random files unless explicitly marked as `[CREATE]` in the target structure documentation.
 
@@ -33,16 +42,16 @@ You are an autonomous web-based background agent executing the Basis Strategy im
 - **Quality Gates**: 2/23 passing (8.7%) - REFACTORED STRUCTURE
 - **Implementation Gaps**: 13 components need alignment/completion (8 failing + 5 partial)
 - **Backend Status**: Infrastructure mostly complete, frontend needs production completion
-- **Target**: 80%+ unit tests, 70%+ integration tests, E2E tests when foundation solid
-- **Timeline**: 7 days, 43 tasks, autonomous execution
+- **Target**: 80%+ unit tests (66/82 files), 70%+ integration tests, E2E tests when foundation solid
+- **Timeline**: 12 days, 92 tasks, autonomous execution
 
 ## Quality Gate Status Report (REFACTORED)
 **CRITICAL**: Quality gates have been refactored into 3-tier structure to address cascading failures:
 
 ### New 3-Tier Structure:
-- **Unit Tests**: 8 component isolation tests (target: 80%+ passing)
-- **Integration Tests**: 5 component data flow tests (target: 70%+ passing)  
-- **E2E Tests**: 4 strategy execution tests (run only when foundation solid)
+- **Unit Tests**: 15 component isolation tests (target: 80%+ passing, 66/82 files covered)
+- **Integration Tests**: 6 component data flow tests (target: 70%+ passing)  
+- **E2E Tests**: 8 strategy execution tests (run only when foundation solid)
 
 ### Previous Status (Before Refactor):
 ✅ TASKS WITH ALL QUALITY GATES PASSING (18/43 - 42%)
@@ -62,7 +71,7 @@ Infrastructure (2/2): Tasks 30-31 ❌
 ### Refactor Rationale:
 - **Problem**: 2/23 passing (8.7%) due to massive codependency issues
 - **Solution**: Isolated unit tests + integration tests + E2E tests
-- **Expected**: 80%+ unit tests, 70%+ integration tests, meaningful E2E results
+- **Expected**: 80%+ unit tests (66/82 files), 70%+ integration tests, meaningful E2E results
 
 ## Immediate Actions Required
 
@@ -105,11 +114,12 @@ python -m pytest tests/unit/test_position_monitor_unit.py -v
 ```
 
 **Quality Gate Structure**:
-- **Unit Tests**: 8 component isolation tests in `tests/unit/` with mocked dependencies
-- **Integration Tests**: 5 component data flow tests in `tests/integration/` with real components
-- **E2E Tests**: 4 strategy execution tests in `tests/e2e/` with full system (non-critical)
+- **Unit Tests**: 15 component isolation tests in `tests/unit/` with mocked dependencies (target: 66/82 files)
+- **Integration Tests**: 6 component data flow tests in `tests/integration/` with real components
+- **E2E Tests**: 8 strategy execution tests in `tests/e2e/` with full system (non-critical)
 - **Smart Skipping**: E2E tests skip if unit/integration < 80% passing
 - **Conventional Structure**: All tests now in standard `tests/` directory
+- **Coverage Target**: 80% (66/82 backend files) - Focus on critical components
 Wait for backend to be healthy, then verify:
 ```bash
 curl -s http://localhost:8001/health/
@@ -320,11 +330,78 @@ Start with Task 01: Environment file switching & fail-fast validation.
 - Live mode framework ready
 - 18/24 quality gates passing (75%)
 
+## Canonical Documentation References
+
+### Primary Canonical Sources
+- **Architecture**: `docs/REFERENCE_ARCHITECTURE_CANONICAL.md` - Single source of truth for all architectural principles
+- **Strategy Modes**: `docs/MODES.md` - Canonical strategy mode definitions
+- **Component Specs**: `docs/specs/` - Detailed component implementation guides
+- **Workflow Guide**: `docs/WORKFLOW_GUIDE.md` - Component data flow patterns
+- **Target Structure**: `docs/TARGET_REPOSITORY_STRUCTURE.md` - File organization rules
+
+### Task-to-Documentation Mapping
+
+**Foundation Tasks (01-03)**:
+- Task 01: `docs/REFERENCE_ARCHITECTURE_CANONICAL.md` Section 6.1 (Environment switching)
+- Task 02: `docs/REFERENCE_ARCHITECTURE_CANONICAL.md` Section 6.1 (Config validation)
+- Task 03: `docs/REFERENCE_ARCHITECTURE_CANONICAL.md` Section 8 (Data loading)
+
+**Architecture Tasks (04-14)**:
+- Task 04: `docs/specs/12_FRONTEND_SPEC.md` (API endpoints)
+- Task 05: `docs/specs/17_HEALTH_ERROR_SYSTEMS.md` (Health & logging)
+- Task 06: `docs/specs/05_STRATEGY_MANAGER.md` (Strategy manager)
+- Task 07: `docs/REFERENCE_ARCHITECTURE_CANONICAL.md` Section 6 (Async/await)
+- Task 08: `docs/REFERENCE_ARCHITECTURE_CANONICAL.md` Section 7 (Mode-agnostic)
+- Task 09: `docs/REFERENCE_ARCHITECTURE_CANONICAL.md` Section 6.1 (Fail-fast)
+- Task 10: `docs/REFERENCE_ARCHITECTURE_CANONICAL.md` Section 1 (Reference-based)
+- Task 11: `docs/REFERENCE_ARCHITECTURE_CANONICAL.md` Section 2 (Singleton)
+- Task 12: `docs/REFERENCE_ARCHITECTURE_CANONICAL.md` Section 3 (Tight loop)
+- Task 13: `docs/specs/03_RISK_MONITOR.md` (Risk monitor consolidation)
+- Task 14: `docs/WORKFLOW_GUIDE.md` (Component data flows)
+
+**Strategy Tasks (15-18)**:
+- Task 15: `docs/MODES.md` (Pure lending mode)
+- Task 16: `docs/MODES.md` (BTC basis mode)
+- Task 17: `docs/MODES.md` (ETH basis mode)
+- Task 18: `docs/MODES.md` (USDT market neutral mode)
+
+**Component Tasks (19-23)**:
+- Task 19: `docs/specs/01_POSITION_MONITOR.md`
+- Task 20: `docs/specs/02_EXPOSURE_MONITOR.md`
+- Task 21: `docs/specs/03_RISK_MONITOR.md`
+- Task 22: `docs/specs/05_STRATEGY_MANAGER.md`
+- Task 23: `docs/specs/04_PNL_CALCULATOR.md`
+
+**Infrastructure Tasks (24-31)**:
+- Task 24: `docs/specs/12_FRONTEND_SPEC.md` (Frontend - EXCLUDED)
+- Task 25: `docs/specs/14_LIVE_TRADING_SERVICE.md` (Live mode)
+- Task 26: `docs/specs/13_BACKTEST_SERVICE.md` (Service validation)
+- Task 27: `docs/specs/12_FRONTEND_SPEC.md` (Authentication - EXCLUDED)
+- Task 28: `docs/specs/12_FRONTEND_SPEC.md` (Live trading UI - EXCLUDED)
+- Task 29: `docs/specs/16_MATH_UTILITIES.md` (Shared utilities)
+- Task 30: `docs/specs/06_EXECUTION_MANAGER.md`, `docs/specs/07_EXECUTION_INTERFACE_MANAGER.md`
+- Task 31: `docs/specs/17_HEALTH_ERROR_SYSTEMS.md` (Infrastructure components)
+
+**Test Tasks (32-43)**:
+- Tasks 32-35: `docs/specs/` (Component unit tests)
+- Tasks 36-40: `docs/WORKFLOW_GUIDE.md` (Integration tests)
+- Tasks 41-43: `docs/MODES.md` (E2E strategy tests)
+
+**Missing Test Creation Tasks (44-80)**:
+- Tasks 44-51: API Routes unit tests (8 missing)
+- Tasks 52-60: Core Strategies unit tests (9 missing)
+- Tasks 61-73: Infrastructure Data unit tests (13 missing)
+- Tasks 74-77: Core Math unit tests (4 missing)
+- Tasks 78-80: Execution Interfaces unit tests (3 missing)
+- Tasks 81-92: Zero Coverage components unit tests (12 missing)
+
+**Note**: Tasks 44-92 are additional test creation tasks needed to achieve 80% coverage (66/82 files). These should be added to the task sequence after the current 43 tasks are completed.
+
 ## Task Execution Protocol
 
 ### Before Each Task
 1. **Read Complete Task File**: Understand requirements and success criteria
-2. **Review Canonical References**: Read all Reference sections in task files
+2. **Review Canonical References**: Read the specific canonical document listed above
 3. **Check Target Structure**: Verify files to modify/create against `docs/TARGET_REPOSITORY_STRUCTURE.md`
 4. **Check Current Status**: Run relevant quality gates
 5. **Plan Implementation**: Follow canonical patterns from Reference sections
@@ -389,54 +466,74 @@ cd tests && python -m pytest -v
 python scripts/analyze_test_coverage.py
 ```
 
-### Day 7: Infrastructure & Frontend Completion (Tasks 27-30) - 12-16 hours
-**Priority**: MEDIUM - Infrastructure completion and frontend
+### Day 7: Infrastructure & Live Mode Completion (Tasks 27-31) - 12-16 hours
+**Priority**: MEDIUM - Infrastructure completion and live mode
 
 1. **Task 27**: Infrastructure components completion
    - File: `.cursor/tasks/31_infrastructure_components_completion.md`
    - Reference: `docs/specs/16_MATH_UTILITIES.md`, `docs/specs/17_HEALTH_ERROR_SYSTEMS.md`
    - Success: Complete infrastructure components, unified health system
 
-2. **Task 28**: Frontend implementation completion
-   - File: `.cursor/tasks/24_frontend_implementation.md`
-   - Reference: `docs/specs/12_FRONTEND_SPEC.md`
-   - Success: Complete frontend implementation per specs
+2. **Task 28**: Live mode quality gates
+   - File: `.cursor/tasks/25_live_mode_quality_gates.md`
+   - Reference: `docs/specs/14_LIVE_TRADING_SERVICE.md`
+   - Success: Live data provider, execution framework
 
-3. **Task 29**: Authentication system implementation
-   - File: `.cursor/tasks/27_authentication_system.md`
-   - Reference: `docs/specs/12_FRONTEND_SPEC.md` (authentication section)
-   - Success: Username/password authentication, JWT tokens
+3. **Task 29**: Shared utilities implementation
+   - File: `.cursor/tasks/29_shared_utilities.md`
+   - Reference: `docs/specs/16_MATH_UTILITIES.md`
+   - Success: Math utilities, shared helper functions
 
-4. **Task 30**: Live trading UI implementation
-   - File: `.cursor/tasks/28_live_trading_ui.md`
-   - Reference: `docs/specs/12_FRONTEND_SPEC.md` (live trading section)
-   - Success: Live trading controls, real-time monitoring
+4. **Task 30**: Execution components implementation
+   - File: `.cursor/tasks/30_execution_components_implementation.md`
+   - Reference: `docs/specs/06_EXECUTION_MANAGER.md`, `docs/specs/07_EXECUTION_INTERFACE_MANAGER.md`
+   - Success: Complete execution infrastructure, tight loop architecture
+
+5. **Task 31**: Infrastructure components completion
+   - File: `.cursor/tasks/31_infrastructure_components_completion.md`
+   - Reference: `docs/specs/17_HEALTH_ERROR_SYSTEMS.md`
+   - Success: Health systems, error handling, results store
 
 **Success Criteria**:
 - Infrastructure components complete and aligned with specs
-- Frontend implementation complete per specifications
-- Authentication system functional
-- Live trading UI complete
-- 20/24 quality gates passing (83%)
+- Live mode framework ready
+- Shared utilities implemented
+- Execution infrastructure complete
+- All quality gates passing
 - System ready for staging deployment
+
+**Note**: Frontend tasks (24, 27, 28) are excluded - frontend is a separate challenge.
 
 ## Success Metrics
 
 ### Daily Targets
-- **Day 1**: Environment + config + data foundation ✅
-- **Day 2**: Core architecture violations fixed ✅
-- **Day 3**: Component integration complete ✅
-- **Day 4**: 3 strategy modes E2E passing ✅
-- **Day 5**: Component alignment + 80% unit coverage ✅
-- **Day 6**: Execution infrastructure + service validation ✅
-- **Day 7**: Infrastructure + frontend completion ✅
+- **Day 1**: Environment + config + data foundation (Tasks 01-03) ✅
+- **Day 2**: Core architecture violations fixed (Tasks 04-14) ✅
+- **Day 3**: Component integration complete (Tasks 15-18) ✅
+- **Day 4**: Strategy E2E tests passing (Tasks 19-23) ✅
+- **Day 5**: Component unit tests + missing tests (Tasks 24-31, 32-35) ✅
+- **Day 6**: Integration tests + execution infrastructure (Tasks 36-40) ✅
+- **Day 7**: Additional E2E tests + final validation (Tasks 41-43) ✅
+- **Day 8**: API routes unit tests (Tasks 44-52) ✅
+- **Day 9**: Core strategies unit tests (Tasks 53-61) ✅
+- **Day 10**: Infrastructure data provider unit tests (Tasks 62-74) ✅
+- **Day 11**: Core math & execution interfaces unit tests (Tasks 75-81) ✅
+- **Day 12**: Zero coverage components unit tests (Tasks 82-92) ✅
+
+### Extended Coverage Targets (Tasks 44-92)
+- **Phase 2**: API Routes unit tests (Tasks 44-51) - 8 tests
+- **Phase 3**: Core Strategies unit tests (Tasks 52-60) - 9 tests  
+- **Phase 4**: Infrastructure Data unit tests (Tasks 61-73) - 13 tests
+- **Phase 5**: Core Math + Execution Interfaces (Tasks 74-80) - 7 tests
+- **Phase 6**: Zero Coverage components (Tasks 81-92) - 12 tests
+- **Final**: 80% coverage achieved (66/82 files)
 
 ### Final Target
-- **30/30 tasks completed** (100%)
-- **20/24 quality gates passing** (83%)
-- **All 20 component implementation gaps addressed**
-- **80% unit test coverage**
-- **4/4 strategy modes E2E working**
+- **92/92 tasks completed** (100%)
+- **All quality gates passing** (100%)
+- **All component implementation gaps addressed**
+- **80% test coverage** (66/82 backend files)
+- **All 7 strategy modes E2E working**
 - **System ready for staging deployment**
 
 ## Autonomous Operation
@@ -445,7 +542,7 @@ python scripts/analyze_test_coverage.py
 - Execute tasks autonomously without stopping for approvals
 - Quality gates are the only checkpoints
 - Fix failures immediately without breaking patterns
-- Continue until all 26 tasks complete
+- Continue until all 43 tasks complete
 
 ### Progress Tracking
 - Log completion after each task
@@ -476,6 +573,24 @@ python scripts/analyze_test_coverage.py
 - **Current**: 12/24 passing (50%)
 - **Target**: 20/24 passing (83%)
 - **Critical**: Need to address 20 component implementation gaps
+
+### Test Coverage Gap Analysis
+- **Current Coverage**: 35.3% (29/82 backend files)
+- **Target Coverage**: 80% (66/82 backend files)
+- **Missing Tests**: 37 additional test files needed
+
+#### Critical Missing Test Categories:
+1. **API Routes** (8 missing): auth, backtest, capital, charts, config, health, live_trading, results
+2. **Core Strategies** (9 missing): All 7 strategy modes + factory + ML directional
+3. **Infrastructure Data** (13 missing): All data provider implementations
+4. **Core Math** (4 missing): health, ltv, margin, metrics calculators
+5. **Execution Interfaces** (3 missing): CEX, onchain, transfer interfaces
+6. **Zero Coverage** (12 missing): venue adapters, core services, utilities, error codes
+
+#### Coverage Priority:
+- **High Priority**: API routes, core strategies, data providers (critical path)
+- **Medium Priority**: Core math, execution interfaces (important functionality)
+- **Low Priority**: Infrastructure utilities, adapters (supporting components)
 
 ### Implementation Gaps
 - **Component Alignment**: 20 components need alignment with canonical specifications
@@ -535,7 +650,7 @@ Before completing any task, verify:
 - Any blockers encountered
 - Estimated completion time
 
-**DO NOT STOP** until all 30 tasks are completed. Report progress after each task.
+**DO NOT STOP** until all 43 tasks are completed. Report progress after each task.
 
 ---
 

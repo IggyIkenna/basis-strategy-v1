@@ -1,7 +1,7 @@
 # MASTER TASK SEQUENCE FOR BACKGROUND AGENTS
 
 ## OVERVIEW
-This is the complete sequence of tasks to execute based on the 6-day implementation roadmap. Execute these tasks in order by day and priority, starting with foundational infrastructure and building up to complete end-to-end functionality.
+This is the complete sequence of tasks to execute based on the 12-day implementation roadmap. Execute these tasks in order by day and priority, starting with foundational infrastructure and building up to complete end-to-end functionality with 80% test coverage.
 
 **Reference**: `docs/IMPLEMENTATION_GAP_REPORT.md` - Implementation gap analysis (October 11, 2025)  
 **Reference**: `docs/REFERENCE_ARCHITECTURE_CANONICAL.md` - Canonical architectural principles  
@@ -10,7 +10,7 @@ This is the complete sequence of tasks to execute based on the 6-day implementat
 **Reference**: `docs/specs/` - Detailed component implementation guides  
 **Reference**: `scripts/test_implementation_gap_quality_gates.py` - Implementation gap detection
 
-## 6-DAY IMPLEMENTATION ROADMAP
+## 12-DAY IMPLEMENTATION ROADMAP
 
 ### Day 1: Foundation - Environment, Config, and Data Loading (8 hours)
 1. **01_environment_file_switching.md** - Environment file switching & fail-fast (4 hours)
@@ -67,6 +67,65 @@ This is the complete sequence of tasks to execute based on the 6-day implementat
 41. **41_eth_staking_only_e2e.md** - ETH staking only strategy (4-6 hours)
 42. **42_eth_leveraged_staking_e2e.md** - ETH leveraged staking strategy (4-6 hours)
 43. **43_usdt_market_neutral_no_leverage_e2e.md** - USDT market neutral without leverage (4-6 hours)
+
+### Day 8: API Routes Unit Tests (12-16 hours)
+44. **44_auth_routes_unit_tests.md** - Auth routes testing (4-6 hours)
+45. **45_backtest_routes_unit_tests.md** - Backtest API routes (4-6 hours)
+46. **46_capital_routes_unit_tests.md** - Capital management routes (4-6 hours)
+47. **47_charts_routes_unit_tests.md** - Chart generation routes (4-6 hours)
+48. **48_config_routes_unit_tests.md** - Configuration API routes (4-6 hours)
+49. **49_health_routes_unit_tests.md** - Health check routes (4-6 hours)
+50. **50_live_trading_routes_unit_tests.md** - Live trading routes (4-6 hours)
+51. **51_results_routes_unit_tests.md** - Results retrieval routes (4-6 hours)
+52. **52_strategies_routes_unit_tests.md** - Strategy listing routes (4-6 hours)
+
+### Day 9: Core Strategies Unit Tests (12-16 hours)
+53. **53_btc_basis_strategy_unit_tests.md** - BTC basis strategy testing (4-6 hours)
+54. **54_eth_basis_strategy_unit_tests.md** - ETH basis strategy testing (4-6 hours)
+55. **55_eth_leveraged_strategy_unit_tests.md** - ETH leveraged strategy testing (4-6 hours)
+56. **56_eth_staking_only_strategy_unit_tests.md** - ETH staking only strategy testing (4-6 hours)
+57. **57_pure_lending_strategy_unit_tests.md** - Pure lending strategy testing (4-6 hours)
+58. **58_strategy_factory_unit_tests.md** - Strategy factory testing (4-6 hours)
+59. **59_usdt_market_neutral_strategy_unit_tests.md** - USDT market neutral strategy testing (4-6 hours)
+60. **60_usdt_market_neutral_no_leverage_strategy_unit_tests.md** - USDT market neutral no leverage strategy testing (4-6 hours)
+61. **61_ml_directional_strategy_unit_tests.md** - ML directional strategy testing (4-6 hours)
+
+### Day 10: Infrastructure Data Provider Unit Tests (12-16 hours)
+62. **62_btc_basis_data_provider_unit_tests.md** - BTC basis data provider testing (4-6 hours)
+63. **63_data_provider_factory_unit_tests.md** - Data provider factory testing (4-6 hours)
+64. **64_config_driven_historical_data_provider_unit_tests.md** - Config driven historical data provider testing (4-6 hours)
+65. **65_data_validator_unit_tests.md** - Data validation testing (4-6 hours)
+66. **66_eth_basis_data_provider_unit_tests.md** - ETH basis data provider testing (4-6 hours)
+67. **67_eth_leveraged_data_provider_unit_tests.md** - ETH leveraged data provider testing (4-6 hours)
+68. **68_eth_staking_only_data_provider_unit_tests.md** - ETH staking only data provider testing (4-6 hours)
+69. **69_historical_data_provider_unit_tests.md** - Historical data provider testing (4-6 hours)
+70. **70_live_data_provider_unit_tests.md** - Live data provider testing (4-6 hours)
+71. **71_ml_directional_data_provider_unit_tests.md** - ML directional data provider testing (4-6 hours)
+72. **72_pure_lending_data_provider_unit_tests.md** - Pure lending data provider testing (4-6 hours)
+73. **73_usdt_market_neutral_data_provider_unit_tests.md** - USDT market neutral data provider testing (4-6 hours)
+74. **74_usdt_market_neutral_no_leverage_data_provider_unit_tests.md** - USDT market neutral no leverage data provider testing (4-6 hours)
+
+### Day 11: Core Math & Execution Interfaces Unit Tests (12-16 hours)
+75. **75_health_calculator_unit_tests.md** - Health calculator testing (4-6 hours)
+76. **76_ltv_calculator_unit_tests.md** - LTV calculator testing (4-6 hours)
+77. **77_margin_calculator_unit_tests.md** - Margin calculator testing (4-6 hours)
+78. **78_metrics_calculator_unit_tests.md** - Metrics calculator testing (4-6 hours)
+79. **79_cex_execution_interface_unit_tests.md** - CEX execution interface testing (4-6 hours)
+80. **80_onchain_execution_interface_unit_tests.md** - On-chain execution interface testing (4-6 hours)
+81. **81_transfer_execution_interface_unit_tests.md** - Transfer execution interface testing (4-6 hours)
+
+### Day 12: Zero Coverage Components Unit Tests (12-16 hours)
+82. **82_venue_adapters_unit_tests.md** - Venue adapters testing (4-6 hours)
+83. **83_backtest_service_unit_tests.md** - Backtest service testing (4-6 hours)
+84. **84_live_service_unit_tests.md** - Live service testing (4-6 hours)
+85. **85_component_health_unit_tests.md** - Component health testing (4-6 hours)
+86. **86_unified_health_manager_unit_tests.md** - Unified health manager testing (4-6 hours)
+87. **87_utility_manager_unit_tests.md** - Utility manager testing (4-6 hours)
+88. **88_error_code_registry_unit_tests.md** - Error code registry testing (4-6 hours)
+89. **89_execution_instructions_unit_tests.md** - Execution instructions testing (4-6 hours)
+90. **90_reconciliation_component_unit_tests.md** - Reconciliation component testing (4-6 hours)
+91. **91_api_call_queue_unit_tests.md** - API call queue testing (4-6 hours)
+92. **92_chart_storage_visualization_unit_tests.md** - Chart storage and visualization testing (4-6 hours)
 
 ## EXECUTION INSTRUCTIONS
 1) **FOLLOW 6-DAY TIMELINE** - Execute tasks in day order (Day 1 → Day 6)
@@ -191,7 +250,7 @@ This is the complete sequence of tasks to execute based on the 6-day implementat
 - [ ] System ready for staging deployment
 
 ## OVERALL SUCCESS CRITERIA
-- [ ] All 43 tasks completed successfully
+- [ ] All 92 tasks completed successfully
 - [ ] All 20 component implementation gaps addressed
 - [ ] Quality gates improved from 12/24 to 20/24+ passing
 - [ ] All tests passing with 80% coverage

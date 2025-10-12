@@ -24,11 +24,11 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).parent.parent / "backend" / "src"))
 
 from basis_strategy_v1.core.utilities.utility_manager import UtilityManager
-from basis_strategy_v1.core.strategies.components.position_monitor import PositionMonitor
-from basis_strategy_v1.core.strategies.components.risk_monitor import RiskMonitor
-from basis_strategy_v1.core.strategies.components.exposure_monitor import ExposureMonitor
+from basis_strategy_v1.core.components.position_monitor import PositionMonitor
+from basis_strategy_v1.core.components.risk_monitor import RiskMonitor
+from basis_strategy_v1.core.components.exposure_monitor import ExposureMonitor
 from basis_strategy_v1.core.math.pnl_calculator import PnLCalculator
-from basis_strategy_v1.core.strategies.components.strategy_manager import StrategyManager
+from basis_strategy_v1.core.strategies.pure_lending_strategy import PureLendingStrategy
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -296,7 +296,7 @@ class ModeAgnosticArchitectureQualityGates:
         try:
             # Test Strategy Manager initialization
             config = {'mode': 'pure_lending', 'share_class': 'USDT', 'asset': 'USDT'}
-            strategy_manager = StrategyManager(config, None, None, None)
+            strategy_manager = PureLendingStrategy(config, None, None, None)
             
             # Check that Strategy Manager has mode awareness
             if hasattr(strategy_manager, 'mode') and strategy_manager.mode == 'pure_lending':

@@ -5,6 +5,46 @@
 ## Purpose
 Orchestrate live trading with real execution and risk management using EventDrivenStrategyEngine.
 
+## 📚 **Canonical Sources**
+
+**This component spec aligns with canonical architectural principles**:
+- **Architectural Principles**: [REFERENCE_ARCHITECTURE_CANONICAL.md](../REFERENCE_ARCHITECTURE_CANONICAL.md) - Canonical architectural principles
+- **Strategy Specifications**: [MODES.md](../MODES.md) - Canonical strategy mode definitions
+- **Component Specifications**: [specs/](specs/) - Detailed component implementation guides
+
+## Current Implementation Status
+
+**Status**: ✅ **PARTIALLY IMPLEMENTED** (HIGH Priority)
+**Last Updated**: October 12, 2025
+**Implementation File**: `backend/src/basis_strategy_v1/core/services/live_service.py`
+
+### Implementation Status
+- **Core Methods**: 3/3 methods implemented (run_live_trading, _apply_overrides, _slice_config)
+- **Config Parameters**: 0/0 implemented (timeout, risk limits, position limits)
+- **Architecture Compliance**: 0.60 (good implementation with config gaps)
+
+### Implementation Details
+- **LiveTradingRequest**: ✅ Implemented with validation
+- **Config Management**: ✅ Implemented with override support
+- **Engine Integration**: ✅ Integrated with EventDrivenStrategyEngine
+- **Error Handling**: ✅ Comprehensive error codes (LT-001 through LT-011)
+- **Risk Management**: ✅ Basic risk checks implemented
+- **Environment Controls**: ✅ BASIS_LIVE_TRADING__ENABLED and BASIS_LIVE_TRADING__READ_ONLY
+
+### Remaining Gaps
+- **Config Integration**: Service-level config parameters not implemented
+- **Concurrent Execution**: Max concurrent trades not enforced
+- **Memory Management**: Memory limits not implemented
+- **Position Limits**: Position size limits not enforced
+- **Risk Management**: Advanced risk management not implemented
+
+### Task Recommendations
+- Add config-driven service parameters (timeout, risk limits, position limits)
+- Implement concurrent execution management
+- Add memory monitoring and cleanup
+- Implement advanced risk management features
+- Add comprehensive unit tests
+
 ## Responsibilities
 1. Receive live trading requests with strategy_name and config overrides
 2. Slice config for strategy mode and apply overrides

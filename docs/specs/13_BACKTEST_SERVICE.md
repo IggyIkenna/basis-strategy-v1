@@ -5,6 +5,43 @@
 ## Purpose
 Orchestrate backtest execution using EventDrivenStrategyEngine with fresh component instantiation per request.
 
+## 📚 **Canonical Sources**
+
+**This component spec aligns with canonical architectural principles**:
+- **Architectural Principles**: [REFERENCE_ARCHITECTURE_CANONICAL.md](../REFERENCE_ARCHITECTURE_CANONICAL.md) - Canonical architectural principles
+- **Strategy Specifications**: [MODES.md](../MODES.md) - Canonical strategy mode definitions
+- **Component Specifications**: [specs/](specs/) - Detailed component implementation guides
+
+## Current Implementation Status
+
+**Status**: ✅ **PARTIALLY IMPLEMENTED** (HIGH Priority)
+**Last Updated**: October 12, 2025
+**Implementation File**: `backend/src/basis_strategy_v1/core/services/backtest_service.py`
+
+### Implementation Status
+- **Core Methods**: 3/3 methods implemented (run_backtest, _apply_overrides, _slice_config)
+- **Config Parameters**: 0/0 implemented (timeout, memory limits, cleanup settings)
+- **Architecture Compliance**: 0.60 (good implementation with config gaps)
+
+### Implementation Details
+- **BacktestRequest**: ✅ Implemented with validation
+- **Config Management**: ✅ Implemented with override support
+- **Engine Integration**: ✅ Integrated with EventDrivenStrategyEngine
+- **Error Handling**: ✅ Comprehensive error codes (BT-001 through BT-005)
+- **Result Processing**: ✅ Implemented with structured results
+
+### Remaining Gaps
+- **Config Integration**: Service-level config parameters not implemented
+- **Concurrent Execution**: Max concurrent backtests not enforced
+- **Memory Management**: Memory limits not implemented
+- **Cleanup**: Component cleanup not implemented
+
+### Task Recommendations
+- Add config-driven service parameters (timeout, memory limits)
+- Implement concurrent execution management
+- Add memory monitoring and cleanup
+- Add comprehensive unit tests
+
 ## Responsibilities
 1. Receive backtest requests with strategy_name and config overrides
 2. Slice config for strategy mode and apply overrides

@@ -5,6 +5,46 @@
 ## Purpose
 Orchestrate all 11 components in dependency order with tight loop architecture and shared clock management.
 
+## 📚 **Canonical Sources**
+
+**This component spec aligns with canonical architectural principles**:
+- **Architectural Principles**: [REFERENCE_ARCHITECTURE_CANONICAL.md](../REFERENCE_ARCHITECTURE_CANONICAL.md) - Canonical architectural principles
+- **Strategy Specifications**: [MODES.md](../MODES.md) - Canonical strategy mode definitions
+- **Component Specifications**: [specs/](specs/) - Detailed component implementation guides
+
+## Current Implementation Status
+
+**Status**: ✅ **PARTIALLY IMPLEMENTED** (MEDIUM Priority)
+**Last Updated**: October 12, 2025
+**Implementation File**: `backend/src/basis_strategy_v1/core/event_engine/event_driven_strategy_engine.py`
+
+### Implementation Status
+- **Core Methods**: 1/3 methods implemented (trigger_tight_loop, run_backtest, initialize_engine)
+- **Config Parameters**: 0/0 implemented (timeout, memory limits, component settings)
+- **Architecture Compliance**: 0.60 (good implementation with method gaps)
+
+### Implementation Details
+- **Component Management**: ✅ All 11 components initialized and managed
+- **Shared Clock**: ✅ Timestamp management implemented
+- **Tight Loop**: ✅ trigger_tight_loop method implemented
+- **Component Creation**: ✅ Factory pattern for component creation
+- **Health Integration**: ✅ Health checkers registered
+- **Error Handling**: ✅ Comprehensive error handling
+
+### Remaining Gaps
+- **Missing Methods**: run_backtest and initialize_engine methods not implemented
+- **Config Integration**: Engine-level config parameters not implemented
+- **Memory Management**: Memory limits not implemented
+- **Timeout Management**: Execution timeouts not implemented
+- **Singleton Pattern**: TODO-REFACTOR comment indicates singleton pattern violation
+
+### Task Recommendations
+- Implement missing run_backtest and initialize_engine methods
+- Add config-driven engine parameters (timeout, memory limits)
+- Fix singleton pattern implementation
+- Add comprehensive unit tests
+- Implement memory monitoring and cleanup
+
 ## Responsibilities
 1. Manage shared clock (current_timestamp) for all components
 2. Orchestrate component initialization in dependency order

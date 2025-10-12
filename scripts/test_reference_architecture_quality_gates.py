@@ -35,11 +35,11 @@ class ReferenceArchitectureQualityGates:
     def __init__(self):
         self.backend_src = Path(__file__).parent.parent / "backend" / "src"
         self.component_files = [
-            "basis_strategy_v1/core/strategies/components/position_monitor.py",
-            "basis_strategy_v1/core/strategies/components/risk_monitor.py", 
-            "basis_strategy_v1/core/strategies/components/strategy_manager.py",
-            "basis_strategy_v1/core/strategies/components/position_update_handler.py",
-            "basis_strategy_v1/core/strategies/components/exposure_monitor.py",
+            "basis_strategy_v1/core/components/position_monitor.py",
+            "basis_strategy_v1/core/components/risk_monitor.py", 
+            "basis_strategy_v1/core/strategies/base_strategy_manager.py",
+            "basis_strategy_v1/core/components/position_update_handler.py",
+            "basis_strategy_v1/core/components/exposure_monitor.py",
             "basis_strategy_v1/core/math/pnl_calculator.py"
         ]
         self.engine_files = [
@@ -342,10 +342,10 @@ class ReferenceArchitectureQualityGates:
         """Integration test - verify overall reference-based architecture."""
         # Test that we can import the components without errors
         try:
-            from basis_strategy_v1.core.strategies.components.position_monitor import PositionMonitor
-            from basis_strategy_v1.core.strategies.components.risk_monitor import RiskMonitor
-            from basis_strategy_v1.core.strategies.components.strategy_manager import StrategyManager
-            from basis_strategy_v1.core.strategies.components.position_update_handler import PositionUpdateHandler
+            from basis_strategy_v1.core.components.position_monitor import PositionMonitor
+            from basis_strategy_v1.core.components.risk_monitor import RiskMonitor
+            from basis_strategy_v1.core.strategies.base_strategy_manager import BaseStrategyManager
+            from basis_strategy_v1.core.components.position_update_handler import PositionUpdateHandler
             from basis_strategy_v1.core.math.pnl_calculator import PnLCalculator
             
             logger.info("✅ All components imported successfully")

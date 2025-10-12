@@ -31,7 +31,7 @@ This directory contains the complete test suite for the Basis Strategy project, 
 
 ```
 tests/
-├── unit/                          # 8 component isolation tests
+├── unit/                          # 64 component isolation tests
 │   ├── conftest.py               # Shared pytest fixtures
 │   ├── test_position_monitor_unit.py
 │   ├── test_exposure_monitor_unit.py
@@ -40,19 +40,86 @@ tests/
 │   ├── test_strategy_manager_unit.py
 │   ├── test_execution_manager_unit.py
 │   ├── test_data_provider_unit.py
-│   └── test_config_manager_unit.py
-├── integration/                   # 5 component data flow tests
+│   ├── test_config_manager_unit.py
+│   ├── test_event_logger_unit.py
+│   ├── test_results_store_unit.py
+│   ├── test_health_system_unit.py
+│   ├── test_api_endpoints_unit.py
+│   ├── test_environment_switching_unit.py
+│   ├── test_config_validation_unit.py
+│   ├── test_live_data_validation_unit.py
+│   ├── # API Routes unit tests (9 tests)
+│   ├── test_auth_routes_unit.py
+│   ├── test_backtest_routes_unit.py
+│   ├── test_capital_routes_unit.py
+│   ├── test_charts_routes_unit.py
+│   ├── test_config_routes_unit.py
+│   ├── test_health_routes_unit.py
+│   ├── test_live_trading_routes_unit.py
+│   ├── test_results_routes_unit.py
+│   ├── test_strategies_routes_unit.py
+│   ├── # Core Strategies unit tests (9 tests)
+│   ├── test_btc_basis_strategy_unit.py
+│   ├── test_eth_basis_strategy_unit.py
+│   ├── test_eth_leveraged_strategy_unit.py
+│   ├── test_eth_staking_only_strategy_unit.py
+│   ├── test_pure_lending_strategy_unit.py
+│   ├── test_strategy_factory_unit.py
+│   ├── test_usdt_market_neutral_strategy_unit.py
+│   ├── test_usdt_market_neutral_no_leverage_strategy_unit.py
+│   ├── test_ml_directional_strategy_unit.py
+│   ├── # Infrastructure Data Provider unit tests (13 tests)
+│   ├── test_btc_basis_data_provider_unit.py
+│   ├── test_data_provider_factory_unit.py
+│   ├── test_config_driven_historical_data_provider_unit.py
+│   ├── test_data_validator_unit.py
+│   ├── test_eth_basis_data_provider_unit.py
+│   ├── test_eth_leveraged_data_provider_unit.py
+│   ├── test_eth_staking_only_data_provider_unit.py
+│   ├── test_historical_data_provider_unit.py
+│   ├── test_live_data_provider_unit.py
+│   ├── test_ml_directional_data_provider_unit.py
+│   ├── test_pure_lending_data_provider_unit.py
+│   ├── test_usdt_market_neutral_data_provider_unit.py
+│   ├── test_usdt_market_neutral_no_leverage_data_provider_unit.py
+│   ├── # Core Math unit tests (4 tests)
+│   ├── test_health_calculator_unit.py
+│   ├── test_ltv_calculator_unit.py
+│   ├── test_margin_calculator_unit.py
+│   ├── test_metrics_calculator_unit.py
+│   ├── # Execution Interfaces unit tests (3 tests)
+│   ├── test_cex_execution_interface_unit.py
+│   ├── test_onchain_execution_interface_unit.py
+│   ├── test_transfer_execution_interface_unit.py
+│   ├── # Zero Coverage Components unit tests (11 tests)
+│   ├── test_venue_adapters_unit.py
+│   ├── test_backtest_service_unit.py
+│   ├── test_live_service_unit.py
+│   ├── test_component_health_unit.py
+│   ├── test_unified_health_manager_unit.py
+│   ├── test_utility_manager_unit.py
+│   ├── test_error_code_registry_unit.py
+│   ├── test_execution_instructions_unit.py
+│   ├── test_reconciliation_component_unit.py
+│   ├── test_api_call_queue_unit.py
+│   └── test_chart_storage_visualization_unit.py
+├── integration/                   # 6 component data flow tests
 │   ├── conftest.py               # Real component fixtures
 │   ├── test_data_flow_position_to_exposure.py
 │   ├── test_data_flow_exposure_to_risk.py
 │   ├── test_data_flow_risk_to_strategy.py
 │   ├── test_data_flow_strategy_to_execution.py
-│   └── test_tight_loop_reconciliation.py
-└── e2e/                          # 4 strategy execution tests
+│   ├── test_tight_loop_reconciliation.py
+│   └── test_repo_structure_integration.py
+└── e2e/                          # 8 strategy execution tests
     ├── test_pure_lending_e2e.py
     ├── test_btc_basis_e2e.py
     ├── test_eth_basis_e2e.py
-    └── test_usdt_market_neutral_e2e.py
+    ├── test_usdt_market_neutral_e2e.py
+    ├── test_eth_staking_only_e2e.py
+    ├── test_eth_leveraged_staking_e2e.py
+    ├── test_usdt_market_neutral_no_leverage_e2e.py
+    └── test_performance_e2e.py
 ```
 
 ## Running Tests
@@ -109,6 +176,7 @@ This test structure replaces the previous `scripts/` quality gates:
 - **Meaningful E2E**: Only run when foundation solid
 - **Faster execution**: Unit tests run in parallel (~10s), skip E2E if foundation broken
 - **Expected passing rate**: 80%+ for unit tests, 70%+ for integration, E2E depends on fixes
+- **Complete coverage**: 64 unit tests, 6 integration tests, 8 E2E tests (all 7 strategy modes + performance)
 
 ## Quality Gate Integration
 

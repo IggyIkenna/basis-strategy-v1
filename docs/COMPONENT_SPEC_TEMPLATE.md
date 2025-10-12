@@ -1,5 +1,7 @@
 # [Component Name] Component Specification
 
+**⚠️ TEMPLATE FILE**: This is a template with placeholder links. Replace all bracketed placeholders with actual values.
+
 **Last Reviewed**: [Date]
 
 ## Purpose

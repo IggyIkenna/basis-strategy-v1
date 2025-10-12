@@ -68,6 +68,7 @@ class QualityGateValidator:
             'unit': {
                 'description': 'Unit Tests - Component Isolation',
                 'scripts': [
+                    # Original 15 unit tests
                     'tests/unit/test_position_monitor_unit.py',
                     'tests/unit/test_exposure_monitor_unit.py',
                     'tests/unit/test_risk_monitor_unit.py',
@@ -82,7 +83,62 @@ class QualityGateValidator:
                     'tests/unit/test_api_endpoints_unit.py',
                     'tests/unit/test_environment_switching_unit.py',
                     'tests/unit/test_config_validation_unit.py',
-                    'tests/unit/test_live_data_validation_unit.py'
+                    'tests/unit/test_live_data_validation_unit.py',
+                    # API Routes unit tests (9 tests)
+                    'tests/unit/test_auth_routes_unit.py',
+                    'tests/unit/test_backtest_routes_unit.py',
+                    'tests/unit/test_capital_routes_unit.py',
+                    'tests/unit/test_charts_routes_unit.py',
+                    'tests/unit/test_config_routes_unit.py',
+                    'tests/unit/test_health_routes_unit.py',
+                    'tests/unit/test_live_trading_routes_unit.py',
+                    'tests/unit/test_results_routes_unit.py',
+                    'tests/unit/test_strategies_routes_unit.py',
+                    # Core Strategies unit tests (9 tests)
+                    'tests/unit/test_btc_basis_strategy_unit.py',
+                    'tests/unit/test_eth_basis_strategy_unit.py',
+                    'tests/unit/test_eth_leveraged_strategy_unit.py',
+                    'tests/unit/test_eth_staking_only_strategy_unit.py',
+                    'tests/unit/test_pure_lending_strategy_unit.py',
+                    'tests/unit/test_strategy_factory_unit.py',
+                    'tests/unit/test_usdt_market_neutral_strategy_unit.py',
+                    'tests/unit/test_usdt_market_neutral_no_leverage_strategy_unit.py',
+                    'tests/unit/test_ml_directional_strategy_unit.py',
+                    # Infrastructure Data Provider unit tests (13 tests)
+                    'tests/unit/test_btc_basis_data_provider_unit.py',
+                    'tests/unit/test_data_provider_factory_unit.py',
+                    'tests/unit/test_config_driven_historical_data_provider_unit.py',
+                    'tests/unit/test_data_validator_unit.py',
+                    'tests/unit/test_eth_basis_data_provider_unit.py',
+                    'tests/unit/test_eth_leveraged_data_provider_unit.py',
+                    'tests/unit/test_eth_staking_only_data_provider_unit.py',
+                    'tests/unit/test_historical_data_provider_unit.py',
+                    'tests/unit/test_live_data_provider_unit.py',
+                    'tests/unit/test_ml_directional_data_provider_unit.py',
+                    'tests/unit/test_pure_lending_data_provider_unit.py',
+                    'tests/unit/test_usdt_market_neutral_data_provider_unit.py',
+                    'tests/unit/test_usdt_market_neutral_no_leverage_data_provider_unit.py',
+                    # Core Math unit tests (4 tests)
+                    'tests/unit/test_health_calculator_unit.py',
+                    'tests/unit/test_ltv_calculator_unit.py',
+                    'tests/unit/test_margin_calculator_unit.py',
+                    'tests/unit/test_metrics_calculator_unit.py',
+                    # Execution Interfaces unit tests (3 tests)
+                    'tests/unit/test_cex_execution_interface_unit.py',
+                    'tests/unit/test_onchain_execution_interface_unit.py',
+                    'tests/unit/test_transfer_execution_interface_unit.py',
+                    # Zero Coverage Components unit tests (11 tests)
+                    'tests/unit/test_venue_adapters_unit.py',
+                    'tests/unit/test_backtest_service_unit.py',
+                    'tests/unit/test_live_service_unit.py',
+                    'tests/unit/test_component_health_unit.py',
+                    'tests/unit/test_unified_health_manager_unit.py',
+                    'tests/unit/test_utility_manager_unit.py',
+                    'tests/unit/test_error_code_registry_unit.py',
+                    'tests/unit/test_execution_instructions_unit.py',
+                    'tests/unit/test_reconciliation_component_unit.py',
+                    'tests/unit/test_api_call_queue_unit.py',
+                    'tests/unit/test_chart_storage_visualization_unit.py'
                 ],
                 'critical': True,
                 'timeout': 30
