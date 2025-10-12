@@ -5,7 +5,7 @@ from typing import Dict, Any, Optional
 import structlog
 from datetime import datetime
 
-from ...core.health import unified_health_manager
+from ...infrastructure.health.health_checker import get_health_checker
 from ..models.responses import HealthResponse
 
 logger = structlog.get_logger()
@@ -24,7 +24,14 @@ async def basic_health() -> HealthResponse:
     Used by Docker/Kubernetes for basic liveness checks.
     """
     try:
-        health_data = await unified_health_manager.check_basic_health()
+        health_checker = get_health_checker()
+        health_data = health_checker.check_health()
+        
+        # Convert components list to dict for HealthResponse model
+        components_list = health_data.get("components", [])
+        components_dict = {}
+        for comp in components_list:
+            components_dict[comp.get("name", "unknown")] = comp
         
         return HealthResponse(
             status=health_data["status"],
@@ -32,7 +39,9 @@ async def basic_health() -> HealthResponse:
             service=health_data.get("service"),
             execution_mode=health_data.get("execution_mode"),
             uptime_seconds=health_data.get("uptime_seconds"),
-            system=health_data.get("system")
+            system=health_data.get("system"),
+            components=components_dict,
+            summary=health_data.get("summary")
         )
     except Exception as e:
         logger.error(f"Basic health check failed: {e}")
@@ -63,16 +72,23 @@ async def detailed_health(request: Request) -> HealthResponse:
             correlation_id=correlation_id
         )
         
-        health_data = await unified_health_manager.check_detailed_health()
+        health_checker = get_health_checker()
+        health_data = health_checker.check_detailed_health()
+        
+        # Convert components list to dict for HealthResponse model
+        components_list = health_data.get("components", [])
+        components_dict = {}
+        for comp in components_list:
+            components_dict[comp.get("name", "unknown")] = comp
         
         return HealthResponse(
             status=health_data["status"],
             timestamp=datetime.fromisoformat(health_data["timestamp"].replace('Z', '+00:00')),
             service="basis-strategy-v1",
             execution_mode=health_data.get("execution_mode"),
-            uptime_seconds=health_data.get("system", {}).get("uptime_seconds"),
+            uptime_seconds=health_data.get("uptime_seconds"),
             system=health_data.get("system"),
-            components=health_data.get("components"),
+            components=components_dict,
             summary=health_data.get("summary")
         )
     except Exception as e:
@@ -87,9 +103,6 @@ async def detailed_health(request: Request) -> HealthResponse:
             service="basis-strategy-v1",
             error=str(e)
         )
-
-
-
 
 
 @router.get(
@@ -110,16 +123,23 @@ async def component_health(request: Request) -> HealthResponse:
             correlation_id=correlation_id
         )
         
-        health_data = await unified_health_manager.check_detailed_health()
+        health_checker = get_health_checker()
+        health_data = health_checker.check_detailed_health()
+        
+        # Convert components list to dict for HealthResponse model
+        components_list = health_data.get("components", [])
+        components_dict = {}
+        for comp in components_list:
+            components_dict[comp.get("name", "unknown")] = comp
         
         return HealthResponse(
             status=health_data["status"],
             timestamp=datetime.fromisoformat(health_data["timestamp"].replace('Z', '+00:00')),
             service="basis-strategy-v1",
             execution_mode=health_data.get("execution_mode"),
-            uptime_seconds=health_data.get("system", {}).get("uptime_seconds"),
+            uptime_seconds=health_data.get("uptime_seconds"),
             system=health_data.get("system"),
-            components=health_data.get("components"),
+            components=components_dict,
             summary=health_data.get("summary")
         )
     except Exception as e:
