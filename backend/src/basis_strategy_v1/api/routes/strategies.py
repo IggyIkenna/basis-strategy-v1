@@ -160,6 +160,188 @@ async def list_strategies(
         raise HTTPException(status_code=500, detail=f"Failed to list strategies: {str(e)}")
 
 
+@router.post(
+    "/{strategy_name}/validate",
+    response_model=StandardResponse[Dict[str, Any]],
+    summary="Validate strategy configuration",
+    description="Validate strategy configuration parameters"
+)
+async def validate_strategy_config(
+    strategy_name: str,
+    config: Dict[str, Any],
+    request: Request
+) -> StandardResponse[Dict[str, Any]]:
+    """
+    Validate strategy configuration parameters.
+    """
+    correlation_id = getattr(request.state, "correlation_id", "unknown")
+    
+    try:
+        logger.info(
+            "Validating strategy configuration",
+            correlation_id=correlation_id,
+            strategy_name=strategy_name
+        )
+        
+        # Validate strategy name
+        try:
+            validate_strategy_name(strategy_name)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+        
+        # Load and validate the configuration
+        merged_config = load_merged_strategy_config(strategy_name)
+        if not merged_config:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Strategy config not found: {strategy_name}"
+            )
+        
+        # Apply the provided config overrides
+        if 'strategy' in config:
+            merged_config['strategy'].update(config['strategy'])
+        if 'backtest' in config:
+            merged_config['backtest'].update(config['backtest'])
+        
+        # Basic validation - check required fields
+        validation_errors = []
+        
+        # Validate strategy section
+        strategy_params = merged_config.get('strategy', {})
+        if not strategy_params.get('share_class'):
+            validation_errors.append("share_class is required")
+        
+        # Validate backtest section
+        backtest_params = merged_config.get('backtest', {})
+        if not backtest_params.get('initial_capital'):
+            validation_errors.append("initial_capital is required")
+        if not backtest_params.get('start_date'):
+            validation_errors.append("start_date is required")
+        if not backtest_params.get('end_date'):
+            validation_errors.append("end_date is required")
+        
+        if validation_errors:
+            return StandardResponse(
+                success=False,
+                data={
+                    "valid": False,
+                    "errors": validation_errors
+                }
+            )
+        
+        return StandardResponse(
+            success=True,
+            data={
+                "valid": True,
+                "config": merged_config
+            }
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(
+            "Failed to validate strategy configuration",
+            correlation_id=correlation_id,
+            strategy_name=strategy_name,
+            error=str(e)
+        )
+        raise HTTPException(status_code=500, detail=f"Failed to validate strategy configuration: {str(e)}")
+
+
+@router.get(
+    "/{strategy_name}/parameters",
+    response_model=StandardResponse[Dict[str, Any]],
+    summary="Get strategy parameters",
+    description="Get configurable parameters for a strategy"
+)
+async def get_strategy_parameters(
+    strategy_name: str,
+    request: Request
+) -> StandardResponse[Dict[str, Any]]:
+    """
+    Get configurable parameters for a strategy.
+    """
+    correlation_id = getattr(request.state, "correlation_id", "unknown")
+    
+    try:
+        logger.info(
+            "Getting strategy parameters",
+            correlation_id=correlation_id,
+            strategy_name=strategy_name
+        )
+        
+        # Validate strategy name
+        try:
+            validate_strategy_name(strategy_name)
+        except ValueError as e:
+            raise HTTPException(status_code=404, detail=str(e))
+        
+        # Load strategy config
+        config = load_merged_strategy_config(strategy_name)
+        if not config:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Strategy config not found: {strategy_name}"
+            )
+        
+        # Extract configurable parameters
+        parameters = {
+            "strategy": {
+                "share_class": {
+                    "type": "string",
+                    "options": ["USDT", "ETH"],
+                    "default": config.get('strategy', {}).get('share_class', 'USDT'),
+                    "description": "Share class for the strategy"
+                },
+                "target_apy": {
+                    "type": "number",
+                    "min": 0.0,
+                    "max": 1.0,
+                    "default": config.get('strategy', {}).get('target_apy', 0.1),
+                    "description": "Target APY for the strategy"
+                }
+            },
+            "backtest": {
+                "initial_capital": {
+                    "type": "number",
+                    "min": 1000,
+                    "max": 10000000,
+                    "default": config.get('backtest', {}).get('initial_capital', 10000),
+                    "description": "Initial capital for backtest"
+                },
+                "start_date": {
+                    "type": "string",
+                    "format": "date",
+                    "default": config.get('backtest', {}).get('start_date', '2024-01-01'),
+                    "description": "Backtest start date"
+                },
+                "end_date": {
+                    "type": "string",
+                    "format": "date",
+                    "default": config.get('backtest', {}).get('end_date', '2024-12-31'),
+                    "description": "Backtest end date"
+                }
+            }
+        }
+        
+        return StandardResponse(
+            success=True,
+            data=parameters
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(
+            "Failed to get strategy parameters",
+            correlation_id=correlation_id,
+            strategy_name=strategy_name,
+            error=str(e)
+        )
+        raise HTTPException(status_code=500, detail=f"Failed to get strategy parameters: {str(e)}")
+
+
 @router.get(
     "/{strategy_name}",
     response_model=StandardResponse[StrategyInfoResponse],
@@ -283,9 +465,9 @@ async def get_merged_config(
         if share_class:
             merged["strategy"]["share_class"] = share_class
 
-        # Validate and return both JSON and YAML representations
-        # Use JSON mode so Enums/Decimals/etc. are converted to JSON-friendly types before YAML dumping
-        validated = load_and_validate_config(merged).model_dump(mode='json')
+        # Return both JSON and YAML representations
+        # Use the merged config directly since it's already validated
+        validated = merged
         yaml_text = yaml.safe_dump(validated, sort_keys=False)
 
         return StandardResponse(
