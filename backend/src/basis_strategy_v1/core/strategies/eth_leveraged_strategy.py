@@ -596,6 +596,225 @@ class ETHLeveragedStrategy(BaseStrategyManager):
             logger.error(f"Error creating dust sell orders: {e}")
             return []
     
+    # Public action methods for backward compatibility
+    def entry_full(self, equity: float) -> StrategyAction:
+        """Enter full ETH leveraged position - wrapper for Order-based implementation."""
+        try:
+            orders = self._create_entry_full_orders(equity)
+            # Convert orders to legacy StrategyAction format
+            instructions = []
+            for order in orders:
+                instructions.append({
+                    'type': 'order',
+                    'venue': order.venue,
+                    'operation': order.operation.value,
+                    'amount': order.amount,
+                    'pair': order.pair,
+                    'side': order.side,
+                    'execution_mode': order.execution_mode,
+                    'atomic_group_id': order.atomic_group_id,
+                    'sequence_in_group': order.sequence_in_group
+                })
+            
+            return StrategyAction(
+                action_type='entry_full',
+                target_amount=equity,
+                target_currency=self.share_class,
+                instructions=instructions,
+                atomic=True,
+                metadata={
+                    'strategy': 'eth_leveraged',
+                    'eth_allocation': self.eth_allocation,
+                    'leverage_multiplier': self.leverage_multiplier,
+                    'lst_type': self.lst_type,
+                    'hedge_allocation': self.hedge_allocation,
+                    'order_system': 'unified_order_trade'
+                }
+            )
+        except Exception as e:
+            logger.error(f"Error in entry_full: {e}")
+            return StrategyAction(
+                action_type='entry_full',
+                target_amount=0.0,
+                target_currency=self.share_class,
+                instructions=[],
+                atomic=False,
+                metadata={'error': str(e)}
+            )
+    
+    def entry_partial(self, equity_delta: float) -> StrategyAction:
+        """Enter partial ETH leveraged position - wrapper for Order-based implementation."""
+        try:
+            orders = self._create_entry_partial_orders(equity_delta)
+            # Convert orders to legacy StrategyAction format
+            instructions = []
+            for order in orders:
+                instructions.append({
+                    'type': 'order',
+                    'venue': order.venue,
+                    'operation': order.operation.value,
+                    'amount': order.amount,
+                    'pair': order.pair,
+                    'side': order.side,
+                    'execution_mode': order.execution_mode,
+                    'atomic_group_id': order.atomic_group_id,
+                    'sequence_in_group': order.sequence_in_group
+                })
+            
+            return StrategyAction(
+                action_type='entry_partial',
+                target_amount=equity_delta,
+                target_currency=self.share_class,
+                instructions=instructions,
+                atomic=True,
+                metadata={
+                    'strategy': 'eth_leveraged',
+                    'eth_delta': equity_delta,
+                    'leverage_multiplier': self.leverage_multiplier,
+                    'order_system': 'unified_order_trade'
+                }
+            )
+        except Exception as e:
+            logger.error(f"Error in entry_partial: {e}")
+            return StrategyAction(
+                action_type='entry_partial',
+                target_amount=0.0,
+                target_currency=self.share_class,
+                instructions=[],
+                atomic=False,
+                metadata={'error': str(e)}
+            )
+    
+    def exit_full(self, equity: float) -> StrategyAction:
+        """Exit full ETH leveraged position - wrapper for Order-based implementation."""
+        try:
+            orders = self._create_exit_full_orders(equity)
+            # Convert orders to legacy StrategyAction format
+            instructions = []
+            for order in orders:
+                instructions.append({
+                    'type': 'order',
+                    'venue': order.venue,
+                    'operation': order.operation.value,
+                    'amount': order.amount,
+                    'pair': order.pair,
+                    'side': order.side,
+                    'execution_mode': order.execution_mode,
+                    'atomic_group_id': order.atomic_group_id,
+                    'sequence_in_group': order.sequence_in_group
+                })
+            
+            return StrategyAction(
+                action_type='exit_full',
+                target_amount=equity,
+                target_currency=self.share_class,
+                instructions=instructions,
+                atomic=True,
+                metadata={
+                    'strategy': 'eth_leveraged',
+                    'lst_type': self.lst_type,
+                    'leverage_multiplier': self.leverage_multiplier,
+                    'order_system': 'unified_order_trade'
+                }
+            )
+        except Exception as e:
+            logger.error(f"Error in exit_full: {e}")
+            return StrategyAction(
+                action_type='exit_full',
+                target_amount=0.0,
+                target_currency=self.share_class,
+                instructions=[],
+                atomic=False,
+                metadata={'error': str(e)}
+            )
+    
+    def exit_partial(self, equity_delta: float) -> StrategyAction:
+        """Exit partial ETH leveraged position - wrapper for Order-based implementation."""
+        try:
+            orders = self._create_exit_partial_orders(equity_delta)
+            # Convert orders to legacy StrategyAction format
+            instructions = []
+            for order in orders:
+                instructions.append({
+                    'type': 'order',
+                    'venue': order.venue,
+                    'operation': order.operation.value,
+                    'amount': order.amount,
+                    'pair': order.pair,
+                    'side': order.side,
+                    'execution_mode': order.execution_mode,
+                    'atomic_group_id': order.atomic_group_id,
+                    'sequence_in_group': order.sequence_in_group
+                })
+            
+            return StrategyAction(
+                action_type='exit_partial',
+                target_amount=equity_delta,
+                target_currency=self.share_class,
+                instructions=instructions,
+                atomic=True,
+                metadata={
+                    'strategy': 'eth_leveraged',
+                    'equity_delta': equity_delta,
+                    'lst_type': self.lst_type,
+                    'leverage_multiplier': self.leverage_multiplier,
+                    'order_system': 'unified_order_trade'
+                }
+            )
+        except Exception as e:
+            logger.error(f"Error in exit_partial: {e}")
+            return StrategyAction(
+                action_type='exit_partial',
+                target_amount=0.0,
+                target_currency=self.share_class,
+                instructions=[],
+                atomic=False,
+                metadata={'error': str(e)}
+            )
+    
+    def sell_dust(self, dust_tokens: Dict[str, float]) -> StrategyAction:
+        """Sell dust tokens - wrapper for Order-based implementation."""
+        try:
+            orders = self._create_dust_sell_orders(dust_tokens)
+            # Convert orders to legacy StrategyAction format
+            instructions = []
+            for order in orders:
+                instructions.append({
+                    'type': 'order',
+                    'venue': order.venue,
+                    'operation': order.operation.value,
+                    'amount': order.amount,
+                    'pair': order.pair,
+                    'side': order.side,
+                    'execution_mode': order.execution_mode,
+                    'atomic_group_id': order.atomic_group_id,
+                    'sequence_in_group': order.sequence_in_group
+                })
+            
+            return StrategyAction(
+                action_type='sell_dust',
+                target_amount=sum(dust_tokens.values()),
+                target_currency=self.share_class,
+                instructions=instructions,
+                atomic=False,
+                metadata={
+                    'strategy': 'eth_leveraged',
+                    'dust_tokens': dust_tokens,
+                    'lst_type': self.lst_type,
+                    'order_system': 'unified_order_trade'
+                }
+            )
+        except Exception as e:
+            logger.error(f"Error in sell_dust: {e}")
+            return StrategyAction(
+                action_type='sell_dust',
+                target_amount=0.0,
+                target_currency=self.share_class,
+                instructions=[],
+                atomic=False,
+                metadata={'error': str(e)}
+            )
+    
     def get_strategy_info(self) -> Dict[str, Any]:
         """
         Get ETH leveraged strategy information and status.

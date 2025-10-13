@@ -495,6 +495,172 @@ class MLBTCDirectionalStrategy(BaseStrategyManager):
             logger.error(f"Error creating dust sell orders: {e}")
             return []
     
+    # Public action methods for backward compatibility
+    def entry_full(self, equity: float) -> StrategyAction:
+        """Enter full ML BTC directional position - wrapper for Order-based implementation."""
+        try:
+            orders = self._create_entry_full_orders(equity, 'long')  # Default to long
+            # Convert orders to legacy StrategyAction format
+            instructions = []
+            for order in orders:
+                instructions.append({
+                    'type': 'order',
+                    'venue': order.venue,
+                    'operation': order.operation.value,
+                    'amount': order.amount,
+                    'pair': order.pair,
+                    'side': order.side,
+                    'execution_mode': order.execution_mode,
+                    'take_profit': order.take_profit,
+                    'stop_loss': order.stop_loss
+                })
+            
+            return StrategyAction(
+                action_type='entry_full',
+                target_amount=equity,
+                target_currency=self.share_class,
+                instructions=instructions,
+                atomic=True,
+                metadata={
+                    'strategy': 'ml_btc_directional',
+                    'signal_threshold': self.signal_threshold,
+                    'max_position_size': self.max_position_size,
+                    'order_system': 'unified_order_trade'
+                }
+            )
+        except Exception as e:
+            logger.error(f"Error in entry_full: {e}")
+            return StrategyAction(
+                action_type='entry_full',
+                target_amount=0.0,
+                target_currency=self.share_class,
+                instructions=[],
+                atomic=False,
+                metadata={'error': str(e)}
+            )
+    
+    def entry_partial(self, equity_delta: float) -> StrategyAction:
+        """Enter partial ML BTC directional position - wrapper for Order-based implementation."""
+        try:
+            orders = self._create_entry_partial_orders(equity_delta, 'long')  # Default to long
+            # Convert orders to legacy StrategyAction format
+            instructions = []
+            for order in orders:
+                instructions.append({
+                    'type': 'order',
+                    'venue': order.venue,
+                    'operation': order.operation.value,
+                    'amount': order.amount,
+                    'pair': order.pair,
+                    'side': order.side,
+                    'execution_mode': order.execution_mode,
+                    'take_profit': order.take_profit,
+                    'stop_loss': order.stop_loss
+                })
+            
+            return StrategyAction(
+                action_type='entry_partial',
+                target_amount=equity_delta,
+                target_currency=self.share_class,
+                instructions=instructions,
+                atomic=True,
+                metadata={
+                    'strategy': 'ml_btc_directional',
+                    'equity_delta': equity_delta,
+                    'signal_threshold': self.signal_threshold,
+                    'order_system': 'unified_order_trade'
+                }
+            )
+        except Exception as e:
+            logger.error(f"Error in entry_partial: {e}")
+            return StrategyAction(
+                action_type='entry_partial',
+                target_amount=0.0,
+                target_currency=self.share_class,
+                instructions=[],
+                atomic=False,
+                metadata={'error': str(e)}
+            )
+    
+    def exit_full(self, equity: float) -> StrategyAction:
+        """Exit full ML BTC directional position - wrapper for Order-based implementation."""
+        try:
+            orders = self._create_exit_full_orders(equity)
+            # Convert orders to legacy StrategyAction format
+            instructions = []
+            for order in orders:
+                instructions.append({
+                    'type': 'order',
+                    'venue': order.venue,
+                    'operation': order.operation.value,
+                    'amount': order.amount,
+                    'pair': order.pair,
+                    'side': order.side,
+                    'execution_mode': order.execution_mode
+                })
+            
+            return StrategyAction(
+                action_type='exit_full',
+                target_amount=equity,
+                target_currency=self.share_class,
+                instructions=instructions,
+                atomic=True,
+                metadata={
+                    'strategy': 'ml_btc_directional',
+                    'order_system': 'unified_order_trade'
+                }
+            )
+        except Exception as e:
+            logger.error(f"Error in exit_full: {e}")
+            return StrategyAction(
+                action_type='exit_full',
+                target_amount=0.0,
+                target_currency=self.share_class,
+                instructions=[],
+                atomic=False,
+                metadata={'error': str(e)}
+            )
+    
+    def exit_partial(self, equity_delta: float) -> StrategyAction:
+        """Exit partial ML BTC directional position - wrapper for Order-based implementation."""
+        try:
+            orders = self._create_exit_partial_orders(equity_delta)
+            # Convert orders to legacy StrategyAction format
+            instructions = []
+            for order in orders:
+                instructions.append({
+                    'type': 'order',
+                    'venue': order.venue,
+                    'operation': order.operation.value,
+                    'amount': order.amount,
+                    'pair': order.pair,
+                    'side': order.side,
+                    'execution_mode': order.execution_mode
+                })
+            
+            return StrategyAction(
+                action_type='exit_partial',
+                target_amount=equity_delta,
+                target_currency=self.share_class,
+                instructions=instructions,
+                atomic=True,
+                metadata={
+                    'strategy': 'ml_btc_directional',
+                    'equity_delta': equity_delta,
+                    'order_system': 'unified_order_trade'
+                }
+            )
+        except Exception as e:
+            logger.error(f"Error in exit_partial: {e}")
+            return StrategyAction(
+                action_type='exit_partial',
+                target_amount=0.0,
+                target_currency=self.share_class,
+                instructions=[],
+                atomic=False,
+                metadata={'error': str(e)}
+            )
+    
     def get_strategy_info(self) -> Dict[str, Any]:
         """
         Get ML BTC directional strategy information and status.
