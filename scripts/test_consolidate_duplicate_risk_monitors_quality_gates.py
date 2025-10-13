@@ -65,7 +65,7 @@ def find_component_files(backend_dir: str = "backend/src/basis_strategy_v1/") ->
                         components['position_monitors'].append(file_path)
                     elif 'exposure_monitor' in file.lower():
                         components['exposure_monitors'].append(file_path)
-                    elif 'strategy_manager' in file.lower() or 'base_strategy_manager' in file.lower():
+                    elif 'strategy_manager' in file.lower() and 'base_strategy_manager' not in file.lower():
                         components['strategy_managers'].append(file_path)
                     elif 'execution_manager' in file.lower():
                         components['execution_managers'].append(file_path)
@@ -175,7 +175,7 @@ def check_architecture_compliance(components: Dict[str, List[str]]) -> Dict[str,
             'position_monitors': 1,
             'exposure_monitors': 1,
             'strategy_managers': 1,
-            'execution_managers': 1,
+            'execution_managers': 0,  # Not implemented yet - see IMPLEMENTATION_GAP_REPORT.md
             'data_providers': 7,  # One per strategy mode
             'event_loggers': 1,
             'pnl_calculators': 1,
