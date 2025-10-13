@@ -219,7 +219,8 @@ class QualityGateValidator:
             'components': {
                 'description': 'Component Communication Architecture Validation',
                 'scripts': [
-                    'test_component_data_flow_architecture_quality_gates.py'
+                    'test_component_data_flow_architecture_quality_gates.py',
+                    'test_consolidate_duplicate_risk_monitors_quality_gates.py'
                 ],
                 'critical': True
             },
