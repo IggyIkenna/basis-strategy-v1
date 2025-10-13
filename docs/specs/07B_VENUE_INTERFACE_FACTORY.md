@@ -157,6 +157,11 @@ The factory uses `BASIS_ENVIRONMENT` to determine which credential set to use:
 - **execution_mode**: 'backtest' | 'live' (from strategy mode slice)
 - **log_level**: 'DEBUG' | 'INFO' | 'WARNING' | 'ERROR' (from strategy mode slice)
 
+### Venue Configuration Fields
+- **venues**: Dict - Top-level venue configuration object
+  - **Usage**: Defines all available venues and their settings for factory creation
+  - **Used in**: Venue interface factory creation and validation
+
 ### Component-Specific Config
 - **venue_interface_factory_settings**: Dict (execution interface factory-specific settings)
   - **timeout**: Interface creation timeout

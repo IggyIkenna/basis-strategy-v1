@@ -241,20 +241,43 @@ def __init__(self, ...):
 - `initial_capital`: float - Starting capital
 
 ### Component-Specific Config
-- `component_config.venue_manager.execution_timeout`: int - Timeout for instruction block execution
-  - **Usage**: Determines how long to wait for execution completion
-  - **Default**: 30 (seconds)
-  - **Validation**: Must be > 0 and < 300
+- **component_config.execution_manager.supported_actions**: List[str] - Supported venue actions
+  - **Usage**: Determines which venue actions are available for execution
+  - **Examples**: ["aave_supply", "aave_withdraw", "cex_spot_buy", "cex_perp_short"]
+  - **Used in**: Action validation and execution routing
 
-- `component_config.venue_manager.reconciliation_timeout`: int - Timeout for reconciliation
-  - **Usage**: Determines how long to wait for reconciliation
-  - **Default**: 10 (seconds)
-  - **Validation**: Must be > 0 and < 60
+- **component_config.execution_manager.action_mapping**: Dict[str, List[str]] - Action to venue mapping
+  - **Usage**: Maps strategy actions to venue action sequences
+  - **Examples**: {"entry_full": ["aave_supply"], "exit_full": ["aave_withdraw"]}
+  - **Used in**: Strategy action translation to venue actions
 
-- `component_config.venue_manager.max_retries`: int - Maximum retry attempts for failed blocks
-  - **Usage**: Determines retry behavior for failed executions
-  - **Default**: 3
-  - **Validation**: Must be > 0 and < 10
+- **component_config.execution_manager.action_mapping.entry_full**: List[str] - Entry full action mapping
+  - **Usage**: Defines venue actions for full entry strategy actions
+  - **Used in**: Strategy execution routing
+
+- **component_config.execution_manager.action_mapping.exit_full**: List[str] - Exit full action mapping
+  - **Usage**: Defines venue actions for full exit strategy actions
+  - **Used in**: Strategy execution routing
+
+- **component_config.execution_manager.action_mapping.entry_partial**: List[str] - Entry partial action mapping
+  - **Usage**: Defines venue actions for partial entry strategy actions
+  - **Used in**: Strategy execution routing
+
+- **component_config.execution_manager.action_mapping.exit_partial**: List[str] - Exit partial action mapping
+  - **Usage**: Defines venue actions for partial exit strategy actions
+  - **Used in**: Strategy execution routing
+
+- **component_config.execution_manager.action_mapping.open_perp_short**: List[str] - Open perp short action mapping
+  - **Usage**: Defines venue actions for opening short perpetual positions
+  - **Used in**: Perpetual trading execution
+
+- **component_config.execution_manager.action_mapping.open_perp_long**: List[str] - Open perp long action mapping
+  - **Usage**: Defines venue actions for opening long perpetual positions
+  - **Used in**: Perpetual trading execution
+
+- **component_config.execution_manager.action_mapping.close_perp**: List[str] - Close perp action mapping
+  - **Usage**: Defines venue actions for closing perpetual positions
+  - **Used in**: Perpetual trading execution
 
 ### Config Access Pattern
 ```python

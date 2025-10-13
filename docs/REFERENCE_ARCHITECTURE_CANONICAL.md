@@ -1,7 +1,7 @@
 # Reference Architecture - Canonical Source
 
 **Status**: ⭐ **CANONICAL SOURCE** - Single source of truth for all architectural principles and patterns  
-**Updated**: October 10, 2025  
+**Updated**: October 13, 2025  
 **Purpose**: Comprehensive architectural reference for basis-strategy-v1 platform
 
 ---
@@ -461,7 +461,47 @@ time trigger → position_monitor → exposure_monitor → risk_monitor → stra
 execution_manager → execution_interface_manager → position_update_handler → position_monitor → reconciliation_component
 ```
 
-### 5. Clean Component Architecture
+### 5. Unified Order/Trade System
+
+**CRITICAL DEFINITION**: The unified Order/Trade system replaces the legacy StrategyAction and execution_instructions abstractions with a single, clean interface for all trading operations.
+
+**Core Models**:
+- **Order**: Pydantic model representing a single execution command
+- **Trade**: Pydantic model representing execution results and outcomes
+
+**Order Model Features**:
+- **Operation Types**: SPOT_TRADE, PERP_TRADE, SUPPLY, BORROW, REPAY, WITHDRAW, STAKE, UNSTAKE, SWAP, FLASH_BORROW, FLASH_REPAY, TRANSFER
+- **Execution Modes**: Sequential (default) or Atomic (for flash loans, complex DeFi operations)
+- **Atomic Groups**: Orders can be grouped with `atomic_group_id` and `sequence_in_group` for complex operations
+- **Risk Management**: Built-in support for take_profit and stop_loss
+- **Venue Support**: Works with CEX, DeFi, and wallet operations
+- **Validation**: Comprehensive Pydantic validation for all operation types
+
+**Strategy Interface**:
+```python
+def make_strategy_decision(
+    self,
+    timestamp: pd.Timestamp,
+    trigger_source: str,
+    market_data: Dict,
+    exposure_data: Dict,
+    risk_assessment: Dict
+) -> List[Order]:
+    """Return list of orders to execute."""
+```
+
+**Execution Flow**:
+1. Strategy returns `List[Order]`
+2. VenueManager processes orders and returns `List[Trade]`
+3. Position updates based on trade results
+4. Reconciliation ensures position accuracy
+
+**Atomic vs Sequential Execution**:
+- **Sequential**: Orders execute one after another (default for most operations)
+- **Atomic**: Orders execute as a single transaction (flash loans, complex DeFi operations)
+- **Mixed**: Strategies can return both sequential and atomic orders in the same decision
+
+### 6. Clean Component Architecture
 **CRITICAL REQUIREMENT**: Components must be designed to be naturally clean without needing state clearing or resetting.
 
 **Forbidden**:
@@ -474,7 +514,7 @@ execution_manager → execution_interface_manager → position_update_handler �
 - Fix root causes instead of using "clean state" hacks
 - Ensure components are properly initialized with correct state from the start
 
-### 6. Configuration Architecture
+### 7. Configuration Architecture
 **CRITICAL REQUIREMENT**: All configuration must be loaded from YAML files and validated through Pydantic models.
 
 **Required**:

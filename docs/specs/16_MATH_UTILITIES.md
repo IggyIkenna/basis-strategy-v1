@@ -117,13 +117,15 @@ Components NEVER receive these as method parameters during runtime.
 - **log_level**: 'DEBUG' | 'INFO' | 'WARNING' | 'ERROR' (from strategy mode slice)
 
 ### Component-Specific Config
-- **math_settings**: Dict (math-specific settings)
-  - **precision**: Mathematical precision
-  - **rounding_mode**: Rounding mode
-  - **error_tolerance**: Error tolerance
-- **calculation_settings**: Dict (calculation-specific settings)
-  - **ltv_thresholds**: LTV calculation thresholds
-  - **margin_requirements**: Margin calculation requirements
+- **decimal_places**: int - Decimal precision for calculations
+  - **Usage**: Determines the number of decimal places for mathematical calculations
+  - **Default**: 8
+  - **Used in**: All mathematical calculation functions
+
+- **funding_threshold**: float - Funding rate threshold for calculations
+  - **Usage**: Determines the minimum funding rate threshold for calculations
+  - **Default**: 0.0001
+  - **Used in**: Funding rate calculations and comparisons
 
 ### LTV Calculator Config Fields
 - `basis_risk_buffer`: float - Basis risk buffer percentage for LTV calculations

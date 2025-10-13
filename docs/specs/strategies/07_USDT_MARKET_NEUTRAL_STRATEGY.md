@@ -335,6 +335,61 @@ component_config:
       retry_attempts: 3
 ```
 
+## Config Fields Used
+
+### Universal Config (All Strategies)
+- **mode**: str - Strategy mode name ('usdt_market_neutral')
+- **share_class**: str - 'USDT' | 'ETH'
+- **asset**: str - Primary asset ('USDT')
+- **initial_capital**: float - Starting capital amount
+- **environment**: str - 'backtest' | 'live'
+- **execution_mode**: str - 'backtest' | 'live'
+- **validation_strict**: bool - Strict validation mode
+
+### Strategy-Specific Config
+- **market_neutral**: bool - Whether strategy is market neutral
+- **allows_hedging**: bool - Whether hedging is allowed
+- **leverage_enabled**: bool - Whether leverage is enabled
+- **hedge_allocation_binance**: float - Proportion of hedge on Binance (0.0-1.0)
+  - **Usage**: Controls capital allocation to Binance for perp hedging
+  - **Example**: 0.4 (40% of hedge on Binance)
+  - **Used in**: Execution manager venue routing
+
+- **hedge_allocation_bybit**: float - Proportion of hedge on Bybit (0.0-1.0)
+  - **Usage**: Controls capital allocation to Bybit for perp hedging
+  - **Example**: 0.3 (30% of hedge on Bybit)
+  - **Used in**: Execution manager venue routing
+
+- **hedge_allocation_okx**: float - Proportion of hedge on OKX (0.0-1.0)
+  - **Usage**: Controls capital allocation to OKX for perp hedging
+  - **Example**: 0.3 (30% of hedge on OKX)
+  - **Used in**: Execution manager venue routing
+
+### Venue Configuration
+- **venues.etherfi.venue_type**: str - Venue type ('defi')
+- **venues.etherfi.enabled**: bool - Whether EtherFi is enabled
+- **venues.etherfi.instruments**: List[str] - Available instruments
+- **venues.etherfi.order_types**: List[str] - Available order types
+- **venues.binance.venue_type**: str - Venue type ('cex')
+- **venues.binance.enabled**: bool - Whether Binance is enabled
+- **venues.binance.instruments**: List[str] - Available instruments
+- **venues.binance.order_types**: List[str] - Available order types
+- **venues.bybit.venue_type**: str - Venue type ('cex')
+- **venues.bybit.enabled**: bool - Whether Bybit is enabled
+- **venues.bybit.instruments**: List[str] - Available instruments
+- **venues.bybit.order_types**: List[str] - Available order types
+- **venues.okx.venue_type**: str - Venue type ('cex')
+- **venues.okx.enabled**: bool - Whether OKX is enabled
+- **venues.okx.instruments**: List[str] - Available instruments
+- **venues.okx.order_types**: List[str] - Available order types
+
+### Component Configuration
+- **component_config.strategy_manager.strategy_type**: str - Strategy type
+- **component_config.strategy_manager.actions**: List[str] - Available actions
+- **component_config.strategy_manager.position_calculation**: Dict - Position calculation config
+- **component_config.risk_monitor.risk_limits**: Dict - Risk limit configuration
+- **component_config.execution_manager.action_mapping**: Dict - Action mapping configuration
+
 ## Testing Requirements
 
 ### **Unit Tests**

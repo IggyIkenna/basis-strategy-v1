@@ -217,7 +217,7 @@ def extract_implementation_methods(impl_file: str, spec_file: str = None) -> Dic
         # Check for specific event logger config parameters
         event_logger_configs = [
             'event_categories', 'event_logging_settings', 'log_retention_policy',
-            'audit_requirements', 'compliance_settings', 'logging_requirements', 'event_filtering'
+             'logging_requirements', 'event_filtering'
         ]
         
         for config_param in event_logger_configs:

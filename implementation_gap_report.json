@@ -115,8 +115,8 @@
     "05_STRATEGY_MANAGER": {
       "status": "COMPLIANT",
       "priority": "LOW",
-      "methods_implemented": 9,
-      "methods_total": 9,
+      "methods_implemented": 10,
+      "methods_total": 10,
       "missing_methods": [],
       "extra_methods": [],
       "private_extra_methods": [],
@@ -507,12 +507,50 @@
     "19_CONFIGURATION": {
       "status": "COMPLIANT",
       "priority": "LOW",
-      "methods_implemented": 29,
-      "methods_total": 29,
+      "methods_implemented": 11,
+      "methods_total": 11,
       "missing_methods": [],
-      "extra_methods": [],
+      "extra_methods": [
+        "log_component_event",
+        "log_warning",
+        "log_structured_event",
+        "get_data_date_range",
+        "log_performance_metric",
+        "get_settings",
+        "get_data_directory",
+        "get_execution_mode",
+        "get_environment",
+        "load_share_class_config",
+        "log_error",
+        "get_strategy_file_path",
+        "load_strategy_config",
+        "load_scenario_config",
+        "get_results_directory",
+        "get_config_manager",
+        "load_mode_config",
+        "load_venue_config"
+      ],
       "private_extra_methods": [],
-      "public_extra_methods": [],
+      "public_extra_methods": [
+        "log_component_event",
+        "log_warning",
+        "log_structured_event",
+        "get_data_date_range",
+        "log_performance_metric",
+        "get_settings",
+        "get_data_directory",
+        "get_execution_mode",
+        "get_environment",
+        "load_share_class_config",
+        "log_error",
+        "get_strategy_file_path",
+        "load_strategy_config",
+        "load_scenario_config",
+        "get_results_directory",
+        "get_config_manager",
+        "load_mode_config",
+        "load_venue_config"
+      ],
       "config_params_implemented": 0,
       "config_params_total": 0,
       "missing_config": [],
@@ -542,6 +580,8 @@
     ],
     "high_priority_gaps": [],
     "medium_priority_gaps": [],
-    "low_priority_gaps": []
+    "low_priority_gaps": [
+      "19_CONFIGURATION: 18 extra methods"
+    ]
   }
 }

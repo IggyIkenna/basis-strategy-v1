@@ -10,10 +10,11 @@ Reference: docs/specs/05_STRATEGY_MANAGER.md - Component specification
 
 from typing import Dict, List, Any
 import logging
+import pandas as pd
 
-from .base_strategy_manager import BaseStrategyManager, StrategyAction
-
+from .base_strategy_manager import BaseStrategyManager
 from ...core.logging.base_logging_interface import StandardizedLoggingMixin, LogLevel, EventType
+from ...core.models.order import Order, OrderOperation
 
 logger = logging.getLogger(__name__)
 
@@ -54,6 +55,12 @@ class ETHBasisStrategy(BaseStrategyManager):
         
         logger.info(f"ETHBasisStrategy initialized with {self.eth_allocation*100}% ETH allocation")
     
+    def _get_asset_price(self) -> float:
+        """Get current ETH price. In real implementation, this would fetch from data provider."""
+        # For testing purposes, return a default ETH price
+        # In production, this would fetch from market data
+        return 3000.0
+    
     def calculate_target_position(self, current_equity: float) -> Dict[str, float]:
         """
         Calculate target position for ETH basis strategy.
@@ -86,388 +93,447 @@ class ETHBasisStrategy(BaseStrategyManager):
                 'total_equity': current_equity
             }
     
-    def entry_full(self, equity: float) -> StrategyAction:
+    def make_strategy_decision(
+        self,
+        timestamp: pd.Timestamp,
+        trigger_source: str,
+        market_data: Dict,
+        exposure_data: Dict,
+        risk_assessment: Dict
+    ) -> List[Order]:
         """
-        Enter full ETH basis position.
+        Make ETH basis strategy decision based on market conditions and risk assessment.
+        
+        ETH Basis Strategy Logic:
+        - Analyze funding rates and basis spreads
+        - Check risk metrics for liquidation risk
+        - Decide on entry/exit based on profitability and risk
+        - Generate appropriate orders for ETH spot + perp positions
+        """
+        try:
+            # Log strategy decision start
+            self.log_component_event(
+                event_type=EventType.BUSINESS_EVENT,
+                message=f"Making ETH basis strategy decision triggered by {trigger_source}",
+                data={
+                    'trigger_source': trigger_source,
+                    'strategy_type': self.__class__.__name__,
+                    'timestamp': str(timestamp)
+                },
+                level=LogLevel.INFO
+            )
+            
+            # Get current equity and positions
+            current_equity = self.get_current_equity(exposure_data)
+            current_positions = exposure_data.get('positions', {})
+            
+            # ETH-specific market analysis
+            eth_spot_price = market_data.get('prices', {}).get('ETH', 0.0)
+            eth_funding_rate = market_data.get('rates', {}).get('eth_funding', 0.0)
+            
+            # Risk assessment
+            liquidation_risk = risk_assessment.get('liquidation_risk', 0.0)
+            margin_ratio = risk_assessment.get('cex_margin_ratio', 1.0)
+            
+            # ETH Basis Strategy Decision Logic
+            # Check if we have existing ETH positions
+            has_eth_position = (current_positions.get('eth_balance', 0) > 0 or 
+                              current_positions.get('eth_perpetual_short', 0) != 0)
+            
+            if current_equity == 0 or not has_eth_position:
+                # No position or no ETH position - check if we should enter
+                if self._should_enter_basis_position(eth_funding_rate, eth_spot_price):
+                    return self._create_entry_orders(current_equity)
+                else:
+                    return self._create_dust_sell_orders(exposure_data)  # Wait for better opportunity
+                    
+            elif liquidation_risk > 0.8 or margin_ratio < 0.2:
+                # High risk - exit position
+                return self._create_exit_orders(current_equity)
+                
+            elif liquidation_risk > 0.6 or margin_ratio < 0.3:
+                # Medium risk - partial exit
+                return self._create_exit_orders(current_equity * 0.5)
+                
+            elif self._should_rebalance_position(eth_funding_rate, current_positions):
+                # Rebalance position based on funding rate changes
+                return self._create_rebalance_orders(current_equity * 0.2)
+                
+            else:
+                # Maintain current position
+                return self._create_dust_sell_orders(exposure_data)
+                
+        except Exception as e:
+            self.log_error(
+                error=e,
+                context={
+                    'method': 'make_strategy_decision',
+                    'trigger_source': trigger_source,
+                    'strategy_type': self.__class__.__name__
+                }
+            )
+            logger.error(f"Error in ETH basis strategy decision: {e}")
+            # Return safe default action
+            return self._create_dust_sell_orders(exposure_data)
+    
+    def _should_enter_basis_position(self, funding_rate: float, spot_price: float) -> bool:
+        """Determine if we should enter an ETH basis position."""
+        # ETH basis strategy logic: enter when funding rate is favorable
+        return abs(funding_rate) > self.funding_threshold and spot_price > 0
+    
+    def _should_rebalance_position(self, funding_rate: float, current_positions: Dict) -> bool:
+        """Determine if we should rebalance the ETH basis position."""
+        # Simple rebalancing logic based on funding rate changes
+        # In production, this would be more sophisticated
+        return abs(funding_rate) > self.funding_threshold * 1.5
+    
+    def _create_entry_orders(self, equity: float) -> List[Order]:
+        """
+        Create orders for full ETH basis position entry.
         
         Args:
             equity: Available equity in share class currency
             
         Returns:
-            StrategyAction with instructions for full entry
+            List[Order] for ETH spot buy + ETH perp short (sequential)
         """
         try:
+            # Log order creation
+            self.log_component_event(
+                event_type=EventType.BUSINESS_EVENT,
+                message=f"Creating entry orders with equity={equity}",
+                data={
+                    'action': 'create_entry_orders',
+                    'equity': equity,
+                    'strategy_type': self.__class__.__name__
+                },
+                level=LogLevel.INFO
+            )
+            
             # Calculate target position
             target_position = self.calculate_target_position(equity)
-            
-            # Create instructions for full entry
-            instructions = []
+            orders = []
             
             # 1. Buy ETH spot
-            eth_amount = target_position['eth_balance']
+            eth_amount = target_position.get('eth_balance', 0.0)
             if eth_amount > 0:
-                instructions.append({
-                    'action': 'buy',
-                    'asset': 'ETH',
-                    'amount': eth_amount,
-                    'venue': 'binance',  # Primary venue for ETH
-                    'order_type': 'market'
-                })
+                orders.append(Order(
+                    venue='binance',
+                    operation=OrderOperation.SPOT_TRADE,
+                    pair='ETH/USDT',
+                    side='BUY',
+                    amount=eth_amount,
+                    order_type='market',
+                    execution_mode='sequential',
+                    strategy_intent='eth_basis_entry',
+                    strategy_id='eth_basis',
+                    metadata={
+                        'eth_allocation': self.eth_allocation,
+                        'funding_threshold': self.funding_threshold
+                    }
+                ))
             
             # 2. Open short perpetual position
-            short_amount = target_position['eth_perpetual_short']
-            if short_amount < 0:
-                instructions.append({
-                    'action': 'sell',
-                    'asset': 'ETH-PERP',
-                    'amount': abs(short_amount),
-                    'venue': 'bybit',  # Primary venue for perpetuals
-                    'order_type': 'market',
-                    'position_type': 'short'
-                })
-            
-            # 3. Maintain reserves
-            reserve_amount = target_position[f'{self.share_class.lower()}_balance']
-            if reserve_amount > 0:
-                instructions.append({
-                    'action': 'reserve',
-                    'asset': self.share_class,
-                    'amount': reserve_amount,
-                    'venue': 'wallet',
-                    'order_type': 'hold'
-                })
-            
-            return StrategyAction(
-                action_type='entry_full',
-                target_amount=equity,
-                target_currency=self.share_class,
-                instructions=instructions,
-                atomic=True,  # All or nothing for basis strategy
+            short_amount = abs(target_position.get('eth_perpetual_short', 0.0))
+            if short_amount > 0:
+                orders.append(Order(
+                    venue='bybit',
+                    operation=OrderOperation.PERP_TRADE,
+                    pair='ETHUSDT',
+                    side='SHORT',
+                    amount=short_amount,
+                    order_type='market',
+                    execution_mode='sequential',
+                    strategy_intent='eth_basis_entry',
+                    strategy_id='eth_basis',
                 metadata={
-                    'strategy': 'eth_basis',
                     'eth_allocation': self.eth_allocation,
                     'funding_threshold': self.funding_threshold
                 }
-            )
+                ))
+            
+            return orders
             
         except Exception as e:
-            logger.error(f"Error in entry_full: {e}")
-            return StrategyAction(
-                action_type='entry_full',
-                target_amount=0.0,
-                target_currency=self.share_class,
-                instructions=[],
-                atomic=False,
-                metadata={'error': str(e)}
+            self.log_error(
+                error=e,
+                context={
+                    'method': '_create_entry_orders',
+                    'equity': equity
+                }
             )
+            logger.error(f"Error creating entry orders: {e}")
+            return []
     
-    def entry_partial(self, equity_delta: float) -> StrategyAction:
+    def _create_rebalance_orders(self, equity_delta: float) -> List[Order]:
         """
-        Scale up ETH basis position.
+        Create orders for rebalancing ETH basis position.
         
         Args:
             equity_delta: Additional equity to deploy
             
         Returns:
-            StrategyAction with instructions for partial entry
+            List[Order] for proportional ETH spot buy + perp short increase
         """
         try:
+            # Log order creation
+            self.log_component_event(
+                event_type=EventType.BUSINESS_EVENT,
+                message=f"Creating rebalance orders with equity_delta={equity_delta}",
+                data={
+                    'action': 'create_rebalance_orders',
+                    'equity_delta': equity_delta,
+                    'strategy_type': self.__class__.__name__
+                },
+                level=LogLevel.INFO
+            )
+            
             # Calculate proportional allocation
             eth_delta = equity_delta * self.eth_allocation
-            
-            # Get current ETH price
             eth_price = self._get_asset_price()
             eth_amount = eth_delta / eth_price if eth_price > 0 else 0
             
-            instructions = []
+            orders = []
             
             # 1. Buy additional ETH spot
             if eth_amount > 0:
-                instructions.append({
-                    'action': 'buy',
-                    'asset': 'ETH',
-                    'amount': eth_amount,
-                    'venue': 'binance',
-                    'order_type': 'market'
-                })
+                orders.append(Order(
+                    venue='binance',
+                    operation=OrderOperation.SPOT_TRADE,
+                    pair='ETH/USDT',
+                    side='BUY',
+                    amount=eth_amount,
+                    order_type='market',
+                    execution_mode='sequential',
+                    strategy_intent='eth_basis_rebalance',
+                    strategy_id='eth_basis',
+                    metadata={
+                        'eth_delta': eth_delta,
+                        'rebalance': True
+                    }
+                ))
             
             # 2. Increase short perpetual position
             if eth_amount > 0:
-                instructions.append({
-                    'action': 'sell',
-                    'asset': 'ETH-PERP',
-                    'amount': eth_amount,
-                    'venue': 'bybit',
-                    'order_type': 'market',
-                    'position_type': 'short'
-                })
+                orders.append(Order(
+                    venue='bybit',
+                    operation=OrderOperation.PERP_TRADE,
+                    pair='ETHUSDT',
+                    side='SHORT',
+                    amount=eth_amount,
+                    order_type='market',
+                    execution_mode='sequential',
+                    strategy_intent='eth_basis_rebalance',
+                    strategy_id='eth_basis',
+                    metadata={
+                        'eth_delta': eth_delta,
+                        'rebalance': True
+                    }
+                ))
             
-            # 3. Add to reserves
-            if reserve_delta > 0:
-                instructions.append({
-                    'action': 'reserve',
-                    'asset': self.share_class,
-                    'amount': reserve_delta,
-                    'venue': 'wallet',
-                    'order_type': 'hold'
-                })
-            
-            return StrategyAction(
-                action_type='entry_partial',
-                target_amount=equity_delta,
-                target_currency=self.share_class,
-                instructions=instructions,
-                atomic=True,
-                metadata={
-                    'strategy': 'eth_basis',
-                    'eth_delta': eth_delta,
-                    'reserve_delta': reserve_delta
-                }
-            )
+            return orders
             
         except Exception as e:
-            logger.error(f"Error in entry_partial: {e}")
-            return StrategyAction(
-                action_type='entry_partial',
-                target_amount=0.0,
-                target_currency=self.share_class,
-                instructions=[],
-                atomic=False,
-                metadata={'error': str(e)}
+            self.log_error(
+                error=e,
+                context={
+                    'method': '_create_rebalance_orders',
+                    'equity_delta': equity_delta
+                }
             )
+            logger.error(f"Error creating rebalance orders: {e}")
+            return []
     
-    def exit_full(self, equity: float) -> StrategyAction:
+    def _create_exit_orders(self, equity: float) -> List[Order]:
         """
-        Exit entire ETH basis position.
+        Create orders for exiting ETH basis position.
         
         Args:
-            equity: Total equity to exit
+            equity: Total equity to exit (used to calculate scaling factor)
             
         Returns:
-            StrategyAction with instructions for full exit
+            List[Order] for closing ETH perp short + selling ETH spot
         """
         try:
+            # Log order creation
+            self.log_component_event(
+                event_type=EventType.BUSINESS_EVENT,
+                message=f"Creating exit orders with equity={equity}",
+                data={
+                    'action': 'create_exit_orders',
+                    'equity': equity,
+                    'strategy_type': self.__class__.__name__
+                },
+                level=LogLevel.INFO
+            )
+            
             # Get current position
             current_position = self.position_monitor.get_current_position()
             eth_balance = current_position.get('eth_balance', 0.0)
             eth_short = current_position.get('eth_perpetual_short', 0.0)
             
-            instructions = []
+            # Calculate scaling factor based on equity vs total position value
+            total_position_value = (eth_balance + abs(eth_short)) * self._get_asset_price()
+            if total_position_value > 0:
+                scaling_factor = min(equity / total_position_value, 1.0)
+            else:
+                scaling_factor = 1.0
+            
+            orders = []
             
             # 1. Close short perpetual position
             if eth_short < 0:
-                instructions.append({
-                    'action': 'buy',
-                    'asset': 'ETH-PERP',
-                    'amount': abs(eth_short),
-                    'venue': 'bybit',
-                    'order_type': 'market',
-                    'position_type': 'close_short'
-                })
+                scaled_short_amount = abs(eth_short) * scaling_factor
+                orders.append(Order(
+                    venue='bybit',
+                    operation=OrderOperation.PERP_TRADE,
+                    pair='ETHUSDT',
+                    side='BUY',  # Close short position
+                    amount=scaled_short_amount,
+                    order_type='market',
+                    execution_mode='sequential',
+                    strategy_intent='eth_basis_exit',
+                    strategy_id='eth_basis',
+                    metadata={
+                        'eth_balance': eth_balance,
+                        'eth_short': eth_short,
+                        'scaling_factor': scaling_factor,
+                        'close_position': True
+                    }
+                ))
             
             # 2. Sell ETH spot
             if eth_balance > 0:
-                instructions.append({
-                    'action': 'sell',
-                    'asset': 'ETH',
-                    'amount': eth_balance,
-                    'venue': 'binance',
-                    'order_type': 'market'
-                })
+                scaled_eth_amount = eth_balance * scaling_factor
+                orders.append(Order(
+                    venue='binance',
+                    operation=OrderOperation.SPOT_TRADE,
+                    pair='ETH/USDT',
+                    side='SELL',
+                    amount=scaled_eth_amount,
+                    order_type='market',
+                    execution_mode='sequential',
+                    strategy_intent='eth_basis_exit',
+                    strategy_id='eth_basis',
+                    metadata={
+                        'eth_balance': eth_balance,
+                        'eth_short': eth_short,
+                        'scaling_factor': scaling_factor,
+                        'close_position': True
+                    }
+                ))
             
-            # 3. Convert all to share class currency
-            instructions.append({
-                'action': 'convert',
-                'asset': self.share_class,
-                'amount': equity,
-                'venue': 'wallet',
-                'order_type': 'market'
-            })
-            
-            return StrategyAction(
-                action_type='exit_full',
-                target_amount=equity,
-                target_currency=self.share_class,
-                instructions=instructions,
-                atomic=True,
-                metadata={
-                    'strategy': 'eth_basis',
-                    'eth_balance': eth_balance,
-                    'eth_short': eth_short
-                }
-            )
+            return orders
             
         except Exception as e:
-            logger.error(f"Error in exit_full: {e}")
-            return StrategyAction(
-                action_type='exit_full',
-                target_amount=0.0,
-                target_currency=self.share_class,
-                instructions=[],
-                atomic=False,
-                metadata={'error': str(e)}
-            )
-    
-    def exit_partial(self, equity_delta: float) -> StrategyAction:
-        """
-        Scale down ETH basis position.
-        
-        Args:
-            equity_delta: Equity to remove from position
-            
-        Returns:
-            StrategyAction with instructions for partial exit
-        """
-        try:
-            # Get current position
-            current_position = self.position_monitor.get_current_position()
-            eth_balance = current_position.get('eth_balance', 0.0)
-            eth_short = current_position.get('eth_perpetual_short', 0.0)
-            
-            # Calculate proportional reduction
-            total_eth = eth_balance + abs(eth_short)
-            if total_eth > 0:
-                reduction_ratio = min(equity_delta / (total_eth * self._get_asset_price()), 1.0)
-            else:
-                reduction_ratio = 0.0
-            
-            eth_reduction = eth_balance * reduction_ratio
-            short_reduction = abs(eth_short) * reduction_ratio
-            
-            instructions = []
-            
-            # 1. Reduce short perpetual position
-            if short_reduction > 0:
-                instructions.append({
-                    'action': 'buy',
-                    'asset': 'ETH-PERP',
-                    'amount': short_reduction,
-                    'venue': 'bybit',
-                    'order_type': 'market',
-                    'position_type': 'reduce_short'
-                })
-            
-            # 2. Sell proportional ETH spot
-            if eth_reduction > 0:
-                instructions.append({
-                    'action': 'sell',
-                    'asset': 'ETH',
-                    'amount': eth_reduction,
-                    'venue': 'binance',
-                    'order_type': 'market'
-                })
-            
-            # 3. Convert to share class currency
-            instructions.append({
-                'action': 'convert',
-                'asset': self.share_class,
-                'amount': equity_delta,
-                'venue': 'wallet',
-                'order_type': 'market'
-            })
-            
-            return StrategyAction(
-                action_type='exit_partial',
-                target_amount=equity_delta,
-                target_currency=self.share_class,
-                instructions=instructions,
-                atomic=True,
-                metadata={
-                    'strategy': 'eth_basis',
-                    'eth_reduction': eth_reduction,
-                    'short_reduction': short_reduction,
-                    'reduction_ratio': reduction_ratio
+            self.log_error(
+                error=e,
+                context={
+                    'method': '_create_exit_orders',
+                    'equity': equity
                 }
             )
-            
-        except Exception as e:
-            logger.error(f"Error in exit_partial: {e}")
-            return StrategyAction(
-                action_type='exit_partial',
-                target_amount=0.0,
-                target_currency=self.share_class,
-                instructions=[],
-                atomic=False,
-                metadata={'error': str(e)}
-            )
+            logger.error(f"Error creating exit orders: {e}")
+            return []
     
-    def sell_dust(self, dust_tokens: Dict[str, float]) -> StrategyAction:
+    def _create_dust_sell_orders(self, exposure_data: Dict) -> List[Order]:
         """
-        Convert non-share-class tokens to share class currency.
+        Create orders for selling dust tokens.
         
         Args:
-            dust_tokens: Dictionary of dust tokens and amounts
+            exposure_data: Current exposure data
             
         Returns:
-            StrategyAction with instructions for dust selling
+            List[Order] for selling dust tokens
         """
         try:
-            instructions = []
-            total_converted = 0.0
+            # Log order creation
+            self.log_component_event(
+                event_type=EventType.BUSINESS_EVENT,
+                message="Creating dust sell orders",
+                data={
+                    'action': 'create_dust_sell_orders',
+                    'strategy_type': self.__class__.__name__
+                },
+                level=LogLevel.INFO
+            )
             
-            for token, amount in dust_tokens.items():
-                if amount > 0 and token != self.share_class:
-                    # Convert to share class currency
-                    if token == 'ETH':
+            # Get current positions
+            current_positions = exposure_data.get('positions', {})
+            orders = []
+            
+            # Check for dust tokens that need to be sold
+            for token, amount in current_positions.items():
+                if amount > 0 and token not in [self.share_class.lower(), 'eth_perpetual_short']:
+                    # This is a dust token that should be sold
+                    if token == 'eth_balance':
                         # Sell ETH for share class
-                        instructions.append({
-                            'action': 'sell',
-                            'asset': token,
-                            'amount': amount,
-                            'venue': 'binance',
-                            'order_type': 'market',
-                            'target_currency': self.share_class
-                        })
-                        total_converted += amount * self._get_asset_price()
-                    
-                    elif token in ['BTC', 'USDT']:
-                        # Direct conversion
-                        instructions.append({
-                            'action': 'convert',
-                            'asset': token,
-                            'amount': amount,
-                            'venue': 'wallet',
-                            'order_type': 'market',
-                            'target_currency': self.share_class
-                        })
-                        total_converted += amount
-                    
+                        orders.append(Order(
+                            venue='binance',
+                            operation=OrderOperation.SPOT_TRADE,
+                            pair='ETH/USDT',
+                            side='SELL',
+                            amount=amount,
+                            order_type='market',
+                            execution_mode='sequential',
+                            strategy_intent='eth_basis_dust_sell',
+                            strategy_id='eth_basis',
+                            metadata={
+                                'dust_token': token,
+                                'dust_amount': amount
+                            }
+                        ))
+                    elif token in ['btc_balance']:
+                        # BTC dust - sell for share class
+                        orders.append(Order(
+                            venue='binance',
+                            operation=OrderOperation.SPOT_TRADE,
+                            pair='BTC/USDT',
+                            side='SELL',
+                            amount=amount,
+                            order_type='market',
+                            execution_mode='sequential',
+                            strategy_intent='eth_basis_dust_sell',
+                            strategy_id='eth_basis',
+                            metadata={
+                                'dust_token': token,
+                                'dust_amount': amount
+                            }
+                        ))
+                    elif token == 'usdt_balance':
+                        # USDT is already the share class, no action needed
+                        continue
                     else:
-                        # Other tokens - sell for share class
-                        instructions.append({
-                            'action': 'sell',
-                            'asset': token,
-                            'amount': amount,
-                            'venue': 'binance',
-                            'order_type': 'market',
-                            'target_currency': self.share_class
-                        })
-                        # Estimate value (would use actual price in real implementation)
-                        total_converted += amount * 0.1  # Placeholder
+                        # Other dust tokens - sell for share class
+                        orders.append(Order(
+                            venue='binance',
+                            operation=OrderOperation.SPOT_TRADE,
+                            pair=f'{token.upper()}/USDT',
+                            side='SELL',
+                            amount=amount,
+                            order_type='market',
+                            execution_mode='sequential',
+                            strategy_intent='eth_basis_dust_sell',
+                            strategy_id='eth_basis',
+                            metadata={
+                                'dust_token': token,
+                                'dust_amount': amount
+                            }
+                        ))
             
-            return StrategyAction(
-                action_type='sell_dust',
-                target_amount=total_converted,
-                target_currency=self.share_class,
-                instructions=instructions,
-                atomic=False,  # Can execute individually
-                metadata={
-                    'strategy': 'eth_basis',
-                    'dust_tokens': dust_tokens,
-                    'total_converted': total_converted
-                }
-            )
+            return orders
             
         except Exception as e:
-            logger.error(f"Error in sell_dust: {e}")
-            return StrategyAction(
-                action_type='sell_dust',
-                target_amount=0.0,
-                target_currency=self.share_class,
-                instructions=[],
-                atomic=False,
-                metadata={'error': str(e)}
+            self.log_error(
+                error=e,
+                context={
+                    'method': '_create_dust_sell_orders',
+                    'exposure_data': exposure_data
+                }
             )
+            logger.error(f"Error creating dust sell orders: {e}")
+            return []
+    
     
     def get_strategy_info(self) -> Dict[str, Any]:
         """
@@ -477,24 +543,21 @@ class ETHBasisStrategy(BaseStrategyManager):
             Dictionary with strategy information
         """
         try:
-            base_info = super().get_strategy_info()
-            
             # Add ETH-specific information
-            base_info.update({
+            return {
                 'strategy_type': 'eth_basis',
+                'share_class': self.share_class,
+                'asset': self.asset,
                 'eth_allocation': self.eth_allocation,
                 'funding_threshold': self.funding_threshold,
                 'max_leverage': self.max_leverage,
                 'description': 'ETH funding rate arbitrage with spot/perpetual basis trading'
-            })
-            
-            return base_info
+            }
             
         except Exception as e:
             logger.error(f"Error getting strategy info: {e}")
             return {
                 'strategy_type': 'eth_basis',
-                'mode': self.mode,
                 'share_class': self.share_class,
                 'asset': self.asset,
                 'equity': 0.0,

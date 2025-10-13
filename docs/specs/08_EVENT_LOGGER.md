@@ -142,27 +142,39 @@ def __init__(self, ...):
 - `share_class`: str - 'usdt_stable' | 'eth_directional'
 - `initial_capital`: float - Starting capital
 
-### Component-Specific Config
-- `event_buffer_size`: int - Maximum events to keep in memory
-  - **Usage**: Determines memory usage for event buffering
-  - **Default**: 10000
-  - **Validation**: Must be > 0 and < 100000
-
-- `event_export_format`: str - Format for event export
-  - **Usage**: Determines export format (csv, json, both)
-  - **Default**: 'both'
-  - **Validation**: Must be 'csv', 'json', or 'both'
-
-### Logging Configuration Fields
-- `log_format`: str - Log format specification
-  - **Usage**: Used in `event_logger.py:58` to set the format for log output
-  - **Required**: Yes
-  - **Used in**: `event_logger.py:58`
-
-- `log_path`: str - Log file path
-  - **Usage**: Used in `event_logger.py:53` to set the path where log files are written
-  - **Required**: Yes
-  - **Used in**: `event_logger.py:53`
+### Event Logger Configuration Fields
+- **event_logger**: Dict - Event logging configuration
+  - **Usage**: Configures event logging behavior and output format
+  - **Required**: Yes for all modes
+  - **Used in**: Event logging, audit trails, debugging
+- **event_logger.log_path**: str - Path to log files
+  - **Usage**: Directory where log files are stored
+  - **Default**: "./logs"
+  - **Used in**: Log file management
+- **event_logger.log_format**: str - Log format ('json', 'text')
+  - **Usage**: Format for log output
+  - **Default**: "json"
+  - **Used in**: Log parsing and analysis
+- **event_logger.log_level**: str - Logging level ('DEBUG', 'INFO', 'WARNING', 'ERROR')
+  - **Usage**: Minimum log level to record
+  - **Default**: "INFO"
+  - **Used in**: Log filtering
+- **event_logger.event_categories**: Dict[str, List[str]] - Event categories and types
+  - **Usage**: Defines event categorization for filtering and analysis
+  - **Examples**: {"data": ["data_loaded", "data_updated"], "risk": ["risk_breach", "risk_warning"]}
+  - **Used in**: Event filtering, categorization
+- **event_logger.event_logging_settings**: Dict - Event logging behavior settings
+  - **Usage**: Controls event logging behavior
+  - **Used in**: Event processing, buffering
+- **event_logger.log_retention_policy**: Dict - Log retention and rotation settings
+  - **Usage**: Manages log file lifecycle
+  - **Used in**: Log file management, cleanup
+- **event_logger.logging_requirements**: Dict - Logging feature requirements
+  - **Usage**: Enables/disables specific logging features
+  - **Used in**: Feature toggling
+- **event_logger.event_filtering**: Dict - Event filtering configuration
+  - **Usage**: Configures event filtering behavior
+  - **Used in**: Event processing
 
 ### Config Access Pattern
 ```python

@@ -87,52 +87,52 @@ class ConfigFieldClassifier:
                     'strategy_manager', 'execution_manager', 'results_store', 'strategy_factory',
                     'position_monitor',
                     # Add wildcards for each component
-                    'risk_monitor.*', 'exposure_monitor.*', 'pnl_calculator.*',
-                    'strategy_manager.*', 'execution_manager.*', 'results_store.*', 'strategy_factory.*',
-                    'position_monitor.*',
+                    'component_config.risk_monitor.*', 'component_config.exposure_monitor.*', 'component_config.pnl_calculator.*',
+                    'component_config.strategy_manager.*', 'component_config.execution_manager.*', 'component_config.results_store.*', 'component_config.strategy_factory.*',
+                    'component_config.position_monitor.*',
                     # Risk monitor fields
-                    'risk_monitor.enabled_risk_types', 'risk_monitor.risk_limits',
-                    'risk_monitor.risk_limits.target_margin_ratio', 'risk_monitor.risk_limits.cex_margin_ratio_min',
-                    'risk_monitor.risk_limits.maintenance_margin_requirement', 'risk_monitor.risk_limits.delta_tolerance',
-                    'risk_monitor.risk_limits.target_ltv', 'risk_monitor.risk_limits.liquidation_threshold',
+                    'component_config.risk_monitor.enabled_risk_types', 'component_config.risk_monitor.risk_limits',
+                    'component_config.risk_monitor.risk_limits.target_margin_ratio', 'component_config.risk_monitor.risk_limits.cex_margin_ratio_min',
+                    'component_config.risk_monitor.risk_limits.maintenance_margin_requirement', 'component_config.risk_monitor.risk_limits.delta_tolerance',
+                    'component_config.risk_monitor.risk_limits.target_ltv', 'component_config.risk_monitor.risk_limits.liquidation_threshold',
                     # Exposure monitor fields
-                    'exposure_monitor.exposure_currency', 'exposure_monitor.track_assets',
-                    'exposure_monitor.conversion_methods',
-                    'exposure_monitor.conversion_methods.BTC', 'exposure_monitor.conversion_methods.ETH',
-                    'exposure_monitor.conversion_methods.USDT', 'exposure_monitor.conversion_methods.aWeETH',
-                    'exposure_monitor.conversion_methods.weETH', 'exposure_monitor.conversion_methods.KING',
-                    'exposure_monitor.conversion_methods.EIGEN', 'exposure_monitor.conversion_methods.ETHFI',
-                    'exposure_monitor.conversion_methods.variableDebtWETH', 'exposure_monitor.conversion_methods.BTC_PERP',
-                    'exposure_monitor.conversion_methods.ETH_PERP',
+                    'component_config.exposure_monitor.exposure_currency', 'component_config.exposure_monitor.track_assets',
+                    'component_config.exposure_monitor.conversion_methods',
+                    'component_config.exposure_monitor.conversion_methods.BTC', 'component_config.exposure_monitor.conversion_methods.ETH',
+                    'component_config.exposure_monitor.conversion_methods.USDT', 'component_config.exposure_monitor.conversion_methods.aWeETH',
+                    'component_config.exposure_monitor.conversion_methods.weETH', 'component_config.exposure_monitor.conversion_methods.KING',
+                    'component_config.exposure_monitor.conversion_methods.EIGEN', 'component_config.exposure_monitor.conversion_methods.ETHFI',
+                    'component_config.exposure_monitor.conversion_methods.variableDebtWETH', 'component_config.exposure_monitor.conversion_methods.BTC_PERP',
+                    'component_config.exposure_monitor.conversion_methods.ETH_PERP',
                     # PnL calculator fields
-                    'pnl_calculator.attribution_types', 'pnl_calculator.reporting_currency',
-                    'pnl_calculator.reconciliation_tolerance',
+                    'component_config.pnl_calculator.attribution_types', 'component_config.pnl_calculator.reporting_currency',
+                    'component_config.pnl_calculator.reconciliation_tolerance',
                     # Strategy manager fields
-                    'strategy_manager.strategy_type', 'strategy_manager.actions',
-                    'strategy_manager.rebalancing_triggers', 'strategy_manager.position_calculation',
-                    'strategy_manager.position_calculation.target_position', 'strategy_manager.position_calculation.hedge_position',
-                    'strategy_manager.position_calculation.hedge_allocation',
-                    'strategy_manager.position_calculation.hedge_allocation.binance',
-                    'strategy_manager.position_calculation.hedge_allocation.bybit',
-                    'strategy_manager.position_calculation.hedge_allocation.okx',
-                    'strategy_manager.position_calculation.method', 'strategy_manager.position_calculation.leverage_ratio',
+                    'component_config.strategy_manager.strategy_type', 'component_config.strategy_manager.actions',
+                    'component_config.strategy_manager.rebalancing_triggers', 'component_config.strategy_manager.position_calculation',
+                    'component_config.strategy_manager.position_calculation.target_position', 'component_config.strategy_manager.position_calculation.hedge_position',
+                    'component_config.strategy_manager.position_calculation.hedge_allocation',
+                    'component_config.strategy_manager.position_calculation.hedge_allocation.binance',
+                    'component_config.strategy_manager.position_calculation.hedge_allocation.bybit',
+                    'component_config.strategy_manager.position_calculation.hedge_allocation.okx',
+                    'component_config.strategy_manager.position_calculation.method', 'component_config.strategy_manager.position_calculation.leverage_ratio',
                     # Execution manager fields
-                    'execution_manager.supported_actions', 'execution_manager.action_mapping',
-                    'execution_manager.action_mapping.entry_full', 'execution_manager.action_mapping.exit_full',
-                    'execution_manager.action_mapping.entry_partial', 'execution_manager.action_mapping.exit_partial',
-                    'execution_manager.action_mapping.open_perp_short', 'execution_manager.action_mapping.open_perp_long',
-                    'execution_manager.action_mapping.close_perp',
+                    'component_config.execution_manager.supported_actions', 'component_config.execution_manager.action_mapping',
+                    'component_config.execution_manager.action_mapping.entry_full', 'component_config.execution_manager.action_mapping.exit_full',
+                    'component_config.execution_manager.action_mapping.entry_partial', 'component_config.execution_manager.action_mapping.exit_partial',
+                    'component_config.execution_manager.action_mapping.open_perp_short', 'component_config.execution_manager.action_mapping.open_perp_long',
+                    'component_config.execution_manager.action_mapping.close_perp',
                     # Position monitor fields
-                    'position_monitor', 'position_monitor.fail_on_unknown_asset', 'position_monitor.track_assets',
-                    'position_monitor.initial_balances', 'position_monitor.initial_balances.wallet',
-                    'position_monitor.initial_balances.cex_accounts',
+                    'component_config.position_monitor', 'component_config.position_monitor.fail_on_unknown_asset', 'component_config.position_monitor.track_assets',
+                    'component_config.position_monitor.initial_balances', 'component_config.position_monitor.initial_balances.wallet',
+                    'component_config.position_monitor.initial_balances.cex_accounts',
                     # Results store fields
-                    'results_store.result_types', 'results_store.balance_sheet_assets',
-                    'results_store.pnl_attribution_types', 'results_store.leverage_tracking',
-                    'results_store.delta_tracking_assets', 'results_store.funding_tracking_venues',
-                    'results_store.dust_tracking_tokens',
+                    'component_config.results_store.result_types', 'component_config.results_store.balance_sheet_assets',
+                    'component_config.results_store.pnl_attribution_types', 'component_config.results_store.leverage_tracking',
+                    'component_config.results_store.delta_tracking_assets', 'component_config.results_store.funding_tracking_venues',
+                    'component_config.results_store.dust_tracking_tokens',
                     # Strategy factory fields
-                    'strategy_factory.timeout', 'strategy_factory.max_retries', 'strategy_factory.validation_strict'
+                    'component_config.strategy_factory.timeout', 'component_config.strategy_factory.max_retries', 'component_config.strategy_factory.validation_strict'
                 ]
             },
             'trading_fees': {
@@ -147,13 +147,13 @@ class ConfigFieldClassifier:
                 'description': 'Event logger configuration with fixed fields',
                 'fields': [
                     'log_path', 'log_format', 'log_level', 'event_categories',
-                    'event_logging_settings', 'log_retention_policy', 'audit_requirements',
+                    'event_logging_settings', 'log_retention_policy',
                     'compliance_settings', 'logging_requirements', 'event_filtering',
                     'log_retention_policy.retention_days', 'log_retention_policy.max_file_size_mb',
                     'log_retention_policy.rotation_frequency', 'log_retention_policy.compression_after_days',
                     # Add wildcards for nested configurations
                     'event_categories.*', 'event_logging_settings.*', 'log_retention_policy.*',
-                    'audit_requirements.*', 'compliance_settings.*', 'logging_requirements.*', 'event_filtering.*'
+                     'logging_requirements.*', 'event_filtering.*'
                 ]
             }
         }
@@ -313,11 +313,23 @@ class ConfigFieldClassifier:
                 elif hasattr(annotation, '__origin__') and annotation.__origin__ is Union:
                     # Find the first non-None type
                     for union_type in annotation.__args__:
-                        if union_type is not type(None) and hasattr(union_type, 'model_fields'):
-                            nested_fields = self._extract_model_fields(union_type)
-                            for nested_field, nested_info in nested_fields.items():
-                                nested_path = f"{field_name}.{nested_field}"
-                                fields[nested_path] = nested_info
+                        if union_type is not type(None):
+                            if hasattr(union_type, 'model_fields'):
+                                nested_fields = self._extract_model_fields(union_type)
+                                for nested_field, nested_info in nested_fields.items():
+                                    nested_path = f"{field_name}.{nested_field}"
+                                    fields[nested_path] = nested_info
+                            elif self._is_dict_field(union_type):
+                                # Handle Dict[str, Any] fields in Union types
+                                if field_name in self.FIXED_SCHEMA_DICTS:
+                                    # Add all known fields for fixed schema dicts
+                                    for known_field in self.FIXED_SCHEMA_DICTS[field_name]['fields']:
+                                        # Always use the field as-is since FIXED_SCHEMA_DICTS already has correct paths
+                                        full_path = known_field
+                                        fields[full_path] = {
+                                            'type': str,  # Assume string type for now
+                                            'required': False  # Mark as optional since they're in Dict[str, Any]
+                                        }
                             break
                 
                 # Handle Dict[str, Any] fields - add specific known fields
@@ -325,13 +337,8 @@ class ConfigFieldClassifier:
                     if field_name in self.FIXED_SCHEMA_DICTS:
                         # Add all known fields for fixed schema dicts
                         for known_field in self.FIXED_SCHEMA_DICTS[field_name]['fields']:
-                            # Create full field path by prepending dict name if not already present
-                            if '.' in known_field:
-                                # Field has nested structure, prepend dict name
-                                full_path = f"{field_name}.{known_field}"
-                            else:
-                                # Top-level field within dict
-                                full_path = f"{field_name}.{known_field}"
+                            # Always use the field as-is since FIXED_SCHEMA_DICTS already has correct paths
+                            full_path = known_field
                             fields[full_path] = {
                                 'type': str,  # Assume string type for now
                                 'required': False  # Mark as optional since they're in Dict[str, Any]

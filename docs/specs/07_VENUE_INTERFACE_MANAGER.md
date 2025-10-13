@@ -195,6 +195,11 @@ def __init__(self, ...):
 - `share_class`: str - 'usdt_stable' | 'eth_directional'
 - `initial_capital`: float - Starting capital
 
+### Venue Configuration Fields
+- **venues**: Dict - Top-level venue configuration object
+  - **Usage**: Defines all available venues and their settings
+  - **Used in**: Venue interface initialization and routing decisions
+
 ### Component-Specific Config
 - `component_config.venue_interface_manager.venue_timeout`: int - Timeout for venue API calls
   - **Usage**: Determines how long to wait for venue responses

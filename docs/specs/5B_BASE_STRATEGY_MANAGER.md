@@ -18,6 +18,7 @@ Abstract base class for all strategy managers providing inheritance-based archit
 3. Implement inheritance-based architecture for strategy modes
 4. Provide mode-specific strategy logic through abstract methods
 5. Integrate with tight loop architecture and component dependencies
+6. Define `make_strategy_decision()` method for strategy-specific decision logic
 
 ## State
 - strategy_type: str (strategy mode type)
@@ -725,6 +726,38 @@ None - all data comes from DataProvider
 
 ## Core Methods
 
+### make_strategy_decision(timestamp, trigger_source: str, market_data: Dict, exposure_data: Dict, risk_assessment: Dict) -> StrategyAction
+Strategy-specific decision making method that should be overridden by strategy implementations.
+
+**Parameters**:
+- timestamp: Current timestamp
+- trigger_source: Source of the decision trigger ('risk_monitor', 'exposure_monitor', 'scheduled', etc.)
+- market_data: Current market data from data provider
+- exposure_data: Current exposure data from exposure monitor
+- risk_assessment: Current risk assessment from risk monitor
+
+**Returns**:
+- StrategyAction: Strategy decision with action type and instructions
+
+**Default Implementation**:
+```python
+def make_strategy_decision(self, timestamp, trigger_source: str, market_data: Dict, exposure_data: Dict, risk_assessment: Dict) -> StrategyAction:
+    """
+    Make strategy decision based on current market conditions and risk assessment.
+    
+    This method should be overridden by strategy implementations to provide
+    strategy-specific decision logic.
+    """
+    # Default implementation - can be overridden by strategy implementations
+    current_equity = exposure_data.get('total_exposure', 0.0)
+    
+    # Simple default logic - strategies should override this
+    if current_equity == 0:
+        return self.entry_full(current_equity)
+    else:
+        return self.sell_dust({})  # Default to maintaining position
+```
+
 ### update_state(timestamp: pd.Timestamp, trigger_source: str, **kwargs) -> List[Dict]
 Main entry point for strategy decision making.
 
@@ -1062,6 +1095,6 @@ The Base Strategy Manager supports comprehensive testing:
 ---
 
 **Status**: Specification complete ✅  
-**Last Reviewed**: October 11, 2025
+**Last Reviewed**: October 13, 2025
 
 

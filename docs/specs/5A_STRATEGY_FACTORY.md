@@ -89,13 +89,22 @@ component_config:
 - **log_level**: 'DEBUG' | 'INFO' | 'WARNING' | 'ERROR' (from strategy mode slice)
 
 ### Component-Specific Config
-- **strategy_factory_settings**: Dict (strategy factory-specific settings)
-  - **timeout**: Strategy creation timeout
-  - **max_retries**: Maximum retry attempts
-  - **validation_strict**: Strict mode validation
-- **strategy_settings**: Dict (strategy-specific settings)
-  - **mode**: Strategy mode name
-  - **dependencies**: Strategy dependencies
+- **component_config.strategy_factory.timeout**: int - Strategy creation timeout
+  - **Usage**: Determines how long to wait for strategy creation
+  - **Default**: 30 (seconds)
+  - **Validation**: Must be > 0 and < 300
+  - **Used in**: Strategy creation timeout handling
+
+- **component_config.strategy_factory.max_retries**: int - Maximum retry attempts
+  - **Usage**: Determines retry behavior for failed strategy creation
+  - **Default**: 3
+  - **Validation**: Must be > 0 and < 10
+  - **Used in**: Strategy creation retry logic
+
+- **component_config.strategy_factory.validation_strict**: bool - Strict mode validation
+  - **Usage**: Determines whether to perform strict validation of strategy mode
+  - **Default**: true
+  - **Used in**: Strategy mode validation
 
 ## Config-Driven Behavior
 

@@ -70,13 +70,17 @@ component_config:
       cex_margin_ratio_min: 0.15
       maintenance_margin_requirement: 0.10
       delta_tolerance: 0.005
+      liquidation_threshold: 0.95
   
   exposure_monitor:
     exposure_currency: "USDT"
-    track_assets: ["BTC", "BTC_PERP"]
+    track_assets: ["ETH", "weETH", "EIGEN", "KING", "USDT"]
     conversion_methods:
-      BTC: "usd_price"
-      BTC_PERP: "perp_mark_price"
+      ETH: "usd_price"
+      weETH: "oracle_price"
+      EIGEN: "usd_price"
+      KING: "unwrap"
+      USDT: "direct"
   
   pnl_calculator:
     attribution_types: ["funding_pnl", "delta_pnl", "basis_pnl", "transaction_costs"]
@@ -104,9 +108,10 @@ component_config:
       exit_partial: ["cex_perp_close", "cex_spot_sell"]
   
   results_store:
-    result_types: ["balance_sheet", "pnl_attribution", "risk_metrics", "execution_log", "delta_tracking"]
-    balance_sheet_assets: ["BTC", "USDT", "BTC_PERP"]
-    pnl_attribution_types: ["funding_pnl", "delta_pnl", "basis_pnl", "transaction_costs"]
+    result_types: ["balance_sheet", "pnl_attribution", "risk_metrics", "execution_log", "dust_tracking"]
+    balance_sheet_assets: ["ETH", "weETH", "EIGEN", "KING", "USDT"]
+    pnl_attribution_types: ["staking_yield_oracle", "transaction_costs"]
+    dust_tracking_tokens: ["EIGEN", "ETHFI", "KING"]
   
   strategy_factory:
     timeout: 30
@@ -133,16 +138,6 @@ event_logger:
     max_file_size_mb: 100
     rotation_frequency: "daily"
     compression_after_days: 7
-  audit_requirements:
-    audit_trail: true
-    immutable_logs: true
-    encryption: false
-    compliance_mode: "standard"
-  compliance_settings:
-    gdpr_compliant: false
-    sox_compliant: false
-    data_residency: "global"
-    encryption_required: false
   logging_requirements:
     structured_logging: true
     correlation_ids: true

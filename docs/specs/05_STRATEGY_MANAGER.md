@@ -1,6 +1,6 @@
 # Strategy Manager Component Specification
 
-**Last Reviewed**: October 10, 2025
+**Last Reviewed**: October 13, 2025
 
 ## Purpose
 Mode-specific strategy brain that decides 5 standardized actions and breaks them down into sequential instruction blocks for Execution Manager.
@@ -25,10 +25,10 @@ See: 5A_STRATEGY_FACTORY.md for factory pattern, CODE_STRUCTURE_PATTERNS.md sect
 - **Component Index**: [COMPONENT_SPECS_INDEX.md](../COMPONENT_SPECS_INDEX.md) - All 20 components (11 core + 9 supporting)
 
 ## Responsibilities
-1. Decide 5 standardized actions (entry_full, entry_partial, exit_full, exit_partial, sell_dust)
-2. Break down actions into sequential instruction blocks for Execution Manager
+1. Delegate decision-making to strategy instances via `make_strategy_decision()`
+2. Convert StrategyAction objects to instruction blocks for Execution Manager
 3. NO execution logic: Just instruction block creation
-4. Mode-specific decision logic based on exposure, risk, and market data
+4. Orchestrate strategy-specific decision logic based on exposure, risk, and market data
 
 ## Mode-Specific but Config-Driven Architecture
 
@@ -188,27 +188,61 @@ def __init__(self, ...):
 - `mode`: str - e.g., 'eth_basis', 'pure_lending'
 - `share_class`: str - 'usdt_stable' | 'eth_directional'
 - `initial_capital`: float - Starting capital
+- **candle_interval**: str - Dynamic step size for backtest loop (e.g., "1h", "5min")
+  - **Usage**: Controls time step granularity in backtest mode
+  - **Default**: "1h"
+  - **Used in**: Backtest loop timing, data provider queries
+- **data_requirements**: List[str] - Data types required by strategy mode
+  - **Usage**: Specifies which data sources must be available
+  - **Examples**: ["spot_prices", "funding_rates", "aave_rates"]
+  - **Used in**: Data provider initialization, validation
 
-### Component-Specific Config
-- `strategy_type`: str - Strategy mode type (from component_config)
-  - **Usage**: Determines which mode-specific strategy logic to execute
-  - **Values**: 'pure_lending', 'btc_basis', 'eth_leveraged', etc.
-  - **Validation**: Must match available strategy types
-
-- `actions`: List[str] - Available strategy actions (from component_config)
-  - **Usage**: Determines which standardized actions are available
-  - **Values**: ['entry_full', 'exit_full', 'entry_partial', 'exit_partial']
-  - **Validation**: Must be valid action types
-
-- `rebalancing_triggers`: List[str] - Rebalancing trigger conditions (from component_config)
-  - **Usage**: Determines when to trigger rebalancing actions
-  - **Values**: ['deposit', 'withdrawal', 'funding_rate_change', 'liquidation_risk']
-  - **Validation**: Must be valid trigger types
-
-- `position_calculation`: Dict - Position calculation configuration (from component_config)
-  - **Usage**: Determines how to calculate target positions
-  - **Fields**: target_position, max_position, calculation_method
-  - **Validation**: Must have required calculation fields
+### Strategy Manager Component Configuration Fields
+- **component_config.strategy_manager.strategy_type**: str - Strategy type identifier
+  - **Usage**: Defines the specific strategy type being executed
+  - **Examples**: "btc_basis", "eth_leveraged", "pure_lending"
+  - **Used in**: Strategy routing and behavior selection
+- **component_config.strategy_manager.actions**: List[str] - Available strategy actions
+  - **Usage**: Defines actions available to the strategy
+  - **Examples**: ["entry_full", "entry_partial", "exit_partial", "exit_full"]
+  - **Used in**: Strategy execution and action planning
+- **component_config.strategy_manager.rebalancing_triggers**: List[str] - Rebalancing trigger conditions
+  - **Usage**: Defines conditions that trigger position rebalancing
+  - **Examples**: ["deposit", "withdrawal", "delta_drift"]
+  - **Used in**: Strategy rebalancing logic
+- **component_config.strategy_manager.position_calculation**: Dict - Position calculation configuration
+  - **Usage**: Defines how positions are calculated and managed
+- **component_config.strategy_manager.position_calculation.hedge_allocation.binance**: float - Hedge allocation to Binance
+  - **Usage**: Defines proportion of hedge allocated to Binance venue
+  - **Examples**: 0.4 (40% of hedge on Binance)
+  - **Used in**: Execution manager venue routing for hedging
+- **component_config.strategy_manager.position_calculation.hedge_allocation.bybit**: float - Hedge allocation to Bybit
+  - **Usage**: Defines proportion of hedge allocated to Bybit venue
+  - **Examples**: 0.3 (30% of hedge on Bybit)
+  - **Used in**: Execution manager venue routing for hedging
+- **component_config.strategy_manager.position_calculation.hedge_allocation.okx**: float - Hedge allocation to OKX
+  - **Usage**: Defines proportion of hedge allocated to OKX venue
+  - **Examples**: 0.3 (30% of hedge on OKX)
+  - **Used in**: Execution manager venue routing for hedging
+  - **Used in**: Position sizing and risk calculation
+- **component_config.strategy_manager.position_calculation.target_position**: str - Target position type
+  - **Usage**: Defines the primary position type for strategy execution
+  - **Examples**: "btc_spot_long", "eth_stake_long"
+  - **Used in**: Strategy position calculation and execution
+- **component_config.strategy_manager.position_calculation.hedge_position**: str - Hedge position type
+  - **Usage**: Defines the hedge position type for risk management
+  - **Examples**: "btc_perp_short", "eth_perp_short"
+  - **Used in**: Risk management and hedging execution
+- **component_config.strategy_manager.position_calculation.method**: str - Position calculation method
+  - **Usage**: Defines how positions are calculated
+  - **Examples**: "delta_neutral", "directional"
+  - **Used in**: Position sizing and risk calculation
+- **component_config.strategy_manager.position_calculation.leverage_ratio**: float - Leverage ratio for positions
+  - **Usage**: Defines leverage multiplier for position sizing
+  - **Used in**: Position sizing and risk management
+- **component_config.strategy_manager.position_calculation.hedge_allocation**: Dict[str, float] - Hedge allocation by venue
+  - **Usage**: Defines hedge allocation percentages across venues
+  - **Used in**: Risk management and hedging execution
 
 ### Strategy-Specific Config Fields
 - `lst_type`: str - Liquid staking token type
@@ -886,11 +920,73 @@ last_execution_timestamp: pd.Timestamp
 
 ## 📅 **Last Reviewed**
 
-**Last Reviewed**: October 10, 2025  
+**Last Reviewed**: October 13, 2025  
 **Reviewer**: Component Spec Standardization  
 **Status**: ✅ **18-SECTION FORMAT COMPLETE**
 
 ## Core Methods
+
+### make_strategy_decision(timestamp: pd.Timestamp, trigger_source: str, market_data: Dict) -> Dict
+Main entry point for strategy decision making. Delegates to strategy instance.
+
+Parameters:
+- timestamp: Current timestamp
+- trigger_source: Source of the decision trigger ('risk_monitor', 'exposure_monitor', 'scheduled', etc.)
+- market_data: Current market data from data provider
+
+Returns:
+- Strategy decision dict with action, reasoning, and execution instructions
+
+Implementation:
+```python
+def make_strategy_decision(self, timestamp: pd.Timestamp, trigger_source: str, market_data: Dict) -> Dict:
+    """
+    Make strategy decision based on current market conditions and risk assessment.
+    """
+    try:
+        # Get current exposure and risk data
+        exposure_data = self.exposure_monitor.get_current_exposure()
+        risk_assessment = self.risk_monitor.get_current_risk_metrics()
+        
+        # Get the actual strategy instance from factory
+        strategy_instance = self._get_strategy_instance()
+        
+        # Delegate decision-making to strategy implementation
+        # Strategy decides what action to take based on its own logic
+        strategy_action = strategy_instance.make_strategy_decision(
+            timestamp=timestamp,
+            trigger_source=trigger_source,
+            market_data=market_data,
+            exposure_data=exposure_data,
+            risk_assessment=risk_assessment
+        )
+        
+        # Convert StrategyAction to instruction blocks
+        instruction_blocks = self._convert_strategy_action_to_instructions(strategy_action)
+        
+        # Return decision in expected format
+        return {
+            'action': strategy_action.action_type,
+            'reasoning': f"Strategy decision triggered by {trigger_source}",
+            'target_positions': exposure_data.get('positions', {}),
+            'execution_instructions': instruction_blocks,
+            'risk_override': trigger_source == 'risk_monitor',
+            'estimated_cost': 0.0,
+            'priority': 'MEDIUM' if trigger_source == 'scheduled' else 'HIGH'
+        }
+        
+    except Exception as e:
+        logger.error(f"Strategy Manager: Error in make_strategy_decision: {e}")
+        return {
+            'action': 'MAINTAIN_NEUTRAL',
+            'reasoning': f"Error in decision making: {str(e)}",
+            'target_positions': {},
+            'execution_instructions': [],
+            'risk_override': False,
+            'estimated_cost': 0.0,
+            'priority': 'LOW'
+        }
+```
 
 ### update_state(timestamp: pd.Timestamp, trigger_source: str, **kwargs)
 Main entry point for strategy decision making.

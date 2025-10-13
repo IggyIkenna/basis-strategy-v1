@@ -133,47 +133,29 @@ def __init__(self, ...):
 - `share_class`: str - 'USDT' | 'ETH'
 - `asset`: str - 'USDT' | 'ETH' | 'BTC'
 
-### Risk Monitor Specific Config
-- `max_drawdown`: float - Maximum allowed drawdown percentage
-  - **Usage**: Used in `__init__` to set risk threshold for drawdown monitoring
-  - **Required**: Yes
-  - **Used in**: `risk_monitor.py:50`
-
-- `leverage_enabled`: bool - Whether leverage is enabled for this strategy
-  - **Usage**: Used in `__init__` to determine if leverage-related risk calculations should be performed
-  - **Required**: Yes
-  - **Used in**: `risk_monitor.py:51`
-
-- `venues`: Dict[str, Any] - Venue configuration for risk monitoring
-  - **Usage**: Used in `__init__` to configure venue-specific risk parameters
-  - **Required**: Yes
-  - **Used in**: `risk_monitor.py:57`
-
-- `data_dir`: str - Directory path for data storage
-  - **Usage**: Used in `_load_aave_risk_parameters` to locate AAVE risk parameter files
-  - **Required**: Yes
-  - **Used in**: `risk_monitor.py:86`
-
-- `component_config`: Dict[str, Any] - Component-specific configuration
-  - **Usage**: Used in `__init__` to extract risk monitor specific settings
-  - **Required**: Yes
-  - **Used in**: `risk_monitor.py:60`
-
-### Component-Specific Config (from component_config.risk_monitor)
-- `risk_monitor`: Dict - Risk monitor configuration
-  - **Usage**: Used in `risk_monitor.py:61` to extract risk monitor specific settings
-  - **Required**: Yes
-  - **Used in**: `risk_monitor.py:61`
-
-- `enabled_risk_types`: List[str] - Risk types to calculate
-  - **Usage**: Determines which risk calculations to perform
-  - **Required**: Yes
-  - **Validation**: Must be non-empty list of valid risk types
-
-- `risk_limits`: Dict[str, float] - Risk limits for each enabled type
-  - **Usage**: Triggers alerts when limits exceeded
-  - **Required**: Yes
-  - **Validation**: Must have limits for all enabled risk types
+### Risk Monitor Component Configuration Fields
+- **component_config.risk_monitor.enabled_risk_types**: List[str] - List of risk types to calculate
+  - **Usage**: Defines which risk calculations to perform
+  - **Examples**: ["aave_health_factor", "cex_margin_ratio", "funding_risk", "delta_risk"]
+  - **Used in**: Risk calculation logic and filtering
+- **component_config.risk_monitor.risk_limits**: Dict[str, float] - Risk limits for each risk type
+  - **Usage**: Defines risk thresholds and limits for monitoring
+  - **Used in**: Risk monitoring and alert generation
+- **component_config.risk_monitor.risk_limits.liquidation_threshold**: float - Liquidation threshold
+  - **Usage**: Defines liquidation threshold for risk monitoring
+  - **Used in**: Risk monitoring and position management
+- **component_config.risk_monitor.risk_limits.target_margin_ratio**: float - Target margin ratio
+  - **Usage**: Defines target margin ratio for CEX positions
+- **component_config.risk_monitor.risk_limits.cex_margin_ratio_min**: float - Minimum CEX margin ratio
+  - **Usage**: Defines minimum CEX margin ratio threshold for risk monitoring
+  - **Used in**: CEX margin ratio risk monitoring and alerts
+  - **Used in**: Risk monitoring and position management
+- **component_config.risk_monitor.risk_limits.delta_tolerance**: float - Delta tolerance threshold
+  - **Usage**: Defines maximum allowed delta deviation
+  - **Used in**: Risk monitoring and delta neutrality
+- **component_config.risk_monitor.risk_limits.maintenance_margin_requirement**: float - Maintenance margin requirement
+  - **Usage**: Defines minimum margin requirement for positions
+  - **Used in**: Risk monitoring and margin management
 
 ### Config Access Pattern
 ```python

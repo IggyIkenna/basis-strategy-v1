@@ -385,13 +385,30 @@ Components NEVER receive these as method parameters during runtime.
 - **log_level**: 'DEBUG' | 'INFO' | 'WARNING' | 'ERROR' (from strategy mode slice)
 
 ### Component-Specific Config
-- **data_settings**: Dict (data-specific settings)
-  - **data_dir**: Data directory path
-  - **validation_rules**: Data validation rules
-  - **cache_settings**: Data caching settings
-- **mode_settings**: Dict (mode-specific settings)
-  - **backtest_data_range**: Backtest data date range
-  - **live_update_interval**: Live data update interval
+- **data_requirements**: List[str] - Data types required by this mode
+  - **Usage**: Validates that DataProvider can satisfy all requirements
+  - **Examples**: ["aave_usdt_rates", "btc_spot_prices", "eth_usd_prices"]
+  - **Used in**: Data provider validation and data loading
+
+- **candle_interval**: str - Candle interval for data aggregation
+  - **Usage**: Determines the time interval for data aggregation
+  - **Examples**: "1h", "5m", "1d"
+  - **Used in**: Data aggregation and time series processing
+
+- **ml_config.model_name**: str - ML model name for directional strategies
+  - **Usage**: Specifies which ML model to use for predictions
+  - **Examples**: "btc_5min_strategy", "usdt_5min_strategy"
+  - **Used in**: ML directional strategy data providers
+
+- **ml_config.model_registry**: str - ML model registry location
+  - **Usage**: Specifies where to load ML models from
+  - **Examples**: "mlflow", "s3://models", "local"
+  - **Used in**: ML model loading and management
+
+- **ml_config.model_version**: str - ML model version
+  - **Usage**: Specifies which version of the ML model to use
+  - **Examples**: "production", "v1.2.3", "latest"
+  - **Used in**: ML model versioning and deployment
 
 ### Infrastructure Config Fields
 - `hedge_venues`: List[str] - List of venues used for hedging operations

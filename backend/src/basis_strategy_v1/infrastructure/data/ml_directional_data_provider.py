@@ -321,8 +321,7 @@ class MLDirectionalDataProvider(BaseDataProvider):
         return {
             'signal': str(row['signal']),
             'confidence': float(row['confidence']),
-            'take_profit': float(row['take_profit']),
-            'stop_loss': float(row['stop_loss'])
+            'sd': float(row['sd'])
         }
     
     def _fetch_ml_prediction_from_api(self, timestamp: pd.Timestamp, symbol: str) -> Dict:
@@ -357,7 +356,7 @@ class MLDirectionalDataProvider(BaseDataProvider):
             result = response.json()
             
             # Validate response structure
-            required_fields = ['signal', 'confidence', 'take_profit', 'stop_loss']
+            required_fields = ['signal', 'confidence', 'sd']
             for field in required_fields:
                 if field not in result:
                     raise ValueError(f"Missing field in API response: {field}")
@@ -365,14 +364,13 @@ class MLDirectionalDataProvider(BaseDataProvider):
             return {
                 'signal': str(result['signal']),
                 'confidence': float(result['confidence']),
-                'take_profit': float(result['take_profit']),
-                'stop_loss': float(result['stop_loss'])
+                'sd': float(result['sd'])
             }
             
         except Exception as e:
             logger.error(f"ML API call failed: {e}")
             # Graceful degradation - return neutral signal
-            return {'signal': 'neutral', 'confidence': 0.0, 'take_profit': 0.0, 'stop_loss': 0.0}
+            return {'signal': 'neutral', 'confidence': 0.0, 'sd': 0.02}
     
     def _get_ml_predictions(self, timestamp: pd.Timestamp) -> Dict[str, Any]:
         """Get ML predictions at timestamp."""
@@ -388,8 +386,7 @@ class MLDirectionalDataProvider(BaseDataProvider):
                 self.asset: {
                     'signal': 'neutral', 
                     'confidence': 0.0,
-                    'take_profit': 0.0,
-                    'stop_loss': 0.0,
+                    'sd': 0.02,
                     'note': 'ML data not implemented yet - using neutral signal'
                 }
             }

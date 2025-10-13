@@ -10,10 +10,11 @@ Reference: docs/specs/05_STRATEGY_MANAGER.md - Component specification
 
 from typing import Dict, List, Any
 import logging
+import pandas as pd
 
-from .base_strategy_manager import BaseStrategyManager, StrategyAction
-
+from .base_strategy_manager import BaseStrategyManager
 from ...core.logging.base_logging_interface import StandardizedLoggingMixin, LogLevel, EventType
+from ...core.models.order import Order, OrderOperation
 
 logger = logging.getLogger(__name__)
 
@@ -54,6 +55,105 @@ class BTCBasisStrategy(BaseStrategyManager):
         
         logger.info(f"BTCBasisStrategy initialized with {self.btc_allocation*100}% BTC allocation")
     
+    def _get_asset_price(self) -> float:
+        """Get current BTC price. In real implementation, this would fetch from data provider."""
+        # For testing purposes, return a default BTC price
+        # In production, this would fetch from market data
+        return 50000.0
+    
+    def make_strategy_decision(
+        self,
+        timestamp: pd.Timestamp,
+        trigger_source: str,
+        market_data: Dict,
+        exposure_data: Dict,
+        risk_assessment: Dict
+    ) -> List[Order]:
+        """
+        Make BTC basis strategy decision based on market conditions and risk assessment.
+        
+        BTC Basis Strategy Logic:
+        - Analyze funding rates and basis spreads
+        - Check risk metrics for liquidation risk
+        - Decide on entry/exit based on profitability and risk
+        - Generate appropriate instructions for BTC spot + perp positions
+        """
+        try:
+            # Log strategy decision start
+            self.log_component_event(
+                event_type=EventType.BUSINESS_EVENT,
+                message=f"Making BTC basis strategy decision triggered by {trigger_source}",
+                data={
+                    'trigger_source': trigger_source,
+                    'strategy_type': self.__class__.__name__,
+                    'timestamp': str(timestamp)
+                },
+                level=LogLevel.INFO
+            )
+            
+            # Get current equity and positions
+            current_equity = self.get_current_equity(exposure_data)
+            current_positions = exposure_data.get('positions', {})
+            
+            # BTC-specific market analysis
+            btc_spot_price = market_data.get('prices', {}).get('BTC', 0.0)
+            btc_funding_rate = market_data.get('rates', {}).get('btc_funding', 0.0)
+            
+            # Risk assessment
+            liquidation_risk = risk_assessment.get('liquidation_risk', 0.0)
+            margin_ratio = risk_assessment.get('cex_margin_ratio', 1.0)
+            
+            # BTC Basis Strategy Decision Logic
+            # Check if we have existing BTC positions
+            has_btc_position = (current_positions.get('btc_balance', 0) > 0 or 
+                              current_positions.get('btc_perpetual_short', 0) != 0)
+            
+            if current_equity == 0 or not has_btc_position:
+                # No position or no BTC position - check if we should enter
+                if self._should_enter_basis_position(btc_funding_rate, btc_spot_price):
+                    return self._create_entry_orders(current_equity)
+                else:
+                    return self._create_dust_sell_orders(exposure_data)  # Wait for better opportunity
+                    
+            elif liquidation_risk > 0.8 or margin_ratio < 0.2:
+                # High risk - exit position
+                return self._create_exit_orders(current_equity)
+                
+            elif liquidation_risk > 0.6 or margin_ratio < 0.3:
+                # Medium risk - partial exit
+                return self._create_exit_orders(current_equity * 0.5)
+                
+            elif self._should_rebalance_position(btc_funding_rate, current_positions):
+                # Rebalance position based on funding rate changes
+                return self._create_rebalance_orders(current_equity * 0.2)
+                
+            else:
+                # Maintain current position
+                return self._create_dust_sell_orders(exposure_data)
+                
+        except Exception as e:
+            self.log_error(
+                error=e,
+                context={
+                    'method': 'make_strategy_decision',
+                    'trigger_source': trigger_source,
+                    'strategy_type': self.__class__.__name__
+                }
+            )
+            logger.error(f"Error in BTC basis strategy decision: {e}")
+            # Return safe default action
+            return self._create_dust_sell_orders(exposure_data)
+    
+    def _should_enter_basis_position(self, funding_rate: float, spot_price: float) -> bool:
+        """Determine if we should enter a BTC basis position."""
+        # BTC basis strategy logic: enter when funding rate is favorable
+        return abs(funding_rate) > self.funding_threshold and spot_price > 0
+    
+    def _should_rebalance_position(self, funding_rate: float, current_positions: Dict) -> bool:
+        """Determine if we should rebalance the BTC basis position."""
+        # Rebalance if funding rate has changed significantly
+        return abs(funding_rate) > self.funding_threshold * 1.5
+    
     def calculate_target_position(self, current_equity: float) -> Dict[str, float]:
         """
         Calculate target position for BTC basis strategy.
@@ -88,388 +188,318 @@ class BTCBasisStrategy(BaseStrategyManager):
                 'total_equity': current_equity
             }
     
-    def entry_full(self, equity: float) -> StrategyAction:
+    def _create_entry_orders(self, equity: float) -> List[Order]:
         """
-        Enter full BTC basis position.
+        Create orders for full BTC basis position entry.
         
         Args:
             equity: Available equity in share class currency
             
         Returns:
-            StrategyAction with instructions for full entry
+            List[Order] for BTC spot buy + BTC perp short (sequential)
         """
         try:
+            # Log order creation
+            self.log_component_event(
+                event_type=EventType.BUSINESS_EVENT,
+                message=f"Creating entry orders with equity={equity}",
+                data={
+                    'action': 'create_entry_orders',
+                    'equity': equity,
+                    'strategy_type': self.__class__.__name__
+                },
+                level=LogLevel.INFO
+            )
+            
             # Calculate target position
             target_position = self.calculate_target_position(equity)
-            
-            # Create instructions for full entry
-            instructions = []
+            orders = []
             
             # 1. Buy BTC spot
-            btc_amount = target_position['btc_balance']
+            btc_amount = target_position.get('btc_balance', 0.0)
             if btc_amount > 0:
-                instructions.append({
-                    'action': 'buy',
-                    'asset': 'BTC',
-                    'amount': btc_amount,
-                    'venue': 'binance',  # Primary venue for BTC
-                    'order_type': 'market'
-                })
+                orders.append(Order(
+                    venue='binance',
+                    operation=OrderOperation.SPOT_TRADE,
+                    pair='BTC/USDT',
+                    side='BUY',
+                    amount=btc_amount,
+                    order_type='market',
+                    execution_mode='sequential',
+                    strategy_intent='btc_basis_entry',
+                    strategy_id='btc_basis',
+                    metadata={
+                        'btc_allocation': self.btc_allocation,
+                        'funding_threshold': self.funding_threshold
+                    }
+                ))
             
             # 2. Open short perpetual position
-            short_amount = target_position['btc_perpetual_short']
-            if short_amount < 0:
-                instructions.append({
-                    'action': 'sell',
-                    'asset': 'BTC-PERP',
-                    'amount': abs(short_amount),
-                    'venue': 'bybit',  # Primary venue for perpetuals
-                    'order_type': 'market',
-                    'position_type': 'short'
-                })
+            short_amount = abs(target_position.get('btc_perpetual_short', 0.0))
+            if short_amount > 0:
+                orders.append(Order(
+                    venue='bybit',
+                    operation=OrderOperation.PERP_TRADE,
+                    pair='BTCUSDT',
+                    side='SHORT',
+                    amount=short_amount,
+                    order_type='market',
+                    execution_mode='sequential',
+                    strategy_intent='btc_basis_entry',
+                    strategy_id='btc_basis',
+                    metadata={
+                        'btc_allocation': self.btc_allocation,
+                        'funding_threshold': self.funding_threshold
+                    }
+                ))
             
-            # 3. Maintain reserves
-            reserve_amount = target_position[f'{self.share_class.lower()}_balance']
-            if reserve_amount > 0:
-                instructions.append({
-                    'action': 'reserve',
-                    'asset': self.share_class,
-                    'amount': reserve_amount,
-                    'venue': 'wallet',
-                    'order_type': 'hold'
-                })
-            
-            return StrategyAction(
-                action_type='entry_full',
-                target_amount=equity,
-                target_currency=self.share_class,
-                instructions=instructions,
-                atomic=True,  # All or nothing for basis strategy
-                metadata={
-                    'strategy': 'btc_basis',
-                    'btc_allocation': self.btc_allocation,
-                    'funding_threshold': self.funding_threshold
-                }
-            )
+            return orders
             
         except Exception as e:
-            logger.error(f"Error in entry_full: {e}")
-            return StrategyAction(
-                action_type='entry_full',
-                target_amount=0.0,
-                target_currency=self.share_class,
-                instructions=[],
-                atomic=False,
-                metadata={'error': str(e)}
-            )
-    
-    def entry_partial(self, equity_delta: float) -> StrategyAction:
-        """
-        Scale up BTC basis position.
-        
-        Args:
-            equity_delta: Additional equity to deploy
-            
-        Returns:
-            StrategyAction with instructions for partial entry
-        """
-        try:
-            # Calculate proportional allocation
-            btc_delta = equity_delta * self.btc_allocation
-            
-            # Get current BTC price
-            btc_price = self._get_asset_price()
-            btc_amount = btc_delta / btc_price if btc_price > 0 else 0
-            
-            instructions = []
-            
-            # 1. Buy additional BTC spot
-            if btc_amount > 0:
-                instructions.append({
-                    'action': 'buy',
-                    'asset': 'BTC',
-                    'amount': btc_amount,
-                    'venue': 'binance',
-                    'order_type': 'market'
-                })
-            
-            # 2. Increase short perpetual position
-            if btc_amount > 0:
-                instructions.append({
-                    'action': 'sell',
-                    'asset': 'BTC-PERP',
-                    'amount': btc_amount,
-                    'venue': 'bybit',
-                    'order_type': 'market',
-                    'position_type': 'short'
-                })
-            
-            # 3. Add to reserves
-            if reserve_delta > 0:
-                instructions.append({
-                    'action': 'reserve',
-                    'asset': self.share_class,
-                    'amount': reserve_delta,
-                    'venue': 'wallet',
-                    'order_type': 'hold'
-                })
-            
-            return StrategyAction(
-                action_type='entry_partial',
-                target_amount=equity_delta,
-                target_currency=self.share_class,
-                instructions=instructions,
-                atomic=True,
-                metadata={
-                    'strategy': 'btc_basis',
-                    'btc_delta': btc_delta,
-                    'reserve_delta': reserve_delta
+            self.log_error(
+                error=e,
+                context={
+                    'method': '_create_entry_orders',
+                    'equity': equity
                 }
             )
-            
-        except Exception as e:
-            logger.error(f"Error in entry_partial: {e}")
-            return StrategyAction(
-                action_type='entry_partial',
-                target_amount=0.0,
-                target_currency=self.share_class,
-                instructions=[],
-                atomic=False,
-                metadata={'error': str(e)}
-            )
+            logger.error(f"Error creating entry orders: {e}")
+            return []
     
-    def exit_full(self, equity: float) -> StrategyAction:
+    def _create_exit_orders(self, equity: float) -> List[Order]:
         """
-        Exit entire BTC basis position.
+        Create orders for BTC basis position exit.
         
         Args:
-            equity: Total equity to exit
+            equity: Equity to exit (full or partial)
             
         Returns:
-            StrategyAction with instructions for full exit
+            List[Order] for closing perp short + BTC spot sell (sequential)
         """
         try:
+            # Log order creation
+            self.log_component_event(
+                event_type=EventType.BUSINESS_EVENT,
+                message=f"Creating exit orders with equity={equity}",
+                data={
+                    'action': 'create_exit_orders',
+                    'equity': equity,
+                    'strategy_type': self.__class__.__name__
+                },
+                level=LogLevel.INFO
+            )
+            
             # Get current position
             current_position = self.position_monitor.get_current_position()
             btc_balance = current_position.get('btc_balance', 0.0)
             btc_short = current_position.get('btc_perpetual_short', 0.0)
             
-            instructions = []
+            orders = []
             
             # 1. Close short perpetual position
             if btc_short < 0:
-                instructions.append({
-                    'action': 'buy',
-                    'asset': 'BTC-PERP',
-                    'amount': abs(btc_short),
-                    'venue': 'bybit',
-                    'order_type': 'market',
-                    'position_type': 'close_short'
-                })
+                orders.append(Order(
+                    venue='bybit',
+                    operation=OrderOperation.PERP_TRADE,
+                    pair='BTCUSDT',
+                    side='LONG',  # Close short position
+                    amount=abs(btc_short),
+                    order_type='market',
+                    execution_mode='sequential',
+                    strategy_intent='btc_basis_exit',
+                    strategy_id='btc_basis',
+                    metadata={
+                        'position_type': 'close_short',
+                        'original_short': btc_short
+                    }
+                ))
             
             # 2. Sell BTC spot
             if btc_balance > 0:
-                instructions.append({
-                    'action': 'sell',
-                    'asset': 'BTC',
-                    'amount': btc_balance,
-                    'venue': 'binance',
-                    'order_type': 'market'
-                })
+                orders.append(Order(
+                    venue='binance',
+                    operation=OrderOperation.SPOT_TRADE,
+                    pair='BTC/USDT',
+                    side='SELL',
+                    amount=btc_balance,
+                    order_type='market',
+                    execution_mode='sequential',
+                    strategy_intent='btc_basis_exit',
+                    strategy_id='btc_basis',
+                    metadata={
+                        'btc_balance': btc_balance
+                    }
+                ))
             
-            # 3. Convert all to share class currency
-            instructions.append({
-                'action': 'convert',
-                'asset': self.share_class,
-                'amount': equity,
-                'venue': 'wallet',
-                'order_type': 'market'
-            })
-            
-            return StrategyAction(
-                action_type='exit_full',
-                target_amount=equity,
-                target_currency=self.share_class,
-                instructions=instructions,
-                atomic=True,
-                metadata={
-                    'strategy': 'btc_basis',
-                    'btc_balance': btc_balance,
-                    'btc_short': btc_short
-                }
-            )
+            return orders
             
         except Exception as e:
-            logger.error(f"Error in exit_full: {e}")
-            return StrategyAction(
-                action_type='exit_full',
-                target_amount=0.0,
-                target_currency=self.share_class,
-                instructions=[],
-                atomic=False,
-                metadata={'error': str(e)}
-            )
-    
-    def exit_partial(self, equity_delta: float) -> StrategyAction:
-        """
-        Scale down BTC basis position.
-        
-        Args:
-            equity_delta: Equity to remove from position
-            
-        Returns:
-            StrategyAction with instructions for partial exit
-        """
-        try:
-            # Get current position
-            current_position = self.position_monitor.get_current_position()
-            btc_balance = current_position.get('btc_balance', 0.0)
-            btc_short = current_position.get('btc_perpetual_short', 0.0)
-            
-            # Calculate proportional reduction
-            total_btc = btc_balance + abs(btc_short)
-            if total_btc > 0:
-                reduction_ratio = min(equity_delta / (total_btc * self._get_asset_price()), 1.0)
-            else:
-                reduction_ratio = 0.0
-            
-            btc_reduction = btc_balance * reduction_ratio
-            short_reduction = abs(btc_short) * reduction_ratio
-            
-            instructions = []
-            
-            # 1. Reduce short perpetual position
-            if short_reduction > 0:
-                instructions.append({
-                    'action': 'buy',
-                    'asset': 'BTC-PERP',
-                    'amount': short_reduction,
-                    'venue': 'bybit',
-                    'order_type': 'market',
-                    'position_type': 'reduce_short'
-                })
-            
-            # 2. Sell proportional BTC spot
-            if btc_reduction > 0:
-                instructions.append({
-                    'action': 'sell',
-                    'asset': 'BTC',
-                    'amount': btc_reduction,
-                    'venue': 'binance',
-                    'order_type': 'market'
-                })
-            
-            # 3. Convert to share class currency
-            instructions.append({
-                'action': 'convert',
-                'asset': self.share_class,
-                'amount': equity_delta,
-                'venue': 'wallet',
-                'order_type': 'market'
-            })
-            
-            return StrategyAction(
-                action_type='exit_partial',
-                target_amount=equity_delta,
-                target_currency=self.share_class,
-                instructions=instructions,
-                atomic=True,
-                metadata={
-                    'strategy': 'btc_basis',
-                    'btc_reduction': btc_reduction,
-                    'short_reduction': short_reduction,
-                    'reduction_ratio': reduction_ratio
+            self.log_error(
+                error=e,
+                context={
+                    'method': '_create_exit_orders',
+                    'equity': equity
                 }
             )
-            
-        except Exception as e:
-            logger.error(f"Error in exit_partial: {e}")
-            return StrategyAction(
-                action_type='exit_partial',
-                target_amount=0.0,
-                target_currency=self.share_class,
-                instructions=[],
-                atomic=False,
-                metadata={'error': str(e)}
-            )
+            logger.error(f"Error creating exit orders: {e}")
+            return []
     
-    def sell_dust(self, dust_tokens: Dict[str, float]) -> StrategyAction:
+    def _create_rebalance_orders(self, equity_delta: float) -> List[Order]:
         """
-        Convert non-share-class tokens to share class currency.
+        Create orders for BTC basis position rebalancing.
         
         Args:
-            dust_tokens: Dictionary of dust tokens and amounts
+            equity_delta: Additional equity to deploy for rebalancing
             
         Returns:
-            StrategyAction with instructions for dust selling
+            List[Order] for proportional BTC spot buy + perp short increase
         """
         try:
-            instructions = []
-            total_converted = 0.0
+            # Log order creation
+            self.log_component_event(
+                event_type=EventType.BUSINESS_EVENT,
+                message=f"Creating rebalance orders with equity_delta={equity_delta}",
+                data={
+                    'action': 'create_rebalance_orders',
+                    'equity_delta': equity_delta,
+                    'strategy_type': self.__class__.__name__
+                },
+                level=LogLevel.INFO
+            )
+            
+            # Calculate proportional allocation
+            btc_delta = equity_delta * self.btc_allocation
+            btc_price = self._get_asset_price()
+            btc_amount = btc_delta / btc_price if btc_price > 0 else 0
+            
+            orders = []
+            
+            # 1. Buy additional BTC spot
+            if btc_amount > 0:
+                orders.append(Order(
+                    venue='binance',
+                    operation=OrderOperation.SPOT_TRADE,
+                    pair='BTC/USDT',
+                    side='BUY',
+                    amount=btc_amount,
+                    order_type='market',
+                    execution_mode='sequential',
+                    strategy_intent='btc_basis_rebalance',
+                    strategy_id='btc_basis',
+                    metadata={
+                        'btc_delta': btc_delta,
+                        'rebalance_type': 'increase'
+                    }
+                ))
+            
+            # 2. Increase short perpetual position
+            if btc_amount > 0:
+                orders.append(Order(
+                    venue='bybit',
+                    operation=OrderOperation.PERP_TRADE,
+                    pair='BTCUSDT',
+                    side='SHORT',
+                    amount=btc_amount,
+                    order_type='market',
+                    execution_mode='sequential',
+                    strategy_intent='btc_basis_rebalance',
+                    strategy_id='btc_basis',
+                    metadata={
+                        'btc_delta': btc_delta,
+                        'rebalance_type': 'increase'
+                    }
+                ))
+            
+            return orders
+            
+        except Exception as e:
+            self.log_error(
+                error=e,
+                context={
+                    'method': '_create_rebalance_orders',
+                    'equity_delta': equity_delta
+                }
+            )
+            logger.error(f"Error creating rebalance orders: {e}")
+            return []
+    
+    def _create_dust_sell_orders(self, exposure_data: Dict) -> List[Order]:
+        """
+        Create orders for selling dust tokens.
+        
+        Args:
+            exposure_data: Current exposure data containing dust tokens
+            
+        Returns:
+            List[Order] for converting dust tokens to share class currency
+        """
+        try:
+            # Log order creation
+            self.log_component_event(
+                event_type=EventType.BUSINESS_EVENT,
+                message="Creating dust sell orders",
+                data={
+                    'action': 'create_dust_sell_orders',
+                    'strategy_type': self.__class__.__name__
+                },
+                level=LogLevel.INFO
+            )
+            
+            # Get dust tokens from exposure data
+            positions = exposure_data.get('positions', {})
+            dust_tokens = {k: v for k, v in positions.items() 
+                          if v > 0 and k != f'{self.share_class.lower()}_balance'}
+            
+            orders = []
             
             for token, amount in dust_tokens.items():
                 if amount > 0 and token != self.share_class:
-                    # Convert to share class currency
-                    if token == 'BTC':
+                    if token == 'btc_balance':
                         # Sell BTC for share class
-                        instructions.append({
-                            'action': 'sell',
-                            'asset': token,
-                            'amount': amount,
-                            'venue': 'binance',
-                            'order_type': 'market',
-                            'target_currency': self.share_class
-                        })
-                        total_converted += amount * self._get_asset_price()
-                    
-                    elif token in ['ETH', 'USDT']:
-                        # Direct conversion
-                        instructions.append({
-                            'action': 'convert',
-                            'asset': token,
-                            'amount': amount,
-                            'venue': 'wallet',
-                            'order_type': 'market',
-                            'target_currency': self.share_class
-                        })
-                        total_converted += amount
-                    
-                    else:
-                        # Other tokens - sell for share class
-                        instructions.append({
-                            'action': 'sell',
-                            'asset': token,
-                            'amount': amount,
-                            'venue': 'binance',
-                            'order_type': 'market',
-                            'target_currency': self.share_class
-                        })
-                        # Estimate value (would use actual price in real implementation)
-                        total_converted += amount * 0.1  # Placeholder
+                        orders.append(Order(
+                            venue='binance',
+                            operation=OrderOperation.SPOT_TRADE,
+                            pair='BTC/USDT',
+                            side='SELL',
+                            amount=amount,
+                            order_type='market',
+                            execution_mode='sequential',
+                            strategy_intent='dust_sell',
+                            strategy_id='btc_basis',
+                            metadata={
+                                'dust_token': token,
+                                'target_currency': self.share_class
+                            }
+                        ))
+                    elif token in ['eth_balance', 'usdt_balance']:
+                        # Direct transfer to wallet (already in correct currency)
+                        orders.append(Order(
+                            venue='wallet',
+                            operation=OrderOperation.TRANSFER,
+                            token=token.replace('_balance', '').upper(),
+                            amount=amount,
+                            source_venue='cex',
+                            target_venue='wallet',
+                            execution_mode='sequential',
+                            strategy_intent='dust_sell',
+                            strategy_id='btc_basis',
+                            metadata={
+                                'dust_token': token
+                            }
+                        ))
             
-            return StrategyAction(
-                action_type='sell_dust',
-                target_amount=total_converted,
-                target_currency=self.share_class,
-                instructions=instructions,
-                atomic=False,  # Can execute individually
-                metadata={
-                    'strategy': 'btc_basis',
-                    'dust_tokens': dust_tokens,
-                    'total_converted': total_converted
-                }
-            )
+            return orders
             
         except Exception as e:
-            logger.error(f"Error in sell_dust: {e}")
-            return StrategyAction(
-                action_type='sell_dust',
-                target_amount=0.0,
-                target_currency=self.share_class,
-                instructions=[],
-                atomic=False,
-                metadata={'error': str(e)}
+            self.log_error(
+                error=e,
+                context={
+                    'method': '_create_dust_sell_orders',
+                    'exposure_data': exposure_data
+                }
             )
+            logger.error(f"Error creating dust sell orders: {e}")
+            return []
     
     def get_strategy_info(self) -> Dict[str, Any]:
         """
@@ -479,24 +509,20 @@ class BTCBasisStrategy(BaseStrategyManager):
             Dictionary with strategy information
         """
         try:
-            base_info = super().get_strategy_info()
-            
-            # Add BTC-specific information
-            base_info.update({
+            return {
                 'strategy_type': 'btc_basis',
+                'share_class': self.share_class,
+                'asset': self.asset,
                 'btc_allocation': self.btc_allocation,
                 'funding_threshold': self.funding_threshold,
                 'max_leverage': self.max_leverage,
                 'description': 'BTC funding rate arbitrage with spot/perpetual basis trading'
-            })
-            
-            return base_info
+            }
             
         except Exception as e:
             logger.error(f"Error getting strategy info: {e}")
             return {
                 'strategy_type': 'btc_basis',
-                'mode': self.mode,
                 'share_class': self.share_class,
                 'asset': self.asset,
                 'equity': 0.0,

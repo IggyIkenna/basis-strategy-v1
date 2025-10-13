@@ -265,6 +265,39 @@ component_config:
       retry_attempts: 3
 ```
 
+## Config Fields Used
+
+### Universal Config (All Strategies)
+- **mode**: str - Strategy mode name ('eth_staking_only')
+- **share_class**: str - 'USDT' | 'ETH'
+- **asset**: str - Primary asset ('ETH')
+- **initial_capital**: float - Starting capital amount
+- **environment**: str - 'backtest' | 'live'
+- **execution_mode**: str - 'backtest' | 'live'
+- **validation_strict**: bool - Strict validation mode
+
+### Strategy-Specific Config
+- **staking_supported**: bool - Whether staking is supported
+- **rewards_mode**: str - Rewards calculation mode
+- **stake_allocation_eth**: float - ETH allocation for staking
+
+### Venue Configuration
+- **venues.etherfi.venue_type**: str - Venue type ('defi')
+- **venues.etherfi.enabled**: bool - Whether EtherFi is enabled
+- **venues.etherfi.instruments**: List[str] - Available instruments
+- **venues.etherfi.order_types**: List[str] - Available order types
+- **venues.alchemy.venue_type**: str - Venue type ('defi')
+- **venues.alchemy.enabled**: bool - Whether Alchemy is enabled
+- **venues.alchemy.instruments**: List[str] - Available instruments
+- **venues.alchemy.order_types**: List[str] - Available order types
+
+### Component Configuration
+- **component_config.strategy_manager.strategy_type**: str - Strategy type
+- **component_config.strategy_manager.actions**: List[str] - Available actions
+- **component_config.strategy_manager.position_calculation**: Dict - Position calculation config
+- **component_config.risk_monitor.risk_limits**: Dict - Risk limit configuration
+- **component_config.execution_manager.action_mapping**: Dict - Action mapping configuration
+
 ## Testing Requirements
 
 ### **Unit Tests**

@@ -33,7 +33,7 @@ class StrategyManager(BaseStrategyManager):
             cls._instance = super(StrategyManager, cls).__new__(cls)
         return cls._instance
     
-    def __init__(self, config: Dict[str, Any], data_provider, exposure_monitor, risk_monitor, utility_manager=None):
+    def __init__(self, config: Dict[str, Any], data_provider, exposure_monitor, risk_monitor, utility_manager=None, position_monitor=None, event_engine=None):
         """
         Initialize strategy manager.
         
@@ -43,6 +43,8 @@ class StrategyManager(BaseStrategyManager):
             exposure_monitor: Exposure monitor instance (reference)
             risk_monitor: Risk monitor instance (reference)
             utility_manager: Centralized utility manager for config-driven operations
+            position_monitor: Position monitor instance (for strategy delegation)
+            event_engine: Event engine instance (for strategy delegation)
         """
         # Store references (NEVER modified)
         self.config = config
@@ -50,6 +52,8 @@ class StrategyManager(BaseStrategyManager):
         self.exposure_monitor = exposure_monitor
         self.risk_monitor = risk_monitor
         self.utility_manager = utility_manager
+        self.position_monitor = position_monitor
+        self.event_engine = event_engine
         self.health_status = "healthy"
         self.error_count = 0
         
@@ -144,6 +148,62 @@ class StrategyManager(BaseStrategyManager):
             logger.error(f"Strategy Manager: Error in update_state: {e}")
             return []
     
+    def make_strategy_decision(self, timestamp: pd.Timestamp, trigger_source: str, market_data: Dict) -> Dict:
+        """
+        Make strategy decision based on current market conditions and risk assessment.
+        
+        Args:
+            timestamp: Current timestamp
+            trigger_source: Source of the decision trigger ('risk_monitor', 'exposure_monitor', 'scheduled', etc.)
+            market_data: Current market data from data provider
+            
+        Returns:
+            Strategy decision dict with action, reasoning, and execution instructions
+        """
+        try:
+            # Get current exposure and risk data
+            exposure_data = self.exposure_monitor.get_current_exposure()
+            risk_assessment = self.risk_monitor.get_current_risk_metrics()
+            
+            # Get the actual strategy instance from factory
+            strategy_instance = self._get_strategy_instance()
+            
+            # Delegate decision-making to strategy implementation
+            # Strategy decides what action to take based on its own logic
+            strategy_action = strategy_instance.make_strategy_decision(
+                timestamp=timestamp,
+                trigger_source=trigger_source,
+                market_data=market_data,
+                exposure_data=exposure_data,
+                risk_assessment=risk_assessment
+            )
+            
+            # Convert StrategyAction to instruction blocks
+            instruction_blocks = self._convert_strategy_action_to_instructions(strategy_action)
+            
+            # Return decision in expected format
+            return {
+                'action': strategy_action.action_type,
+                'reasoning': f"Strategy decision triggered by {trigger_source}",
+                'target_positions': exposure_data.get('positions', {}),
+                'execution_instructions': instruction_blocks,
+                'risk_override': trigger_source == 'risk_monitor',
+                'estimated_cost': 0.0,  # Would be calculated based on instructions
+                'priority': 'MEDIUM' if trigger_source == 'scheduled' else 'HIGH'
+            }
+            
+        except Exception as e:
+            logger.error(f"Strategy Manager: Error in make_strategy_decision: {e}")
+            return {
+                'action': 'MAINTAIN_NEUTRAL',
+                'reasoning': f"Error in decision making: {str(e)}",
+                'target_positions': {},
+                'execution_instructions': [],
+                'risk_override': False,
+                'estimated_cost': 0.0,
+                'priority': 'LOW'
+            }
+    
     def decide_action(self, timestamp: pd.Timestamp, current_exposure: Dict, risk_metrics: Dict, market_data: Dict) -> str:
         """
         Decide which of the 5 standardized actions to take.
@@ -195,6 +255,83 @@ class StrategyManager(BaseStrategyManager):
             return self._generate_instruction_blocks(action, {}, {}, market_data, **params)
         except Exception as e:
             logger.error(f"Strategy Manager: Error in break_down_action: {e}")
+            return []
+    
+    def _get_strategy_instance(self):
+        """Get the actual strategy instance from StrategyFactory."""
+        try:
+            from ..strategies.strategy_factory import StrategyFactory
+            
+            # Get strategy mode from config
+            strategy_mode = self.config.get('mode', 'default')
+            
+            # Create strategy instance using factory
+            strategy_instance = StrategyFactory.create_strategy(
+                mode=strategy_mode,
+                config=self.config,
+                risk_monitor=self.risk_monitor,
+                position_monitor=self.position_monitor,
+                event_engine=self.event_engine
+            )
+            
+            return strategy_instance
+            
+        except Exception as e:
+            logger.error(f"Strategy Manager: Error getting strategy instance: {e}")
+            return None
+    
+    def _execute_strategy_action(self, strategy_instance, action: str, exposure_data: Dict, market_data: Dict):
+        """Execute the strategy action and return StrategyAction object."""
+        try:
+            if strategy_instance is None:
+                raise ValueError("No strategy instance available")
+            
+            # Get current equity from exposure data
+            current_equity = exposure_data.get('total_exposure', 0.0)
+            
+            # Call the appropriate strategy method based on action
+            if action == 'entry_full':
+                return strategy_instance.entry_full(current_equity)
+            elif action == 'entry_partial':
+                # Calculate equity delta for partial entry
+                equity_delta = current_equity * 0.5  # 50% of current equity
+                return strategy_instance.entry_partial(equity_delta)
+            elif action == 'exit_full':
+                return strategy_instance.exit_full(current_equity)
+            elif action == 'exit_partial':
+                # Calculate equity delta for partial exit
+                equity_delta = current_equity * 0.5  # 50% of current equity
+                return strategy_instance.exit_partial(equity_delta)
+            elif action == 'sell_dust':
+                # Get dust tokens from exposure data
+                dust_tokens = exposure_data.get('dust_tokens', {})
+                return strategy_instance.sell_dust(dust_tokens)
+            else:
+                raise ValueError(f"Unknown action: {action}")
+                
+        except Exception as e:
+            logger.error(f"Strategy Manager: Error executing strategy action {action}: {e}")
+            # Return a default StrategyAction
+            from ..strategies.base_strategy_manager import StrategyAction
+            return StrategyAction(
+                action_type=action,
+                target_amount=0.0,
+                target_currency='USDT',
+                instructions=[],
+                atomic=False
+            )
+    
+    def _convert_strategy_action_to_instructions(self, strategy_action) -> List[Dict]:
+        """Convert StrategyAction object to instruction blocks."""
+        try:
+            if strategy_action is None:
+                return []
+            
+            # Convert StrategyAction.instructions to the expected format
+            return strategy_action.instructions if hasattr(strategy_action, 'instructions') else []
+            
+        except Exception as e:
+            logger.error(f"Strategy Manager: Error converting strategy action to instructions: {e}")
             return []
     
     def _generate_instruction_blocks(self, action: str, current_exposure: Dict, risk_metrics: Dict, market_data: Dict, **kwargs) -> List[Dict]:

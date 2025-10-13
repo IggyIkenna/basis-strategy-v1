@@ -222,8 +222,8 @@ class ComponentSignatureValidator:
             },
             'strategy_manager': {
                 '__init__': {
-                    'params': ['self', 'config', 'data_provider', 'exposure_monitor', 'risk_monitor', 'utility_manager'],
-                    'types': ['self', 'Dict', 'DataProvider', 'ExposureMonitor', 'RiskMonitor', 'UtilityManager']
+                    'params': ['self', 'config', 'data_provider', 'exposure_monitor', 'risk_monitor', 'utility_manager', 'position_monitor', 'event_engine'],
+                    'types': ['self', 'Dict', 'DataProvider', 'ExposureMonitor', 'RiskMonitor', 'UtilityManager', 'PositionMonitor', 'EventEngine']
                 },
                 'make_strategy_decision': {
                     'params': ['self', 'timestamp', 'trigger_source', 'market_data'],

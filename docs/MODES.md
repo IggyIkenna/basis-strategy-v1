@@ -883,8 +883,8 @@ All strategies monitor:
 | **ETH Leveraged** | None | Lido/EtherFi, AAVE V3, Morpho | Alchemy, Instadapp |
 | **USDT Market Neutral No Leverage** | Binance, Bybit, OKX | Lido/EtherFi | Alchemy |
 | **USDT Market Neutral** | Binance, Bybit, OKX | Lido/EtherFi, AAVE V3, Morpho | Alchemy, Instadapp |
-| **ML BTC Directional** | Binance | None | None |
-| **ML USDT Directional** | Binance | None | None |
+| **ML BTC Directional** | Binance (BTC perps) | None | None |
+| **ML USDT Directional** | Binance (USDT-margined BTC perps) | None | None |
 
 ### Venue Selection Logic
 

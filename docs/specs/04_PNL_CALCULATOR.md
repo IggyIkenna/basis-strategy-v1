@@ -133,26 +133,21 @@ def __init__(self, ...):
 - `asset`: str - 'USDT' | 'ETH' | 'BTC'
 - `initial_capital`: float - Starting capital
 
-### Component-Specific Config (from component_config.pnl_calculator)
-- `pnl_calculator`: Dict - PnL calculator configuration
-  - **Usage**: Used in `pnl_calculator.py:179` to extract component-specific settings
-  - **Required**: Yes
-  - **Used in**: `pnl_calculator.py:179`
+### PNL Calculator Component Configuration Fields
+- **component_config.pnl_calculator.attribution_types**: List[str] - PnL attribution types
+  - **Usage**: Defines types of PnL attribution to track
+  - **Examples**: ["funding_pnl", "delta_pnl", "basis_pnl", "transaction_costs"]
+  - **Used in**: PnL calculation and reporting
 
-- `attribution_types`: List[str] - Attribution types to calculate
-  - **Usage**: Determines which attribution calculations to perform
-  - **Required**: Yes
-  - **Validation**: Must be non-empty list of valid attribution types
+- **component_config.pnl_calculator.reporting_currency**: str - Currency for PnL reporting
+  - **Usage**: Defines the currency for PnL reporting and calculations
+  - **Examples**: "USDT", "ETH"
+  - **Used in**: PnL calculation and reporting
 
-- `reporting_currency`: str - Currency for P&L reporting
-  - **Usage**: Determines P&L reporting currency
-  - **Required**: Yes
-  - **Validation**: Must be 'USDT' or 'ETH'
-
-- `reconciliation_tolerance`: float - Tolerance for balance vs attribution reconciliation
-  - **Usage**: Validates P&L reconciliation within tolerance
-  - **Required**: Yes
-  - **Validation**: Must be between 0.0 and 1.0
+- **component_config.pnl_calculator.reconciliation_tolerance**: float - PnL reconciliation tolerance
+  - **Usage**: Defines tolerance for PnL reconciliation quality gate checks
+  - **Examples**: 0.02 (2% tolerance)
+  - **Used in**: PnL reconciliation and quality gate validation
 
 ### Config Access Pattern
 ```python

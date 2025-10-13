@@ -37,22 +37,21 @@ The ML USDT Directional Strategy makes decisions based on:
 ```python
 {
     'market_data': {
-        'usdt_price': float,             # Current USDT price
-        'usdt_perp_price': float,        # USDT perpetual price
-        'usdt_ohlcv_5min': Dict,         # 5-minute OHLCV data
-        'usdt_volume': float             # Current volume
+        'btc_price': float,              # Current BTC price (for USDT-margined BTC perps)
+        'btc_perp_price': float,         # BTC perpetual price
+        'btc_ohlcv_5min': Dict,          # 5-minute OHLCV data
+        'btc_volume': float              # Current volume
     },
     'exposure_data': {
         'total_value_usd': float,        # Total portfolio value in USD
         'usdt_balance': float,           # USDT balance
-        'usdt_perp_position': float,     # USDT perpetual position
+        'btc_perp_position': float,      # BTC perpetual position (USDT-margined)
         'btc_balance': float             # BTC balance
     },
     'ml_predictions': {
         'signal': str,                   # 'long', 'short', 'neutral'
         'confidence': float,             # ML confidence (0-1)
-        'take_profit': float,            # Take profit price
-        'stop_loss': float,              # Stop loss price
+        'sd': float,                     # Standard deviation for SL/TP calculation
         'timestamp': int                 # Prediction timestamp
     }
 }
@@ -74,23 +73,31 @@ The ML USDT Directional Strategy makes decisions based on:
 ### **Decision Logic Flow**
 
 ```python
-def make_strategy_decision(self, timestamp, trigger_source, market_data, exposure_data, ml_predictions):
+def make_strategy_decision(self, timestamp, trigger_source, market_data, exposure_data, risk_assessment):
     """
     ML USDT Directional Strategy Decision Logic
     """
     
+    # Get ML predictions from data provider
+    ml_predictions = self._get_ml_predictions(market_data)
+    
     # 1. Risk Management - Exit if stop-loss or take-profit hit
-    current_price = market_data['usdt_price']
-    current_position = exposure_data['usdt_perp_position']
+    current_price = market_data['btc_price']  # BTC price for USDT-margined BTC perps
+    current_position = exposure_data['btc_perp_position']
     
     if current_position != 0:  # Have a position
-        if current_position > 0 and current_price <= ml_predictions['stop_loss']:
+        # Calculate stop-loss and take-profit from standard deviation
+        stop_loss, take_profit = self._calculate_stop_loss_take_profit(
+            current_price, ml_predictions['sd'], ml_predictions['signal']
+        )
+        
+        if current_position > 0 and current_price <= stop_loss:
             return self._create_exit_decision(timestamp, "Stop loss hit")
-        elif current_position > 0 and current_price >= ml_predictions['take_profit']:
+        elif current_position > 0 and current_price >= take_profit:
             return self._create_exit_decision(timestamp, "Take profit hit")
-        elif current_position < 0 and current_price >= ml_predictions['stop_loss']:
+        elif current_position < 0 and current_price >= stop_loss:
             return self._create_exit_decision(timestamp, "Stop loss hit")
-        elif current_position < 0 and current_price <= ml_predictions['take_profit']:
+        elif current_position < 0 and current_price <= take_profit:
             return self._create_exit_decision(timestamp, "Take profit hit")
     
     # 2. ML Signal Check - Enter/exit based on ML signal
@@ -106,6 +113,30 @@ def make_strategy_decision(self, timestamp, trigger_source, market_data, exposur
     
     # 3. Default: Maintain Current Position
     return self._create_maintain_decision(timestamp, "No action needed")
+
+def _calculate_stop_loss_take_profit(self, current_price: float, sd: float, signal: str) -> Tuple[float, float]:
+    """
+    Calculate stop-loss and take-profit levels based on standard deviation.
+    
+    Args:
+        current_price: Current BTC price
+        sd: Standard deviation (as decimal, e.g., 0.02 for 2%)
+        signal: Trading signal ('long', 'short', 'neutral')
+        
+    Returns:
+        Tuple of (stop_loss, take_profit)
+    """
+    if signal == 'long':
+        stop_loss = current_price * (1 - 2 * sd)    # 2x SD stop loss
+        take_profit = current_price * (1 + 3 * sd)  # 3x SD take profit
+    elif signal == 'short':
+        stop_loss = current_price * (1 + 2 * sd)    # 2x SD stop loss
+        take_profit = current_price * (1 - 3 * sd)  # 3x SD take profit
+    else:  # neutral
+        stop_loss = 0.0
+        take_profit = 0.0
+    
+    return stop_loss, take_profit
 ```
 
 ## Decision Output Format
@@ -316,6 +347,54 @@ component_config:
       max_gas_price_gwei: 50
       retry_attempts: 3
 ```
+
+## Config Fields Used
+
+### Universal Config (All Strategies)
+- **mode**: str - Strategy mode name ('ml_usdt_directional')
+- **share_class**: str - 'USDT' | 'ETH'
+- **asset**: str - Primary asset ('USDT')
+- **initial_capital**: float - Starting capital amount
+- **environment**: str - 'backtest' | 'live'
+- **execution_mode**: str - 'backtest' | 'live'
+- **validation_strict**: bool - Strict validation mode
+
+### ML Configuration
+- **ml_config.model_registry**: str - ML model registry location
+- **ml_config.model_name**: str - ML model name
+- **ml_config.model_version**: str - ML model version
+- **ml_config.candle_interval**: str - Candle interval for ML predictions
+- **ml_config.signal_threshold**: float - Confidence threshold for trading signals
+- **ml_config.max_position_size**: float - Maximum position size as fraction of equity
+
+### Strategy-Specific Config
+- **hedge_allocation_binance**: float - Proportion of hedge on Binance (0.0-1.0)
+  - **Usage**: Controls capital allocation to Binance for perp hedging
+  - **Example**: 0.4 (40% of hedge on Binance)
+  - **Used in**: Execution manager venue routing
+
+- **hedge_allocation_bybit**: float - Proportion of hedge on Bybit (0.0-1.0)
+  - **Usage**: Controls capital allocation to Bybit for perp hedging
+  - **Example**: 0.3 (30% of hedge on Bybit)
+  - **Used in**: Execution manager venue routing
+
+- **hedge_allocation_okx**: float - Proportion of hedge on OKX (0.0-1.0)
+  - **Usage**: Controls capital allocation to OKX for perp hedging
+  - **Example**: 0.3 (30% of hedge on OKX)
+  - **Used in**: Execution manager venue routing
+
+### Venue Configuration
+- **venues.binance.venue_type**: str - Venue type ('cex')
+- **venues.binance.enabled**: bool - Whether Binance is enabled
+- **venues.binance.instruments**: List[str] - Available instruments
+- **venues.binance.order_types**: List[str] - Available order types
+
+### Component Configuration
+- **component_config.strategy_manager.strategy_type**: str - Strategy type
+- **component_config.strategy_manager.actions**: List[str] - Available actions
+- **component_config.strategy_manager.position_calculation**: Dict - Position calculation config
+- **component_config.risk_monitor.risk_limits**: Dict - Risk limit configuration
+- **component_config.execution_manager.action_mapping**: Dict - Action mapping configuration
 
 ## Testing Requirements
 

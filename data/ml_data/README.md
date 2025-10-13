@@ -47,18 +47,23 @@ timestamp,open,high,low,close,volume
 
 **CSV format:**
 ```csv
-timestamp,signal,confidence,stop_loss,take_profit
-2025-01-01 00:00:00,long,0.85,49500.0,51000.0
-2025-01-01 00:05:00,short,0.72,50500.0,49000.0
-2025-01-01 00:10:00,neutral,0.45,0.0,0.0
+timestamp,signal,confidence,sd
+2025-01-01 00:00:00,long,0.85,0.025
+2025-01-01 00:05:00,short,0.72,0.018
+2025-01-01 00:10:00,neutral,0.45,0.015
 ```
 
 **Required columns:**
 - `timestamp`: ISO format timestamp (YYYY-MM-DD HH:MM:SS)
 - `signal`: Trading signal (`long`, `short`, `neutral`, `hold`)
 - `confidence`: Signal confidence (0.0 to 1.0)
-- `stop_loss`: Stop-loss price (0.0 for neutral signals)
-- `take_profit`: Take-profit price (0.0 for neutral signals)
+- `sd`: Standard deviation for stop-loss/take-profit calculation (as decimal, e.g., 0.025 for 2.5%)
+
+**Stop-Loss/Take-Profit Calculation:**
+The strategy calculates stop-loss and take-profit levels dynamically using the standard deviation:
+- **Long positions**: Stop-loss = price × (1 - 2×sd), Take-profit = price × (1 + 3×sd)
+- **Short positions**: Stop-loss = price × (1 + 2×sd), Take-profit = price × (1 - 3×sd)
+- **Neutral signals**: No stop-loss or take-profit levels
 
 ## ML Strategy Requirements
 

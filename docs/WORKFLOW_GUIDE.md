@@ -982,28 +982,30 @@ graph TD
     A[Time Trigger] --> B[Position Monitor: Get Current Positions]
     B --> C[Exposure Monitor: Calculate Exposure]
     C --> D[Risk Monitor: Assess Risk]
-    D --> E[Strategy Manager: Make Decision]
-    E --> F{Need Execution?}
-    F -->|Yes| G[Execute Trades via Tight Loop]
-    F -->|No| H[P&L Monitor: Calculate P&L]
-    G --> I[P&L Monitor: Calculate P&L on Final Positions]
-    H --> J[Results Store: Persist Results]
-    I --> J
-    J --> K[Log All Events]
-    K --> L[Wait for Next Time Trigger]
+    D --> E[Strategy Manager: Get Strategy Instance]
+    E --> F[Strategy Instance: Make Decision]
+    F --> G{Need Execution?}
+    G -->|Yes| H[Execute Trades via Tight Loop]
+    G -->|No| I[P&L Monitor: Calculate P&L]
+    H --> J[P&L Monitor: Calculate P&L on Final Positions]
+    I --> K[Results Store: Persist Results]
+    J --> K
+    K --> L[Log All Events]
+    L --> M[Wait for Next Time Trigger]
     
     style A fill:#e3f2fd
     style B fill:#fff3e0
     style C fill:#fff3e0
     style D fill:#fff3e0
     style E fill:#f3e5f5
-    style F fill:#ffebee
-    style G fill:#e8f5e8
-    style H fill:#fff3e0
+    style F fill:#fce4ec
+    style G fill:#ffebee
+    style H fill:#e8f5e8
     style I fill:#fff3e0
-    style J fill:#e1f5fe
-    style K fill:#f1f8e9
-    style L fill:#e8f5e8
+    style J fill:#fff3e0
+    style K fill:#e1f5fe
+    style L fill:#f1f8e9
+    style M fill:#e3f2fd
 ```
 
 **Business Logic Handled**:

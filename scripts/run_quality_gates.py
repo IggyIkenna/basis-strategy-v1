@@ -61,7 +61,7 @@ class QualityGateValidator:
                 'description': 'Configuration Validation',
                 'scripts': [
                     'validate_config_alignment.py',              # Fixed
-                    'test_config_documentation_sync_quality_gates.py',  # New
+                    'test_config_spec_yaml_sync_quality_gates.py',  # Updated - simplified spec vs YAML sync
                     'test_config_usage_sync_quality_gates.py',   # New  
                     'test_config_implementation_usage_quality_gates.py',  # NEW comprehensive usage validator
                     'test_modes_intention_quality_gates.py',     # New
@@ -271,6 +271,13 @@ class QualityGateValidator:
                     '../tests/integration/test_repo_structure_integration.py'
                 ],
                 'critical': True
+            },
+            'strategy_validation': {
+                'description': 'Strategy Action and Config Compliance',
+                'scripts': [
+                    'test_strategy_action_config_quality_gates.py'
+                ],
+                'critical': False
             }
         }
     
@@ -2018,7 +2025,7 @@ async def main():
     import argparse
     
     parser = argparse.ArgumentParser(description='Quality Gates Validation - Single Entry Point')
-    parser.add_argument('--category', choices=['docs_validation', 'docs', 'health', 'performance', 'configuration', 'integration', 'coverage', 'env_config_sync', 'repo_structure', 'data_loading', 'components'],
+    parser.add_argument('--category', choices=['docs_validation', 'docs', 'health', 'performance', 'configuration', 'integration', 'coverage', 'env_config_sync', 'repo_structure', 'data_loading', 'components', 'strategy_validation'],
                        help='Run specific category of quality gates')
     parser.add_argument('--docs', action='store_true',
                        help='Run documentation link validation quality gates')

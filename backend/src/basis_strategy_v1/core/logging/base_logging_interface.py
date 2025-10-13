@@ -229,11 +229,9 @@ class StandardizedLoggingMixin:
         if not self._should_log(level):
             return
             
-        if self._logger:
-            self._logger.log_structured_event(
-                timestamp=pd.Timestamp.now(),
-                event_type=event_type,
-                level=level,
+        if self._structured_logger:
+            self._structured_logger.log(
+                level=level.value,
                 message=message,
                 component_name=self._component_name,
                 data=data
@@ -251,11 +249,9 @@ class StandardizedLoggingMixin:
         if not self._should_log(LogLevel.INFO):
             return
             
-        if self._logger:
-            self._logger.log_structured_event(
-                timestamp=pd.Timestamp.now(),
-                event_type=EventType.PERFORMANCE_METRIC,
-                level=LogLevel.INFO,
+        if self._structured_logger:
+            self._structured_logger.log(
+                level=LogLevel.INFO.value,
                 message=f"Performance metric: {metric_name} = {value} {unit}",
                 component_name=self._component_name,
                 data={
@@ -303,13 +299,10 @@ class StandardizedLoggingMixin:
         if not self._should_log(LogLevel.WARNING):
             return
             
-        if self._logger:
-            self._logger.log_structured_event(
-                timestamp=pd.Timestamp.now(),
-                event_type=EventType.WARNING_OCCURRED,
-                level=LogLevel.WARNING,
+        if self._structured_logger:
+            self._structured_logger.log(
+                level=LogLevel.WARNING.value,
                 message=f"Warning in {self._component_name}: {message}",
                 component_name=self._component_name,
-                data=data,
-                correlation_id=correlation_id
+                data=data
             )

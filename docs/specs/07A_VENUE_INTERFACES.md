@@ -256,15 +256,43 @@ def _validate_credentials(self, credentials: Dict) -> bool:
 - **execution_mode**: 'backtest' | 'live' (from strategy mode slice)
 - **log_level**: 'DEBUG' | 'INFO' | 'WARNING' | 'ERROR' (from strategy mode slice)
 
-### Component-Specific Config
-- **venue_configs**: Dict[str, Dict] (venue-specific configuration)
-  - **api_endpoints**: API endpoints for each venue
-  - **rate_limits**: Rate limiting configuration
-  - **timeout_settings**: Timeout configuration per venue
-- **execution_settings**: Dict (execution-specific settings)
-  - **max_slippage**: Maximum allowed slippage
-  - **gas_price_strategy**: Gas price optimization strategy
-  - **order_timeout**: Order timeout in seconds
+### Venue Configuration Fields
+- **venues**: Dict - Top-level venue configuration object
+- **venues.aave_v3**: Dict - AAVE V3 DeFi protocol configuration
+  - **venues.aave_v3.venue_type**: str - Venue type ('defi')
+  - **venues.aave_v3.enabled**: bool - Whether AAVE V3 is enabled
+  - **venues.aave_v3.instruments**: List[str] - Available instruments (e.g., ["USDT-LENDING", "USDT-BORROWING"])
+  - **venues.aave_v3.order_types**: List[str] - Supported order types (e.g., ["supply", "withdraw", "borrow", "repay"])
+- **venues.alchemy**: Dict - Alchemy blockchain infrastructure configuration
+  - **venues.alchemy.venue_type**: str - Venue type ('infrastructure')
+  - **venues.alchemy.enabled**: bool - Whether Alchemy is enabled
+  - **venues.alchemy.instruments**: List[str] - Available instruments (e.g., ["WALLET-TRANSFER"])
+  - **venues.alchemy.order_types**: List[str] - Supported order types (e.g., ["transfer"])
+- **venues.binance**: Dict - Binance CEX configuration
+  - **venues.binance.venue_type**: str - Venue type ('cex')
+  - **venues.binance.enabled**: bool - Whether Binance is enabled
+  - **venues.binance.instruments**: List[str] - Available instruments (e.g., ["BTC-SPOT", "BTC-PERP"])
+  - **venues.binance.order_types**: List[str] - Supported order types (e.g., ["market", "limit"])
+  - **venues.binance.min_amount**: Optional[float] - Minimum trade amount for venue
+- **venues.bybit**: Dict - Bybit CEX configuration
+  - **venues.bybit.venue_type**: str - Venue type ('cex')
+  - **venues.bybit.enabled**: bool - Whether Bybit is enabled
+  - **venues.bybit.instruments**: List[str] - Available instruments (e.g., ["BTC-PERP"])
+  - **venues.bybit.order_types**: List[str] - Supported order types (e.g., ["market", "limit"])
+  - **venues.bybit.max_leverage**: Optional[float] - Maximum leverage available on venue
+  - **venues.bybit.min_amount**: Optional[float] - Minimum trade amount for venue
+- **venues.etherfi**: Dict - EtherFi staking protocol configuration
+  - **venues.etherfi.venue_type**: str - Venue type ('defi')
+  - **venues.etherfi.enabled**: bool - Whether EtherFi is enabled
+  - **venues.etherfi.instruments**: List[str] - Available instruments (e.g., ["ETH-STAKE", "WEETH-UNSTAKE"])
+  - **venues.etherfi.order_types**: List[str] - Supported order types (e.g., ["stake", "unstake"])
+- **venues.okx**: Dict - OKX CEX configuration
+  - **venues.okx.venue_type**: str - Venue type ('cex')
+  - **venues.okx.enabled**: bool - Whether OKX is enabled
+  - **venues.okx.instruments**: List[str] - Available instruments (e.g., ["BTC-PERP"])
+  - **venues.okx.order_types**: List[str] - Supported order types (e.g., ["market", "limit"])
+  - **venues.okx.max_leverage**: Optional[float] - Maximum leverage available on venue
+  - **venues.okx.min_amount**: Optional[float] - Minimum trade amount for venue
 
 ## Data Provider Queries
 

@@ -136,25 +136,67 @@ def __init__(self, ...):
 - `asset`: str - 'USDT' | 'ETH' | 'BTC'
 
 ### Component-Specific Config (from component_config.exposure_monitor)
-- `exposure_monitor`: Dict - Exposure monitor configuration
-  - **Usage**: Used in `exposure_monitor.py:42` to extract component-specific settings
-  - **Required**: Yes
-  - **Used in**: `exposure_monitor.py:42`
-
-- `exposure_currency`: str - Currency for exposure calculations
+- **component_config.exposure_monitor.exposure_currency**: str - Currency for exposure calculations
   - **Usage**: Determines final exposure currency (USDT or ETH)
   - **Required**: Yes
   - **Validation**: Must be 'USDT' or 'ETH'
+  - **Used in**: Exposure calculation currency conversion
 
-- `track_assets`: List[str] - Assets to track for exposure
+- **component_config.exposure_monitor.track_assets**: List[str] - Assets to track for exposure
   - **Usage**: Determines which assets to include in exposure calculations
   - **Required**: Yes
   - **Validation**: Must be non-empty list of valid asset names
+  - **Used in**: Asset filtering for exposure calculations
 
-- `conversion_methods`: Dict[str, str] - Conversion method for each asset
+- **component_config.exposure_monitor.conversion_methods**: Dict[str, str] - Conversion method for each asset
   - **Usage**: Maps each tracked asset to its conversion method
   - **Required**: Yes
   - **Validation**: Must have method for all tracked assets
+  - **Used in**: Asset value conversion to exposure currency
+
+- **component_config.exposure_monitor.conversion_methods.BTC**: str - BTC conversion method
+  - **Usage**: Defines how to convert BTC to exposure currency
+  - **Used in**: BTC exposure calculations
+
+- **component_config.exposure_monitor.conversion_methods.ETH**: str - ETH conversion method
+  - **Usage**: Defines how to convert ETH to exposure currency
+  - **Used in**: ETH exposure calculations
+
+- **component_config.exposure_monitor.conversion_methods.USDT**: str - USDT conversion method
+  - **Usage**: Defines how to convert USDT to exposure currency
+  - **Used in**: USDT exposure calculations
+
+- **component_config.exposure_monitor.conversion_methods.aWeETH**: str - aWeETH conversion method
+  - **Usage**: Defines how to convert aWeETH to exposure currency
+  - **Used in**: aWeETH exposure calculations
+
+- **component_config.exposure_monitor.conversion_methods.weETH**: str - weETH conversion method
+  - **Usage**: Defines how to convert weETH to exposure currency
+  - **Used in**: weETH exposure calculations
+
+- **component_config.exposure_monitor.conversion_methods.KING**: str - KING conversion method
+  - **Usage**: Defines how to convert KING to exposure currency
+  - **Used in**: KING exposure calculations
+
+- **component_config.exposure_monitor.conversion_methods.EIGEN**: str - EIGEN conversion method
+  - **Usage**: Defines how to convert EIGEN to exposure currency
+  - **Used in**: EIGEN exposure calculations
+
+- **component_config.exposure_monitor.conversion_methods.ETHFI**: str - ETHFI conversion method
+  - **Usage**: Defines how to convert ETHFI to exposure currency
+  - **Used in**: ETHFI exposure calculations
+
+- **component_config.exposure_monitor.conversion_methods.variableDebtWETH**: str - variableDebtWETH conversion method
+  - **Usage**: Defines how to convert variableDebtWETH to exposure currency
+  - **Used in**: variableDebtWETH exposure calculations
+
+- **component_config.exposure_monitor.conversion_methods.BTC_PERP**: str - BTC_PERP conversion method
+  - **Usage**: Defines how to convert BTC_PERP to exposure currency
+  - **Used in**: BTC_PERP exposure calculations
+
+- **component_config.exposure_monitor.conversion_methods.ETH_PERP**: str - ETH_PERP conversion method
+  - **Usage**: Defines how to convert ETH_PERP to exposure currency
+  - **Used in**: ETH_PERP exposure calculations
 
 ### Config Access Pattern
 ```python

@@ -244,6 +244,72 @@ component_config:
       retry_attempts: 3
 ```
 
+## Config Fields Used
+
+### Universal Config (All Strategies)
+- **mode**: str - Strategy mode name ('pure_lending')
+- **share_class**: str - 'USDT' | 'ETH'
+- **asset**: str - Primary asset ('USDT')
+- **initial_capital**: float - Starting capital amount
+- **environment**: str - 'backtest' | 'live'
+- **execution_mode**: str - 'backtest' | 'live'
+- **validation_strict**: bool - Strict validation mode
+
+### Strategy Validation Fields
+- **lending_enabled**: bool - Whether lending is enabled
+- **staking_enabled**: bool - Whether staking is enabled
+- **basis_trade_enabled**: bool - Whether basis trading is enabled
+- **leverage_supported**: bool - Whether leverage is supported
+- **target_apy_range**: Dict[str, float] - Target APY range for quality gate validation
+
+### Strategy-Specific Config
+- **lending_enabled**: bool - Whether lending is enabled
+  - **Usage**: Enables lending functionality
+  - **Used in**: Strategy initialization and validation
+
+- **staking_enabled**: bool - Whether staking is enabled
+  - **Usage**: Enables staking functionality
+  - **Used in**: Strategy initialization and validation
+
+- **basis_trade_enabled**: bool - Whether basis trading is enabled
+  - **Usage**: Enables basis trading functionality
+  - **Used in**: Strategy initialization and validation
+
+- **leverage_supported**: bool - Whether leverage is supported
+  - **Usage**: Indicates if strategy supports leverage
+  - **Used in**: Strategy validation and risk management
+
+- **target_apy_range**: Dict[str, float] - Target APY range for quality gate validation
+  - **Usage**: Defines min/max APY range for e2e PnL quality gate checks
+  - **Example**: {"min": 0.04, "max": 0.06} for 4-6% APY range
+  - **Used in**: Quality gate validation and performance monitoring
+
+- **max_drawdown**: float - Maximum drawdown threshold
+  - **Usage**: Risk management threshold for strategy
+  - **Used in**: Risk monitoring and position sizing
+
+- **max_ltv**: float - Maximum loan-to-value ratio
+  - **Usage**: Maximum LTV for lending positions
+  - **Used in**: Position sizing and risk management
+
+- **position_deviation_threshold**: float - Position deviation threshold
+  - **Usage**: Triggers rebalancing when equity deviates
+  - **Default**: 0.02 (2%)
+  - **Used in**: Rebalancing decision logic
+
+### Venue Configuration
+- **venues.aave_v3.venue_type**: str - Venue type ('defi')
+- **venues.aave_v3.enabled**: bool - Whether AAVE v3 is enabled
+- **venues.aave_v3.instruments**: List[str] - Available instruments
+- **venues.aave_v3.order_types**: List[str] - Available order types
+
+### Component Configuration
+- **component_config.strategy_manager.strategy_type**: str - Strategy type
+- **component_config.strategy_manager.actions**: List[str] - Available actions
+- **component_config.strategy_manager.position_calculation**: Dict - Position calculation config
+- **component_config.risk_monitor.risk_limits**: Dict - Risk limit configuration
+- **component_config.execution_manager.action_mapping**: Dict - Action mapping configuration
+
 ## Testing Requirements
 
 ### **Unit Tests**

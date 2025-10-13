@@ -281,6 +281,98 @@ component_config:
       retry_attempts: 3
 ```
 
+## Config Fields Used
+
+### Universal Config (All Strategies)
+- **mode**: str - Strategy mode name ('btc_basis')
+- **share_class**: str - 'USDT' | 'ETH'
+- **asset**: str - Primary asset ('BTC')
+- **initial_capital**: float - Starting capital amount
+- **environment**: str - 'backtest' | 'live'
+- **execution_mode**: str - 'backtest' | 'live'
+- **validation_strict**: bool - Strict validation mode
+
+### Strategy Validation Fields
+- **lending_enabled**: bool - Whether lending is enabled
+- **staking_enabled**: bool - Whether staking is enabled
+- **basis_trade_enabled**: bool - Whether basis trading is enabled
+- **leverage_supported**: bool - Whether leverage is supported
+- **target_apy_range**: Dict[str, float] - Target APY range for quality gate validation
+
+### Strategy-Specific Config
+- **lending_enabled**: bool - Whether lending is enabled
+  - **Usage**: Enables lending functionality
+  - **Used in**: Strategy initialization and validation
+
+- **staking_enabled**: bool - Whether staking is enabled
+  - **Usage**: Enables staking functionality
+  - **Used in**: Strategy initialization and validation
+
+- **basis_trade_enabled**: bool - Whether basis trading is enabled
+  - **Usage**: Enables basis trading functionality
+  - **Used in**: Strategy initialization and validation
+
+- **leverage_supported**: bool - Whether leverage is supported
+  - **Usage**: Indicates if strategy supports leverage
+  - **Used in**: Strategy validation and risk management
+
+- **target_apy_range**: Dict[str, float] - Target APY range for quality gate validation
+  - **Usage**: Defines min/max APY range for e2e PnL quality gate checks
+  - **Example**: {"min": 0.06, "max": 0.10} for 6-10% APY range
+  - **Used in**: Quality gate validation and performance monitoring
+
+- **basis_trading_supported**: bool - Whether basis trading is supported
+  - **Usage**: Enables basis trading functionality
+  - **Used in**: Strategy initialization and validation
+
+- **hedge_allocation_binance**: float - Proportion of hedge on Binance (0.0-1.0)
+  - **Usage**: Controls capital allocation to Binance for perp hedging
+  - **Example**: 0.4 (40% of hedge on Binance)
+  - **Used in**: Execution manager venue routing
+
+- **hedge_allocation_bybit**: float - Proportion of hedge on Bybit (0.0-1.0)
+  - **Usage**: Controls capital allocation to Bybit for perp hedging
+  - **Example**: 0.3 (30% of hedge on Bybit)
+  - **Used in**: Execution manager venue routing
+
+- **hedge_allocation_okx**: float - Proportion of hedge on OKX (0.0-1.0)
+  - **Usage**: Controls capital allocation to OKX for perp hedging
+  - **Example**: 0.3 (30% of hedge on OKX)
+  - **Used in**: Execution manager venue routing
+
+- **hedge_venues**: List[str] - List of venues used for hedging
+  - **Usage**: Defines which venues to use for hedging operations
+  - **Examples**: ["binance", "bybit", "okx"]
+  - **Used in**: Venue selection for hedging
+
+### Venue Configuration
+- **venues.binance.venue_type**: str - Venue type ('cex')
+- **venues.binance.enabled**: bool - Whether Binance is enabled
+- **venues.binance.instruments**: List[str] - Available instruments
+- **venues.binance.order_types**: List[str] - Available order types
+- **venues.binance.min_amount**: float - Minimum order amount
+
+- **venues.bybit.venue_type**: str - Venue type ('cex')
+- **venues.bybit.enabled**: bool - Whether Bybit is enabled
+- **venues.bybit.instruments**: List[str] - Available instruments
+- **venues.bybit.order_types**: List[str] - Available order types
+- **venues.bybit.max_leverage**: float - Maximum leverage
+- **venues.bybit.min_amount**: float - Minimum order amount
+
+- **venues.okx.venue_type**: str - Venue type ('cex')
+- **venues.okx.enabled**: bool - Whether OKX is enabled
+- **venues.okx.instruments**: List[str] - Available instruments
+- **venues.okx.order_types**: List[str] - Available order types
+- **venues.okx.max_leverage**: float - Maximum leverage
+- **venues.okx.min_amount**: float - Minimum order amount
+
+### Component Configuration
+- **component_config.strategy_manager.strategy_type**: str - Strategy type
+- **component_config.strategy_manager.actions**: List[str] - Available actions
+- **component_config.strategy_manager.position_calculation**: Dict - Position calculation config
+- **component_config.risk_monitor.risk_limits**: Dict - Risk limit configuration
+- **component_config.execution_manager.action_mapping**: Dict - Action mapping configuration
+
 ## Testing Requirements
 
 ### **Unit Tests**

@@ -13,12 +13,15 @@ import logging
 
 from .base_strategy_manager import BaseStrategyManager
 from .pure_lending_strategy import PureLendingStrategy
-from .btc_basis_strategy import BTCBasisStrategy
-from .eth_basis_strategy import ETHBasisStrategy
-from .eth_staking_only_strategy import ETHStakingOnlyStrategy
-from .eth_leveraged_strategy import ETHLeveragedStrategy
-from .usdt_market_neutral_no_leverage_strategy import USDTMarketNeutralNoLeverageStrategy
-from .usdt_market_neutral_strategy import USDTMarketNeutralStrategy
+# Temporarily commented out to test pure lending strategy refactor
+# from .btc_basis_strategy import BTCBasisStrategy
+# from .eth_basis_strategy import ETHBasisStrategy
+# from .eth_staking_only_strategy import ETHStakingOnlyStrategy
+# from .eth_leveraged_strategy import ETHLeveragedStrategy
+# from .usdt_market_neutral_no_leverage_strategy import USDTMarketNeutralNoLeverageStrategy
+# from .usdt_market_neutral_strategy import USDTMarketNeutralStrategy
+# from .ml_btc_directional_strategy import MLBTCDirectionalStrategy
+# from .ml_usdt_directional_strategy import MLUSDTDirectionalStrategy
 from ...infrastructure.logging.structured_logger import get_strategy_manager_logger
 
 from ...core.logging.base_logging_interface import StandardizedLoggingMixin, LogLevel, EventType
@@ -32,14 +35,15 @@ class StrategyFactory(StandardizedLoggingMixin):
     # Strategy class mapping - all strategies implemented
     STRATEGY_MAP = {
         'pure_lending': PureLendingStrategy,
-        'btc_basis': BTCBasisStrategy,
-        'eth_basis': ETHBasisStrategy,
-        'eth_staking_only': ETHStakingOnlyStrategy,
-        'eth_leveraged': ETHLeveragedStrategy,
-        'usdt_market_neutral_no_leverage': USDTMarketNeutralNoLeverageStrategy,
-        'usdt_market_neutral': USDTMarketNeutralStrategy,
-        'ml_btc_directional': BaseStrategyManager,
-        'ml_usdt_directional': BaseStrategyManager,
+        # Temporarily commented out to test pure lending strategy refactor
+        # 'btc_basis': BTCBasisStrategy,
+        # 'eth_basis': ETHBasisStrategy,
+        # 'eth_staking_only': ETHStakingOnlyStrategy,
+        # 'eth_leveraged': ETHLeveragedStrategy,
+        # 'usdt_market_neutral_no_leverage': USDTMarketNeutralNoLeverageStrategy,
+        # 'usdt_market_neutral': USDTMarketNeutralStrategy,
+        # 'ml_btc_directional': MLBTCDirectionalStrategy,
+        # 'ml_usdt_directional': MLUSDTDirectionalStrategy,
     }
     
     @classmethod

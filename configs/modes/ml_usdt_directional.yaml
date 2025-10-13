@@ -75,13 +75,14 @@ component_config:
       cex_margin_ratio_min: 0.15
       maintenance_margin_requirement: 0.10
       delta_tolerance: 0.005
+      liquidation_threshold: 0.95
   
   exposure_monitor:
     exposure_currency: "USDT"
-    track_assets: ["BTC", "BTC_PERP"]
+    track_assets: ["USDT", "USDT_PERP"]
     conversion_methods:
-      BTC: "usd_price"
-      BTC_PERP: "perp_mark_price"
+      USDT: "direct"
+      USDT_PERP: "perp_mark_price"
   
   pnl_calculator:
     attribution_types: ["funding_pnl", "delta_pnl", "basis_pnl", "transaction_costs"]
@@ -89,16 +90,15 @@ component_config:
     reconciliation_tolerance: 0.02
   
   strategy_manager:
-    strategy_type: "btc_basis"
+    strategy_type: "ml_usdt_directional"
     actions: ["entry_full", "entry_partial", "exit_partial", "exit_full"]
-    rebalancing_triggers: ["deposit", "withdrawal", "delta_drift"]
+    rebalancing_triggers: ["ml_signal", "risk_management"]
     position_calculation:
-      target_position: "btc_spot_long"
-      hedge_position: "btc_perp_short"
-      hedge_allocation:
-        binance: 0.4
-        bybit: 0.3
-        okx: 0.3
+      target_position: "usdt_perp_position"
+      max_position_size: 1.0
+      signal_threshold: 0.70
+      stop_loss_pct: 0.03
+      take_profit_pct: 0.08
   
   execution_manager:
     supported_actions: ["cex_spot_buy", "cex_spot_sell", "cex_perp_short", "cex_perp_close"]
@@ -148,16 +148,6 @@ event_logger:
     max_file_size_mb: 100
     rotation_frequency: "daily"
     compression_after_days: 7
-  audit_requirements:
-    audit_trail: true
-    immutable_logs: true
-    encryption: false
-    compliance_mode: "standard"
-  compliance_settings:
-    gdpr_compliant: false
-    sox_compliant: false
-    data_residency: "global"
-    encryption_required: false
   logging_requirements:
     structured_logging: true
     correlation_ids: true

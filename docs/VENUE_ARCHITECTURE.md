@@ -106,6 +106,16 @@ Each strategy mode has specific venue requirements based on its configuration:
 
 ## Venue Configuration Structure
 
+### Venue Configuration Parent Fields
+
+**venues**: Dict - Parent container for all venue-specific configurations
+  - **Usage**: Groups venue configs by venue name (binance, bybit, okx, etc.)
+  - **Structure**: Each key is a venue name, value is venue-specific config dict
+  
+**instruments**: Dict - Trading instruments per venue
+  - **Usage**: Maps instruments to venue-specific trading parameters
+  - **Structure**: Nested dict with instrument symbols and parameters
+
 ### Environment Variables (From env.unified)
 **CRITICAL**: All venue credentials are environment-specific and stored in env.unified:
 
