@@ -41,8 +41,15 @@ def mock_config():
                 }
             },
             'exposure_monitor': {
-                'tracked_assets': ['BTC', 'ETH', 'USDT', 'weETH', 'aUSDT'],
-                'share_class_currency': 'USDT'
+                'exposure_currency': 'USDT',
+                'track_assets': ['BTC', 'ETH', 'USDT', 'weETH', 'aUSDT'],
+                'conversion_methods': {
+                    'BTC': 'price',
+                    'ETH': 'price', 
+                    'USDT': 'price',
+                    'weETH': 'price',
+                    'aUSDT': 'aave_liquidity_index'
+                }
             },
             'position_monitor': {
                 'tracked_venues': ['wallet', 'binance', 'bybit', 'okx'],

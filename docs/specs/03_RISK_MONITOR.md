@@ -154,6 +154,11 @@ def __init__(self, ...):
   - **Usage**: Defines maximum allowed delta deviation
   - **Used in**: Risk monitoring and delta neutrality
 - **component_config.risk_monitor.risk_limits.maintenance_margin_requirement**: float - Maintenance margin requirement
+
+### Global Configuration Parameters
+- **max_drawdown**: float - Maximum allowed drawdown percentage
+- **leverage_enabled**: bool - Whether leverage is enabled for this strategy
+- **data_dir**: str - Directory path for data files (e.g., AAVE risk parameters)
   - **Usage**: Defines minimum margin requirement for positions
   - **Used in**: Risk monitoring and margin management
 
