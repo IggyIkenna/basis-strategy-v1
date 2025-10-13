@@ -16,7 +16,7 @@
 - **Strategy Specifications**: [MODES.md](MODES.md) - Canonical strategy mode definitions
 - **Design Decisions**: [REFERENCE_ARCHITECTURE_CANONICAL.md](REFERENCE_ARCHITECTURE_CANONICAL.md) - Core design decisions
 - **Component Specifications**: [specs/](specs/) - Detailed component implementation guides
-- **Component Spec Template**: [COMPONENT_SPEC_TEMPLATE.md](COMPONENT_SPEC_TEMPLATE.md) - 19-section standardized format
+- **Component Spec Template**: 19-section standardized format (template file removed)
 - **Canonical Examples**: [02_EXPOSURE_MONITOR.md](specs/02_EXPOSURE_MONITOR.md), [03_RISK_MONITOR.md](specs/03_RISK_MONITOR.md)
 - **Target Repository Structure**: [TARGET_REPOSITORY_STRUCTURE.md](TARGET_REPOSITORY_STRUCTURE.md) - Reference for agents completing cursor tasks
 - **Agent Quick Reference**: [AGENT_QUICK_REFERENCE.md](AGENT_QUICK_REFERENCE.md) - Quick reference card for agents
@@ -25,7 +25,7 @@
 
 ## 💼 **Business Case Context**
 
-This project builds a **live and backtesting framework for multi-strategy yield generation** - think Ethena-style strategy enhanced with share classes, fast withdrawals, and dynamic rebalancing.
+This project builds a **live and backtesting framework for multi-strategy yield generation** - think Ethena-style strategy enhanced with share classes, , and dynamic rebalancing.
 
 ## 🔧 **Environment Configuration**
 
@@ -58,7 +58,6 @@ export BASIS_ENVIRONMENT=staging
 - **Client Investment**: USDT or ETH share classes
 - **Yield Sources**: Staking rewards, lending rates, funding rate arbitrage
 - **Optional Leverage**: Enhanced returns with risk management
-- **Fast Withdrawals**: Dynamic buffer for rapid redemptions
 - **Fully Automated**: Web UI for monitoring and control
 
 ### **Strategy Approach**

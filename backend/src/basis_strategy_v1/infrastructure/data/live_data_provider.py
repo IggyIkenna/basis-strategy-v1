@@ -596,8 +596,8 @@ class LiveDataProvider:
         async with self.session.get(url, params=params) as response:
             if response.status == 200:
                 data = await response.json()
-                if data['retCode'] == 0 and data['result']['list']:
-                    return float(data['result']['list'][0]['lastPrice'])
+                if data.get('retCode') == 0 and data.get('result', {}).get('list'):
+                    return float(data['result']['list'][0].get('lastPrice', 0.0))
                 else:
                     raise Exception(
                         f"Bybit API error: {data.get('retMsg', 'Unknown error')}")
@@ -616,8 +616,8 @@ class LiveDataProvider:
         async with self.session.get(url, params=params) as response:
             if response.status == 200:
                 data = await response.json()
-                if data['retCode'] == 0 and data['result']['list']:
-                    return float(data['result']['list'][0]['fundingRate'])
+                if data.get('retCode') == 0 and data.get('result', {}).get('list'):
+                    return float(data['result']['list'][0].get('fundingRate', 0.0))
                 else:
                     raise Exception(
                         f"Bybit funding rate API error: {data.get('retMsg', 'Unknown error')}")

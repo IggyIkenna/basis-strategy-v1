@@ -269,7 +269,7 @@ class DataValidator:
             )
     
     def validate_hourly_alignment(self, df: pd.DataFrame, file_path: Path) -> None:
-        """Validate timestamps are hourly aligned (DATA-010)"""
+        """Validate timestamps are properly aligned based on data type (DATA-010)"""
         # Find timestamp column
         timestamp_col = None
         for col in df.columns:
@@ -278,38 +278,79 @@ class DataValidator:
                 break
         
         if not timestamp_col:
-            self.logger.debug(f"No timestamp column found in {file_path}, skipping hourly alignment validation")
+            self.logger.debug(f"No timestamp column found in {file_path}, skipping alignment validation")
             return
         
         try:
             timestamps = pd.to_datetime(df[timestamp_col])
+            file_path_str = str(file_path).lower()
             
-            # Check if timestamps are hourly aligned (minutes and seconds should be 0)
-            non_hourly = timestamps[(timestamps.dt.minute != 0) | (timestamps.dt.second != 0)]
-            if len(non_hourly) > 0:
-                raise DataProviderError(
-                    'DATA-010',
-                    f"Data timestamps not hourly aligned in {file_path}: {len(non_hourly)} non-hourly timestamps",
-                    {
-                        'file_path': str(file_path),
-                        'non_hourly_count': len(non_hourly),
-                        'non_hourly_timestamps': non_hourly.tolist()
-                    }
-                )
-            
-            self.logger.debug(f"✅ Timestamps hourly aligned: {file_path}")
+            # Determine expected alignment based on data type
+            if 'funding_rates' in file_path_str:
+                # Funding rates should be aligned to 8-hour intervals (00:00, 08:00, 16:00)
+                # Check if timestamps are aligned to 8-hour intervals
+                non_aligned = timestamps[
+                    (timestamps.dt.hour % 8 != 0) | 
+                    (timestamps.dt.minute != 0) | 
+                    (timestamps.dt.second != 0)
+                ]
+                if len(non_aligned) > 0:
+                    raise DataProviderError(
+                        'DATA-010',
+                        f"Data timestamps not 8-hour aligned in {file_path}: {len(non_aligned)} non-aligned timestamps",
+                        {
+                            'file_path': str(file_path),
+                            'non_aligned_count': len(non_aligned),
+                            'non_aligned_timestamps': non_aligned.tolist()
+                        }
+                    )
+                self.logger.debug(f"✅ Timestamps 8-hour aligned: {file_path}")
+                
+            elif 'staking' in file_path_str or 'rewards' in file_path_str:
+                # Staking rewards are typically daily, so just check for proper date alignment
+                non_daily = timestamps[
+                    (timestamps.dt.hour != 0) | 
+                    (timestamps.dt.minute != 0) | 
+                    (timestamps.dt.second != 0)
+                ]
+                if len(non_daily) > 0:
+                    raise DataProviderError(
+                        'DATA-010',
+                        f"Data timestamps not daily aligned in {file_path}: {len(non_daily)} non-daily timestamps",
+                        {
+                            'file_path': str(file_path),
+                            'non_daily_count': len(non_daily),
+                            'non_daily_timestamps': non_daily.tolist()
+                        }
+                    )
+                self.logger.debug(f"✅ Timestamps daily aligned: {file_path}")
+                
+            else:
+                # Default: Check if timestamps are hourly aligned (minutes and seconds should be 0)
+                non_hourly = timestamps[(timestamps.dt.minute != 0) | (timestamps.dt.second != 0)]
+                if len(non_hourly) > 0:
+                    raise DataProviderError(
+                        'DATA-010',
+                        f"Data timestamps not hourly aligned in {file_path}: {len(non_hourly)} non-hourly timestamps",
+                        {
+                            'file_path': str(file_path),
+                            'non_hourly_count': len(non_hourly),
+                            'non_hourly_timestamps': non_hourly.tolist()
+                        }
+                    )
+                self.logger.debug(f"✅ Timestamps hourly aligned: {file_path}")
             
         except Exception as e:
             if isinstance(e, DataProviderError):
                 raise
             raise DataProviderError(
                 'DATA-010',
-                f"Hourly alignment validation failed for {file_path}: {e}",
+                f"Alignment validation failed for {file_path}: {e}",
                 {'file_path': str(file_path), 'error': str(e)}
             )
     
     def validate_data_gaps(self, df: pd.DataFrame, file_path: Path) -> None:
-        """Validate no gaps in hourly data (DATA-011)"""
+        """Validate no gaps in data with appropriate frequency based on data type (DATA-011)"""
         # Find timestamp column
         timestamp_col = None
         for col in df.columns:
@@ -325,10 +366,13 @@ class DataValidator:
             timestamps = pd.to_datetime(df[timestamp_col])
             timestamps = timestamps.sort_values()
             
-            # Create expected hourly range
+            # Determine expected frequency based on file path and data type
+            expected_freq = self._get_expected_frequency(file_path, df)
+            
+            # Create expected range with appropriate frequency
             start_time = timestamps.min()
             end_time = timestamps.max()
-            expected_range = pd.date_range(start=start_time, end=end_time, freq='H')
+            expected_range = pd.date_range(start=start_time, end=end_time, freq=expected_freq)
             
             # Find missing timestamps
             missing_timestamps = set(expected_range) - set(timestamps)
@@ -340,16 +384,17 @@ class DataValidator:
                 if missing_percentage > 10.0:
                     raise DataProviderError(
                         'DATA-011',
-                        f"Data contains significant gaps in {file_path}: {len(missing_timestamps)} missing hours ({missing_percentage:.1f}%)",
+                        f"Data contains significant gaps in {file_path}: {len(missing_timestamps)} missing {expected_freq} periods ({missing_percentage:.1f}%)",
                         {
                             'file_path': str(file_path),
                             'missing_count': len(missing_timestamps),
                             'missing_percentage': missing_percentage,
+                            'expected_frequency': expected_freq,
                             'missing_timestamps': [str(ts) for ts in missing_list[:10]]  # Show first 10
                         }
                     )
                 else:
-                    self.logger.warning(f"Data has minor gaps in {file_path}: {len(missing_timestamps)} missing hours ({missing_percentage:.1f}%) - proceeding")
+                    self.logger.warning(f"Data has minor gaps in {file_path}: {len(missing_timestamps)} missing {expected_freq} periods ({missing_percentage:.1f}%) - proceeding")
             
             self.logger.debug(f"✅ No data gaps: {file_path}")
             
@@ -361,6 +406,29 @@ class DataValidator:
                 f"Gap validation failed for {file_path}: {e}",
                 {'file_path': str(file_path), 'error': str(e)}
             )
+    
+    def _get_expected_frequency(self, file_path: Path, df: pd.DataFrame) -> str:
+        """Determine expected data frequency based on file path and content."""
+        file_path_str = str(file_path).lower()
+        
+        # Funding rates are updated every 8 hours
+        if 'funding_rates' in file_path_str:
+            return '8H'
+        
+        # Staking rewards are typically daily
+        if 'staking' in file_path_str or 'rewards' in file_path_str:
+            return 'D'
+        
+        # Protocol data (like AAVE rates) are typically hourly
+        if 'protocol_data' in file_path_str:
+            return 'H'
+        
+        # Market data (prices, OHLCV) are typically hourly
+        if any(x in file_path_str for x in ['market_data', 'prices', 'ohlcv', 'futures']):
+            return 'H'
+        
+        # Default to hourly for unknown data types
+        return 'H'
     
     def validate_data_requirements(self, data_requirements: List[str], available_data: List[str]) -> None:
         """Validate data requirements can be satisfied (DATA-012)"""

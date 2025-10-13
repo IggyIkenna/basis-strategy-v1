@@ -14,10 +14,11 @@ import pandas as pd
 from datetime import datetime
 
 from ...infrastructure.logging.structured_logger import get_risk_monitor_logger
+from ...core.logging.base_logging_interface import StandardizedLoggingMixin, LogLevel, EventType
 
 logger = logging.getLogger(__name__)
 
-class RiskMonitor:
+class RiskMonitor(StandardizedLoggingMixin):
     """Mode-agnostic risk monitor that works for both backtest and live modes"""
     _instance = None
     
@@ -39,6 +40,8 @@ class RiskMonitor:
         self.config = config
         self.data_provider = data_provider
         self.utility_manager = utility_manager
+        self.health_status = "healthy"
+        self.error_count = 0
         
         # Initialize structured logger
         self.structured_logger = get_risk_monitor_logger()
@@ -49,7 +52,19 @@ class RiskMonitor:
         # Use direct config access for fail-fast behavior
         self.max_drawdown = config['max_drawdown']
         self.leverage_enabled = config['leverage_enabled']
-        
+    
+    def check_component_health(self) -> Dict[str, Any]:
+        """Check component health status."""
+        return {
+            'status': self.health_status,
+            'error_count': self.error_count,
+            'max_drawdown': self.max_drawdown,
+            'leverage_enabled': self.leverage_enabled,
+            'component': self.__class__.__name__
+        }
+    
+    def _initialize_risk_parameters(self):
+        """Initialize risk parameters."""
         # Calculate target_ltv from AAVE risk parameters (as per spec)
         self.target_ltv = self._calculate_target_ltv()
         
@@ -147,26 +162,29 @@ class RiskMonitor:
         if isinstance(timestamp, str):
             timestamp = pd.Timestamp(timestamp)
         
-        return self.calculate_risks(exposure_data, timestamp)
+        return self.assess_risk(exposure_data, {})
     
-    def calculate_risks(self, exposures: Dict[str, Any], timestamp: pd.Timestamp) -> Dict[str, Any]:
+    def assess_risk(self, exposure_data: Dict, market_data: Dict) -> Dict[str, Any]:
         """
-        Calculate risks regardless of mode (backtest or live).
+        Main entry point for risk calculations.
         
         Args:
-            exposures: Current exposure data
-            timestamp: Current timestamp
+            exposure_data: Current exposure snapshot from ExposureMonitor
+            market_data: Market data from DataProvider (queried by caller)
             
         Returns:
             Dictionary with risk calculation results
         """
         try:
+            # Use current timestamp for calculations
+            timestamp = pd.Timestamp.now()
+            
             # Calculate various risk metrics
-            liquidation_risk = self._calculate_liquidation_risk(exposures, timestamp)
-            delta_risk = self._calculate_delta_risk(exposures, timestamp)
-            funding_risk = self._calculate_funding_risk(exposures, timestamp)
-            basis_risk = self._calculate_basis_risk(exposures, timestamp)
-            default_risk = self._calculate_default_risk(exposures, timestamp)
+            liquidation_risk = self._calculate_liquidation_risk(exposure_data, timestamp)
+            delta_risk = self._calculate_delta_risk(exposure_data, timestamp)
+            funding_risk = self._calculate_funding_risk(exposure_data, timestamp)
+            basis_risk = self._calculate_basis_risk(exposure_data, timestamp)
+            default_risk = self._calculate_default_risk(exposure_data, timestamp)
             
             # Calculate overall risk score
             overall_risk = self._calculate_overall_risk(
@@ -540,22 +558,61 @@ class RiskMonitor:
         except Exception as e:
             logger.error(f"Error updating last risks: {e}")
     
-    def get_risk_summary(self) -> Dict[str, Any]:
-        """Get risk summary."""
+    def get_current_risk_metrics(self) -> Dict[str, Any]:
+        """Get current risk metrics snapshot."""
         try:
             return {
                 'last_risks': self.last_risks,
                 'mode_agnostic': True
             }
         except Exception as e:
-            logger.error(f"Error getting risk summary: {e}")
+            logger.error(f"Error getting current risk metrics: {e}")
             return {
                 'last_risks': None,
                 'mode_agnostic': True,
                 'error': str(e)
             }
     
-    def get_config_parameters(self, mode: str) -> Dict[str, Any]:
+    def update_state(self, timestamp: pd.Timestamp, trigger_source: str, **kwargs) -> None:
+        """
+        Update component state (called by EventDrivenStrategyEngine).
+        
+        Args:
+            timestamp: Current loop timestamp (from EventDrivenStrategyEngine)
+            trigger_source: 'full_loop' | 'tight_loop' | 'manual'
+            **kwargs: Additional parameters (exposure_data, market_data, etc.)
+        """
+        # Extract exposure and market data from kwargs if present
+        exposure_data = kwargs.get('exposure_data')
+        market_data = kwargs.get('market_data')
+        
+        if exposure_data and market_data:
+            # Perform risk assessment
+            risk_result = self.assess_risk(exposure_data, market_data)
+            
+            # Log risk assessment
+            self.structured_logger.info(
+                "Risk assessment completed",
+                event_type="risk_assessment",
+                component="risk_monitor",
+                trigger_source=trigger_source,
+                overall_risk=risk_result.get('overall_risk', 0.0),
+                risk_level=risk_result.get('risk_level', 'unknown'),
+                timestamp=timestamp.isoformat()
+            )
+            
+            # Log using standardized logging
+            self.log_component_event(
+                EventType.BUSINESS_EVENT,
+                f"Risk assessment completed: trigger_source={trigger_source}",
+                {
+                    'overall_risk': risk_result.get('overall_risk', 0.0),
+                    'risk_level': risk_result.get('risk_level', 'unknown'),
+                    'trigger_source': trigger_source
+                }
+            )
+    
+    def _get_config_parameters(self, mode: str) -> Dict[str, Any]:
         """Get config parameters using utility manager (config-driven approach)."""
         try:
             # Use utility manager to get config parameters (config-driven, not hardcoded)

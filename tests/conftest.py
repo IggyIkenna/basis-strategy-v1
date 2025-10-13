@@ -71,6 +71,11 @@ def mock_config():
             'risk_monitor': {
                 'update_interval': 60,
                 'max_risk_ratio': 0.8
+            },
+            'pnl_calculator': {
+                'update_interval': 60,
+                'precision': 6,
+                'attribution_enabled': True
             }
         }
     }

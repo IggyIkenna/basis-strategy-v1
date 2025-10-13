@@ -49,7 +49,7 @@ from ..math.pnl_calculator import PnLCalculator
 from ..strategies.base_strategy_manager import BaseStrategyManager
 from ..components.position_update_handler import PositionUpdateHandler
 # Legacy execution managers removed - using new execution interfaces instead
-from ..interfaces.execution_interface_factory import ExecutionInterfaceFactory
+from ..interfaces.venue_interface_factory import VenueInterfaceFactory
 from ...infrastructure.persistence.async_results_store import AsyncResultsStore
 from ..health import (
     system_health_aggregator,
@@ -58,6 +58,7 @@ from ..health import (
     RiskMonitorHealthChecker,
     EventLoggerHealthChecker
 )
+from ...core.logging.base_logging_interface import StandardizedLoggingMixin, LogLevel, EventType
 
 logger = logging.getLogger(__name__)
 
@@ -81,7 +82,7 @@ event_engine_handler.setFormatter(event_engine_formatter)
 event_engine_logger.addHandler(event_engine_handler)
 
 
-class EventDrivenStrategyEngine:
+class EventDrivenStrategyEngine(StandardizedLoggingMixin):
     """
     Event-driven strategy engine using the new component architecture.
     
@@ -132,9 +133,16 @@ class EventDrivenStrategyEngine:
         self.execution_mode = execution_mode
         self.data_provider = data_provider  # Pre-loaded data provider
         self.debug_mode = debug_mode
+        self.health_status = "healthy"
+        self.error_count = 0
         
         # Store component references - following reference-based architecture
         # Create components if not provided (for backtest service compatibility)
+        
+        # Initialize Execution Interface Factory first (required for Position Monitor)
+        self.execution_interface_factory = self._create_execution_interface_factory()
+        
+        # Create components with proper dependency order
         self.position_monitor = position_monitor or self._create_position_monitor()
         self.event_logger = event_logger or self._create_event_logger()
         self.exposure_monitor = exposure_monitor or self._create_exposure_monitor()
@@ -182,7 +190,51 @@ class EventDrivenStrategyEngine:
         
         logger.info(f"EventDrivenStrategyEngine initialized: {self.mode} mode, {share_class} share class, {initial_capital} capital")
     
+    def _handle_error(self, error: Exception, context: str = "") -> None:
+        """Handle errors with structured error handling."""
+        self.error_count += 1
+        error_code = f"EDSE_ERROR_{self.error_count:04d}"
+        
+        logger.error(f"Event Driven Strategy Engine error {error_code}: {str(error)}", extra={
+            'error_code': error_code,
+            'context': context,
+            'execution_mode': self.execution_mode,
+            'component': self.__class__.__name__
+        })
+        
+        # Update health status based on error count
+        if self.error_count > 10:
+            self.health_status = "unhealthy"
+        elif self.error_count > 5:
+            self.health_status = "degraded"
+    
+    def check_component_health(self) -> Dict[str, Any]:
+        """Check component health status."""
+        return {
+            'status': self.health_status,
+            'error_count': self.error_count,
+            'mode': self.mode,
+            'share_class': self.share_class,
+            'execution_mode': self.execution_mode,
+            'is_running': self.is_running,
+            'component': self.__class__.__name__
+        }
 
+    def _process_config_driven_operations(self, operations: List[Dict]) -> List[Dict]:
+        """Process operations based on configuration settings."""
+        processed_operations = []
+        for operation in operations:
+            if self._validate_operation(operation):
+                processed_operations.append(operation)
+            else:
+                self._handle_error(ValueError(f"Invalid operation: {operation}"), "config_driven_validation")
+        return processed_operations
+    
+    def _validate_operation(self, operation: Dict) -> bool:
+        """Validate operation against configuration."""
+        required_fields = ['action', 'component', 'timestamp']
+        return all(field in operation for field in required_fields)
+    
     def _initialize_components(self):
         """
         Initialize all components with proper configuration and dependency tracking.
@@ -305,14 +357,14 @@ class EventDrivenStrategyEngine:
             logger.error(f"❌ Strategy Manager initialization failed: {e}")
             raise ValueError(f"Strategy Manager initialization failed: {e}")
         # Create execution interfaces using factory
-        self.execution_interfaces = ExecutionInterfaceFactory.create_all_interfaces(
+        self.execution_interfaces = VenueInterfaceFactory.create_all_venue_interfaces(
             execution_mode=self.execution_mode,
             config=self.config,
             data_provider=self.data_provider
         )
         
         # Set dependencies for execution interfaces
-        ExecutionInterfaceFactory.set_interface_dependencies(
+        VenueInterfaceFactory.set_venue_dependencies(
             interfaces=self.execution_interfaces,
             position_monitor=self.position_monitor,
             event_logger=self.event_logger,
@@ -542,8 +594,8 @@ class EventDrivenStrategyEngine:
         
         try:
             # 1. Get current position snapshot
-            logger.info(f"Event Engine: About to call position_monitor.get_snapshot() for timestep {timestamp}")
-            position_snapshot = self.position_monitor.get_snapshot()
+            logger.info(f"Event Engine: About to call position_monitor.get_current_positions() for timestep {timestamp}")
+            position_snapshot = self.position_monitor.get_current_positions()
             logger.info(f"Event Engine: Position snapshot type = {type(position_snapshot)}, is None = {position_snapshot is None}")
             if position_snapshot is not None:
                 logger.info(f"Event Engine: Position snapshot keys = {list(position_snapshot.keys())}")
@@ -561,9 +613,10 @@ class EventDrivenStrategyEngine:
                 self.position_monitor.log_position_snapshot(timestamp, "TIMESTEP_START")
             
             # 2. Calculate current exposure using injected data provider
-            exposure = self.exposure_monitor.calculate_exposures(
-                positions=position_snapshot,
-                timestamp=timestamp
+            exposure = self.exposure_monitor.calculate_exposure(
+                timestamp=timestamp,
+                position_snapshot=position_snapshot,
+                market_data={}  # TODO: Pass actual market data
             )
             logger.info(f"Event Engine: Exposure calculated - type: {type(exposure)}, keys: {list(exposure.keys()) if isinstance(exposure, dict) else 'Not a dict'}")
             
@@ -584,7 +637,7 @@ class EventDrivenStrategyEngine:
             logger.info(f"Event Engine: About to calculate P&L for timestamp {timestamp}")
             logger.info(f"Event Engine: P&L input - exposure type: {type(exposure)}, exposure value: {exposure}")
             try:
-                pnl = self.pnl_calculator.calculate_pnl(
+                pnl = self.pnl_calculator.get_current_pnl(
                     current_exposure=exposure,
                     timestamp=timestamp
                 )
@@ -657,12 +710,13 @@ class EventDrivenStrategyEngine:
         """Calculate final backtest results."""
         
         # Get current position and calculate exposure for P&L calculation
-        current_position = self.position_monitor.get_snapshot(self.current_timestamp)
-        final_exposure = self.exposure_monitor.calculate_exposures(
-            positions=current_position,
-            timestamp=self.current_timestamp
+        current_position = self.position_monitor.get_current_positions(self.current_timestamp)
+        final_exposure = self.exposure_monitor.calculate_exposure(
+            timestamp=self.current_timestamp,
+            position_snapshot=current_position,
+            market_data={}  # TODO: Pass actual market data
         )
-        final_pnl = self.pnl_calculator.calculate_pnl(final_exposure, timestamp=self.current_timestamp)
+        final_pnl = self.pnl_calculator.get_current_pnl(final_exposure, timestamp=self.current_timestamp)
         
         # Calculate performance metrics
         initial_capital = self.initial_capital
@@ -725,12 +779,12 @@ class EventDrivenStrategyEngine:
         finally:
             self.is_running = False
     
-    def stop(self):
+    def _stop(self):
         """Stop the live strategy execution."""
         self.is_running = False
         logger.info("Strategy execution stopped")
     
-    def get_current_timestamp(self) -> pd.Timestamp:
+    def _get_current_timestamp(self) -> pd.Timestamp:
         """
         Get the current timestamp for ML strategies.
         
@@ -748,7 +802,7 @@ class EventDrivenStrategyEngine:
             # In live mode, return current time
             return pd.Timestamp.now(tz='UTC')
     
-    def trigger_tight_loop(self):
+    def _trigger_tight_loop(self):
         """
         Trigger tight loop execution reconciliation pattern.
         
@@ -762,7 +816,7 @@ class EventDrivenStrategyEngine:
             
             # Get current position state
             if self.position_monitor:
-                current_position = self.position_monitor.get_snapshot()
+                current_position = self.position_monitor.get_current_positions()
                 logger.debug(f"Current position state: {current_position}")
             
             # Verify position reconciliation
@@ -811,7 +865,7 @@ class EventDrivenStrategyEngine:
             }
         }
     
-    def debug_print_position_monitor(self):
+    def _debug_print_position_monitor(self):
         """Print detailed position monitor state for debugging."""
         if not self.debug_mode:
             return
@@ -821,7 +875,7 @@ class EventDrivenStrategyEngine:
         print("="*80)
         
         try:
-            snapshot = self.position_monitor.get_snapshot()
+            snapshot = self.position_monitor.get_current_positions()
             
             print(f"📊 Position Monitor Snapshot:")
             print(f"   Last Updated: {snapshot.get('last_updated', 'N/A')}")
@@ -977,12 +1031,22 @@ class EventDrivenStrategyEngine:
 # - share_class (from API request)
 # Use direct constructor with proper dependency injection instead
 
+    def _create_execution_interface_factory(self):
+        """Create execution interface factory."""
+        from ..interfaces.venue_interface_factory import VenueInterfaceFactory
+        return VenueInterfaceFactory()
+    
     def _create_position_monitor(self):
         """Create position monitor component."""
         from ..components.position_monitor import PositionMonitor
         from ...core.utilities.utility_manager import UtilityManager
         utility_manager = UtilityManager(self.config, self.data_provider)
-        return PositionMonitor(self.config, self.data_provider, utility_manager)
+        return PositionMonitor(
+            self.config, 
+            self.data_provider, 
+            utility_manager, 
+            self.execution_interface_factory
+        )
     
     def _create_event_logger(self):
         """Create event logger component."""
@@ -1041,3 +1105,123 @@ class EventDrivenStrategyEngine:
         """Create utility manager component."""
         from ...core.utilities.utility_manager import UtilityManager
         return UtilityManager(self.config, self.data_provider)
+    
+    def update_state(self, timestamp: pd.Timestamp, trigger_source: str, **kwargs) -> None:
+        """
+        Update state for all components.
+        
+        Args:
+            timestamp: Current timestamp
+            trigger_source: Source of the update trigger
+            **kwargs: Additional update parameters
+        """
+        try:
+            # Update all components with the new timestamp
+            if self.position_monitor:
+                self.position_monitor.update_state(timestamp, trigger_source, **kwargs)
+            
+            if self.event_logger:
+                self.event_logger.update_state(timestamp, trigger_source, **kwargs)
+            
+            if self.exposure_monitor:
+                self.exposure_monitor.update_state(timestamp, trigger_source, **kwargs)
+            
+            if self.risk_monitor:
+                self.risk_monitor.update_state(timestamp, trigger_source, **kwargs)
+            
+            if self.pnl_calculator:
+                self.pnl_calculator.update_state(timestamp, trigger_source, **kwargs)
+            
+            # Update execution interfaces
+            if self.execution_interfaces:
+                for interface_type, interface in self.execution_interfaces.items():
+                    if interface and hasattr(interface, 'update_state'):
+                        interface.update_state(timestamp, trigger_source, **kwargs)
+            
+            logger.debug(f"EventDrivenStrategyEngine.update_state completed at {timestamp} from {trigger_source}")
+            
+        except Exception as e:
+            logger.error(f"Failed to update state in EventDrivenStrategyEngine: {e}")
+            raise
+    
+    async def initialize_engine(self, config: Dict[str, Any], execution_mode: str) -> Dict[str, Any]:
+        """
+        Initialize all components in dependency order.
+        
+        Parameters:
+        - config: Strategy configuration
+        - execution_mode: Execution mode (backtest/live)
+        
+        Returns:
+        - Dict: Initialization results with component status
+        """
+        try:
+            logger.info(f"Initializing EventDrivenStrategyEngine in {execution_mode} mode")
+            
+            # Store configuration
+            self.config = config
+            self.execution_mode = execution_mode
+            
+            # Initialize components in dependency order
+            initialization_results = {}
+            
+            # 1. Initialize Data Provider (shared)
+            from ...infrastructure.data.base_data_provider import BaseDataProvider
+            self.data_provider = BaseDataProvider(execution_mode, config)
+            initialization_results['data_provider'] = 'initialized'
+            
+            # 2. Initialize Position Monitor (foundation)
+            self.position_monitor = PositionMonitor(config, self.data_provider, None)
+            initialization_results['position_monitor'] = 'initialized'
+            
+            # 3. Initialize Event Logger
+            self.event_logger = EventLogger(config)
+            initialization_results['event_logger'] = 'initialized'
+            
+            # 4. Initialize Exposure Monitor
+            self.exposure_monitor = ExposureMonitor(config, self.data_provider, None)
+            initialization_results['exposure_monitor'] = 'initialized'
+            
+            # 5. Initialize Risk Monitor
+            self.risk_monitor = RiskMonitor(config, self.data_provider, None)
+            initialization_results['risk_monitor'] = 'initialized'
+            
+            # 6. Initialize PnL Calculator
+            self.pnl_calculator = PnLCalculator(config, None)
+            initialization_results['pnl_calculator'] = 'initialized'
+            
+            # 7. Initialize Strategy Manager
+            self.strategy_manager = BaseStrategyManager(config, self.data_provider, self.exposure_monitor, self.risk_monitor)
+            initialization_results['strategy_manager'] = 'initialized'
+            
+            # 8. Initialize Position Update Handler
+            self.position_update_handler = PositionUpdateHandler(
+                config, self.position_monitor, self.exposure_monitor, 
+                self.risk_monitor, self.pnl_calculator, execution_mode
+            )
+            initialization_results['position_update_handler'] = 'initialized'
+            
+            # 9. Initialize Execution Interfaces (if needed)
+            # Note: Execution interfaces are initialized by VenueManager
+            initialization_results['execution_interfaces'] = 'deferred'
+            
+            # Set initialization status
+            self.initialized = True
+            self.initialization_timestamp = pd.Timestamp.now(tz='UTC')
+            
+            logger.info(f"EventDrivenStrategyEngine initialized successfully with {len(initialization_results)} components")
+            
+            return {
+                'success': True,
+                'components_initialized': initialization_results,
+                'execution_mode': execution_mode,
+                'initialization_timestamp': self.initialization_timestamp
+            }
+            
+        except Exception as e:
+            logger.error(f"Failed to initialize EventDrivenStrategyEngine: {e}")
+            return {
+                'success': False,
+                'error': str(e),
+                'components_initialized': initialization_results if 'initialization_results' in locals() else {}
+            }

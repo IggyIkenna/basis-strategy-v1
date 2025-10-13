@@ -1,105 +1,161 @@
-# ETH Leveraged Staking Mode Configuration
-# ETH leveraged (borrowing to stake) staking with LST rewards (staking rewards + seasonal bonuses in ETHFI and EIGEN wrapped up as KING tokens)
-# No hedge as ETH share class. we only leverage the staking spread not the overall eth deltas which we keep neutral outside initial + pnl
-
+# BTC Basis Trading Mode Configuration
+# BTC basis trading strategy with short side hedging in Binance, Bybit, and OKX perps
 
 mode: "eth_leveraged"
 
 # Strategy parameters
-lending_enabled: true
+lending_enabled: false
 staking_enabled: true
 basis_trade_enabled: false
 borrowing_enabled: true
-  # Enable borrowing for leverage loops
+leverage_enabled: true
+# No borrowing/leverage loops
 enable_market_impact: true
 
 # Asset configuration
 share_class: "ETH"
 asset: "ETH"
-lst_type: "weeth"  # or "wsteth"
-rewards_mode: "base_eigen"  # base + EIGEN rewards
-reserve_ratio: 0.1
-position_deviation_threshold: 0.02  # 2% deviation from target triggers rebalancing
+lst_type: "weeth"
+rewards_mode: "base_only"
+funding_threshold: 0.0001  # 0.01% funding threshold
 
 # Execution parameters
-hedge_venues: []
-hedge_allocation: {}
+hedge_venues: ["binance", "bybit", "okx"]
+hedge_allocation_binance: 0.4
+hedge_allocation_bybit: 0.3
+hedge_allocation_okx: 0.3
+position_deviation_threshold: 0.02  # 2% deviation from target triggers rebalancing
 
 # Risk parameters
-margin_ratio_target: 1.0  # Target CEX margin ratio (only for USDT share class with hedging)
-max_stake_spread_move: 0.02215  # Max expected adverse weETH/ETH oracle move (2.215%)
-max_ltv: 0.91  # Maximum LTV for weETH (derived from AAVE risk params)
-liquidation_threshold: 0.95  # Liquidation threshold for weETH (derived from AAVE risk params)
+margin_ratio_target: 0.8  # Target CEX margin ratio for futures (80% conservative)
+max_ltv: 0.8  # Maximum loan-to-value ratio for borrowing
+liquidation_threshold: 0.85  # Liquidation threshold for borrowed assets
 
+# Venue configuration
+venues:
+  etherfi:
+    venue_type: "defi"
+    enabled: true
+    instruments: ["ETH-STAKING"]
+    order_types: ["stake", "unstake"]
+  aave_v3:
+    venue_type: "defi"
+    enabled: true
+    instruments: ["ETH-BORROWING", "WETH-SUPPLY"]
+    order_types: ["supply", "withdraw", "borrow", "repay"]
+  alchemy:
+    venue_type: "infrastructure"
+    enabled: true
+    instruments: ["WALLET-TRANSFER"]
+    order_types: ["transfer"]
 
-# Performance targets
-target_apy: 0.20  # 20% APY target (leveraged staking)
-max_drawdown: 0.04  # 4% max drawdown
+# Delta neutrality parameters
+delta_tolerance: 0.005  # 0.5% tolerance of gross exposure for delta neutrality
 
 # Data requirements
 data_requirements:
-  - "eth_prices"  # Binance ETH/USDT spot
-  - "weeth_prices"  # AAVE oracle prices
-  - "aave_lending_rates"  # AAVE rates (weETH, WETH)
-  - "staking_rewards"  # Base staking yields
-  - "eigen_rewards"  # EIGEN distributions
+  - "btc_prices"  # Binance BTC/USDT spot
+  - "btc_futures"  # CEX futures data
+  - "funding_rates"  # CEX funding rates (all venues)
   - "gas_costs"  # Ethereum gas prices
   - "execution_costs"  # Execution cost model
-  - "aave_risk_params"  # AAVE v3 risk parameters JSON
 
 # Live time throttling 
 time_throttle_interval: 60
 
-# REMOVED: capital_allocation - not needed in config, calculated at runtime
+# Performance targets
+target_apy: 0.08  # 8% APY target (funding rate collection)
+max_drawdown: 0.02  # 2% max drawdown (usually positive funding)
 
 # Component configuration
 component_config:
   risk_monitor:
-    enabled_risk_types: ["ltv_risk", "liquidation_risk"]
+    enabled_risk_types: ["cex_margin_ratio", "delta_risk"]
     risk_limits:
-      target_ltv: 0.9094  # Target LTV = max_ltv * (1 - max_stake_spread_move)
-      liquidation_threshold: 0.95
+      target_margin_ratio: 0.5
+      cex_margin_ratio_min: 0.15
+      maintenance_margin_requirement: 0.10
+      delta_tolerance: 0.005
   
   exposure_monitor:
-    exposure_currency: "ETH"
-    track_assets: ["ETH", "weETH", "aWeETH", "variableDebtWETH", "EIGEN", "KING"]
+    exposure_currency: "USDT"
+    track_assets: ["BTC", "BTC_PERP"]
     conversion_methods:
-      ETH: "direct"
-      weETH: "oracle_price"
-      aWeETH: "aave_index"
-      variableDebtWETH: "aave_index"
-      EIGEN: "usd_price"
-      KING: "unwrap"
+      BTC: "usd_price"
+      BTC_PERP: "perp_mark_price"
   
   pnl_calculator:
-    attribution_types: ["supply_yield", "staking_yield_oracle", "staking_yield_rewards", "borrow_costs", "transaction_costs"]
-    reporting_currency: "ETH"
+    attribution_types: ["funding_pnl", "delta_pnl", "basis_pnl", "transaction_costs"]
+    reporting_currency: "USDT"
     reconciliation_tolerance: 0.02
   
   strategy_manager:
-    strategy_type: "eth_leveraged"
-    actions: ["entry_full", "entry_partial", "exit_partial", "exit_full", "sell_dust"]
-    rebalancing_triggers: ["deposit", "withdrawal", "ltv_drift"]
+    strategy_type: "btc_basis"
+    actions: ["entry_full", "entry_partial", "exit_partial", "exit_full"]
+    rebalancing_triggers: ["deposit", "withdrawal", "delta_drift"]
     position_calculation:
-      target_position: "leveraged_eth_staking"
-      leverage_ratio: 0.9
-      lst_type: "weeth"
+      target_position: "btc_spot_long"
+      hedge_position: "btc_perp_short"
+      hedge_allocation:
+        binance: 0.4
+        bybit: 0.3
+        okx: 0.3
   
   execution_manager:
-    supported_actions: ["etherfi_stake", "etherfi_unstake", "aave_supply", "aave_borrow", "aave_repay", "sell_dust"]
+    supported_actions: ["cex_spot_buy", "cex_spot_sell", "cex_perp_short", "cex_perp_close"]
     action_mapping:
-      entry_full: ["etherfi_stake", "aave_supply", "aave_borrow"]
-      exit_full: ["aave_repay", "etherfi_unstake"]
-      sell_dust: ["sell_dust"]
+      entry_full: ["cex_spot_buy", "cex_perp_short"]
+      exit_full: ["cex_perp_close", "cex_spot_sell"]
+      entry_partial: ["cex_spot_buy", "cex_perp_short"]
+      exit_partial: ["cex_perp_close", "cex_spot_sell"]
   
   results_store:
-    result_types: ["balance_sheet", "pnl_attribution", "risk_metrics", "execution_log", "leverage_tracking", "dust_tracking"]
-    balance_sheet_assets: ["ETH", "weETH", "aWeETH", "variableDebtWETH", "EIGEN", "KING"]
-    pnl_attribution_types: ["supply_yield", "staking_yield_oracle", "staking_yield_rewards", "borrow_costs", "transaction_costs"]
-    leverage_tracking: true
-    dust_tracking_tokens: ["EIGEN", "ETHFI", "KING"]
+    result_types: ["balance_sheet", "pnl_attribution", "risk_metrics", "execution_log", "delta_tracking"]
+    balance_sheet_assets: ["BTC", "USDT", "BTC_PERP"]
+    pnl_attribution_types: ["funding_pnl", "delta_pnl", "basis_pnl", "transaction_costs"]
   
   strategy_factory:
     timeout: 30
     max_retries: 3
     validation_strict: true
+
+# Event logging configuration
+event_logger:
+  log_path: "./logs"
+  log_format: "json"
+  log_level: "INFO"
+  event_categories:
+    data: ["data_loaded", "data_updated", "data_error"]
+    risk: ["risk_breach", "risk_warning", "risk_calculation"]
+    event: ["event_logged", "event_filtered", "event_exported"]
+    business: ["trade_executed", "position_updated", "strategy_decision"]
+  event_logging_settings:
+    buffer_size: 10000
+    export_format: "both"
+    async_logging: true
+    compression: false
+  log_retention_policy:
+    retention_days: 30
+    max_file_size_mb: 100
+    rotation_frequency: "daily"
+    compression_after_days: 7
+  audit_requirements:
+    audit_trail: true
+    immutable_logs: true
+    encryption: false
+    compliance_mode: "standard"
+  compliance_settings:
+    gdpr_compliant: false
+    sox_compliant: false
+    data_residency: "global"
+    encryption_required: false
+  logging_requirements:
+    structured_logging: true
+    correlation_ids: true
+    performance_metrics: true
+    error_tracking: true
+  event_filtering:
+    filter_by_level: true
+    filter_by_category: true
+    exclude_patterns: []
+    include_patterns: ["*"]

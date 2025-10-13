@@ -266,6 +266,79 @@ Get current exposure snapshot.
 **Returns**:
 - Dict: Current exposure metrics (last calculated values)
 
+### update_state(timestamp: pd.Timestamp, trigger_source: str, **kwargs) -> None
+Update component state with new timestamp.
+
+**Parameters**:
+- timestamp: Current timestamp
+- trigger_source: Source of the update trigger
+- **kwargs: Additional update parameters
+
+**Behavior**:
+- Updates internal timestamp tracking
+- Logs state update event
+- No exposure calculations performed (calculate_exposure handles calculations)
+
+
+
+## Standardized Logging Methods
+
+### log_structured_event(timestamp, event_type, level, message, component_name, data=None, correlation_id=None)
+Log a structured event with standardized format.
+
+**Parameters**:
+- `timestamp`: Event timestamp (pd.Timestamp)
+- `event_type`: Type of event (EventType enum)
+- `level`: Log level (LogLevel enum)
+- `message`: Human-readable message (str)
+- `component_name`: Name of the component logging the event (str)
+- `data`: Optional structured data dictionary (Dict[str, Any])
+- `correlation_id`: Optional correlation ID for tracing (str)
+
+**Returns**: None
+
+### log_component_event(event_type, message, data=None, level=LogLevel.INFO)
+Log a component-specific event with automatic timestamp and component name.
+
+**Parameters**:
+- `event_type`: Type of event (EventType enum)
+- `message`: Human-readable message (str)
+- `data`: Optional structured data dictionary (Dict[str, Any])
+- `level`: Log level (defaults to INFO)
+
+**Returns**: None
+
+### log_performance_metric(metric_name, value, unit, data=None)
+Log a performance metric.
+
+**Parameters**:
+- `metric_name`: Name of the metric (str)
+- `value`: Metric value (float)
+- `unit`: Unit of measurement (str)
+- `data`: Optional additional context data (Dict[str, Any])
+
+**Returns**: None
+
+### log_error(error, context=None, correlation_id=None)
+Log an error with standardized format.
+
+**Parameters**:
+- `error`: Exception object (Exception)
+- `context`: Optional context data (Dict[str, Any])
+- `correlation_id`: Optional correlation ID for tracing (str)
+
+**Returns**: None
+
+### log_warning(message, data=None, correlation_id=None)
+Log a warning with standardized format.
+
+**Parameters**:
+- `message`: Warning message (str)
+- `data`: Optional context data (Dict[str, Any])
+- `correlation_id`: Optional correlation ID for tracing (str)
+
+**Returns**: None
+
 ## Data Access Pattern
 
 ### Query Pattern
@@ -1031,6 +1104,26 @@ The Exposure Monitor provides **critical data** to Risk Monitor for liquidation 
 - **Completion**: 85% complete overall
 - **Blockers**: Backend implementation refactoring
 - **Next Steps**: Update backend to use config-driven asset tracking patterns
+
+## Public API Methods
+
+### check_component_health() -> Dict[str, Any]
+**Purpose**: Check component health status for monitoring and diagnostics.
+
+**Returns**:
+```python
+{
+    'status': 'healthy' | 'degraded' | 'unhealthy',
+    'error_count': int,
+    'execution_mode': 'backtest' | 'live',
+    'tracked_assets_count': int,
+    'exposure_calculations_count': int,
+    'last_calculation_timestamp': str,
+    'component': 'ExposureMonitor'
+}
+```
+
+**Usage**: Called by health monitoring systems to track Exposure Monitor status and performance.
 
 ## Related Documentation
 

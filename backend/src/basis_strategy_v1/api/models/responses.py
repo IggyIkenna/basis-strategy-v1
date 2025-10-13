@@ -49,7 +49,7 @@ class StandardResponse(BaseModel, Generic[T]):
                 "success": True,
                 "data": {"result": "example"},
                 "error": None,
-                "timestamp": "2024-01-01T00:00:00Z"
+                "timestamp": "2025-10-13T12:34:25Z"
             }
         }
 
@@ -80,10 +80,10 @@ class BacktestResponse(BaseModel):
     class Config:
         json_schema_extra = {
             "example": {
-                "request_id": "123e4567-e89b-12d3-a456-426614174000",
+                "request_id": "bt_20251013_123425_abc123",
                 "status": "pending",
-                "strategy_name": "usdt_pure_lending",
-                "estimated_time_seconds": 30
+                "strategy_name": "usdt_market_neutral",
+                "estimated_time_seconds": 45
             }
         }
 
@@ -105,10 +105,10 @@ class BacktestStatusResponse(BaseModel):
     class Config:
         json_schema_extra = {
             "example": {
-                "request_id": "123e4567-e89b-12d3-a456-426614174000",
-                "status": "pending",
-                "progress": 0.45,
-                "started_at": "2024-01-01T00:00:00Z",
+                "request_id": "bt_20251013_123425_abc123",
+                "status": "running",
+                "progress": 0.65,
+                "started_at": "2025-10-13T12:34:25Z",
                 "completed_at": None,
                 "error_message": None
             }
@@ -179,24 +179,26 @@ class BacktestResultResponse(BaseModel):
     class Config:
         json_schema_extra = {
             "example": {
-                "request_id": "123e4567-e89b-12d3-a456-426614174000",
-                "strategy_name": "usdt_pure_lending",
-                "start_date": "2024-01-01T00:00:00Z",
-                "end_date": "2024-01-31T00:00:00Z",
+                "request_id": "bt_20251013_123425_abc123",
+                "strategy_name": "usdt_market_neutral",
+                "start_date": "2024-05-12T00:00:00Z",
+                "end_date": "2024-09-10T23:59:59Z",
                 "initial_capital": 100000,
-                "final_value": 105000,
-                "total_return": 0.05,
-                "annualized_return": 0.65,
-                "sharpe_ratio": 2.1,
-                "max_drawdown": 0.02,
-                "total_trades": 10,
-                "winning_trades": 8,
-                "losing_trades": 2,
-                "total_fees": 150,
+                "final_value": 108500,
+                "total_return": 0.085,
+                "annualized_return": 0.28,
+                "sharpe_ratio": 1.8,
+                "max_drawdown": 0.035,
+                "total_trades": 24,
+                "winning_trades": 18,
+                "losing_trades": 6,
+                "total_fees": 320,
                 "equity_curve": None,
                 "metrics_summary": {
-                    "avg_trade_return": 0.005,
-                    "win_rate": 0.8
+                    "avg_trade_return": 0.0035,
+                    "win_rate": 0.75,
+                    "max_consecutive_wins": 5,
+                    "max_consecutive_losses": 2
                 }
             }
         }
@@ -216,23 +218,24 @@ class StrategyInfoResponse(BaseModel):
         ...,
         description="Expected return range"
     )
-    minimum_capital: Decimal
+    minimum_capital: Optional[Decimal] = None
     supported_venues: List[str]
     parameters: Dict[str, Any]
     
     class Config:
         json_schema_extra = {
             "example": {
-                "name": "usdt_pure_lending",
-                "description": "Conservative USDT lending strategy",
+                "name": "usdt_market_neutral",
+                "description": "Market-neutral USDT strategy with basis trading and lending",
                 "share_class": "USDT",
-                "risk_level": "low",
-                "expected_return": "3-5% APY",
-                "minimum_capital": 1000,
-                "supported_venues": ["AAVE", "Compound"],
+                "risk_level": "medium",
+                "expected_return": "8-15% APY",
+                "minimum_capital": 10000,
+                "supported_venues": ["AAVE", "Bybit", "Binance"],
                 "parameters": {
                     "rebalancing_enabled": True,
-                    "compound_frequency": "daily"
+                    "max_leverage": 2.0,
+                    "funding_rate_threshold": 0.01
                 }
             }
         }
@@ -249,17 +252,27 @@ class StrategyListResponse(BaseModel):
             "example": {
                 "strategies": [
                     {
-                        "name": "usdt_pure_lending",
-                        "description": "Conservative USDT lending strategy",
+                        "name": "usdt_market_neutral",
+                        "description": "Market-neutral USDT strategy with basis trading and lending",
                         "share_class": "USDT",
-                        "risk_level": "low",
-                        "expected_return": "3-5% APY",
-                        "minimum_capital": 1000,
-                        "supported_venues": ["AAVE"],
+                        "risk_level": "medium",
+                        "expected_return": "8-15% APY",
+                        "minimum_capital": 10000,
+                        "supported_venues": ["AAVE", "Bybit", "Binance"],
+                        "parameters": {}
+                    },
+                    {
+                        "name": "eth_leveraged",
+                        "description": "Leveraged ETH staking with hedging",
+                        "share_class": "ETH",
+                        "risk_level": "high",
+                        "expected_return": "12-25% APY",
+                        "minimum_capital": 5000,
+                        "supported_venues": ["EigenLayer", "Bybit"],
                         "parameters": {}
                     }
                 ],
-                "total": 1
+                "total": 2
             }
         }
 
@@ -329,7 +342,7 @@ class LiveTradingResponse(BaseModel):
     class Config:
         json_schema_extra = {
             "example": {
-                "request_id": "123e4567-e89b-12d3-a456-426614174000",
+                "request_id": "lt_20251013_123425_def456",
                 "status": "started",
                 "strategy_name": "usdt_market_neutral",
                 "share_class": "USDT",
@@ -402,12 +415,12 @@ class LiveTradingStatusResponse(BaseModel):
     class Config:
         json_schema_extra = {
             "example": {
-                "request_id": "123e4567-e89b-12d3-a456-426614174000",
+                "request_id": "lt_20251013_123425_def456",
                 "status": "running",
                 "progress": None,
-                "started_at": "2024-01-01T00:00:00Z",
+                "started_at": "2025-10-13T12:34:25Z",
                 "completed_at": None,
-                "last_heartbeat": "2024-01-01T00:05:00Z",
+                "last_heartbeat": "2025-10-13T12:39:25Z",
                 "total_trades": 15,
                 "total_pnl": 1250.50,
                 "current_drawdown": -0.025,
@@ -473,7 +486,7 @@ class LiveTradingPerformanceResponse(BaseModel):
     class Config:
         json_schema_extra = {
             "example": {
-                "request_id": "123e4567-e89b-12d3-a456-426614174000",
+                "request_id": "lt_20251013_123425_def456",
                 "initial_capital": 100000,
                 "current_value": 101250.50,
                 "total_pnl": 1250.50,
@@ -489,7 +502,7 @@ class LiveTradingPerformanceResponse(BaseModel):
                         "strategy_manager": "active"
                     }
                 },
-                "last_heartbeat": "2024-01-01T00:05:00Z"
+                "last_heartbeat": "2025-10-13T12:39:25Z"
             }
         }
 
@@ -515,12 +528,12 @@ class LiveTradingStrategiesResponse(BaseModel):
             "example": {
                 "strategies": [
                     {
-                        "request_id": "123e4567-e89b-12d3-a456-426614174000",
+                        "request_id": "lt_20251013_123425_def456",
                         "strategy_name": "usdt_market_neutral",
                         "share_class": "USDT",
                         "status": "running",
-                        "started_at": "2024-01-01T00:00:00Z",
-                        "last_heartbeat": "2024-01-01T00:05:00Z"
+                        "started_at": "2025-10-13T12:34:25Z",
+                        "last_heartbeat": "2025-10-13T12:39:25Z"
                     }
                 ],
                 "count": 1
@@ -545,7 +558,7 @@ class HealthResponse(BaseModel):
         json_schema_extra = {
             "example": {
                 "status": "healthy",
-                "timestamp": "2024-01-01T00:00:00Z",
+                "timestamp": "2025-10-13T12:34:25Z",
                 "service": "basis-strategy-v1",
                 "execution_mode": "backtest",
                 "uptime_seconds": 3600,

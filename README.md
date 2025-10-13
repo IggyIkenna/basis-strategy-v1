@@ -8,21 +8,25 @@
 - **Share Classes**: Clients invest in USDT or ETH share classes
 - **Yield Strategies**: Staking rewards + funding rate arbitrage with optional leverage
 - **Dynamic Rebalancing**: Maximum capital allocation minus withdrawal buffer
-- **Fast Withdrawals**: Buffer management for rapid client redemptions
 - **Fully Automated**: Complete web UI with monitoring and control
 
 ### **Similar To**: Ethena, but enhanced with:
 - Multiple share classes (USDT/ETH)
-- Fast withdrawal capability
 - Dynamic capital rebalancing
 - Multiple strategy modes per share class
 - Advanced cross-venue optimization
 
 ### **Development Phases**
 1. **Phase 1** (Current): Major refactor for local deployment and improved architecture
-2. **Phase 2**: 100% working, tested, deployed backtesting system
-3. **Phase 3**: E2E simulation in staging with small capital
-4. **Phase 4**: Live trading with full capital deployment
+2. **Phase 2**: 100% working, tested, deployed backtesting system for defi and basis trading
+3. **Phase 3**: E2E simulation in dev environment with no capital for defi and basis trading
+4. **Phase 4**: Integration of ML directional data provider and ML directional strategy manager into the backtesting system
+5. **Phase 5**: Integration of ML directional data provider and ML directional strategy manager into the live trading system dev environment with no capital
+6. **Phase 6**: E2E simulation in staging with small capital for defi and basis trading
+7. **Phase 7**: E2E simulation in staging environment with small capital for ML directional trading
+8. **Phase 8**: Live trading with full capital deployment for ML directional trading
+9. **Phase 9**: Live trading with full capital deployment for defi and basis trading
+
 
 ### **Quality Standards**
 - **80% minimum** unit test coverage per task
@@ -334,7 +338,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 🎯 **Mission**
 
 Build a production-ready yield generation platform with:
-- **Client-Focused**: USDT/ETH share classes with fast withdrawals
+- **Client-Focused**: USDT/ETH share classes 
 - **Multi-Strategy**: Staking, lending, funding rate arbitrage with leverage
 - **Dynamic Optimization**: Automated capital allocation and rebalancing
 - **Common Architecture**: Unified codebase for backtesting and live trading
@@ -342,7 +346,7 @@ Build a production-ready yield generation platform with:
 - **Audit-Grade**: Complete event logging, reconciliation, compliance
 - **Production Ready**: Local and Docker deployment, GCP, monitoring, automated execution
 
-**Strategy**: Ethena-style enhanced with share classes, fast withdrawals, and advanced rebalancing  
+**Strategy**: Ethena-style enhanced with share classes, and advanced rebalancing  
 **Current Focus**: Major refactor for improved architecture and local deployment  
 **Next Steps**: Complete refactor → 100% working backtesting system → Staging simulation → Live trading
 

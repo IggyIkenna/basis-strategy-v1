@@ -43,7 +43,7 @@ check_health() {
     local url="http://localhost:$BACKEND_PORT$HEALTH_ENDPOINT"
     log "Checking health at $url"
     
-    if curl -s -f "$url" >/dev/null 2>&1; then
+    if curl -s -f --connect-timeout 5 --max-time 10 "$url" >/dev/null 2>&1; then
         log "✅ Health check passed"
         return 0
     else

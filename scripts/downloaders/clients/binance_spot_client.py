@@ -13,6 +13,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 import time
+from .timestamp_utils import format_timestamp_utc
 
 # Handle both standalone and module imports
 try:
@@ -108,7 +109,7 @@ class BinanceSpotClient(BaseDownloader):
                 timestamp_ms = int(kline[0])
                 
                 record = {
-                    'timestamp': datetime.utcfromtimestamp(timestamp_ms / 1000).isoformat() + 'Z',
+                    'timestamp': format_timestamp_utc(timestamp_ms),
                     'open': float(kline[1]),
                     'high': float(kline[2]),
                     'low': float(kline[3]),

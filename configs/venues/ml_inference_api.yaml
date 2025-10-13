@@ -18,12 +18,7 @@ auth:
   type: "bearer_token"
   token_env_var: "BASIS_ML_API_TOKEN"
 
-# Request configuration
-request_config:
-  timeout_seconds: 30
-  retry_attempts: 3
-  retry_backoff_seconds: 5
-  cache_ttl_seconds: 300  # 5-min cache
+# Request configuration handled by infrastructure layer
 
 # Response validation
 validation:

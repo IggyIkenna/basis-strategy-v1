@@ -1,8 +1,8 @@
-# Web Agent Prompt for Basis Strategy Implementation Gap Build Plan
+# Web Agent Prompt for Basis Strategy Quality Gate Validation
 
 ## How to Start This Agent
 
-Copy this entire prompt into your background agent setup. This agent will autonomously execute all 92 tasks to achieve:
+Copy this entire prompt into your background agent setup. This agent will autonomously execute all 43 quality gate validation tasks to achieve:
 - 80% test coverage across critical components and strategies
 - All quality gates passing
 - Complete integration test suite
@@ -13,37 +13,39 @@ Copy this entire prompt into your background agent setup. This agent will autono
 2. Dependencies installed: `pip3 install -r requirements.txt`
 3. Quality gates baseline: `python scripts/run_quality_gates.py`
 
-**Execution Strategy:**
-- Tasks 01-03: Foundation (config, data)
-- Tasks 04-14: Architecture & core components
-- Tasks 15-18: E2E strategy tests
-- Tasks 19-23: Component unit tests
-- Tasks 24-31: Infrastructure & live mode
-- Tasks 32-35: Missing component tests
-- Tasks 36-40: Integration tests
-- Tasks 41-43: Additional E2E strategy tests
-- Tasks 44-52: API routes unit tests
-- Tasks 53-61: Core strategies unit tests
-- Tasks 62-74: Infrastructure data provider unit tests
-- Tasks 75-78: Core math unit tests
-- Tasks 79-81: Execution interfaces unit tests
-- Tasks 82-92: Zero coverage components unit tests
+**CI/CD Integration:**
+The following quality gates are integrated into the CI/CD pipeline via `platform.sh`:
+- Configuration validation (`--category configuration`)
+- Environment variable validation (`--category env_config_sync`)
+- Data validation (`test_data_files_quality_gates.py`)
+- Data provider canonical access validation (`test_data_provider_canonical_access_quality_gates_simple.py`)
+- Component communication architecture validation (`test_component_data_flow_architecture_quality_gates.py`)
 
-**Note**: Frontend tasks are excluded - frontend is a separate challenge.
+**Execution Strategy:**
+- Tasks 01-10: Foundation Quality Gates (config, data, docs, health)
+- Tasks 11-20: Component Unit Tests (core components)
+- Tasks 21-25: Architecture Validation (patterns, design)
+- Tasks 26-30: Integration Tests (data flows, reconciliation)
+- Tasks 31-35: API & Service Tests (endpoints, services)
+- Tasks 36-43: E2E Strategy Tests (all 7 strategies + performance)
+
+**Note**: All tests already exist - tasks focus on validation, not creation.
 
 The agent will execute autonomously without approval requests between tasks.
 
 ## Agent Identity
-You are an autonomous web-based background agent executing the Basis Strategy implementation gap build plan. Your mission is to systematically address all 92 tasks across 12 days, achieving 80% test coverage and all quality gates passing.
+You are an autonomous web-based background agent executing the Basis Strategy quality gate validation plan. Your mission is to systematically validate all 43 quality gate tasks across 5-6 days, achieving 80% test coverage and all quality gates passing.
 
 **CRITICAL**: You must strictly follow canonical documentation references in all tasks - DO NOT create random files unless explicitly marked as `[CREATE]` in the target structure documentation.
+
+**CANONICAL REPOSITORY STRUCTURE**: You must also strictly follow `docs/TARGET_REPOSITORY_STRUCTURE.md` without deviation. All files must be placed in their canonical locations as defined in the repository structure document. Repository structure quality gates must pass for all changes.
 
 ## Current Status
 - **Quality Gates**: 2/23 passing (8.7%) - REFACTORED STRUCTURE
 - **Implementation Gaps**: 13 components need alignment/completion (8 failing + 5 partial)
 - **Backend Status**: Infrastructure mostly complete, frontend needs production completion
 - **Target**: 80%+ unit tests (66/82 files), 70%+ integration tests, E2E tests when foundation solid
-- **Timeline**: 12 days, 92 tasks, autonomous execution
+- **Timeline**: 5-6 days, 43 quality gate validation tasks, autonomous execution
 
 ## Quality Gate Status Report (REFACTORED)
 **CRITICAL**: Quality gates have been refactored into 3-tier structure to address cascading failures:
@@ -149,186 +151,278 @@ Start with Task 01: Environment file switching & fail-fast validation.
 4. **Server management** - Use `./platform.sh backtest` to start, `./platform.sh stop-local` to stop
 5. **Error handling** - 10-minute timeout per command, max 3 retries, restart backend if needed
 6. **Target repository structure** - Strictly follow `docs/TARGET_REPOSITORY_STRUCTURE.md` - DO NOT create random files unless clearly defined in docs/
+7. **Post-refactor compliance check** - Run implementation gap quality gate after any component refactor: `python scripts/test_implementation_gap_quality_gates.py`
 
 ## Day-by-Day Execution Plan
 
-### Day 1: Foundation (Tasks 01-03) - 8 hours
+### Day 1: Foundation Quality Gates (Tasks 01-10) - 8 hours
 **Priority**: CRITICAL - Foundation must be solid
 
-1. **Task 01**: Environment file switching & fail-fast validation
-   - File: `.cursor/tasks/01_environment_file_switching.md`
-   - Reference: `docs/REFERENCE_ARCHITECTURE_CANONICAL.md` Section 6.1
-   - Quality Gate: `scripts/test_environment_switching_quality_gates.py`
-   - Success: BASIS_ENVIRONMENT switching, fail-fast validation
+1. **Task 01**: Environment & Config Loading Quality Gate
+   - File: `.cursor/tasks/01_environment_config_loading_quality_gate.md`
+   - Quality Gate: `scripts/test_config_loading_quality_gates.py`
+   - Success: Environment switching, fail-fast validation, YAML loading
 
-2. **Task 02**: Config loading & validation
-   - File: `.cursor/tasks/02_config_loading_validation.md`
-   - Reference: `docs/REFERENCE_ARCHITECTURE_CANONICAL.md` Section 6.1
-   - Quality Gate: `scripts/test_config_validation_quality_gates.py`
-   - Success: All YAML loading, Pydantic validation, fail-fast
+2. **Task 02**: Config Documentation Sync Quality Gate
+   - File: `.cursor/tasks/02_config_documentation_sync_quality_gate.md`
+   - Quality Gate: `scripts/test_config_documentation_sync_quality_gates.py`
+   - Success: Config documentation alignment, field consistency
 
-3. **Task 03**: Data loading quality gate
-   - File: `.cursor/tasks/03_data_loading_quality_gate.md`
-   - Reference: `docs/REFERENCE_ARCHITECTURE_CANONICAL.md` Section 8
-   - Quality Gate: `scripts/test_data_provider_refactor_quality_gates.py`
-   - Success: All data files validated for all modes
+3. **Task 03**: Config Usage Sync Quality Gate
+   - File: `.cursor/tasks/03_config_usage_sync_quality_gate.md`
+   - Quality Gate: `scripts/test_config_usage_sync_quality_gates.py`
+   - Success: Config usage alignment, environment variable usage
+
+4. **Task 04**: Data Validation Quality Gate
+   - File: `.cursor/tasks/04_data_validation_quality_gate.md`
+   - Quality Gate: `scripts/test_data_validation_quality_gates.py`
+   - Success: Data validation, data integrity, format validation
+
+5. **Task 05**: Data Provider Factory Quality Gate
+   - File: `.cursor/tasks/05_data_provider_factory_quality_gate.md`
+   - Quality Gate: `scripts/test_data_provider_factory_quality_gates.py`
+   - Success: Data provider factory, provider creation, registry management
+
+6. **Task 06**: Data Availability Quality Gate
+   - File: `.cursor/tasks/06_data_availability_quality_gate.md`
+   - Quality Gate: `scripts/test_data_availability_quality_gates.py`
+   - Success: Data availability, data file validation, completeness
+
+7. **Task 07**: Docs Structure Validation Quality Gate
+   - File: `.cursor/tasks/07_docs_structure_validation_quality_gate.md`
+   - Quality Gate: `scripts/test_docs_structure_validation_quality_gates.py`
+   - Success: Documentation structure, implementation gap detection
+
+8. **Task 08**: Docs Link Validation Quality Gate
+   - File: `.cursor/tasks/08_docs_link_validation_quality_gate.md`
+   - Quality Gate: `scripts/test_docs_link_validation_quality_gates.py`
+   - Success: Documentation link validation, broken link detection
+
+9. **Task 09**: Implementation Gap Validation Quality Gate
+   - File: `.cursor/tasks/09_implementation_gap_validation_quality_gate.md`
+   - Quality Gate: `scripts/test_implementation_gap_quality_gates.py`
+   - Success: Implementation gap detection, component alignment
+
+10. **Task 10**: Health & Logging Quality Gate
+    - File: `.cursor/tasks/10_health_logging_quality_gate.md`
+    - Quality Gate: `scripts/test_health_logging_quality_gates.py`
+    - Success: Health system validation, logging structure
 
 **Success Criteria**:
+- All foundation quality gates pass
 - Environment switching works (dev/staging/prod)
 - All YAML configs load with validation
 - All data files validated for all modes
+- Documentation structure and links validated
 
-### Day 2: Core Architecture (Tasks 07,10,11,06,08,09) - 12-16 hours
-**Priority**: HIGH - Fix architectural violations
+### Day 2: Component Unit Tests (Tasks 11-20) - 8 hours
+**Priority**: HIGH - Core component validation
 
-1. **Task 07**: Fix async/await violations (HIGH PRIORITY)
-   - File: `.cursor/tasks/07_fix_async_await_violations.md`
-   - Reference: `docs/REFERENCE_ARCHITECTURE_CANONICAL.md` Section 6
-   - Targets: `position_monitor.py`, `risk_monitor.py`, `strategy_manager.py`, `pnl_calculator.py`, `position_update_handler.py`
-   - Quality Gate: `scripts/test_async_ordering_quality_gates.py`
-   - Critical: Remove async from internal methods per ADR-006
+1. **Task 11**: Position Monitor Unit Quality Gate
+   - File: `.cursor/tasks/11_position_monitor_unit_quality_gate.md`
+   - Quality Gate: `tests/unit/test_position_monitor_unit.py`
+   - Success: Position monitoring, balance tracking, persistence
 
-2. **Task 10**: Reference-based architecture
-   - File: `.cursor/tasks/10_reference_based_architecture.md`
-   - Reference: `docs/REFERENCE_ARCHITECTURE_CANONICAL.md` Section 1
-   - Target: All component files
-   - Success: Store references in `__init__`, singleton per request
+2. **Task 12**: Exposure Monitor Unit Quality Gate
+   - File: `.cursor/tasks/12_exposure_monitor_unit_quality_gate.md`
+   - Quality Gate: `tests/unit/test_exposure_monitor_unit.py`
+   - Success: Exposure monitoring, asset filtering
 
-3. **Task 11**: Singleton pattern
-   - File: `.cursor/tasks/11_singleton_pattern.md`
-   - Reference: `docs/REFERENCE_ARCHITECTURE_CANONICAL.md` Section 2
-   - Target: `event_driven_strategy_engine.py`, components
-   - Success: Single instance per component per request
+3. **Task 13**: Risk Monitor Unit Quality Gate
+   - File: `.cursor/tasks/13_risk_monitor_unit_quality_gate.md`
+   - Quality Gate: `tests/unit/test_risk_monitor_unit.py`
+   - Success: Risk monitoring, risk calculations
 
-4. **Task 06**: Strategy manager refactor (HIGH PRIORITY)
-   - File: `.cursor/tasks/06_strategy_manager_refactor.md`
-   - Reference: `docs/REFERENCE_ARCHITECTURE_CANONICAL.md` Section 3
-   - Actions: DELETE `transfer_manager.py`, create BaseStrategyManager, StrategyFactory
-   - Success: 5 standardized actions, inheritance-based
+4. **Task 14**: P&L Calculator Unit Quality Gate
+   - File: `.cursor/tasks/14_pnl_calculator_unit_quality_gate.md`
+   - Quality Gate: `tests/unit/test_pnl_calculator_unit.py`
+   - Success: P&L calculation, attribution P&L
 
-5. **Task 08**: Mode-agnostic architecture (HIGH PRIORITY)
-   - File: `.cursor/tasks/08_mode_agnostic_architecture.md`
-   - Reference: `docs/REFERENCE_ARCHITECTURE_CANONICAL.md` Section 7
-   - Targets: `exposure_monitor.py`, `pnl_calculator.py`
-   - Success: Config params instead of mode checks
+5. **Task 15**: Strategy Manager Unit Quality Gate
+   - File: `.cursor/tasks/15_strategy_manager_unit_quality_gate.md`
+   - Quality Gate: `tests/unit/test_strategy_manager_unit.py`
+   - Success: Strategy management, inheritance-based architecture
 
-6. **Task 09**: Fail-fast configuration
-   - File: `.cursor/tasks/09_fail_fast_19_CONFIGURATION.md`
-   - Reference: `docs/REFERENCE_ARCHITECTURE_CANONICAL.md` Section 6.1
-   - Target: `risk_monitor.py` (62 `.get()` instances)
-   - Success: Direct config access, no defaults
+6. **Task 16**: Venue Manager Unit Quality Gate
+   - File: `.cursor/tasks/16_venue_manager_unit_quality_gate.md`
+   - Quality Gate: `tests/unit/test_venue_manager_unit.py`
+   - Success: Venue management, venue interface management
 
-**Success Criteria**:
-- All async/await violations removed from internal methods
-- Components use reference-based architecture
-- Single instance per component per request
-- Strategy manager uses inheritance-based approach
+7. **Task 17**: Event Logger Unit Quality Gate
+   - File: `.cursor/tasks/17_event_logger_unit_quality_gate.md`
+   - Quality Gate: `tests/unit/test_event_logger_unit.py`
+   - Success: Event logging functionality, formatting, error handling
 
-### Day 3: Integration (Tasks 12-14,04-05) - 12-16 hours
-**Priority**: HIGH - Component integration
+8. **Task 18**: Results Store Unit Quality Gate
+   - File: `.cursor/tasks/18_results_store_unit_quality_gate.md`
+   - Quality Gate: `tests/unit/test_results_store_unit.py`
+   - Success: Results storage, persistence
 
-1. **Task 12**: Tight loop architecture
-   - File: `.cursor/tasks/12_tight_loop_architecture.md`
-   - Targets: `position_monitor.py`, `position_update_handler.py`, `execution_manager.py`
-   - Quality Gate: `scripts/test_tight_loop_quality_gates.py`
-   - Success: Sequential chain with reconciliation handshake
+9. **Task 19**: Health System Unit Quality Gate
+   - File: `.cursor/tasks/19_health_system_unit_quality_gate.md`
+   - Quality Gate: `tests/unit/test_health_system_unit.py`
+   - Success: Health system functionality, health monitoring
 
-2. **Task 13**: Consolidate duplicate risk monitors
-   - File: `.cursor/tasks/13_consolidate_duplicate_risk_monitors.md`
-   - Action: DELETE `core/rebalancing/risk_monitor.py`
-   - Success: Single risk monitor, imports updated
-
-3. **Task 14**: Component data flow architecture
-   - File: `.cursor/tasks/14_component_data_flow_architecture.md`
-   - Target: `docs/specs/` (all component specs)
-   - Success: Parameter-based data flow documented
-
-4. **Task 04**: Complete API endpoints
-   - File: `.cursor/tasks/04_complete_api_endpoints.md`
-   - Target: `backend/src/basis_strategy_v1/api/`
-   - Quality Gate: `scripts/test_api_endpoints_quality_gates.py`
-   - Success: All strategy, backtest, results endpoints
-
-5. **Task 05**: Health & logging
-   - File: `.cursor/tasks/05_health_logging_structure.md`
-   - Target: `backend/src/basis_strategy_v1/infrastructure/health/`
-   - Quality Gate: `scripts/test_health_logging_quality_gates.py`
-   - Success: Unified health system, structured logging
+10. **Task 20**: Config Manager Unit Quality Gate
+    - File: `.cursor/tasks/20_config_manager_unit_quality_gate.md`
+    - Quality Gate: `tests/unit/test_config_manager_unit.py`
+    - Success: Config management, configuration loading
 
 **Success Criteria**:
+- All component unit tests pass
+- 80% test coverage achieved for core components
+- All components aligned with canonical specifications
+
+### Day 3: Architecture Validation (Tasks 21-25) - 6 hours
+**Priority**: HIGH - Architecture pattern validation
+
+1. **Task 21**: Reference Architecture Quality Gate
+   - File: `.cursor/tasks/21_reference_architecture_quality_gate.md`
+   - Quality Gate: `scripts/test_reference_architecture_quality_gates.py`
+   - Success: Reference architecture compliance, architectural patterns
+
+2. **Task 22**: Mode-Agnostic Design Quality Gate
+   - File: `.cursor/tasks/22_mode_agnostic_design_quality_gate.md`
+   - Quality Gate: `scripts/test_mode_agnostic_design_quality_gates.py`
+   - Success: Mode-agnostic design patterns, config-driven architecture
+
+3. **Task 23**: Singleton Pattern Quality Gate
+   - File: `.cursor/tasks/23_singleton_pattern_quality_gate.md`
+   - Quality Gate: `scripts/test_singleton_pattern_quality_gates.py`
+   - Success: Singleton pattern implementation, single instances per request
+
+4. **Task 24**: Async/Await Fixes Quality Gate
+   - File: `.cursor/tasks/24_async_await_fixes_quality_gate.md`
+   - Quality Gate: `scripts/test_async_await_fixes_quality_gates.py`
+   - Success: Async/await pattern fixes, ADR-006 compliance
+
+5. **Task 25**: Fail-Fast Configuration Quality Gate
+   - File: `.cursor/tasks/25_fail_fast_configuration_quality_gate.md`
+   - Quality Gate: `scripts/test_fail_fast_configuration_quality_gates.py`
+   - Success: Fail-fast configuration, direct config access
+
+**Success Criteria**:
+- All architecture validation quality gates pass
+- Reference architecture compliance validated
+- Mode-agnostic design patterns working
+- Singleton pattern implementation correct
+
+### Day 4: Integration Tests (Tasks 26-30) - 6 hours
+**Priority**: HIGH - Component integration validation
+
+1. **Task 26**: Data Flow Position→Exposure Quality Gate
+   - File: `.cursor/tasks/26_data_flow_position_to_exposure_quality_gate.md`
+   - Quality Gate: `tests/integration/test_data_flow_position_to_exposure.py`
+   - Success: Position→Exposure data flow, state persistence, venue aggregation
+
+2. **Task 27**: Data Flow Exposure→Risk Quality Gate
+   - File: `.cursor/tasks/27_data_flow_exposure_to_risk_quality_gate.md`
+   - Quality Gate: `tests/integration/test_data_flow_exposure_to_risk.py`
+   - Success: Exposure→Risk data flow, risk calculations
+
+3. **Task 28**: Data Flow Risk→Strategy Quality Gate
+   - File: `.cursor/tasks/28_data_flow_risk_to_strategy_quality_gate.md`
+   - Quality Gate: `tests/integration/test_data_flow_risk_to_strategy.py`
+   - Success: Risk→Strategy data flow, strategy decisions
+
+4. **Task 29**: Data Flow Strategy→Execution Quality Gate
+   - File: `.cursor/tasks/29_data_flow_strategy_to_execution_quality_gate.md`
+   - Quality Gate: `tests/integration/test_data_flow_strategy_to_execution.py`
+   - Success: Strategy→Execution data flow, execution instructions
+
+5. **Task 30**: Tight Loop Reconciliation Quality Gate
+   - File: `.cursor/tasks/30_tight_loop_reconciliation_quality_gate.md`
+   - Quality Gate: `tests/integration/test_tight_loop_reconciliation.py`
+   - Success: Tight loop reconciliation, sequential chain, reconciliation handshake
+
+**Success Criteria**:
+- All integration tests pass
+- Data flows work correctly between components
 - Tight loop reconciliation working
-- Single risk monitor (delete duplicate)
-- All API endpoints complete
-- Unified health system
+- 70%+ integration test coverage achieved
 
-### Day 4: Strategy Validation (Tasks 15-17) - 12-16 hours
-**Priority**: HIGH - E2E strategy validation
+### Day 5: API & Service Tests (Tasks 31-35) - 6 hours
+**Priority**: HIGH - API and service validation
 
-1. **Task 15**: Pure lending E2E
-   - File: `.cursor/tasks/15_pure_lending_quality_gates.md`
-   - Quality Gate: `tests/e2e/test_pure_lending_e2e.py`
-   - Success: 3-8% APY validation (not 1166%)
+1. **Task 31**: API Endpoints Quality Gate
+   - File: `.cursor/tasks/31_api_endpoints_quality_gate.md`
+   - Quality Gate: `tests/integration/test_api_endpoints_quality_gates.py`
+   - Success: API endpoints, API functionality, integration tests
 
-2. **Task 16**: BTC basis E2E
-   - File: `.cursor/tasks/16_btc_basis_quality_gates.md`
-   - Quality Gate: `tests/e2e/test_btc_basis_e2e.py`
-   - Success: Funding rate calculations, basis spread
+2. **Task 32**: Health Monitoring Quality Gate
+   - File: `.cursor/tasks/32_health_monitoring_quality_gate.md`
+   - Quality Gate: `tests/integration/test_health_monitoring_quality_gates.py`
+   - Success: Health monitoring, health system integration
 
-3. **Task 17**: ETH basis E2E
-   - File: `.cursor/tasks/17_eth_basis_quality_gates.md`
-   - Quality Gate: `tests/e2e/test_eth_basis_e2e.py`
-   - Success: ETH mechanics, LST integration
+3. **Task 33**: Backtest Service Quality Gate
+   - File: `.cursor/tasks/33_backtest_service_quality_gate.md`
+   - Quality Gate: `tests/unit/test_backtest_service_unit.py`
+   - Success: Backtest service, service layer validation
 
-**Success Criteria**:
-- Pure lending APY: 3-8% (not 1166%)
-- BTC basis funding rate calculations working
-- ETH basis LST integration working
+4. **Task 34**: Live Service Quality Gate
+   - File: `.cursor/tasks/34_live_service_quality_gate.md`
+   - Quality Gate: `tests/unit/test_live_service_unit.py`
+   - Success: Live service, live trading service
 
-### Day 5: Component Alignment & Unit Tests (Tasks 18-23) - 12-16 hours
-**Priority**: HIGH - Component alignment with specs + testing
-
-1. **Task 18**: USDT market neutral E2E
-   - File: `.cursor/tasks/18_usdt_market_neutral_quality_gates.md`
-   - Quality Gate: `tests/e2e/test_usdt_market_neutral_e2e.py`
-   - Success: Full leverage, multi-venue hedging
-
-2. **Tasks 19-23**: Component alignment & unit tests (PARALLEL)
-   - Task 19: Position Monitor Alignment - `docs/specs/01_POSITION_MONITOR.md`
-   - Task 20: Exposure Monitor Alignment - `docs/specs/02_EXPOSURE_MONITOR.md`
-   - Task 21: Risk Monitor Alignment - `docs/specs/03_RISK_MONITOR.md`
-   - Task 22: Strategy Manager Unit Tests - `docs/specs/05_STRATEGY_MANAGER.md`
-   - Task 23: P&L Calculator Alignment - `docs/specs/04_PNL_CALCULATOR.md`
-   - Success: 80% test coverage each, alignment with canonical specs
+5. **Task 35**: Repo Structure Integration Quality Gate
+   - File: `.cursor/tasks/35_repo_structure_integration_quality_gate.md`
+   - Quality Gate: `tests/integration/test_repo_structure_integration.py`
+   - Success: Repository structure validation, file organization
 
 **Success Criteria**:
-- USDT market neutral with full leverage
-- All monitoring components aligned with canonical specifications
-- 80% unit test coverage for all components
-
-### Day 6: Execution Infrastructure & Service Validation (Tasks 24-26) - 12-16 hours
-**Priority**: HIGH - Execution infrastructure and service validation
-
-1. **Task 24**: Execution components implementation
-   - File: `.cursor/tasks/30_execution_components_implementation.md`
-   - Reference: `docs/specs/06_EXECUTION_MANAGER.md`, `docs/specs/07_EXECUTION_INTERFACE_MANAGER.md`
-   - Success: Complete execution infrastructure, tight loop architecture
-
-2. **Task 25**: Service layer & engine validation
-   - File: `.cursor/tasks/26_comprehensive_quality_gates.md`
-   - Reference: `docs/specs/13_BACKTEST_SERVICE.md`, `docs/specs/14_LIVE_TRADING_SERVICE.md`
-   - Quality Gate: `scripts/run_quality_gates.py`
-   - Success: Service layer validation, request isolation compliance
-
-3. **Task 26**: Live mode quality gates
-   - File: `.cursor/tasks/25_live_mode_quality_gates.md`
-   - Quality Gate: `scripts/test_live_mode_quality_gates.py`
-   - Success: Live data provider, execution framework
-
-**Success Criteria**:
-- Execution infrastructure complete and aligned with specs
+- All API and service tests pass
+- API endpoints functionality validated
+- Health monitoring working correctly
 - Service layer validation complete
-- Live mode framework ready
-- 18/24 quality gates passing (75%)
+
+### Day 6: E2E Strategy Tests (Tasks 36-43) - 8 hours
+**Priority**: HIGH - End-to-end strategy validation
+
+1. **Task 36**: Pure Lending E2E Quality Gate
+   - File: `.cursor/tasks/36_pure_lending_e2e_quality_gate.md`
+   - Quality Gate: `tests/e2e/test_pure_lending_e2e.py`
+   - Success: Pure lending strategy execution, 3-8% APY validation
+
+2. **Task 37**: BTC Basis E2E Quality Gate
+   - File: `.cursor/tasks/37_btc_basis_e2e_quality_gate.md`
+   - Quality Gate: `tests/e2e/test_btc_basis_e2e.py`
+   - Success: BTC basis strategy execution, funding rate calculations
+
+3. **Task 38**: ETH Basis E2E Quality Gate
+   - File: `.cursor/tasks/38_eth_basis_e2e_quality_gate.md`
+   - Quality Gate: `tests/e2e/test_eth_basis_e2e.py`
+   - Success: ETH basis strategy execution, ETH mechanics, LST integration
+
+4. **Task 39**: USDT Market Neutral E2E Quality Gate
+   - File: `.cursor/tasks/39_usdt_market_neutral_e2e_quality_gate.md`
+   - Quality Gate: `tests/e2e/test_usdt_market_neutral_e2e.py`
+   - Success: USDT market neutral strategy execution, full leverage, multi-venue hedging
+
+5. **Task 40**: ETH Staking Only E2E Quality Gate
+   - File: `.cursor/tasks/40_eth_staking_only_e2e_quality_gate.md`
+   - Quality Gate: `tests/e2e/test_eth_staking_only_e2e.py`
+   - Success: ETH staking only strategy execution, staking mechanics
+
+6. **Task 41**: ETH Leveraged Staking E2E Quality Gate
+   - File: `.cursor/tasks/41_eth_leveraged_staking_e2e_quality_gate.md`
+   - Quality Gate: `tests/e2e/test_eth_leveraged_staking_e2e.py`
+   - Success: ETH leveraged staking strategy execution, leveraged staking mechanics
+
+7. **Task 42**: USDT Market Neutral No Leverage E2E Quality Gate
+   - File: `.cursor/tasks/42_usdt_market_neutral_no_leverage_e2e_quality_gate.md`
+   - Quality Gate: `tests/e2e/test_usdt_market_neutral_no_leverage_e2e.py`
+   - Success: USDT market neutral no leverage strategy execution, hedging without leverage
+
+8. **Task 43**: Performance E2E Quality Gate
+   - File: `.cursor/tasks/43_performance_e2e_quality_gate.md`
+   - Quality Gate: `tests/e2e/test_performance_e2e.py`
+   - Success: Performance validation, system performance benchmarks
+
+**Success Criteria**:
+- All E2E strategy tests pass
+- All 7 strategy modes working correctly
+- Performance benchmarks met
+- System ready for production deployment
 
 ## Canonical Documentation References
 
@@ -417,9 +511,10 @@ Start with Task 01: Environment file switching & fail-fast validation.
 
 ### After Each Task
 1. **Run Task-Specific Quality Gate**: Verify task completion
-2. **Document Results**: Record what was accomplished
-3. **Check for Regressions**: Ensure no breaking changes
-4. **Proceed to Next Task**: Continue autonomously
+2. **Run Post-Refactor Compliance Check**: If component was refactored, run `python scripts/test_implementation_gap_quality_gates.py`
+3. **Document Results**: Record what was accomplished
+4. **Check for Regressions**: Ensure no breaking changes
+5. **Proceed to Next Task**: Continue autonomously
 
 ## Key Commands
 
@@ -455,6 +550,9 @@ python scripts/run_quality_gates.py
 python scripts/test_environment_switching_quality_gates.py
 python scripts/test_async_ordering_quality_gates.py
 python scripts/run_quality_gates.py --category e2e_strategies
+
+# Post-refactor compliance check (REQUIRED after component refactors)
+python scripts/test_implementation_gap_quality_gates.py
 ```
 
 ### Testing
@@ -507,34 +605,27 @@ python scripts/analyze_test_coverage.py
 ## Success Metrics
 
 ### Daily Targets
-- **Day 1**: Environment + config + data foundation (Tasks 01-03) ✅
-- **Day 2**: Core architecture violations fixed (Tasks 04-14) ✅
-- **Day 3**: Component integration complete (Tasks 15-18) ✅
-- **Day 4**: Strategy E2E tests passing (Tasks 19-23) ✅
-- **Day 5**: Component unit tests + missing tests (Tasks 24-31, 32-35) ✅
-- **Day 6**: Integration tests + execution infrastructure (Tasks 36-40) ✅
-- **Day 7**: Additional E2E tests + final validation (Tasks 41-43) ✅
-- **Day 8**: API routes unit tests (Tasks 44-52) ✅
-- **Day 9**: Core strategies unit tests (Tasks 53-61) ✅
-- **Day 10**: Infrastructure data provider unit tests (Tasks 62-74) ✅
-- **Day 11**: Core math & execution interfaces unit tests (Tasks 75-81) ✅
-- **Day 12**: Zero coverage components unit tests (Tasks 82-92) ✅
+- **Day 1**: Foundation Quality Gates (Tasks 01-10) ✅
+- **Day 2**: Component Unit Tests (Tasks 11-20) ✅
+- **Day 3**: Architecture Validation (Tasks 21-25) ✅
+- **Day 4**: Integration Tests (Tasks 26-30) ✅
+- **Day 5**: API & Service Tests (Tasks 31-35) ✅
+- **Day 6**: E2E Strategy Tests (Tasks 36-43) ✅
 
-### Extended Coverage Targets (Tasks 44-92)
-- **Phase 2**: API Routes unit tests (Tasks 44-51) - 8 tests
-- **Phase 3**: Core Strategies unit tests (Tasks 52-60) - 9 tests  
-- **Phase 4**: Infrastructure Data unit tests (Tasks 61-73) - 13 tests
-- **Phase 5**: Core Math + Execution Interfaces (Tasks 74-80) - 7 tests
-- **Phase 6**: Zero Coverage components (Tasks 81-92) - 12 tests
-- **Final**: 80% coverage achieved (66/82 files)
+### Quality Gate Targets
+- **Foundation**: 10/10 quality gates passing (100%)
+- **Unit Tests**: 10/10 component tests passing (100%)
+- **Architecture**: 5/5 validation tests passing (100%)
+- **Integration**: 5/5 integration tests passing (100%)
+- **API & Services**: 5/5 service tests passing (100%)
+- **E2E Strategies**: 8/8 strategy tests passing (100%)
 
 ### Final Target
-- **92/92 tasks completed** (100%)
+- **43/43 quality gate validation tasks completed** (100%)
 - **All quality gates passing** (100%)
-- **All component implementation gaps addressed**
 - **80% test coverage** (66/82 backend files)
 - **All 7 strategy modes E2E working**
-- **System ready for staging deployment**
+- **System ready for production deployment**
 
 ## Autonomous Operation
 
@@ -542,7 +633,7 @@ python scripts/analyze_test_coverage.py
 - Execute tasks autonomously without stopping for approvals
 - Quality gates are the only checkpoints
 - Fix failures immediately without breaking patterns
-- Continue until all 43 tasks complete
+- Continue until all 43 quality gate validation tasks complete
 
 ### Progress Tracking
 - Log completion after each task
@@ -650,12 +741,12 @@ Before completing any task, verify:
 - Any blockers encountered
 - Estimated completion time
 
-**DO NOT STOP** until all 43 tasks are completed. Report progress after each task.
+**DO NOT STOP** until all 43 quality gate validation tasks are completed. Report progress after each task.
 
 ---
 
 ## START NOW
 
-Begin with backend startup and Task 01 execution. The system has implementation gaps that need to be addressed to achieve the 7-day build plan targets.
+Begin with backend startup and Task 01 execution. The system has quality gates that need to be validated to achieve the 6-day quality gate validation targets.
 
 **First Command**: `./platform.sh backtest`

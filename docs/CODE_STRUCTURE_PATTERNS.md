@@ -643,7 +643,7 @@ class PnLCalculator:
             if attr_type not in valid_attribution_types:
                 raise ValueError(f"Invalid attribution type: {attr_type}")
     
-    def calculate_pnl(
+    def get_current_pnl(
         self,
         current_exposure: Dict,
         previous_exposure: Optional[Dict],
@@ -944,11 +944,11 @@ class StrategyManagerFactory:
 ### **Complete Class Structure**
 
 ```python
-class ExecutionManager:
+class VenueManager:
     """Mode-agnostic execution manager using config-driven action mapping"""
     
     def __init__(self, config: Dict, data_provider: BaseDataProvider, execution_mode: str,
-                 execution_interface_manager: ExecutionInterfaceManager):
+                 execution_interface_manager: VenueInterfaceManager):
         # Store references (NEVER modified)
         self.config = config
         self.data_provider = data_provider
@@ -1030,7 +1030,7 @@ class ExecutionManager:
 ### **Complete Class Structure**
 
 ```python
-class ExecutionInterfaceManager:
+class VenueInterfaceManager:
     """Mode-agnostic execution interface manager"""
     
     def __init__(self, config: Dict, data_provider: BaseDataProvider, execution_mode: str):
@@ -1446,14 +1446,14 @@ class ComponentFactory:
         return StrategyManagerFactory.create(config, data_provider, execution_mode, exposure_monitor, risk_monitor)
     
     @staticmethod
-    def create_execution_interface_manager(config: Dict, data_provider: BaseDataProvider, execution_mode: str) -> ExecutionInterfaceManager:
+    def create_execution_interface_manager(config: Dict, data_provider: BaseDataProvider, execution_mode: str) -> VenueInterfaceManager:
         """Create Execution Interface Manager - mode-agnostic venue routing"""
         # No component config validation needed - mode-agnostic
-        return ExecutionInterfaceManager(config, data_provider, execution_mode)
+        return VenueInterfaceManager(config, data_provider, execution_mode)
     
     @staticmethod
     def create_execution_manager(config: Dict, data_provider: BaseDataProvider, execution_mode: str,
-                                 execution_interface_manager: ExecutionInterfaceManager) -> ExecutionManager:
+                                 execution_interface_manager: VenueInterfaceManager) -> ExecutionManager:
         """Create Execution Manager with config validation"""
         # Extract execution manager specific config
         exec_config = config.get('component_config', {}).get('execution_manager', {})

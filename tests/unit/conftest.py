@@ -257,7 +257,7 @@ def mock_strategy_instructions():
     """Mock strategy instructions for testing execution manager."""
     return [
         {
-            'action': 'open_position',
+            'action': 'cex_trade',
             'venue': 'binance',
             'asset': 'BTC',
             'size': 0.1,
@@ -265,10 +265,10 @@ def mock_strategy_instructions():
             'timestamp': pd.Timestamp('2024-05-12 00:00:00')
         },
         {
-            'action': 'hedge_position',
-            'venue': 'bybit',
+            'action': 'wallet_transfer',
+            'venue': 'ethereum',
             'asset': 'ETH',
-            'size': -0.5,
+            'size': 1.0,
             'order_type': 'market',
             'timestamp': pd.Timestamp('2024-05-12 00:01:00')
         }

@@ -170,7 +170,6 @@ class ConfigValidationQualityGates:
             'asset': 'USDT',
             'lst_type': None,
             'rewards_mode': 'base_only',
-            'reserve_ratio': 0.1,
             'position_deviation_threshold': 0.02,
             'margin_ratio_target': 1.0,
             'target_apy': 0.05,
@@ -204,7 +203,7 @@ class ConfigValidationQualityGates:
             'supported_strategies': ['test_mode'],
             'leverage_supported': False,
             'target_apy_range': {'min': 0.03, 'max': 0.08},
-            'max_drawdown_limit': 0.01
+            'max_drawdown': 0.01
         }
         
         with open("configs/share_classes/test_share_class.yaml", "w") as f:
@@ -274,7 +273,6 @@ class ConfigValidationQualityGates:
                 'asset': 'USDT',
                 'lst_type': None,
                 'rewards_mode': 'base_only',
-                'reserve_ratio': 0.1,
                 'position_deviation_threshold': 0.02,
                 'margin_ratio_target': 1.0,
                 'target_apy': 0.05,

@@ -251,7 +251,7 @@ class PositionUpdateHandler:
             )
             
             # Step 4: Recalculate P&L
-            updated_pnl = self.pnl_calculator.calculate_pnl(
+            updated_pnl = self.pnl_calculator.get_current_pnl(
                 current_exposure=updated_exposure,
                 previous_exposure=None,  # Will use internal state
                 timestamp=timestamp,
@@ -771,6 +771,66 @@ Behavior:
 3. Call risk_monitor.update_state(timestamp, 'full_loop')
 4. Call pnl_calculator.update_state(timestamp, 'full_loop')
 
+
+
+## Standardized Logging Methods
+
+### log_structured_event(timestamp, event_type, level, message, component_name, data=None, correlation_id=None)
+Log a structured event with standardized format.
+
+**Parameters**:
+- `timestamp`: Event timestamp (pd.Timestamp)
+- `event_type`: Type of event (EventType enum)
+- `level`: Log level (LogLevel enum)
+- `message`: Human-readable message (str)
+- `component_name`: Name of the component logging the event (str)
+- `data`: Optional structured data dictionary (Dict[str, Any])
+- `correlation_id`: Optional correlation ID for tracing (str)
+
+**Returns**: None
+
+### log_component_event(event_type, message, data=None, level=LogLevel.INFO)
+Log a component-specific event with automatic timestamp and component name.
+
+**Parameters**:
+- `event_type`: Type of event (EventType enum)
+- `message`: Human-readable message (str)
+- `data`: Optional structured data dictionary (Dict[str, Any])
+- `level`: Log level (defaults to INFO)
+
+**Returns**: None
+
+### log_performance_metric(metric_name, value, unit, data=None)
+Log a performance metric.
+
+**Parameters**:
+- `metric_name`: Name of the metric (str)
+- `value`: Metric value (float)
+- `unit`: Unit of measurement (str)
+- `data`: Optional additional context data (Dict[str, Any])
+
+**Returns**: None
+
+### log_error(error, context=None, correlation_id=None)
+Log an error with standardized format.
+
+**Parameters**:
+- `error`: Exception object (Exception)
+- `context`: Optional context data (Dict[str, Any])
+- `correlation_id`: Optional correlation ID for tracing (str)
+
+**Returns**: None
+
+### log_warning(message, data=None, correlation_id=None)
+Log a warning with standardized format.
+
+**Parameters**:
+- `message`: Warning message (str)
+- `data`: Optional context data (Dict[str, Any])
+- `correlation_id`: Optional correlation ID for tracing (str)
+
+**Returns**: None
+
 ## Data Access Pattern
 
 Components query data using shared clock:
@@ -1064,6 +1124,26 @@ class PositionUpdateHandler:
 - [Configuration Guide](19_CONFIGURATION.md) - Complete config schemas for all 7 modes
 - [Code Structure Patterns](../CODE_STRUCTURE_PATTERNS.md) - Implementation patterns
 - [Event Logger Specification](08_EVENT_LOGGER.md) - Event logging integration
+
+## Public API Methods
+
+### check_component_health() -> Dict[str, Any]
+**Purpose**: Check component health status for monitoring and diagnostics.
+
+**Returns**:
+```python
+{
+    'status': 'healthy' | 'degraded' | 'unhealthy',
+    'error_count': int,
+    'execution_mode': 'backtest' | 'live',
+    'tight_loop_active': bool,
+    'loop_executions_count': int,
+    'last_trigger_source': str,
+    'component': 'PositionUpdateHandler'
+}
+```
+
+**Usage**: Called by health monitoring systems to track Position Update Handler status and performance.
 
 ---
 

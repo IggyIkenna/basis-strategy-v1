@@ -53,24 +53,48 @@ class ConfigDrivenHistoricalDataProvider(DataProvider):
         self.validator = DataValidator(data_dir)
     
     def _validate_timestamp_alignment(self, df, data_name):
-        """Validate that a dataframe has proper timestamp alignment."""
+        """Validate that a dataframe has proper timestamp alignment based on data type."""
         if not isinstance(df, pd.DataFrame):
             return
         
         if not df.index.name == 'timestamp':
             raise ValueError(f"{data_name}: Index must be 'timestamp'")
         
-        # Check hourly alignment
-        if not all(df.index.minute == 0):
-            raise ValueError(f"{data_name}: All timestamps must be on the hour (minute=0)")
-        
-        # Check for gaps
-        if len(df) > 1:
-            time_diff = df.index[1] - df.index[0]
-            if time_diff != pd.Timedelta(hours=1):
-                logger.warning(f"{data_name}: Non-hourly time difference detected: {time_diff}")
+        # Determine expected alignment based on data name
+        if 'funding' in data_name.lower():
+            # Funding rates should be aligned to 8-hour intervals (00:00, 08:00, 16:00)
+            if not all((df.index.hour % 8 == 0) & (df.index.minute == 0) & (df.index.second == 0)):
+                raise ValueError(f"{data_name}: All timestamps must be 8-hour aligned (00:00, 08:00, 16:00)")
+            
+            # Check for 8-hour gaps
+            if len(df) > 1:
+                time_diff = df.index[1] - df.index[0]
+                if time_diff != pd.Timedelta(hours=8):
+                    logger.warning(f"{data_name}: Non-8-hour time difference detected: {time_diff}")
+                    
+        elif 'staking' in data_name.lower() or 'rewards' in data_name.lower():
+            # Staking rewards are typically daily
+            if not all((df.index.hour == 0) & (df.index.minute == 0) & (df.index.second == 0)):
+                raise ValueError(f"{data_name}: All timestamps must be daily aligned (00:00:00)")
+            
+            # Check for daily gaps
+            if len(df) > 1:
+                time_diff = df.index[1] - df.index[0]
+                if time_diff != pd.Timedelta(days=1):
+                    logger.warning(f"{data_name}: Non-daily time difference detected: {time_diff}")
+                    
+        else:
+            # Default: Check hourly alignment
+            if not all((df.index.minute == 0) & (df.index.second == 0)):
+                raise ValueError(f"{data_name}: All timestamps must be hourly aligned (minute=0, second=0)")
+            
+            # Check for hourly gaps
+            if len(df) > 1:
+                time_diff = df.index[1] - df.index[0]
+                if time_diff != pd.Timedelta(hours=1):
+                    logger.warning(f"{data_name}: Non-hourly time difference detected: {time_diff}")
     
-    def validate_data_requirements(self, data_requirements: List[str]) -> None:
+    def _validate_data_requirements(self, data_requirements: List[str]) -> None:
         """
         Validate that this provider can satisfy data requirements.
         

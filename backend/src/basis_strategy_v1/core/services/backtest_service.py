@@ -18,6 +18,8 @@ from ..event_engine.event_driven_strategy_engine import EventDrivenStrategyEngin
 from ...infrastructure.data.historical_data_provider import DataProvider
 from ..strategies.strategy_factory import StrategyFactory
 
+from ...core.logging.base_logging_interface import StandardizedLoggingMixin, LogLevel, EventType
+
 logger = logging.getLogger(__name__)
 
 # Error codes for Backtest Service
@@ -31,7 +33,7 @@ ERROR_CODES = {
 
 
 @dataclass
-class BacktestRequest:
+class BacktestRequest(StandardizedLoggingMixin):
     """Request object for backtest execution."""
     strategy_name: str
     start_date: datetime
@@ -41,8 +43,61 @@ class BacktestRequest:
     config_overrides: Dict[str, Any] = field(default_factory=dict)
     debug_mode: bool = False
     request_id: str = field(default_factory=lambda: str(uuid.uuid4()))
+    health_status: str = "healthy"
+    error_count: int = 0
     
-    def validate(self) -> List[str]:
+    def _handle_error(self, error: Exception, context: str = "") -> None:
+        """Handle errors with structured error handling."""
+        self.error_count += 1
+        error_code = f"BT_ERROR_{self.error_count:04d}"
+        
+        logger.error(f"Backtest request error {error_code}: {str(error)}", extra={
+            'error_code': error_code,
+            'context': context,
+            'request_id': self.request_id,
+            'strategy_name': self.strategy_name
+        })
+        
+        # Update health status based on error count
+        if self.error_count > 10:
+            self.health_status = "unhealthy"
+        elif self.error_count > 5:
+            self.health_status = "degraded"
+    
+    def check_component_health(self) -> Dict[str, Any]:
+        """Check component health status."""
+        return {
+            'status': self.health_status,
+            'error_count': self.error_count,
+            'request_id': self.request_id,
+            'strategy_name': self.strategy_name
+        }
+    
+    def _process_config_driven_validation(self, config: Dict[str, Any]) -> bool:
+        """Process validation based on configuration settings."""
+        try:
+            # Apply config-driven logic
+            if config.get('enable_validation', True):
+                # Validate request based on config
+                if self._validate_request_against_config(config):
+                    return True
+                else:
+                    logger.warning(f"Request validation failed against config: {self.request_id}")
+                    return False
+            else:
+                return True
+                
+        except Exception as e:
+            self._handle_error(e, f"config_driven_validation")
+            return False
+    
+    def _validate_request_against_config(self, config: Dict[str, Any]) -> bool:
+        """Validate request against configuration."""
+        # Basic validation logic
+        required_fields = config.get('required_request_fields', ['strategy_name', 'start_date', 'end_date'])
+        return all(hasattr(self, field) for field in required_fields)
+    
+    def _validate(self) -> List[str]:
         """Validate request parameters."""
         errors = []
         
@@ -61,14 +116,14 @@ class BacktestRequest:
         return errors
 
 
-class BacktestService:
+class BacktestService(StandardizedLoggingMixin):
     """Service for running backtests using the new component architecture."""
     
     def __init__(self):
         self.running_backtests: Dict[str, Dict[str, Any]] = {}
         self.completed_backtests: Dict[str, Dict[str, Any]] = {}
     
-    def create_request(self, strategy_name: str, start_date: datetime, end_date: datetime,
+    def _create_request(self, strategy_name: str, start_date: datetime, end_date: datetime,
                       initial_capital: Decimal, share_class: str, 
                       config_overrides: Dict[str, Any] = None,
                       debug_mode: bool = False) -> BacktestRequest:
@@ -299,6 +354,33 @@ class BacktestService:
                 result[key] = value
         return result
     
+    def _slice_config(self, strategy_name: str) -> Dict[str, Any]:
+        """Slice config for strategy mode (never modifies global config)."""
+        try:
+            from ...infrastructure.config.config_manager import get_config_manager
+            config_manager = get_config_manager()
+            return config_manager.get_complete_config(mode=strategy_name)
+        except Exception as e:
+            logger.error(f"Failed to slice config for strategy {strategy_name}: {e}")
+            raise ValueError(f"Config slicing failed for strategy {strategy_name}: {e}")
+    
+    def _apply_overrides(self, config_slice: Dict[str, Any], overrides: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+        """Apply overrides to config slice (never modifies global config)."""
+        if not overrides:
+            return config_slice.copy()
+        
+        # Deep copy to avoid modifying original
+        final_config = config_slice.copy()
+        
+        # Apply overrides recursively
+        for key, value in overrides.items():
+            if key in final_config and isinstance(final_config[key], dict) and isinstance(value, dict):
+                final_config[key].update(value)
+            else:
+                final_config[key] = value
+        
+        return final_config
+    
     async def _execute_backtest(self, request_id: str):
         """Execute the backtest."""
         try:
@@ -505,7 +587,7 @@ class BacktestService:
         return backtests
 
 
-class MockExecutionEngine:
+class MockExecutionEngine(StandardizedLoggingMixin):
     """Mock execution engine for backtesting."""
     
     def __init__(self):

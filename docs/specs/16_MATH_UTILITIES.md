@@ -487,7 +487,116 @@ def _health_check(self) -> Dict:
 
 ## Core Methods
 
-### Primary API Surface
+### get_liquidity_index(token: str, timestamp: pd.Timestamp) -> float
+Get liquidity index for a token at a specific timestamp using canonical pattern.
+
+### get_market_price(token: str, currency: str, timestamp: pd.Timestamp) -> float
+Get market price for token in specified currency at timestamp using canonical pattern.
+
+### convert_to_usdt(amount: float, token: str, timestamp: pd.Timestamp) -> float
+Convert token amount to USDT equivalent.
+
+### convert_from_liquidity_index(amount: float, token: str, timestamp: pd.Timestamp) -> float
+Convert from liquidity index (e.g., aUSDT to USDT).
+
+### convert_to_share_class(amount: float, token: str, share_class: str, timestamp: pd.Timestamp) -> float
+Convert token amount to share class currency equivalent.
+
+### get_share_class_from_mode(mode: str) -> str
+Get share class currency from mode configuration.
+
+### get_asset_from_mode(mode: str) -> str
+Get asset from mode configuration.
+
+### get_lst_type_from_mode(mode: str) -> Optional[str]
+Get LST type from mode configuration.
+
+### get_hedge_allocation_from_mode(mode: str) -> Optional[float]
+Get hedge allocation from mode configuration.
+
+### calculate_total_usdt_balance(balances: Dict[str, float], timestamp: pd.Timestamp) -> float
+Calculate total USDT equivalent balance from all token balances.
+
+### calculate_total_share_class_balance(balances: Dict[str, float], share_class: str, timestamp: pd.Timestamp) -> float
+Calculate total share class equivalent balance from all token balances.
+
+### get_venue_configs_from_mode(mode: str) -> Dict[str, Any]
+Get venue configurations from mode configuration.
+
+### get_data_requirements_from_mode(mode: str) -> Dict[str, Any]
+Get data requirements from mode configuration.
+
+### is_token_liquidity_index(token: str) -> bool
+Check if a token is a liquidity index token (e.g., aUSDT, aETH).
+
+### get_underlying_token_from_liquidity_index(liquidity_index_token: str) -> str
+Get underlying token from liquidity index token.
+
+### calculate_total_positions(positions: Dict[str, float], timestamp: pd.Timestamp) -> Dict[str, float]
+Calculate total positions from all position data.
+
+### calculate_total_exposures(positions: Dict[str, float], timestamp: pd.Timestamp) -> Dict[str, float]
+Calculate total exposures from all position data.
+
+## Standardized Logging Methods
+
+### log_structured_event(timestamp, event_type, level, message, component_name, data=None, correlation_id=None)
+Log a structured event with standardized format.
+
+**Parameters**:
+- `timestamp`: Event timestamp (pd.Timestamp)
+- `event_type`: Type of event (EventType enum)
+- `level`: Log level (LogLevel enum)
+- `message`: Human-readable message (str)
+- `component_name`: Name of the component logging the event (str)
+- `data`: Optional structured data dictionary (Dict[str, Any])
+- `correlation_id`: Optional correlation ID for tracing (str)
+
+**Returns**: None
+
+### log_component_event(event_type, message, data=None, level=LogLevel.INFO)
+Log a component-specific event with automatic timestamp and component name.
+
+**Parameters**:
+- `event_type`: Type of event (EventType enum)
+- `message`: Human-readable message (str)
+- `data`: Optional structured data dictionary (Dict[str, Any])
+- `level`: Log level (defaults to INFO)
+
+**Returns**: None
+
+### log_performance_metric(metric_name, value, unit, data=None)
+Log a performance metric.
+
+**Parameters**:
+- `metric_name`: Name of the metric (str)
+- `value`: Metric value (float)
+- `unit`: Unit of measurement (str)
+- `data`: Optional additional context data (Dict[str, Any])
+
+**Returns**: None
+
+### log_error(error, context=None, correlation_id=None)
+Log an error with standardized format.
+
+**Parameters**:
+- `error`: Exception object (Exception)
+- `context`: Optional context data (Dict[str, Any])
+- `correlation_id`: Optional correlation ID for tracing (str)
+
+**Returns**: None
+
+### log_warning(message, data=None, correlation_id=None)
+Log a warning with standardized format.
+
+**Parameters**:
+- `message`: Warning message (str)
+- `data`: Optional context data (Dict[str, Any])
+- `correlation_id`: Optional correlation ID for tracing (str)
+
+**Returns**: None
+
+## Primary API Surface
 ```python
 def calculate_yield(self, principal: float, rate: float, time: float) -> float:
     """Calculate yield based on principal, rate, and time."""
@@ -1443,6 +1552,24 @@ Following [Quality Gate Validation](QUALITY_GATES.md) <!-- Redirected from 17_qu
 - [Configuration Guide](19_CONFIGURATION.md) - Complete config schemas for all 7 modes
 - [Code Structure Patterns](../CODE_STRUCTURE_PATTERNS.md) - Implementation patterns
 - [Event Logger Specification](08_EVENT_LOGGER.md) - Event logging integration
+
+## Public API Methods
+
+### check_component_health() -> Dict[str, Any]
+**Purpose**: Check component health status for monitoring and diagnostics.
+
+**Returns**:
+```python
+{
+    'status': 'healthy' | 'degraded' | 'unhealthy',
+    'error_count': int,
+    'execution_mode': 'backtest' | 'live',
+    'calculation_functions_count': int,
+    'component': 'MathUtilities'
+}
+```
+
+**Usage**: Called by health monitoring systems to track Math Utilities status and performance.
 
 ---
 

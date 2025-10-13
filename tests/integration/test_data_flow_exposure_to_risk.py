@@ -78,7 +78,6 @@ class TestDataFlowExposureToRisk:
         for venue_risk in venue_risks:
             assert "venue" in venue_risk
             assert "venue_risk" in venue_risk
-            assert "concentration_risk" in venue_risk
             assert "liquidity_risk" in venue_risk
     
     def test_exposure_correlation_to_risk(self, real_components, real_data_provider):

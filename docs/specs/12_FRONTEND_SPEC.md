@@ -419,7 +419,67 @@ Provide web-based user interface for monitoring and controlling the Basis Strate
 
 ## Core Methods
 
-### Primary API Surface
+#
+
+## Standardized Logging Methods
+
+### log_structured_event(timestamp, event_type, level, message, component_name, data=None, correlation_id=None)
+Log a structured event with standardized format.
+
+**Parameters**:
+- `timestamp`: Event timestamp (pd.Timestamp)
+- `event_type`: Type of event (EventType enum)
+- `level`: Log level (LogLevel enum)
+- `message`: Human-readable message (str)
+- `component_name`: Name of the component logging the event (str)
+- `data`: Optional structured data dictionary (Dict[str, Any])
+- `correlation_id`: Optional correlation ID for tracing (str)
+
+**Returns**: None
+
+### log_component_event(event_type, message, data=None, level=LogLevel.INFO)
+Log a component-specific event with automatic timestamp and component name.
+
+**Parameters**:
+- `event_type`: Type of event (EventType enum)
+- `message`: Human-readable message (str)
+- `data`: Optional structured data dictionary (Dict[str, Any])
+- `level`: Log level (defaults to INFO)
+
+**Returns**: None
+
+### log_performance_metric(metric_name, value, unit, data=None)
+Log a performance metric.
+
+**Parameters**:
+- `metric_name`: Name of the metric (str)
+- `value`: Metric value (float)
+- `unit`: Unit of measurement (str)
+- `data`: Optional additional context data (Dict[str, Any])
+
+**Returns**: None
+
+### log_error(error, context=None, correlation_id=None)
+Log an error with standardized format.
+
+**Parameters**:
+- `error`: Exception object (Exception)
+- `context`: Optional context data (Dict[str, Any])
+- `correlation_id`: Optional correlation ID for tracing (str)
+
+**Returns**: None
+
+### log_warning(message, data=None, correlation_id=None)
+Log a warning with standardized format.
+
+**Parameters**:
+- `message`: Warning message (str)
+- `data`: Optional context data (Dict[str, Any])
+- `correlation_id`: Optional correlation ID for tracing (str)
+
+**Returns**: None
+
+## Primary API Surface
 ```python
 def render_dashboard(self, data: Dict) -> str:
     """Render main dashboard with real-time data."""

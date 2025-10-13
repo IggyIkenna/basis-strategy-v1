@@ -49,7 +49,7 @@ class MLDirectionalDataProvider(BaseDataProvider):
         
         logger.info(f"MLDirectionalDataProvider initialized for {execution_mode} mode (asset: {self.asset})")
     
-    def validate_data_requirements(self, data_requirements: List[str]) -> None:
+    def _validate_data_requirements(self, data_requirements: List[str]) -> None:
         """
         Validate that this provider can satisfy all data requirements.
         

@@ -11,7 +11,74 @@ This document contains the full details of all architectural decisions made for 
 
 ---
 
-## ADR-001: Tight Loop Architecture Redefinition
+## ADR-001: Position Monitor Live Integration Architecture
+
+**Date**: December 2024  
+**Status**: Accepted  
+**Context**: Position Monitor currently only simulates positions in backtest mode. Live trading requires real position data from venue APIs.
+
+**Decision**: Extend Execution Interface Factory to create position monitoring interfaces rather than creating a separate Position Interface Factory.
+
+**Rationale**:
+- Same credentials (API keys, endpoints) as execution interfaces
+- Same venues (from `configs/modes/*.yaml`) as execution
+- Same architecture (venue-specific interfaces, error handling, retry logic)
+- Maintains canonical factory pattern consistency
+- Avoids credential management duplication
+- Follows DRY principles
+
+**Consequences**:
+- **Positive**: Execution Interface Factory becomes more comprehensive
+- **Positive**: Position Monitor initialization depends on Execution Interface Factory
+- **Positive**: Initialization order in Event Driven Strategy Engine needs reordering
+- **Positive**: Backtest mode maintains simulation for code symmetry
+- **Negative**: Execution Interface Factory becomes more complex
+- **Negative**: Position Monitor initialization order changes
+
+**Implementation**:
+- Execution Interface Factory creates both execution and position monitoring interfaces
+- Uses same credentials and venue configuration
+- Handles both backtest (simulation) and live (real API) modes
+- Position Monitor depends on Execution Interface Factory
+- Execution Interface Factory must be initialized before Position Monitor
+
+**References**: REFERENCE_ARCHITECTURE_CANONICAL.md section 7, docs/specs/01_POSITION_MONITOR.md, docs/specs/07B_EXECUTION_INTERFACES.md
+
+## ADR-041: Canonical Repository Structure Compliance
+
+**Date**: October 13, 2025  
+**Status**: Accepted  
+**Context**: Repository structure quality gates and implementation gap detection require strict adherence to canonical repository structure to ensure consistency and maintainability.
+
+**Decision**: All development work must strictly follow the canonical repository structure defined in `docs/TARGET_REPOSITORY_STRUCTURE.md` without deviation.
+
+**Rationale**:
+- Repository structure quality gates validate against canonical structure
+- Implementation gap detection relies on predictable file locations
+- Venue adapter consistency requires all venues to have corresponding adapters
+- Documentation references must point to existing, canonical documents
+- Quality gates fail when structure deviates from canonical specification
+- Maintains architectural consistency across all components
+
+**Consequences**:
+- **Positive**: Quality gates pass consistently
+- **Positive**: Implementation gap detection works reliably
+- **Positive**: Venue adapter consistency is enforced
+- **Positive**: Documentation references are always valid
+- **Positive**: Repository structure remains predictable and maintainable
+- **Negative**: Developers must check canonical structure before making changes
+- **Negative**: New components must be added to canonical structure first
+
+**Implementation**:
+- All new files must be added to `docs/TARGET_REPOSITORY_STRUCTURE.md` expected structure
+- All venue configs must have corresponding venue adapters
+- All documentation references must point to existing documents
+- Repository structure quality gate must pass before any changes are considered complete
+- Implementation gap quality gate must pass before any changes are considered complete
+
+**References**: docs/TARGET_REPOSITORY_STRUCTURE.md, tests/integration/test_repo_structure_integration.py, scripts/test_implementation_gap_quality_gates.py
+
+## ADR-002: Tight Loop Architecture Redefinition
 
 **Date**: 2025-01-06  
 **Status**: Accepted  
@@ -39,7 +106,7 @@ This document contains the full details of all architectural decisions made for 
 
 **References**: 11_POSITION_UPDATE_HANDLER.md, 10_RECONCILIATION_COMPONENT.md
 
-## ADR-002: Redis Removal
+## ADR-003: Redis Removal
 
 **Date**: 2025-01-06  
 **Status**: Accepted  
@@ -61,7 +128,7 @@ This document contains the full details of all architectural decisions made for 
 - Remove Redis configuration and environment variables
 - Update health checks to not depend on Redis
 
-## ADR-003: Reference-Based Architecture
+## ADR-004: Reference-Based Architecture
 
 **Date**: 2025-01-06  
 **Status**: Accepted  
@@ -86,7 +153,7 @@ This document contains the full details of all architectural decisions made for 
 
 **References**: REFERENCE_ARCHITECTURE_CANONICAL.md section I.2
 
-## ADR-004: Shared Clock Pattern
+## ADR-005: Shared Clock Pattern
 
 **Date**: 2025-01-06  
 **Status**: Accepted  
@@ -889,12 +956,9 @@ class DataLoader:
    - Next loop iteration checks for optimal position
 2. **Position-triggered** (Priority 2): Deviation from target exceeds `position_deviation_threshold`
    - Checked after risk is within safe levels
-   - Uses reserve balance vs `reserve_ratio` to decide if unwinding needed
 
-**Fast vs Slow Withdrawals**:
-- Fast: Uses reserve balance (no unwinding needed)
-- Slow: Requires unwinding positions (flash loan for leveraged modes)
-- Decision based on: `reserve_balance / total_equity < reserve_ratio`
+**Withdrawal Processing**:
+- For now only complex: Requires unwinding positions (flash loan for leveraged modes)
 
 **No Complex Transfer Manager**:
 - Removed per strategy_manager_refactor.md
@@ -957,7 +1021,6 @@ total_value = (
 - Venue configs match strategy mode venue requirements
 - Warning thresholds < critical thresholds
 - Position deviation threshold < 1.0
-- Reserve ratio reasonable (0.05 - 0.2 range)
 
 **Implementation**: config_validator.py with comprehensive validation functions
 

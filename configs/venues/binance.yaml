@@ -2,7 +2,14 @@
 venue: "binance"
 type: "cex"
 
-# REMOVED: trading_fees - not needed in config, handled by execution engine
+# Trading parameters
+trading_fees:
+  maker: 0.001  # 0.1% maker fee
+  taker: 0.001  # 0.1% taker fee
+
+# Trade size limits
+min_trade_size_usd: 10
+max_trade_size_usd: 1000000  # $1M max per trade
 
 # Basic limits
 max_leverage: 125

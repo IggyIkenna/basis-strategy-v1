@@ -115,7 +115,7 @@ def validate_environment_credentials() -> bool:
     return True
 
 def _get_required_venues_from_config() -> List[str]:
-    """Extract required venues from configuration."""
+    """Extract required venues from configuration (private method)."""
     venues = []
     
     # Get venues from strategy mode configuration
@@ -128,7 +128,7 @@ def _get_required_venues_from_config() -> List[str]:
     return list(set(venues))
 
 def _validate_venue_credentials(venue: str, credential_prefix: str) -> None:
-    """Validate credentials for a specific venue."""
+    """Validate credentials for a specific venue (private method)."""
     if venue == 'binance':
         required_creds = [
             f'{credential_prefix}CEX__BINANCE_SPOT_API_KEY',
@@ -265,6 +265,7 @@ except ValueError as e:
 - **asset**: str - Primary asset name
 - **execution_mode**: 'backtest' | 'live' (from strategy mode slice)
 - **log_level**: 'DEBUG' | 'INFO' | 'WARNING' | 'ERROR' (from strategy mode slice)
+- **initial_capital**: float - Starting capital amount for the strategy
 
 ### Config-Driven Architecture Fields
 - **data_requirements**: List[str] - Data types required by this mode
@@ -277,6 +278,138 @@ except ValueError as e:
   - **strategy_manager**: Strategy behavior configuration
   - **execution_manager**: Execution action configuration
   - **results_store**: Results storage configuration
+
+### ML-Specific Configuration Fields
+- **ml_config**: Dict - Machine learning model configuration
+  - **model_registry**: str - ML model registry (e.g., 'mlflow')
+  - **model_name**: str - Model name (e.g., 'btc_5min_strategy', 'usdt_5min_strategy')
+  - **model_version**: str - Model version (e.g., 'production')
+  - **candle_interval**: str - Candle interval for ML predictions (e.g., '5min')
+  - **signal_threshold**: float - Confidence threshold for trading signals (0.0-1.0)
+  - **max_position_size**: float - Maximum position size as fraction of equity (0.0-1.0)
+  - **Usage**: Used in ML directional strategies for model inference and signal generation
+  - **Required**: Yes for ML strategies (ml_btc_directional, ml_usdt_directional)
+  - **Used in**: `ml_directional_data_provider.py`, ML strategy components
+
+### Strategy-Specific Configuration Fields
+- **delta_tolerance**: float - Delta neutrality tolerance (0.0-1.0)
+  - **Usage**: Maximum allowed gross exposure deviation for delta neutrality
+  - **Default**: 0.005 (0.5%) for basis trading, 1.0 (100%) for directional strategies
+  - **Used in**: Risk monitoring and position management
+- **stake_allocation_eth**: float - ETH stake allocation percentage (0.0-1.0)
+  - **Usage**: Percentage of capital allocated to ETH staking vs margin trading
+  - **Used in**: Market neutral strategies for capital allocation
+- **funding_threshold**: float - Funding rate threshold for basis trading
+  - **Usage**: Minimum funding rate differential to trigger basis trades
+  - **Used in**: Basis trading strategies for trade signal generation
+- **max_ltv**: float - Maximum loan-to-value ratio (0.0-1.0)
+  - **Usage**: Maximum LTV for borrowing positions
+  - **Used in**: Risk monitoring and position sizing
+- **leverage_enabled**: bool - Whether leverage is enabled for this mode
+  - **Usage**: Controls leverage availability in strategy execution
+  - **Used in**: Strategy execution and risk management
+- **hedge_venues**: List[str] - List of venues used for hedging
+  - **Usage**: Defines which venues are used for hedging positions
+  - **Examples**: ["binance", "bybit", "okx"]
+  - **Used in**: Hedging execution and venue selection
+- **hedge_allocation_bybit**: float - Allocation percentage to Bybit for hedging
+  - **Usage**: Defines percentage of hedge allocation to Bybit
+  - **Used in**: Hedge allocation and execution planning
+- **position_deviation_threshold**: float - Position deviation threshold (0.0-1.0)
+  - **Usage**: Threshold for triggering position rebalancing
+  - **Used in**: Position monitoring and rebalancing logic
+- **rewards_mode**: str - Rewards collection mode
+  - **Usage**: Defines how rewards are collected and distributed
+  - **Examples**: "base_only", "eigen_rewards", "staking_rewards"
+  - **Used in**: Rewards calculation and distribution
+
+### Share Class Configuration Fields
+- **share_class**: str - Share class name ('USDT' | 'ETH')
+- **type**: str - Share class type ('stable' | 'directional')
+- **base_currency**: str - Base currency ('USDT' | 'ETH')
+- **description**: str - Share class description
+- **decimal_places**: int - Decimal places for precision (0-18)
+- **risk_level**: str - Risk level ('low', 'medium', 'high')
+- **market_neutral**: bool - Whether market neutral strategies are supported
+- **allows_hedging**: bool - Whether hedging is allowed
+- **supported_strategies**: List[str] - List of supported strategy modes
+- **leverage_supported**: bool - Whether leverage is supported
+- **staking_supported**: bool - Whether staking is supported
+- **basis_trading_supported**: bool - Whether basis trading is supported
+- **max_leverage**: Optional[float] - Maximum leverage allowed (1.0+)
+- **target_apy_range**: Optional[Dict[str, float]] - Target APY range (min/max)
+- **max_drawdown**: Optional[float] - Maximum drawdown limit (0.0-1.0)
+  - **Usage**: Used in share class configuration for risk management and strategy selection
+  - **Required**: Core fields required, optional fields for advanced configuration
+  - **Used in**: Share class validation, strategy selection, risk management
+
+### Venue Configuration Fields
+- **venues**: Dict[str, Dict] - Venue configuration mapping
+  - **Usage**: Defines trading venues and their specific configuration
+  - **Required**: Yes for all modes that use venues
+  - **Used in**: Venue interface creation, execution management, credential routing
+- **venues.{venue_name}.venue_type**: str - Venue type ('cex', 'defi', 'infrastructure')
+  - **Usage**: Determines venue interface type and behavior
+  - **Examples**: 'cex' for centralized exchanges, 'defi' for DeFi protocols, 'infrastructure' for blockchain infrastructure
+  - **Used in**: Venue interface factory, execution routing
+- **venues.{venue_name}.enabled**: bool - Whether venue is enabled for this mode
+  - **Usage**: Controls venue availability in strategy execution
+  - **Default**: true
+  - **Used in**: Venue filtering, execution planning
+- **venues.{venue_name}.instruments**: List[str] - Trading instruments available on venue
+  - **Usage**: Defines what can be traded on this venue
+  - **Examples**: ["BTC-SPOT", "BTC-PERP"], ["ETH-STAKE", "WEETH-UNSTAKE"], ["WALLET-TRANSFER"]
+  - **Used in**: Instrument validation, execution routing
+- **venues.{venue_name}.order_types**: List[str] - Supported order types on venue
+  - **Usage**: Defines available order execution methods
+  - **Examples**: ["market", "limit"], ["stake", "unstake"], ["borrow", "repay", "supply", "withdraw"]
+  - **Used in**: Order execution, venue interface configuration
+
+### Specific Venue Configuration Fields
+- **venues.aave_v3**: Dict - AAVE V3 DeFi protocol configuration
+- **venues.aave_v3.venue_type**: str - Venue type ('defi')
+- **venues.aave_v3.enabled**: bool - Whether AAVE V3 is enabled
+- **venues.aave_v3.instruments**: List[str] - Available instruments (e.g., ["USDT-LENDING", "USDT-BORROWING"])
+- **venues.aave_v3.order_types**: List[str] - Supported order types (e.g., ["supply", "withdraw", "borrow", "repay"])
+
+- **venues.alchemy**: Dict - Alchemy blockchain infrastructure configuration
+- **venues.alchemy.venue_type**: str - Venue type ('infrastructure')
+- **venues.alchemy.enabled**: bool - Whether Alchemy is enabled
+- **venues.alchemy.instruments**: List[str] - Available instruments (e.g., ["WALLET-TRANSFER"])
+- **venues.alchemy.order_types**: List[str] - Supported order types (e.g., ["transfer"])
+
+- **venues.binance**: Dict - Binance CEX configuration
+- **venues.binance.venue_type**: str - Venue type ('cex')
+- **venues.binance.enabled**: bool - Whether Binance is enabled
+- **venues.binance.instruments**: List[str] - Available instruments (e.g., ["BTC-SPOT", "BTC-PERP"])
+- **venues.binance.order_types**: List[str] - Supported order types (e.g., ["market", "limit"])
+
+- **venues.bybit**: Dict - Bybit CEX configuration
+- **venues.bybit.venue_type**: str - Venue type ('cex')
+- **venues.bybit.enabled**: bool - Whether Bybit is enabled
+- **venues.bybit.instruments**: List[str] - Available instruments (e.g., ["BTC-PERP"])
+- **venues.bybit.order_types**: List[str] - Supported order types (e.g., ["market", "limit"])
+
+- **venues.etherfi**: Dict - EtherFi staking protocol configuration
+- **venues.etherfi.venue_type**: str - Venue type ('defi')
+- **venues.etherfi.enabled**: bool - Whether EtherFi is enabled
+- **venues.etherfi.instruments**: List[str] - Available instruments (e.g., ["ETH-STAKE", "WEETH-UNSTAKE"])
+- **venues.etherfi.order_types**: List[str] - Supported order types (e.g., ["stake", "unstake"])
+
+- **venues.okx**: Dict - OKX CEX configuration
+- **venues.okx.venue_type**: str - Venue type ('cex')
+- **venues.okx.enabled**: bool - Whether OKX is enabled
+- **venues.okx.instruments**: List[str] - Available instruments (e.g., ["BTC-PERP"])
+- **venues.okx.order_types**: List[str] - Supported order types (e.g., ["market", "limit"])
+- **venues.{venue_name}.min_amount**: Optional[float] - Minimum trade amount for venue
+  - **Usage**: Enforces minimum trade size limits
+  - **Used in**: Trade size validation, execution filtering
+- **venues.{venue_name}.max_leverage**: Optional[float] - Maximum leverage available on venue
+  - **Usage**: Defines leverage limits for venue
+  - **Used in**: Risk management, position sizing
+  - **Usage**: Used in venue configuration for execution routing and risk management
+  - **Required**: Core venue fields required, optional fields for advanced configuration
+  - **Used in**: Venue interface creation, execution management, risk monitoring
 
 ### Component Config Fields Used in Code
 - `exposure_monitor`: Dict - Exposure monitor configuration
@@ -294,19 +427,118 @@ except ValueError as e:
   - **Required**: Yes
   - **Used in**: `pnl_calculator.py:178`
 
+### Event Logger Configuration Fields
+- **event_logger**: Dict - Event logging configuration
+  - **Usage**: Configures event logging behavior and output format
+  - **Required**: Yes for all modes
+  - **Used in**: Event logging, audit trails, debugging
+- **event_logger.log_path**: str - Path to log files
+  - **Usage**: Directory where log files are stored
+  - **Default**: "./logs"
+  - **Used in**: Log file management
+- **event_logger.log_format**: str - Log format ('json', 'text')
+  - **Usage**: Format for log output
+  - **Default**: "json"
+  - **Used in**: Log parsing and analysis
+- **event_logger.log_level**: str - Logging level ('DEBUG', 'INFO', 'WARNING', 'ERROR')
+  - **Usage**: Minimum log level to record
+  - **Default**: "INFO"
+  - **Used in**: Log filtering
+- **event_logger.event_categories**: Dict[str, List[str]] - Event categories and types
+  - **Usage**: Defines event categorization for filtering and analysis
+  - **Examples**: {"data": ["data_loaded", "data_updated"], "risk": ["risk_breach", "risk_warning"]}
+  - **Used in**: Event filtering, categorization
+- **event_logger.event_logging_settings**: Dict - Event logging behavior settings
+  - **Usage**: Controls event logging behavior
+  - **Used in**: Event processing, buffering
+- **event_logger.log_retention_policy**: Dict - Log retention and rotation settings
+  - **Usage**: Manages log file lifecycle
+  - **Used in**: Log file management, cleanup
+- **event_logger.audit_requirements**: Dict - Audit trail requirements
+  - **Usage**: Configures audit trail behavior
+  - **Used in**: Compliance, auditing
+- **event_logger.compliance_settings**: Dict - Compliance-related settings
+  - **Usage**: Configures compliance behavior
+  - **Used in**: Regulatory compliance
+- **event_logger.logging_requirements**: Dict - Logging feature requirements
+  - **Usage**: Enables/disables specific logging features
+  - **Used in**: Feature toggling
+- **event_logger.event_filtering**: Dict - Event filtering configuration
+  - **Usage**: Configures event filtering behavior
+  - **Used in**: Event processing
+
+### Component Configuration Fields
+- **component_config.strategy_manager.position_calculation.target_position**: str - Target position type
+  - **Usage**: Defines the primary position type for strategy execution
+  - **Examples**: "btc_spot_long", "eth_stake_long"
+  - **Used in**: Strategy position calculation and execution
+- **component_config.strategy_manager.position_calculation.hedge_position**: str - Hedge position type
+  - **Usage**: Defines the hedge position type for risk management
+  - **Examples**: "btc_perp_short", "eth_perp_short"
+  - **Used in**: Risk management and hedging execution
+- **component_config.strategy_manager.position_calculation.method**: str - Position calculation method
+  - **Usage**: Defines how positions are calculated
+  - **Examples**: "delta_neutral", "directional"
+  - **Used in**: Position sizing and risk calculation
+- **component_config.strategy_manager.position_calculation.leverage_ratio**: float - Leverage ratio for positions
+  - **Usage**: Defines leverage multiplier for position sizing
+  - **Used in**: Position sizing and risk management
+- **component_config.execution_manager.action_mapping.entry_full**: List[str] - Actions for full entry
+  - **Usage**: Defines sequence of actions for full position entry
+  - **Examples**: ["cex_spot_buy", "cex_perp_short"]
+  - **Used in**: Execution planning and order sequencing
+- **component_config.execution_manager.action_mapping.exit_full**: List[str] - Actions for full exit
+  - **Usage**: Defines sequence of actions for full position exit
+  - **Examples**: ["cex_perp_close", "cex_spot_sell"]
+  - **Used in**: Execution planning and order sequencing
+- **component_config.risk_monitor.risk_limits.liquidation_threshold**: float - Liquidation threshold
+  - **Usage**: Defines liquidation threshold for risk monitoring
+  - **Used in**: Risk monitoring and position management
+- **component_config.risk_monitor.risk_limits.target_margin_ratio**: float - Target margin ratio
+  - **Usage**: Defines target margin ratio for CEX positions
+  - **Used in**: Risk monitoring and position management
+- **component_config.risk_monitor.risk_limits.delta_tolerance**: float - Delta tolerance threshold
+  - **Usage**: Defines maximum allowed delta deviation
+  - **Used in**: Risk monitoring and delta neutrality
+- **component_config.risk_monitor.risk_limits.maintenance_margin_requirement**: float - Maintenance margin requirement
+  - **Usage**: Defines minimum margin requirement for positions
+  - **Used in**: Risk monitoring and margin management
+- **component_config.exposure_monitor.conversion_methods**: Dict[str, str] - Asset conversion methods
+  - **Usage**: Defines how assets are converted to USD for exposure calculation
+  - **Examples**: {"BTC": "usd_price", "BTC_PERP": "perp_mark_price"}
+  - **Used in**: Exposure monitoring and risk calculation
+- **component_config.pnl_calculator.attribution_types**: List[str] - PnL attribution types
+  - **Usage**: Defines types of PnL attribution to track
+  - **Examples**: ["funding_pnl", "delta_pnl", "basis_pnl", "transaction_costs"]
+  - **Used in**: PnL calculation and reporting
+- **component_config.strategy_manager.strategy_type**: str - Strategy type identifier
+  - **Usage**: Defines the specific strategy type being executed
+  - **Examples**: "btc_basis", "eth_leveraged", "pure_lending"
+  - **Used in**: Strategy routing and behavior selection
+- **component_config.strategy_manager.actions**: List[str] - Available strategy actions
+  - **Usage**: Defines actions available to the strategy
+  - **Examples**: ["entry_full", "entry_partial", "exit_partial", "exit_full"]
+  - **Used in**: Strategy execution and action planning
+- **component_config.strategy_manager.rebalancing_triggers**: List[str] - Rebalancing trigger conditions
+  - **Usage**: Defines conditions that trigger position rebalancing
+  - **Examples**: ["deposit", "withdrawal", "delta_drift"]
+  - **Used in**: Strategy rebalancing logic
+- **component_config.strategy_factory.timeout**: int - Strategy factory timeout
+  - **Usage**: Defines timeout for strategy factory operations
+  - **Used in**: Strategy initialization and error handling
+- **component_config.results_store.balance_sheet_assets**: List[str] - Assets tracked in balance sheet
+  - **Usage**: Defines which assets are tracked in balance sheet
+  - **Examples**: ["BTC", "USDT", "ETH", "BTC_PERP"]
+  - **Used in**: Results storage and balance sheet generation
+
 - `data_dir`: str - Directory path for data storage
   - **Usage**: Used in `data_provider_factory.py:62` and `risk_monitor.py:86` for data file paths
   - **Required**: Yes
   - **Used in**: `data_provider_factory.py:62`, `risk_monitor.py:86`
 
 ### Component-Specific Config
-- **config_settings**: Dict (configuration-specific settings)
   - **validation_strict**: Strict validation mode
-  - **cache_size**: Configuration cache size
-  - **reload_interval**: Configuration reload interval
-- **system_settings**: Dict (system-specific settings)
   - **environment**: System environment
-  - **deployment_mode**: Deployment mode
 
 ## Config-Driven Architecture
 
@@ -347,35 +579,70 @@ component_config:
     risk_limits:
       aave_health_factor_min: 1.1
       cex_margin_ratio_min: 0.2
-  exposure_monitor:
-    exposure_currency: "USDT"
-    track_assets: ["BTC", "USDT", "ETH"]
-    conversion_methods:
-      BTC: "usd_price"
-      USDT: "direct"
-      ETH: "usd_price"
-  pnl_calculator:
-    attribution_types: ["supply_yield", "funding_pnl", "delta_pnl", "transaction_costs"]
-    reporting_currency: "USDT"
-    reconciliation_tolerance: 0.02
-  strategy_manager:
-    strategy_type: "mode_name"
-    actions: ["entry_full", "exit_full"]
-    rebalancing_triggers: ["deposit", "withdrawal"]
-  execution_manager:
-    supported_actions: ["aave_supply", "aave_withdraw"]
-    action_mapping:
-      entry_full: ["aave_supply"]
-      exit_full: ["aave_withdraw"]
-  results_store:
-    result_types: ["balance_sheet", "pnl_attribution", "risk_metrics", "execution_log"]
-    balance_sheet_assets: ["USDT", "aUSDT"]
-    pnl_attribution_types: ["supply_yield", "transaction_costs"]
-  strategy_factory:
-    timeout: 30
-    max_retries: 3
-    validation_strict: true
 ```
+
+### Field Documentation Standards
+
+**Purpose**: Standards for documenting configuration fields to ensure 100% quality gate alignment
+
+#### Required Fields
+All required fields (non-Optional in Pydantic models) MUST be documented with:
+- **Field name**: Bold field name with type
+- **Description**: Clear description of purpose and usage
+- **Example**: Concrete example value when helpful
+
+#### Nested Object Fields  
+Document all required levels: `component_config.strategy_manager.position_calculation`
+
+**Example**:
+```markdown
+**component_config.strategy_manager.position_calculation**: Dict[str, Any]
+- Position calculation configuration for strategy manager
+- Contains target_position, hedge_position, and hedge_allocation settings
+```
+
+#### Fixed Schema Dictionary Fields
+Document all nested fields for fixed schema dicts (api_contract, auth, ml_config, component_config):
+
+**Example**:
+```markdown
+**ml_config.model_registry**: str
+- ML model registry type (e.g., "mlflow", "s3")
+
+**ml_config.model_name**: str  
+- Model name for inference (e.g., "btc_5min_strategy")
+
+**ml_config.candle_interval**: str
+- Candle interval for model predictions (e.g., "5min")
+```
+
+#### Dynamic Dictionary Fields
+Document parent field once with structure example for truly dynamic dicts:
+
+**Example**:
+```markdown
+**component_config.strategy_manager.position_calculation.hedge_allocation**: Dict[str, float]
+- Dynamic dictionary mapping venue names to allocation percentages
+- Keys are venue names from hedge_venues list
+- Values must sum to 1.0
+- Example: `{"binance": 0.4, "bybit": 0.3, "okx": 0.3}`
+```
+
+#### List Fields
+Document field type and structure, not specific data values:
+
+**Example**:
+```markdown
+**data_requirements**: List[str]
+- List of data types required for this strategy mode
+- Example: ["btc_prices", "btc_futures", "funding_rates"]
+
+**instruments**: List[str]  
+- List of trading instruments for this venue
+- Example: ["BTC-SPOT", "BTC-PERP"]
+```
+
+#### Field Classification
 
 ### DataProvider Abstraction Layer
 
@@ -632,7 +899,7 @@ class PnLCalculator:
         # Store initial value for balance-based PnL
         self.initial_total_value = None
     
-    def calculate_pnl(self, current_exposure: Dict, previous_exposure: Optional[Dict], timestamp: pd.Timestamp, period_start: pd.Timestamp) -> Dict:
+    def get_current_pnl(self, current_exposure: Dict, previous_exposure: Optional[Dict], timestamp: pd.Timestamp, period_start: pd.Timestamp) -> Dict:
         """Calculate PnL using config-driven attribution system"""
         
         # Set initial value if first calculation
@@ -741,7 +1008,6 @@ enable_market_impact: true | false             # Enable market impact modeling
 # ============================================================================
 lst_type: "weeth" | "wsteth" | null           # LST type (if staking_enabled)
 rewards_mode: "base_only" | "base_eigen" | "base_eigen_seasonal"  # Reward calculation mode
-reserve_ratio: 0.0-1.0                        # Reserve ratio for fast withdrawals
 position_deviation_threshold: 0.0-1.0         # Min deviation to trigger rebalancing (default 0.02 = 2%)
 
 # ============================================================================
@@ -848,7 +1114,6 @@ enable_market_impact: true
 # ASSET CONFIGURATION
 lst_type: null                                # No staking
 rewards_mode: "base_only"                     # No special rewards
-reserve_ratio: 0.1                            # 10% reserve for fast withdrawals
 position_deviation_threshold: 0.02            # 2% deviation triggers rebalancing
 
 # HEDGING CONFIGURATION (Not applicable - market neutral by nature)
@@ -944,7 +1209,6 @@ enable_market_impact: true
 # ASSET CONFIGURATION
 lst_type: null                                # No staking
 rewards_mode: "base_only"                     # No special rewards
-reserve_ratio: 0.1                            # 10% reserve for fast withdrawals
 position_deviation_threshold: 0.02            # 2% deviation triggers rebalancing
 
 # HEDGING CONFIGURATION
@@ -1050,7 +1314,6 @@ enable_market_impact: true
 # ASSET CONFIGURATION
 lst_type: "weeth"                             # EtherFi weETH
 rewards_mode: "base_eigen"                    # Base staking + EIGEN rewards
-reserve_ratio: 0.1                            # 10% reserve for fast withdrawals
 position_deviation_threshold: 0.02            # 2% deviation triggers rebalancing
 
 # HEDGING CONFIGURATION (Not applicable - directional strategy)
@@ -1164,7 +1427,6 @@ enable_market_impact: true
 # ASSET CONFIGURATION
 lst_type: "weeth"                             # EtherFi weETH
 rewards_mode: "base_eigen"                    # Base staking + EIGEN rewards
-reserve_ratio: 0.1                            # 10% reserve for fast withdrawals
 position_deviation_threshold: 0.02            # 2% deviation triggers rebalancing
 
 # HEDGING CONFIGURATION (Not applicable - directional strategy)
@@ -1264,7 +1526,6 @@ enable_market_impact: true
 # ASSET CONFIGURATION
 lst_type: null                                # No staking
 rewards_mode: "base_only"                     # No special rewards
-reserve_ratio: 0.1                            # 10% reserve for fast withdrawals
 position_deviation_threshold: 0.02            # 2% deviation triggers rebalancing
 
 # HEDGING CONFIGURATION
@@ -1369,7 +1630,6 @@ enable_market_impact: true
 # ASSET CONFIGURATION
 lst_type: "weeth"                             # EtherFi weETH
 rewards_mode: "base_eigen_seasonal"           # Base + EIGEN + seasonal rewards
-reserve_ratio: 0.1                            # 10% reserve for fast withdrawals
 position_deviation_threshold: 0.02            # 2% deviation triggers rebalancing
 stake_allocation_eth: 0.5                     # 50% to staking, 50% to hedge margin
 
@@ -1484,7 +1744,6 @@ enable_market_impact: true
 # ASSET CONFIGURATION
 lst_type: "weeth"                             # EtherFi weETH
 rewards_mode: "base_eigen_seasonal"           # Base + EIGEN + seasonal rewards
-reserve_ratio: 0.1                            # 10% reserve for fast withdrawals
 position_deviation_threshold: 0.02            # 2% deviation triggers rebalancing
 stake_allocation_eth: 0.5                     # 50% to leveraged staking, 50% to hedge margin
 
@@ -1752,7 +2011,7 @@ class PnLCalculator:
         self.attribution_types = config['component_config']['pnl_calculator']['attribution_types']
         self.reporting_currency = config['component_config']['pnl_calculator']['reporting_currency']
     
-    def calculate_pnl(self, current_exposure: Dict, previous_exposure: Dict) -> Dict:
+    def get_current_pnl(self, current_exposure: Dict, previous_exposure: Dict) -> Dict:
         attributions = {}
         
         # Only calculate enabled attribution types
@@ -2345,7 +2604,7 @@ config = {
 }
 
 pnl_calculator = PnLCalculator(config, data_provider, 'backtest')
-pnl_data = pnl_calculator.calculate_pnl(current_exposure, previous_exposure, timestamp, period_start)
+pnl_data = pnl_calculator.get_current_pnl(current_exposure, previous_exposure, timestamp, period_start)
 # Returns: {
 #     'attribution': {
 #         'supply_yield': 45.23,
@@ -2368,7 +2627,7 @@ config = {
 }
 
 pnl_calculator = PnLCalculator(config, data_provider, 'backtest')
-pnl_data = pnl_calculator.calculate_pnl(current_exposure, previous_exposure, timestamp, period_start)
+pnl_data = pnl_calculator.get_current_pnl(current_exposure, previous_exposure, timestamp, period_start)
 # Returns: {
 #     'attribution': {
 #         'supply_yield': 125.34,
@@ -2595,7 +2854,6 @@ class ModeConfigModel(BaseModel):
     # Asset configuration
     lst_type: Optional[LSTType] = Field(None, description="LST type")
     rewards_mode: RewardsMode = Field(..., description="Rewards calculation mode")
-    reserve_ratio: float = Field(..., ge=0, le=1, description="Reserve ratio")
     position_deviation_threshold: float = Field(..., ge=0, le=1, description="Position deviation threshold")
     stake_allocation_eth: Optional[float] = Field(None, ge=0, le=1, description="Stake allocation (USDT MN modes)")
     
@@ -2687,8 +2945,8 @@ class ConfigValidator:
         return errors
     
     @staticmethod
-    def _validate_business_logic(config: Dict) -> List[str]:
-        """Validate business logic constraints"""
+def _validate_business_logic(config: Dict) -> List[str]:
+    """Validate business logic constraints (private method)"""
         errors = []
         
         # Validate share_class vs asset consistency
@@ -3322,11 +3580,6 @@ All Configuration errors use the `CFG` prefix.
 **Source**: `backend/src/basis_strategy_v1/core/error_codes/error_code_registry.py`
 
 All error codes registered with:
-- **code**: Unique error code
-- **component**: Component name
-- **severity**: CRITICAL | HIGH | MEDIUM | LOW
-- **message**: Human-readable error message
-- **resolution**: How to resolve
 
 ### Component Error Codes
 
@@ -3421,7 +3674,7 @@ def __init__(self, ..., health_manager: UnifiedHealthManager):
     )
 
 def _health_check(self) -> Dict:
-    """Component-specific health check."""
+    """Component-specific health check (private method)."""
     return {
         'status': 'healthy' | 'degraded' | 'unhealthy',
         'last_update': self.last_validation_timestamp,
@@ -3438,15 +3691,72 @@ def _health_check(self) -> Dict:
 ```
 
 #### Health Status Definitions
-- **healthy**: No errors in last 100 updates, processing time < threshold
-- **degraded**: Minor errors, slower processing, retries succeeding
-- **unhealthy**: Critical errors, failed retries, unable to process
 
 **Reference**: `docs/specs/17_HEALTH_ERROR_SYSTEMS.md`
 
 ## Core Methods
 
-### Primary API Surface
+#
+
+## Standardized Logging Methods
+
+### log_structured_event(timestamp, event_type, level, message, component_name, data=None, correlation_id=None)
+Log a structured event with standardized format.
+
+**Parameters**:
+- `timestamp`: Event timestamp (pd.Timestamp)
+- `event_type`: Type of event (EventType enum)
+- `level`: Log level (LogLevel enum)
+- `message`: Human-readable message (str)
+- `component_name`: Name of the component logging the event (str)
+- `data`: Optional structured data dictionary (Dict[str, Any])
+- `correlation_id`: Optional correlation ID for tracing (str)
+
+**Returns**: None
+
+### log_component_event(event_type, message, data=None, level=LogLevel.INFO)
+Log a component-specific event with automatic timestamp and component name.
+
+**Parameters**:
+- `event_type`: Type of event (EventType enum)
+- `message`: Human-readable message (str)
+- `data`: Optional structured data dictionary (Dict[str, Any])
+- `level`: Log level (defaults to INFO)
+
+**Returns**: None
+
+### log_performance_metric(metric_name, value, unit, data=None)
+Log a performance metric.
+
+**Parameters**:
+- `metric_name`: Name of the metric (str)
+- `value`: Metric value (float)
+- `unit`: Unit of measurement (str)
+- `data`: Optional additional context data (Dict[str, Any])
+
+**Returns**: None
+
+### log_error(error, context=None, correlation_id=None)
+Log an error with standardized format.
+
+**Parameters**:
+- `error`: Exception object (Exception)
+- `context`: Optional context data (Dict[str, Any])
+- `correlation_id`: Optional correlation ID for tracing (str)
+
+**Returns**: None
+
+### log_warning(message, data=None, correlation_id=None)
+Log a warning with standardized format.
+
+**Parameters**:
+- `message`: Warning message (str)
+- `data`: Optional context data (Dict[str, Any])
+- `correlation_id`: Optional correlation ID for tracing (str)
+
+**Returns**: None
+
+## Primary API Surface
 ```python
 def load_config(self, config_path: str) -> Dict:
     """Load configuration from YAML files with config-driven architecture."""
@@ -4481,6 +4791,225 @@ env | grep BASIS_
 - **Completion**: 95% complete overall
 - **Blockers**: None
 - **Next Steps**: None - component is production ready
+
+## Public API Methods
+
+### get_complete_config() -> Dict[str, Any]
+**Purpose**: Get the complete configuration dictionary.
+
+**Returns**: Dictionary containing all configuration data
+
+**Usage**: Called by other components to retrieve complete configuration.
+
+### load_scenario_config(scenario_name: str) -> Dict[str, Any]
+**Purpose**: Load configuration for a specific scenario.
+
+**Parameters**:
+- `scenario_name`: Name of the scenario to load (str)
+
+**Returns**: Dictionary containing scenario configuration
+
+**Usage**: Called by scenario management components to load scenario-specific configurations.
+
+### get_settings() -> Dict[str, Any]
+**Purpose**: Get current system settings.
+
+**Returns**: Dictionary containing system settings
+
+**Usage**: Called by components to retrieve current system settings.
+
+### get_environment() -> str
+**Purpose**: Get current environment name.
+
+**Returns**: Current environment name (str)
+
+**Usage**: Called by components to determine current environment.
+
+### get_mode_config(mode_name: str) -> Dict[str, Any]
+**Purpose**: Get configuration for a specific mode.
+
+**Parameters**:
+- `mode_name`: Name of the mode (str)
+
+**Returns**: Dictionary containing mode configuration
+
+**Usage**: Called by mode-specific components to retrieve mode configurations.
+
+### get_data(timestamp: pd.Timestamp) -> Dict[str, Any]
+**Purpose**: Get data using canonical data access pattern.
+
+**Parameters**:
+- `timestamp`: Current timestamp
+
+**Returns**: Dictionary containing configuration data
+
+**Usage**: Called by other components to retrieve configuration data.
+
+### get_execution_mode() -> str
+**Purpose**: Get current execution mode.
+
+**Returns**: Current execution mode (str)
+
+**Usage**: Called by components to determine execution mode.
+
+### get_data_directory() -> str
+**Purpose**: Get the data directory path.
+
+**Returns**: Data directory path (str)
+
+**Usage**: Called by data components to get data directory location.
+
+### get_results_directory() -> str
+**Purpose**: Get the results directory path.
+
+**Returns**: Results directory path (str)
+
+**Usage**: Called by results components to get results directory location.
+
+### get_available_strategies() -> List[str]
+**Purpose**: Get list of available strategies.
+
+**Returns**: List of available strategy names
+
+**Usage**: Called by strategy management components to discover available strategies.
+
+### get_config_manager() -> Any
+**Purpose**: Get the configuration manager instance.
+
+**Returns**: Configuration manager instance
+
+**Usage**: Called by components to get configuration manager reference.
+
+### validate_strategy_name(strategy_name: str) -> bool
+**Purpose**: Validate if a strategy name is valid.
+
+**Parameters**:
+- `strategy_name`: Name of the strategy to validate (str)
+
+**Returns**: True if strategy name is valid, False otherwise
+
+**Usage**: Called by strategy components to validate strategy names.
+
+### strategy_exists(strategy_name: str) -> bool
+**Purpose**: Check if a strategy exists.
+
+**Parameters**:
+- `strategy_name`: Name of the strategy to check (str)
+
+**Returns**: True if strategy exists, False otherwise
+
+**Usage**: Called by strategy components to check strategy existence.
+
+### check_component_health() -> Dict[str, Any]
+**Purpose**: Check component health status for monitoring and diagnostics.
+
+**Returns**:
+```python
+{
+    'status': 'healthy' | 'degraded' | 'unhealthy',
+    'error_count': int,
+    'execution_mode': 'backtest' | 'live',
+    'config_cache_size': int,
+    'component': 'ConfigManager'
+}
+```
+
+**Usage**: Called by health monitoring systems to track Configuration Manager status and performance.
+
+### get_data_date_range() -> Dict[str, Any]
+**Purpose**: Get the date range for data operations.
+
+**Returns**: Dictionary containing date range information
+
+**Usage**: Called by data components to get data date range.
+
+### is_healthy() -> bool
+**Purpose**: Check if the configuration system is healthy.
+
+**Returns**: True if healthy, False otherwise
+
+**Usage**: Called by health monitoring systems to check configuration system health.
+
+### get_venue_config(venue_name: str) -> Dict[str, Any]
+**Purpose**: Get configuration for a specific venue.
+
+**Parameters**:
+- `venue_name`: Name of the venue (str)
+
+**Returns**: Dictionary containing venue configuration
+
+**Usage**: Called by venue components to retrieve venue configurations.
+
+### load_mode_config(mode_name: str) -> Dict[str, Any]
+**Purpose**: Load configuration for a specific mode.
+
+**Parameters**:
+- `mode_name`: Name of the mode (str)
+
+**Returns**: Dictionary containing mode configuration
+
+**Usage**: Called by mode components to load mode configurations.
+
+### load_share_class_config(share_class_name: str) -> Dict[str, Any]
+**Purpose**: Load configuration for a specific share class.
+
+**Parameters**:
+- `share_class_name`: Name of the share class (str)
+
+**Returns**: Dictionary containing share class configuration
+
+**Usage**: Called by share class components to load share class configurations.
+
+### get_strategy_file_path(strategy_name: str) -> str
+**Purpose**: Get the file path for a specific strategy.
+
+**Parameters**:
+- `strategy_name`: Name of the strategy (str)
+
+**Returns**: File path for the strategy (str)
+
+**Usage**: Called by strategy components to get strategy file paths.
+
+### create_component(component_type: str, config: Dict[str, Any]) -> Any
+**Purpose**: Create a component instance with configuration.
+
+**Parameters**:
+- `component_type`: Type of component to create (str)
+- `config`: Configuration for the component (Dict[str, Any])
+
+**Returns**: Created component instance
+
+**Usage**: Called by component factory to create configured component instances.
+
+### load_venue_config(venue_name: str) -> Dict[str, Any]
+**Purpose**: Load configuration for a specific venue.
+
+**Parameters**:
+- `venue_name`: Name of the venue (str)
+
+**Returns**: Dictionary containing venue configuration
+
+**Usage**: Called by venue components to load venue configurations.
+
+### get_share_class_config(share_class_name: str) -> Dict[str, Any]
+**Purpose**: Get configuration for a specific share class.
+
+**Parameters**:
+- `share_class_name`: Name of the share class (str)
+
+**Returns**: Dictionary containing share class configuration
+
+**Usage**: Called by share class components to retrieve share class configurations.
+
+### load_strategy_config(strategy_name: str) -> Dict[str, Any]
+**Purpose**: Load configuration for a specific strategy.
+
+**Parameters**:
+- `strategy_name`: Name of the strategy (str)
+
+**Returns**: Dictionary containing strategy configuration
+
+**Usage**: Called by strategy components to load strategy configurations.
 
 ---
 

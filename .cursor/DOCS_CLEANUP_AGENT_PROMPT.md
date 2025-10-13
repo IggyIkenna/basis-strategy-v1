@@ -67,7 +67,14 @@ Copy and paste this prompt when setting up your web-based background agent for d
 - Check that referenced sections actually exist
 - Update outdated references
 
-### 4. Logical Consistency (Priority 4)
+### 4. Canonical Repository Structure Compliance (Priority 4)
+- **CRITICAL**: Strictly follow `docs/TARGET_REPOSITORY_STRUCTURE.md` without deviation
+- All documentation references must point to existing, canonical documents
+- Repository structure quality gates must pass for all changes
+- Implementation gap detection relies on predictable file locations
+- Venue adapter consistency requires all venues to have corresponding adapters
+
+### 5. Logical Consistency (Priority 5)
 - Identify contradictions between different documentation files
 - Detect semantic inconsistencies across docs
 - Generate comprehensive inconsistency reports

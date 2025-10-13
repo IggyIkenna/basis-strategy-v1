@@ -19,15 +19,16 @@ class TestPnLCalculatorUnit:
     def test_unrealized_pnl_calculation(self, mock_config, mock_data_provider, mock_utility_manager):
         """Test unrealized P&L calculation."""
         # Arrange
-        mock_config['share_class'] = 'USDT'
-        mock_config['initial_capital'] = 100000.0
+        test_config = mock_config.copy()
+        test_config['share_class'] = 'USDT'
+        test_config['initial_capital'] = 100000.0
         
         # Mock position data
         current_value = 105000.0  # 5% gain
         initial_value = 100000.0
         
         pnl_calculator = PnLCalculator(
-            config=mock_config,
+            config=test_config,
             share_class='USDT',
             initial_capital=100000.0,
             data_provider=mock_data_provider,

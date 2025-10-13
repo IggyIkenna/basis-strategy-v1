@@ -41,7 +41,7 @@
 - `position_monitor.py:239` - `async def update()` should be synchronous
 - `risk_monitor.py:485,498,598,666,721,742,781,846,887,932,972,1033,1037,1057,1229,1338,1472,1485` - Multiple async internal methods
 - `strategy_manager.py:492,1061,1085,1160,1219,1271,1298,1311,1343` - Multiple async internal methods
-- `pnl_calculator.py:194` - `async def calculate_pnl()` should be synchronous
+- `pnl_calculator.py:194` - `async def get_current_pnl()` should be synchronous
 - `position_update_handler.py:105,194,240` - Multiple async internal methods
 
 **Canonical Source**:
@@ -271,7 +271,7 @@
    - `position_monitor.py:239` - Make update() synchronous
    - `risk_monitor.py` - Remove async from 18 internal methods
    - `strategy_manager.py` - Remove async from 9 internal methods
-   - `pnl_calculator.py:194` - Make calculate_pnl() synchronous
+   - `pnl_calculator.py:194` - Make get_current_pnl() synchronous
    - `position_update_handler.py` - Remove async from 3 internal methods
 
 2. **Complete Strategy Manager Refactor** - Remove transfer_manager.py, implement inheritance-based architecture

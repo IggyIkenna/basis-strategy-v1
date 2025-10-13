@@ -1757,6 +1757,134 @@ Following [Quality Gate Validation](QUALITY_GATES.md) <!-- Redirected from 17_qu
 
 **Status**: Live Trading Service is complete and fully operational! 🎉
 
+
+
+## Standardized Logging Methods
+
+### log_structured_event(timestamp, event_type, level, message, component_name, data=None, correlation_id=None)
+Log a structured event with standardized format.
+
+**Parameters**:
+- `timestamp`: Event timestamp (pd.Timestamp)
+- `event_type`: Type of event (EventType enum)
+- `level`: Log level (LogLevel enum)
+- `message`: Human-readable message (str)
+- `component_name`: Name of the component logging the event (str)
+- `data`: Optional structured data dictionary (Dict[str, Any])
+- `correlation_id`: Optional correlation ID for tracing (str)
+
+**Returns**: None
+
+### log_component_event(event_type, message, data=None, level=LogLevel.INFO)
+Log a component-specific event with automatic timestamp and component name.
+
+**Parameters**:
+- `event_type`: Type of event (EventType enum)
+- `message`: Human-readable message (str)
+- `data`: Optional structured data dictionary (Dict[str, Any])
+- `level`: Log level (defaults to INFO)
+
+**Returns**: None
+
+### log_performance_metric(metric_name, value, unit, data=None)
+Log a performance metric.
+
+**Parameters**:
+- `metric_name`: Name of the metric (str)
+- `value`: Metric value (float)
+- `unit`: Unit of measurement (str)
+- `data`: Optional additional context data (Dict[str, Any])
+
+**Returns**: None
+
+### log_error(error, context=None, correlation_id=None)
+Log an error with standardized format.
+
+**Parameters**:
+- `error`: Exception object (Exception)
+- `context`: Optional context data (Dict[str, Any])
+- `correlation_id`: Optional correlation ID for tracing (str)
+
+**Returns**: None
+
+### log_warning(message, data=None, correlation_id=None)
+Log a warning with standardized format.
+
+**Parameters**:
+- `message`: Warning message (str)
+- `data`: Optional context data (Dict[str, Any])
+- `correlation_id`: Optional correlation ID for tracing (str)
+
+**Returns**: None
+
+## Public API Methods
+
+### check_component_health() -> Dict[str, Any]
+**Purpose**: Check component health status for monitoring and diagnostics.
+
+**Returns**:
+```python
+{
+    'status': 'healthy' | 'degraded' | 'unhealthy',
+    'error_count': int,
+    'execution_mode': 'live',
+    'active_strategies_count': int,
+    'completed_trades_count': int,
+    'component': 'LiveTradingService'
+}
+```
+
+**Usage**: Called by health monitoring systems to track Live Trading Service status and performance.
+
+### check_risk_limits() -> Dict[str, Any]
+**Purpose**: Check current risk limits and exposure levels.
+
+**Returns**: Dictionary containing risk limit status and current exposure levels
+
+**Usage**: Called by external systems to monitor risk compliance during live trading.
+
+### emergency_stop() -> Dict[str, Any]
+**Purpose**: Immediately stop all live trading activities.
+
+**Returns**: Dictionary containing emergency stop status and details
+
+**Usage**: Called by external systems to halt all trading operations in emergency situations.
+
+### get_status() -> Dict[str, Any]
+**Purpose**: Get current status of the live trading service.
+
+**Returns**: Dictionary containing service status information
+
+**Usage**: Called by external systems to check service status and health.
+
+### get_all_running_strategies() -> List[Dict[str, Any]]
+**Purpose**: Get list of all currently running strategies.
+
+**Returns**: List of dictionaries containing strategy information
+
+**Usage**: Called by external systems to monitor active strategies.
+
+### get_performance_metrics() -> Dict[str, Any]
+**Purpose**: Get performance metrics for live trading.
+
+**Returns**: Dictionary containing performance metrics and statistics
+
+**Usage**: Called by external systems to retrieve trading performance data.
+
+### check_emergency_stop_loss() -> Dict[str, Any]
+**Purpose**: Check if emergency stop loss conditions are met.
+
+**Returns**: Dictionary containing emergency stop loss status
+
+**Usage**: Called by external systems to monitor stop loss conditions.
+
+### health_check() -> Dict[str, Any]
+**Purpose**: Perform comprehensive health check of the live trading service.
+
+**Returns**: Dictionary containing detailed health status information
+
+**Usage**: Called by external systems to perform comprehensive health monitoring.
+
 ## Related Documentation
 
 ### Component Specifications

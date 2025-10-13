@@ -83,7 +83,6 @@ export BASIS_ENVIRONMENT=staging
 A **live and backtesting framework** for multi-strategy yield generation with:
 - 7 strategy modes (pure lending, BTC basis, ETH basis, ETH staking, ETH leveraged, USDT market-neutral variants)
 - Share classes (USDT stable, ETH directional)
-- Fast withdrawals with dynamic buffers
 - Fully automated with web UI
 
 ### **7 Strategy Modes**
@@ -209,8 +208,8 @@ curl -X POST "http://localhost:8001/api/v1/backtest/" \
     "strategy_name": "pure_lending",
     "share_class": "USDT",
     "initial_capital": 100000,
-    "start_date": "2024-01-01T00:00:00Z",
-    "end_date": "2024-01-31T00:00:00Z"
+    "start_date": "2024-05-12T00:00:00Z",
+    "end_date": "2024-09-10T23:59:59Z"
   }'
 ```
 
@@ -221,7 +220,7 @@ curl -X POST "http://localhost:8001/api/v1/backtest/" \
 3. **Choose Strategy**: Click "USDT Pure Lending" (simplest!)
 4. **Configure**:
    - Initial Capital: $100,000
-   - Period: 2024-01-01 to 2024-01-31
+   - Period: 2024-05-12 to 2024-09-10
 5. **Review**: Check summary, see estimated APY (4-6%)
 6. **Submit**: Click "Run Backtest"
 

@@ -677,7 +677,7 @@ class StrategyManager:
 
 for execution
 
-class ExecutionManager:
+class VenueManager:
     """Mode-agnostic execution manager using config-driven action mapping"""
     
     def __init__(self, config: Dict, data_provider: DataProvider, execution_mode: str):

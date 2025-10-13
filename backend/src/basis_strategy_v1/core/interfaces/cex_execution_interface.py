@@ -67,6 +67,8 @@ import ccxt
 
 from .base_execution_interface import BaseExecutionInterface
 
+from ...core.logging.base_logging_interface import StandardizedLoggingMixin, LogLevel, EventType
+
 logger = logging.getLogger(__name__)
 
 # Create dedicated CEX execution interface logger
@@ -676,3 +678,227 @@ class CEXExecutionInterface(BaseExecutionInterface):
         except Exception as e:
             logger.error(f"Failed to execute CEX transfer on {venue}: {e}")
             raise
+    
+    async def execute_borrow(self, instruction: Dict[str, Any], market_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Execute borrow action on OnChain protocol.
+        Note: CEX interfaces don't support borrowing, this is for interface compliance.
+        
+        Args:
+            instruction: Borrow instruction dictionary
+            market_data: Current market data snapshot
+            
+        Returns:
+            Borrow execution result dictionary
+        """
+        logger.warning("CEX Interface: Borrow operation not supported on CEX venues")
+        return {
+            'status': 'not_supported',
+            'message': 'Borrow operations are not supported on CEX venues',
+            'instruction': instruction,
+            'venue': instruction.get('venue', 'unknown')
+        }
+    
+    async def execute_spot_trade(self, instruction: Dict[str, Any], market_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Execute spot trade on CEX.
+        
+        Args:
+            instruction: Spot trade instruction dictionary
+            market_data: Current market data snapshot
+            
+        Returns:
+            Spot trade execution result dictionary
+        """
+        try:
+            logger.info(f"CEX Interface: Executing spot trade instruction: {instruction}")
+            
+            # Validate instruction
+            if not self._validate_spot_trade_instruction(instruction):
+                raise ValueError("Invalid spot trade instruction")
+            
+            # Get execution cost
+            execution_cost = self._get_execution_cost(instruction, market_data)
+            
+            # Execute based on mode
+            if self.execution_mode == 'backtest':
+                result = await self._execute_backtest_spot_trade(instruction, market_data)
+            elif self.execution_mode == 'live':
+                result = await self._execute_live_spot_trade(instruction, market_data)
+            else:
+                raise ValueError(f"Unknown execution mode: {self.execution_mode}")
+            
+            # Add execution cost to result
+            result['execution_cost'] = execution_cost
+            
+            # Log execution event
+            await self._log_execution_event('spot_trade_executed', {
+                'instruction': instruction,
+                'result': result,
+                'venue': instruction.get('venue', 'unknown'),
+                'token': instruction.get('symbol', 'unknown')
+            })
+            
+            return result
+            
+        except Exception as e:
+            logger.error(f"CEX Interface: Spot trade execution failed: {e}")
+            await self._log_execution_event('spot_trade_failed', {
+                'instruction': instruction,
+                'error': str(e),
+                'venue': instruction.get('venue', 'unknown'),
+                'token': instruction.get('symbol', 'unknown')
+            })
+            raise
+    
+    async def execute_supply(self, instruction: Dict[str, Any], market_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Execute supply action on OnChain protocol.
+        Note: CEX interfaces don't support supplying, this is for interface compliance.
+        
+        Args:
+            instruction: Supply instruction dictionary
+            market_data: Current market data snapshot
+            
+        Returns:
+            Supply execution result dictionary
+        """
+        logger.warning("CEX Interface: Supply operation not supported on CEX venues")
+        return {
+            'status': 'not_supported',
+            'message': 'Supply operations are not supported on CEX venues',
+            'instruction': instruction,
+            'venue': instruction.get('venue', 'unknown')
+        }
+    
+    async def execute_perp_trade(self, instruction: Dict[str, Any], market_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Execute perpetual trade on CEX.
+        
+        Args:
+            instruction: Perp trade instruction dictionary
+            market_data: Current market data snapshot
+            
+        Returns:
+            Perp trade execution result dictionary
+        """
+        try:
+            logger.info(f"CEX Interface: Executing perp trade instruction: {instruction}")
+            
+            # Validate instruction
+            if not self._validate_perp_trade_instruction(instruction):
+                raise ValueError("Invalid perp trade instruction")
+            
+            # Get execution cost
+            execution_cost = self._get_execution_cost(instruction, market_data)
+            
+            # Execute based on mode
+            if self.execution_mode == 'backtest':
+                result = await self._execute_backtest_perp_trade(instruction, market_data)
+            elif self.execution_mode == 'live':
+                result = await self._execute_live_perp_trade(instruction, market_data)
+            else:
+                raise ValueError(f"Unknown execution mode: {self.execution_mode}")
+            
+            # Add execution cost to result
+            result['execution_cost'] = execution_cost
+            
+            # Log execution event
+            await self._log_execution_event('perp_trade_executed', {
+                'instruction': instruction,
+                'result': result,
+                'venue': instruction.get('venue', 'unknown'),
+                'token': instruction.get('symbol', 'unknown')
+            })
+            
+            return result
+            
+        except Exception as e:
+            logger.error(f"CEX Interface: Perp trade execution failed: {e}")
+            await self._log_execution_event('perp_trade_failed', {
+                'instruction': instruction,
+                'error': str(e),
+                'venue': instruction.get('venue', 'unknown'),
+                'token': instruction.get('symbol', 'unknown')
+            })
+            raise
+    
+    async def execute_swap(self, instruction: Dict[str, Any], market_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Execute token swap on DEX.
+        Note: CEX interfaces don't support swaps, this is for interface compliance.
+        
+        Args:
+            instruction: Swap instruction dictionary
+            market_data: Current market data snapshot
+            
+        Returns:
+            Swap execution result dictionary
+        """
+        logger.warning("CEX Interface: Swap operation not supported on CEX venues")
+        return {
+            'status': 'not_supported',
+            'message': 'Swap operations are not supported on CEX venues',
+            'instruction': instruction,
+            'venue': instruction.get('venue', 'unknown')
+        }
+    
+    def _validate_spot_trade_instruction(self, instruction: Dict[str, Any]) -> bool:
+        """Validate spot trade instruction."""
+        required_fields = ['symbol', 'side', 'amount', 'venue']
+        return all(field in instruction for field in required_fields)
+    
+    def _validate_perp_trade_instruction(self, instruction: Dict[str, Any]) -> bool:
+        """Validate perp trade instruction."""
+        required_fields = ['symbol', 'side', 'amount', 'venue']
+        return all(field in instruction for field in required_fields)
+    
+    async def _execute_backtest_spot_trade(self, instruction: Dict[str, Any], market_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Execute simulated spot trade for backtest mode."""
+        return {
+            'status': 'COMPLETED',
+            'symbol': instruction['symbol'],
+            'side': instruction['side'],
+            'amount': instruction['amount'],
+            'venue': instruction['venue'],
+            'execution_mode': 'backtest',
+            'timestamp': datetime.now(timezone.utc)
+        }
+    
+    async def _execute_live_spot_trade(self, instruction: Dict[str, Any], market_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Execute real spot trade for live mode."""
+        # Placeholder for live implementation
+        return {
+            'status': 'COMPLETED',
+            'symbol': instruction['symbol'],
+            'side': instruction['side'],
+            'amount': instruction['amount'],
+            'venue': instruction['venue'],
+            'execution_mode': 'live',
+            'timestamp': datetime.now(timezone.utc)
+        }
+    
+    async def _execute_backtest_perp_trade(self, instruction: Dict[str, Any], market_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Execute simulated perp trade for backtest mode."""
+        return {
+            'status': 'COMPLETED',
+            'symbol': instruction['symbol'],
+            'side': instruction['side'],
+            'amount': instruction['amount'],
+            'venue': instruction['venue'],
+            'execution_mode': 'backtest',
+            'timestamp': datetime.now(timezone.utc)
+        }
+    
+    async def _execute_live_perp_trade(self, instruction: Dict[str, Any], market_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Execute real perp trade for live mode."""
+        # Placeholder for live implementation
+        return {
+            'status': 'COMPLETED',
+            'symbol': instruction['symbol'],
+            'side': instruction['side'],
+            'amount': instruction['amount'],
+            'venue': instruction['venue'],
+            'execution_mode': 'live',
+            'timestamp': datetime.now(timezone.utc)
+        }

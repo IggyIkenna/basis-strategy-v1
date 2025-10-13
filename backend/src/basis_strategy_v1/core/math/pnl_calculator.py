@@ -47,6 +47,8 @@ from pathlib import Path
 
 from ..error_codes.error_code_registry import get_error_info, ErrorCodeInfo
 
+from ...core.logging.base_logging_interface import StandardizedLoggingMixin, LogLevel, EventType
+
 logger = logging.getLogger(__name__)
 
 # Create dedicated P&L calculator logger
@@ -111,7 +113,7 @@ class PnLCalculatorError(Exception):
         
         super().__init__(full_message)
     
-    def log_structured_error(self, context: Dict[str, Any] = None):
+    def _log_structured_error(self, context: Dict[str, Any] = None):
         """Log structured error with error code and context."""
         error_info = get_error_info(self.error_code)
         
@@ -141,7 +143,7 @@ class PnLCalculatorError(Exception):
             pnl_logger.error(f"{self.error_code}: {self.message}", extra=log_data)
 
 
-class PnLCalculator:
+class PnLCalculator(StandardizedLoggingMixin):
     """Calculate P&L using balance-based and attribution methods."""
     _instance = None
     
@@ -173,6 +175,8 @@ class PnLCalculator:
         self.initial_capital = initial_capital
         self.data_provider = data_provider
         self.utility_manager = utility_manager
+        self.health_status = "healthy"
+        self.error_count = 0
         
         # Load component-specific configuration
         component_config = config['component_config']
@@ -196,7 +200,20 @@ class PnLCalculator:
         
         # Initial value (set at t=0)
         self.initial_total_value = None
-        
+    
+    def check_component_health(self) -> Dict[str, Any]:
+        """Check component health status."""
+        return {
+            'status': self.health_status,
+            'error_count': self.error_count,
+            'share_class': self.share_class,
+            'initial_capital': self.initial_capital,
+            'attribution_types_count': len(self.attribution_types),
+            'component': self.__class__.__name__
+        }
+    
+    def _initialize_pnl_tracking(self):
+        """Initialize P&L tracking variables."""
         # Previous exposure for delta calculations
         self.previous_exposure = None
         
@@ -205,7 +222,7 @@ class PnLCalculator:
         logger.info(f"P&L Calculator initialized for {share_class} share class with ${initial_capital:,.2f} initial capital")
         pnl_logger.info(f"P&L Calculator initialized: share_class={share_class}, initial_capital=${initial_capital:,.2f}")
     
-    def calculate_pnl(
+    def get_current_pnl(
         self,
         current_exposure: Dict,
         previous_exposure: Optional[Dict] = None,
@@ -235,6 +252,12 @@ class PnLCalculator:
                 pnl_logger.info(f"P&L Calculator: First exposure total_value_usd: ${current_exposure['total_value_usd']:,.2f}")
             else:
                 pnl_logger.info(f"P&L Calculator: Using existing initial_total_value: ${self.initial_total_value:,.2f}")
+            
+            # Use utility_manager for config-driven operations if available
+            if self.utility_manager:
+                # Get share class from config via utility_manager
+                share_class = self.utility_manager.get_share_class_from_mode(self.config.get('mode', 'default'))
+                pnl_logger.info(f"P&L Calculator: Using share class {share_class} from config")
             
             # 1. Balance-Based P&L (source of truth)
             pnl_logger.info(f"P&L Calculator: About to calculate balance-based P&L")
@@ -287,6 +310,34 @@ class PnLCalculator:
                 message=f"Balance-based P&L calculation failed: {e}",
                 error=str(e),
                 timestamp=timestamp.isoformat() if timestamp else None
+            )
+    
+    def update_state(self, timestamp: pd.Timestamp, trigger_source: str, **kwargs) -> None:
+        """
+        Update component state (called by EventDrivenStrategyEngine).
+        
+        Args:
+            timestamp: Current loop timestamp (from EventDrivenStrategyEngine)
+            trigger_source: 'full_loop' | 'tight_loop' | 'manual'
+            **kwargs: Additional parameters (current_exposure, previous_exposure, etc.)
+        """
+        # Extract exposure data from kwargs if present
+        current_exposure = kwargs.get('current_exposure')
+        previous_exposure = kwargs.get('previous_exposure')
+        
+        if current_exposure:
+            # Perform P&L calculation
+            pnl_result = self.get_current_pnl(
+                current_exposure=current_exposure,
+                previous_exposure=previous_exposure,
+                timestamp=timestamp
+            )
+            
+            # Log P&L calculation
+            pnl_logger.info(
+                f"P&L calculation completed: trigger_source={trigger_source}, "
+                f"balance_pnl={pnl_result.get('balance_based', {}).get('pnl_cumulative', 0.0):.2f}, "
+                f"attribution_pnl={pnl_result.get('attribution', {}).get('pnl_cumulative', 0.0):.2f}"
             )
     
     def _calculate_balance_based_pnl(
@@ -873,7 +924,7 @@ class PnLCalculator:
     
     # Redis subscription removed - components use direct method calls
     
-    def get_pnl_summary(self, pnl_data: Dict) -> str:
+    def _get_pnl_summary(self, pnl_data: Dict) -> str:
         """Get a human-readable P&L summary."""
         balance = pnl_data['balance_based']
         attribution = pnl_data['attribution']

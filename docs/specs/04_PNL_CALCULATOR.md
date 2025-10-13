@@ -244,7 +244,7 @@ The following legacy methods have been replaced with canonical pattern:
 
 ### Query Pattern
 ```python
-def calculate_pnl(self, timestamp: pd.Timestamp, trigger_source: str, market_data: Dict):
+def get_current_pnl(self, timestamp: pd.Timestamp, trigger_source: str, market_data: Dict):
     # Use provided market data (no internal querying)
     prices = market_data['market_data']['prices']
     aave_indexes = market_data['protocol_data']['aave_indexes']
@@ -256,7 +256,7 @@ None - all data comes from DataProvider
 
 ## Core Methods
 
-### calculate_pnl(timestamp: pd.Timestamp, trigger_source: str, market_data: Dict) -> Dict
+### get_current_pnl(timestamp: pd.Timestamp, trigger_source: str, market_data: Dict) -> Dict
 Main entry point for P&L calculations.
 
 **Parameters**:
@@ -281,11 +281,84 @@ Get current P&L snapshot.
 **Returns**:
 - Dict: Current P&L metrics (last calculated values)
 
+### update_state(timestamp: pd.Timestamp, trigger_source: str, **kwargs) -> None
+Update component state with new timestamp.
+
+**Parameters**:
+- timestamp: Current timestamp
+- trigger_source: Source of the update trigger
+- **kwargs: Additional update parameters
+
+**Behavior**:
+- Updates internal timestamp tracking
+- Logs state update event
+- No P&L calculations performed (get_current_pnl handles calculations)
+
+
+
+## Standardized Logging Methods
+
+### log_structured_event(timestamp, event_type, level, message, component_name, data=None, correlation_id=None)
+Log a structured event with standardized format.
+
+**Parameters**:
+- `timestamp`: Event timestamp (pd.Timestamp)
+- `event_type`: Type of event (EventType enum)
+- `level`: Log level (LogLevel enum)
+- `message`: Human-readable message (str)
+- `component_name`: Name of the component logging the event (str)
+- `data`: Optional structured data dictionary (Dict[str, Any])
+- `correlation_id`: Optional correlation ID for tracing (str)
+
+**Returns**: None
+
+### log_component_event(event_type, message, data=None, level=LogLevel.INFO)
+Log a component-specific event with automatic timestamp and component name.
+
+**Parameters**:
+- `event_type`: Type of event (EventType enum)
+- `message`: Human-readable message (str)
+- `data`: Optional structured data dictionary (Dict[str, Any])
+- `level`: Log level (defaults to INFO)
+
+**Returns**: None
+
+### log_performance_metric(metric_name, value, unit, data=None)
+Log a performance metric.
+
+**Parameters**:
+- `metric_name`: Name of the metric (str)
+- `value`: Metric value (float)
+- `unit`: Unit of measurement (str)
+- `data`: Optional additional context data (Dict[str, Any])
+
+**Returns**: None
+
+### log_error(error, context=None, correlation_id=None)
+Log an error with standardized format.
+
+**Parameters**:
+- `error`: Exception object (Exception)
+- `context`: Optional context data (Dict[str, Any])
+- `correlation_id`: Optional correlation ID for tracing (str)
+
+**Returns**: None
+
+### log_warning(message, data=None, correlation_id=None)
+Log a warning with standardized format.
+
+**Parameters**:
+- `message`: Warning message (str)
+- `data`: Optional context data (Dict[str, Any])
+- `correlation_id`: Optional correlation ID for tracing (str)
+
+**Returns**: None
+
 ## Data Access Pattern
 
 ### Query Pattern
 ```python
-def calculate_pnl(self, timestamp: pd.Timestamp, trigger_source: str, market_data: Dict):
+def get_current_pnl(self, timestamp: pd.Timestamp, trigger_source: str, market_data: Dict):
     # Get exposure from stored reference
     current_exposure = self.exposure_monitor.get_current_exposure()
     
@@ -324,7 +397,7 @@ def calculate_pnl(self, timestamp: pd.Timestamp, trigger_source: str, market_dat
 
 ### Backtest Mode
 ```python
-def calculate_pnl(self, timestamp: pd.Timestamp, trigger_source: str, market_data: Dict):
+def get_current_pnl(self, timestamp: pd.Timestamp, trigger_source: str, market_data: Dict):
     if self.execution_mode == 'backtest':
         # Use historical data for P&L calculations
         return self._calculate_pnl_with_historical_data(timestamp, market_data)
@@ -332,7 +405,7 @@ def calculate_pnl(self, timestamp: pd.Timestamp, trigger_source: str, market_dat
 
 ### Live Mode
 ```python
-def calculate_pnl(self, timestamp: pd.Timestamp, trigger_source: str, market_data: Dict):
+def get_current_pnl(self, timestamp: pd.Timestamp, trigger_source: str, market_data: Dict):
     elif self.execution_mode == 'live':
         # Use real-time data for P&L calculations
         return self._calculate_pnl_with_realtime_data(timestamp, market_data)
@@ -748,7 +821,7 @@ self.event_logger.log_event(
 )
 ```
 
-#### 2. State Updates (Every calculate_pnl() Call)
+#### 2. State Updates (Every get_current_pnl() Call)
 ```python
 self.event_logger.log_event(
     timestamp=timestamp,
@@ -1001,8 +1074,8 @@ def _health_check(self) -> Dict:
 ## Integration Points
 
 ### Called BY
-- EventDrivenStrategyEngine (full loop): pnl_calculator.calculate_pnl(timestamp, 'full_loop')
-- PositionUpdateHandler (tight loop): pnl_calculator.calculate_pnl(timestamp, 'tight_loop')
+- EventDrivenStrategyEngine (full loop): pnl_calculator.get_current_pnl(timestamp, 'full_loop')
+- PositionUpdateHandler (tight loop): pnl_calculator.get_current_pnl(timestamp, 'tight_loop')
 
 ### Calls TO
 - exposure_monitor.get_current_exposure() - exposure data queries (via stored reference)
@@ -1080,6 +1153,26 @@ def _health_check(self) -> Dict:
 - [Code Structure Patterns](../CODE_STRUCTURE_PATTERNS.md) - Implementation patterns
 - [Data Provider Specification](09_DATA_PROVIDER.md) - Data access patterns
 - [Event Logger Specification](08_EVENT_LOGGER.md) - Event logging integration
+
+## Public API Methods
+
+### check_component_health() -> Dict[str, Any]
+**Purpose**: Check component health status for monitoring and diagnostics.
+
+**Returns**:
+```python
+{
+    'status': 'healthy' | 'degraded' | 'unhealthy',
+    'error_count': int,
+    'execution_mode': 'backtest' | 'live',
+    'attribution_types_count': int,
+    'pnl_calculations_count': int,
+    'last_calculation_timestamp': str,
+    'component': 'PnLCalculator'
+}
+```
+
+**Usage**: Called by health monitoring systems to track PnL Calculator status and performance.
 
 ---
 

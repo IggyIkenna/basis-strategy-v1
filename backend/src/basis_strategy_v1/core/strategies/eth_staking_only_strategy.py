@@ -13,6 +13,8 @@ import logging
 
 from .base_strategy_manager import BaseStrategyManager, StrategyAction
 
+from ...core.logging.base_logging_interface import StandardizedLoggingMixin, LogLevel, EventType
+
 logger = logging.getLogger(__name__)
 
 
@@ -65,7 +67,6 @@ class ETHStakingOnlyStrategy(BaseStrategyManager):
         try:
             # Calculate target allocations
             eth_target = current_equity * self.eth_allocation
-            reserve_target = current_equity * self.reserve_ratio
             
             # Get current ETH price
             eth_price = self._get_asset_price()
@@ -74,7 +75,7 @@ class ETHStakingOnlyStrategy(BaseStrategyManager):
             return {
                 'eth_balance': 0.0,  # No raw ETH, all staked
                 f'{self.lst_type.lower()}_balance': eth_amount,  # All ETH converted to LST
-                f'{self.share_class.lower()}_balance': reserve_target,
+                f'{self.share_class.lower()}_balance': current_equity,
                 'total_equity': current_equity
             }
             
@@ -83,7 +84,7 @@ class ETHStakingOnlyStrategy(BaseStrategyManager):
             return {
                 'eth_balance': 0.0,
                 f'{self.lst_type.lower()}_balance': 0.0,
-                f'{self.share_class.lower()}_balance': current_equity * self.reserve_ratio,
+                f'{self.share_class.lower()}_balance': 0.0,  # No reserve balance needed
                 'total_equity': current_equity
             }
     
@@ -175,7 +176,6 @@ class ETHStakingOnlyStrategy(BaseStrategyManager):
         try:
             # Calculate proportional allocation
             eth_delta = equity_delta * self.eth_allocation
-            reserve_delta = equity_delta * self.reserve_ratio
             
             # Get current ETH price
             eth_price = self._get_asset_price()
@@ -204,15 +204,7 @@ class ETHStakingOnlyStrategy(BaseStrategyManager):
                     'target_token': self.lst_type
                 })
             
-            # 3. Add to reserves
-            if reserve_delta > 0:
-                instructions.append({
-                    'action': 'reserve',
-                    'asset': self.share_class,
-                    'amount': reserve_delta,
-                    'venue': 'wallet',
-                    'order_type': 'hold'
-                })
+            # No reserve allocation needed - all equity goes to active positions
             
             return StrategyAction(
                 action_type='entry_partial',
@@ -223,7 +215,6 @@ class ETHStakingOnlyStrategy(BaseStrategyManager):
                 metadata={
                     'strategy': 'eth_staking_only',
                     'eth_delta': eth_delta,
-                    'reserve_delta': reserve_delta,
                     'lst_type': self.lst_type
                 }
             )

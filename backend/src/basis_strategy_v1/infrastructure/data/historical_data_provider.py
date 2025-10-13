@@ -1243,7 +1243,7 @@ class DataProvider:
                 f"Invalid JSON in execution costs lookup table: {e}")
 
     def _validate_timestamps(self):
-        """Ensure ALL data is on the hour."""
+        """Ensure data timestamps are properly aligned based on data type."""
         for key, df in self.data.items():
             if not isinstance(df, pd.DataFrame):
                 continue
@@ -1255,15 +1255,33 @@ class DataProvider:
             if not df.index.name == 'timestamp':
                 raise ValueError(f"{key}: Index must be 'timestamp'")
 
-            # Check hourly alignment
-            if not all(df.index.minute == 0):
-                bad_timestamps = df.index[df.index.minute != 0]
-                raise ValueError(
-                    f"{key}: {len(bad_timestamps)} timestamps not on the hour!\n"
-                    f"First bad timestamp: {bad_timestamps[0]}")
+            # Determine expected alignment based on data key
+            if 'funding' in key.lower():
+                # Funding rates should be aligned to 8-hour intervals (00:00, 08:00, 16:00)
+                if not all((df.index.hour % 8 == 0) & (df.index.minute == 0) & (df.index.second == 0)):
+                    bad_timestamps = df.index[~((df.index.hour % 8 == 0) & (df.index.minute == 0) & (df.index.second == 0))]
+                    raise ValueError(
+                        f"{key}: {len(bad_timestamps)} timestamps not 8-hour aligned!\n"
+                        f"Expected: 00:00, 08:00, 16:00. First bad timestamp: {bad_timestamps[0]}")
+                        
+            elif 'staking' in key.lower() or 'rewards' in key.lower():
+                # Staking rewards are typically daily
+                if not all((df.index.hour == 0) & (df.index.minute == 0) & (df.index.second == 0)):
+                    bad_timestamps = df.index[~((df.index.hour == 0) & (df.index.minute == 0) & (df.index.second == 0))]
+                    raise ValueError(
+                        f"{key}: {len(bad_timestamps)} timestamps not daily aligned!\n"
+                        f"Expected: 00:00:00. First bad timestamp: {bad_timestamps[0]}")
+                        
+            else:
+                # Default: Check hourly alignment
+                if not all(df.index.minute == 0):
+                    bad_timestamps = df.index[df.index.minute != 0]
+                    raise ValueError(
+                        f"{key}: {len(bad_timestamps)} timestamps not on the hour!\n"
+                        f"First bad timestamp: {bad_timestamps[0]}")
 
-            if not all(df.index.second == 0):
-                raise ValueError(f"{key}: Timestamps must have second=0")
+                if not all(df.index.second == 0):
+                    raise ValueError(f"{key}: Timestamps must have second=0")
 
             # Check UTC timezone
             if df.index.tz is None:

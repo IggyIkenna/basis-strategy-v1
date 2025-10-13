@@ -47,6 +47,8 @@ class BaseCurrency(str, Enum):
 class ModeConfig(BaseModel):
     """Mode configuration model."""
     
+    model_config = {"extra": "allow"}  # Allow extra fields for flexibility
+    
     # Core identification
     mode: str = Field(..., description="Mode name")
     
@@ -55,23 +57,22 @@ class ModeConfig(BaseModel):
     staking_enabled: bool = Field(..., description="Whether staking is enabled")
     basis_trade_enabled: bool = Field(..., description="Whether basis trading is enabled")
     borrowing_enabled: Optional[bool] = Field(None, description="Whether borrowing is enabled")
-    enable_market_impact: bool = Field(..., description="Whether market impact is enabled")
+    enable_market_impact: Optional[bool] = Field(None, description="Whether market impact is enabled")
     
     # Asset configuration
     share_class: str = Field(..., description="Share class (USDT or ETH)")
     asset: str = Field(..., description="Primary asset")
     lst_type: Optional[str] = Field(None, description="LST type if applicable")
-    rewards_mode: str = Field(..., description="Rewards mode")
-    reserve_ratio: float = Field(..., ge=0.0, le=1.0, description="Reserve ratio")
-    position_deviation_threshold: float = Field(..., ge=0.0, le=1.0, description="Position deviation threshold")
+    rewards_mode: Optional[str] = Field(None, description="Rewards mode")
+    position_deviation_threshold: Optional[float] = Field(None, ge=0.0, le=1.0, description="Position deviation threshold")
     
     # Risk parameters
-    margin_ratio_target: float = Field(..., ge=0.0, description="Margin ratio target")
-    target_apy: float = Field(..., ge=0.0, description="Target APY")
+    margin_ratio_target: Optional[float] = Field(None, ge=0.0, description="Margin ratio target")
+    target_apy: Optional[float] = Field(None, ge=0.0, description="Target APY")
     max_drawdown: Optional[float] = Field(None, ge=0.0, le=1.0, description="Maximum drawdown")
     
     # Execution parameters
-    time_throttle_interval: int = Field(..., ge=1, description="Time throttle interval in seconds")
+    time_throttle_interval: Optional[int] = Field(None, ge=1, description="Time throttle interval in seconds")
     
     # Data requirements
     data_requirements: List[str] = Field(..., description="Required data types")
@@ -81,6 +82,9 @@ class ModeConfig(BaseModel):
     max_ltv: Optional[float] = Field(None, ge=0.0, le=1.0, description="Maximum loan-to-value ratio")
     liquidation_threshold: Optional[float] = Field(None, ge=0.0, le=1.0, description="Liquidation threshold")
     max_stake_spread_move: Optional[float] = Field(None, ge=0.0, description="Maximum stake spread move")
+    
+    # Venue configuration
+    venues: Optional[Dict[str, Dict[str, Any]]] = Field(None, description="Venue configuration with instruments and order types")
     
     # Hedge configuration
     hedge_venues: Optional[List[str]] = Field(None, description="Hedge venues")
@@ -93,6 +97,30 @@ class ModeConfig(BaseModel):
     
     # Component configuration
     component_config: Optional[Dict[str, Any]] = Field(None, description="Component-specific configuration")
+    
+    # Additional fields used in YAML files but not in current model
+    hedge_allocation: Optional[Dict[str, float]] = Field(None, description="Hedge allocation mapping")
+    
+    # ML-specific configuration
+    ml_config: Optional[Dict[str, Any]] = Field(None, description="ML model configuration")
+    
+    # ML config subfields (for validation)
+    ml_model_name: Optional[str] = Field(None, description="ML model name")
+    ml_model_version: Optional[str] = Field(None, description="ML model version")
+    ml_signal_threshold: Optional[float] = Field(None, ge=0.0, le=1.0, description="ML signal threshold")
+    ml_max_position_size: Optional[float] = Field(None, ge=0.0, le=1.0, description="ML maximum position size")
+    ml_confidence_threshold: Optional[float] = Field(None, ge=0.0, le=1.0, description="ML confidence threshold")
+    ml_retraining_frequency: Optional[str] = Field(None, description="ML retraining frequency")
+    ml_feature_importance_threshold: Optional[float] = Field(None, ge=0.0, le=1.0, description="ML feature importance threshold")
+    
+    # Event logger configuration
+    event_logger: Optional[Dict[str, Any]] = Field(None, description="Event logger configuration")
+    
+    # Strategy-specific parameters
+    delta_tolerance: Optional[float] = Field(None, ge=0.0, le=1.0, description="Delta neutrality tolerance")
+    dust_delta: Optional[float] = Field(None, ge=0.0, le=1.0, description="Dust delta threshold for small positions")
+    stake_allocation_eth: Optional[float] = Field(None, ge=0.0, le=1.0, description="ETH stake allocation percentage")
+    funding_threshold: Optional[float] = Field(None, ge=0.0, description="Funding rate threshold for basis trading")
     
     @field_validator('share_class')
     @classmethod
@@ -131,6 +159,12 @@ class ModeConfig(BaseModel):
         if self.staking_enabled and not self.lst_type:
             raise ValueError(f"Mode {self.mode}: staking_enabled requires lst_type")
         
+        # Validate LST type → venue mapping
+        if self.staking_enabled and self.lst_type and self.venues:
+            expected_venue = "etherfi" if self.lst_type == "weeth" else "lido" if self.lst_type == "wsteth" else None
+            if expected_venue and expected_venue not in self.venues:
+                raise ValueError(f"Mode {self.mode}: lst_type '{self.lst_type}' requires venue '{expected_venue}' in venues config")
+        
         # Borrowing requires max_ltv
         if self.borrowing_enabled and not self.max_ltv:
             raise ValueError(f"Mode {self.mode}: borrowing_enabled requires max_ltv")
@@ -155,6 +189,62 @@ class ModeConfig(BaseModel):
             if abs(total_individual - 1.0) > 0.01:
                 raise ValueError(f"Mode {self.mode}: individual hedge allocations sum to {total_individual}, expected 1.0")
         
+        # NEW: Venue-LST validation
+        if self.staking_enabled and self.lst_type and self.venues:
+            expected_venue = "etherfi" if self.lst_type == "weeth" else "lido" if self.lst_type == "wsteth" else None
+            if expected_venue and expected_venue not in self.venues:
+                raise ValueError(f"Mode {self.mode}: lst_type '{self.lst_type}' requires venue '{expected_venue}' in venues config")
+        
+        # NEW: Share class consistency validation (config-driven)
+        # Load share class configuration to validate asset compatibility
+        try:
+            import yaml
+            from pathlib import Path
+            
+            # Load share class config
+            share_class_file = Path(__file__).parent.parent.parent.parent.parent / "configs" / "share_classes" / f"{self.share_class.lower()}_stable.yaml"
+            if not share_class_file.exists():
+                share_class_file = Path(__file__).parent.parent.parent.parent.parent / "configs" / "share_classes" / f"{self.share_class.lower()}_directional.yaml"
+            
+            if share_class_file.exists():
+                with open(share_class_file, 'r') as f:
+                    share_class_config = yaml.safe_load(f)
+                
+                market_neutral = share_class_config.get('market_neutral', False)
+                
+                # Market neutral share classes can trade different assets (for hedging)
+                # Directional share classes should trade the same asset as share class
+                if not market_neutral and self.share_class != self.asset:
+                    raise ValueError(f"Mode {self.mode}: Directional share class '{self.share_class}' should trade same asset '{self.share_class}', not '{self.asset}'")
+                
+                # Market neutral share classes can trade different assets
+                # USDT share class can trade USDT, ETH, BTC for market neutral strategies
+                # ETH share class can trade ETH, BTC for market neutral strategies
+                if market_neutral:
+                    if self.share_class == 'USDT' and self.asset not in ['USDT', 'ETH', 'BTC']:
+                        raise ValueError(f"Mode {self.mode}: USDT market neutral share class should trade USDT, ETH, or BTC, not {self.asset}")
+                    elif self.share_class == 'ETH' and self.asset not in ['ETH', 'BTC']:
+                        raise ValueError(f"Mode {self.mode}: ETH market neutral share class should trade ETH or BTC, not {self.asset}")
+                        
+        except Exception as e:
+            # If share class config loading fails, log warning but don't fail validation
+            logger.warning(f"Could not load share class config for validation: {e}")
+        
+        # NEW: Risk parameter alignment
+        if self.max_drawdown and self.max_drawdown > 0.5:
+            logger.warning(f"Mode {self.mode}: High max_drawdown {self.max_drawdown} (>50%)")
+        
+        if self.target_apy and self.target_apy > 100:
+            logger.warning(f"Mode {self.mode}: Very high target_apy {self.target_apy}% (>100%)")
+        
+        # NEW: Basis trading validation
+        if self.basis_trade_enabled and not self.hedge_venues:
+            raise ValueError(f"Mode {self.mode}: basis_trade_enabled requires hedge_venues")
+        
+        # NEW: Market neutral validation
+        if 'market_neutral' in self.mode.lower() and not self.hedge_venues:
+            raise ValueError(f"Mode {self.mode}: market_neutral mode requires hedge_venues")
+        
         return self
 
 
@@ -163,6 +253,13 @@ class RiskMonitorConfig(BaseModel):
     
     enabled_risk_types: List[str] = Field(..., description="Enabled risk types")
     risk_limits: Dict[str, Any] = Field(..., description="Risk limits configuration")
+    
+    # Additional fields used in YAML files
+    target_margin_ratio: Optional[float] = Field(None, ge=0.0, le=1.0, description="Target margin ratio")
+    cex_margin_ratio_min: Optional[float] = Field(None, ge=0.0, le=1.0, description="Minimum CEX margin ratio")
+    maintenance_margin_requirement: Optional[float] = Field(None, ge=0.0, le=1.0, description="Maintenance margin requirement")
+    delta_tolerance: Optional[float] = Field(None, ge=0.0, le=1.0, description="Delta tolerance threshold")
+    liquidation_threshold: Optional[float] = Field(None, ge=0.0, le=1.0, description="Liquidation threshold")
 
 
 class ExposureMonitorConfig(BaseModel):
@@ -171,6 +268,13 @@ class ExposureMonitorConfig(BaseModel):
     exposure_currency: str = Field(..., description="Exposure reporting currency")
     track_assets: List[str] = Field(..., description="Assets to track")
     conversion_methods: Dict[str, str] = Field(..., description="Asset conversion methods")
+    
+    # Additional fields used in YAML files
+    USDT: Optional[str] = Field(None, description="USDT conversion method")
+    aWeETH: Optional[str] = Field(None, description="aWeETH conversion method")
+    EIGEN: Optional[str] = Field(None, description="EIGEN conversion method")
+    weETH: Optional[str] = Field(None, description="weETH conversion method")
+    variableDebtWETH: Optional[str] = Field(None, description="variableDebtWETH conversion method")
 
 
 class PnLCalculatorConfig(BaseModel):
@@ -188,13 +292,28 @@ class StrategyManagerConfig(BaseModel):
     actions: List[str] = Field(..., description="Available actions")
     rebalancing_triggers: List[str] = Field(..., description="Rebalancing triggers")
     position_calculation: Dict[str, Any] = Field(..., description="Position calculation config")
-
-
-class ExecutionManagerConfig(BaseModel):
-    """Execution manager configuration model."""
     
-    supported_actions: List[str] = Field(..., description="Supported execution actions")
-    action_mapping: Dict[str, List[str]] = Field(..., description="Action to execution mapping")
+    # Additional fields used in YAML files
+    target_position: Optional[str] = Field(None, description="Target position type")
+    hedge_position: Optional[str] = Field(None, description="Hedge position type")
+    method: Optional[str] = Field(None, description="Position calculation method")
+    leverage_ratio: Optional[float] = Field(None, ge=0.0, description="Leverage ratio for positions")
+    hedge_allocation: Optional[Dict[str, float]] = Field(None, description="Hedge allocation mapping")
+
+
+class VenueManagerConfig(BaseModel):
+    """Venue manager configuration model."""
+    
+    supported_actions: List[str] = Field(..., description="Supported venue actions")
+    action_mapping: Dict[str, List[str]] = Field(..., description="Action to venue mapping")
+    
+    # Additional fields used in YAML files
+    entry_full: Optional[List[str]] = Field(None, description="Actions for full entry")
+    exit_full: Optional[List[str]] = Field(None, description="Actions for full exit")
+    entry_partial: Optional[List[str]] = Field(None, description="Actions for partial entry")
+    exit_partial: Optional[List[str]] = Field(None, description="Actions for partial exit")
+    open_perp_short: Optional[List[str]] = Field(None, description="Actions for opening perp short")
+    open_perp_long: Optional[List[str]] = Field(None, description="Actions for opening perp long")
 
 
 class ResultsStoreConfig(BaseModel):
@@ -205,6 +324,10 @@ class ResultsStoreConfig(BaseModel):
     pnl_attribution_types: List[str] = Field(..., description="PnL attribution types")
     leverage_tracking: Optional[bool] = Field(None, description="Whether to track leverage")
     dust_tracking_tokens: Optional[List[str]] = Field(None, description="Dust tracking tokens")
+    
+    # Additional fields used in YAML files
+    delta_tracking_assets: Optional[List[str]] = Field(None, description="Assets for delta tracking")
+    funding_tracking_venues: Optional[List[str]] = Field(None, description="Venues for funding tracking")
 
 
 class StrategyFactoryConfig(BaseModel):
@@ -218,23 +341,63 @@ class StrategyFactoryConfig(BaseModel):
 class VenueConfig(BaseModel):
     """Venue configuration model."""
     
+    model_config = {"extra": "allow"}  # Allow extra fields for flexibility
+    
     # Core identification
     venue: str = Field(..., description="Venue name")
     type: VenueType = Field(..., description="Venue type")
+    description: Optional[str] = Field(None, description="Venue description")
+    version: Optional[str] = Field(None, description="Venue API version")
+    enabled: Optional[bool] = Field(None, description="Whether venue is enabled")
     
-    # Optional configuration
+    # Network configuration
     network: Optional[str] = Field(None, description="Network name")
-    chain_id: Optional[int] = Field(None, ge=1, description="Chain ID")
-    rpc_url: Optional[str] = Field(None, description="RPC URL")
+    service: Optional[str] = Field(None, description="Service type for infrastructure venues")
     
-    # Trading parameters
-    min_trade_size: Optional[float] = Field(None, ge=0.0, description="Minimum trade size")
-    max_trade_size: Optional[float] = Field(None, ge=0.0, description="Maximum trade size")
-    trading_fee: Optional[float] = Field(None, ge=0.0, le=1.0, description="Trading fee percentage")
+    # Trading parameters (venue-specific, loaded from data provider)
+    min_trade_size_usd: Optional[float] = Field(None, ge=0.0, description="Minimum trade size in USD")
+    max_trade_size_usd: Optional[float] = Field(None, ge=0.0, description="Maximum trade size in USD")
+    min_order_size_usd: Optional[float] = Field(None, ge=0.0, description="Minimum order size in USD")
+    max_slippage_bps: Optional[int] = Field(None, ge=0, le=10000, description="Maximum slippage in basis points")
     
-    # Risk parameters
+    # Trading fees
+    trading_fees: Optional[Dict[str, float]] = Field(None, description="Trading fees (maker/taker)")
+    
+    # Risk parameters (loaded from data provider)
     max_leverage: Optional[float] = Field(None, ge=1.0, description="Maximum leverage")
-    liquidation_threshold: Optional[float] = Field(None, ge=0.0, le=1.0, description="Liquidation threshold")
+    
+    # Staking parameters
+    min_stake_amount: Optional[float] = Field(None, ge=0.0, description="Minimum stake amount")
+    unstaking_period: Optional[int] = Field(None, ge=0, description="Unstaking period in seconds")
+    max_gas_limit: Optional[int] = Field(None, ge=0, description="Maximum gas limit")
+    max_deadline_seconds: Optional[int] = Field(None, ge=0, description="Maximum deadline in seconds")
+    
+    # API configuration
+    api_contract: Optional[Dict[str, Any]] = Field(None, description="API contract specification")
+    auth: Optional[Dict[str, Any]] = Field(None, description="Authentication configuration")
+    endpoints: Optional[Dict[str, Any]] = Field(None, description="API endpoints configuration")
+    validation: Optional[Dict[str, Any]] = Field(None, description="Validation configuration")
+    
+    # Protocol and symbol support
+    protocols: Optional[List[str]] = Field(None, description="Supported protocols")
+    supported_operations: Optional[List[str]] = Field(None, description="Supported operations")
+    supported_symbols: Optional[List[str]] = Field(None, description="Supported trading symbols")
+    
+    # Examples and documentation
+    example: Optional[Dict[str, Any]] = Field(None, description="Example requests and responses")
+    
+    # Additional fields used in YAML files but not in current model
+    venue_type: Optional[str] = Field(None, description="Venue type (cex, defi, infrastructure)")
+    instruments: Optional[List[str]] = Field(None, description="Trading instruments available on venue")
+    order_types: Optional[List[str]] = Field(None, description="Supported order types on venue")
+    min_amount: Optional[float] = Field(None, ge=0.0, description="Minimum trade amount for venue")
+    
+    # Additional venue-specific fields
+    request_format: Optional[Dict[str, Any]] = Field(None, description="Request format specification")
+    response_format: Optional[Dict[str, Any]] = Field(None, description="Response format specification")
+    valid_signals: Optional[List[str]] = Field(None, description="Valid signal types")
+    require_confidence_score: Optional[bool] = Field(None, description="Whether confidence score is required")
+    min_confidence: Optional[float] = Field(None, ge=0.0, le=1.0, description="Minimum confidence threshold")
     
     @field_validator('venue')
     @classmethod
@@ -242,7 +405,7 @@ class VenueConfig(BaseModel):
         """Validate venue name."""
         valid_venues = [
             'binance', 'bybit', 'okx', 'aave_v3', 'etherfi', 'lido', 
-            'morpho', 'alchemy', 'instadapp', 'ml_inference_api'
+            'morpho', 'alchemy', 'instadapp', 'ml_inference_api', 'uniswap'
         ]
         if v not in valid_venues:
             raise ValueError(f"venue must be one of {valid_venues}, got: {v}")
@@ -252,21 +415,35 @@ class VenueConfig(BaseModel):
 class ShareClassConfig(BaseModel):
     """Share class configuration model."""
     
+    model_config = {"extra": "allow"}  # Allow extra fields for flexibility
+    
     # Core identification
     share_class: str = Field(..., description="Share class name")
     type: ShareClassType = Field(..., description="Share class type")
     base_currency: BaseCurrency = Field(..., description="Base currency")
+    description: Optional[str] = Field(None, description="Share class description")
+    
+    # Currency configuration
+    quote_currency: Optional[str] = Field(None, description="Quote currency")
+    decimal_places: Optional[int] = Field(None, ge=0, le=18, description="Decimal places for precision")
+    
+    # Risk profile
+    risk_level: Optional[str] = Field(None, description="Risk level (low, medium, high)")
+    market_neutral: Optional[bool] = Field(None, description="Whether market neutral strategies are supported")
+    allows_hedging: Optional[bool] = Field(None, description="Whether hedging is allowed")
     
     # Strategy support
     supported_strategies: List[str] = Field(..., description="Supported strategy modes")
+    leverage_supported: bool = Field(..., description="Whether leverage is supported")
+    staking_supported: Optional[bool] = Field(None, description="Whether staking is supported")
+    basis_trading_supported: Optional[bool] = Field(None, description="Whether basis trading is supported")
     
     # Risk parameters
-    leverage_supported: bool = Field(..., description="Whether leverage is supported")
     max_leverage: Optional[float] = Field(None, ge=1.0, description="Maximum leverage")
     
     # Performance targets
     target_apy_range: Optional[Dict[str, float]] = Field(None, description="Target APY range")
-    max_drawdown_limit: Optional[float] = Field(None, ge=0.0, le=1.0, description="Maximum drawdown limit")
+    max_drawdown: Optional[float] = Field(None, ge=0.0, le=1.0, description="Maximum drawdown limit")
     
     @field_validator('share_class')
     @classmethod

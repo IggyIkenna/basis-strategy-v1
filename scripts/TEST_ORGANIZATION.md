@@ -6,21 +6,21 @@ This document describes the new 3-tier testing structure for the Basis Strategy 
 
 ## 3-Tier Testing Philosophy
 
-### 1. Unit Tests (`scripts/unit_tests/`)
+### 1. Unit Tests (`tests/unit/`)
 - **Purpose**: Component isolation with mocked dependencies
 - **Scope**: Individual component behavior testing
 - **Dependencies**: Minimal, using pytest fixtures and mocks
 - **Execution Time**: Fast (~10s for all unit tests)
 - **Critical**: Yes - must pass for system to be considered functional
 
-### 2. Integration Tests (`scripts/integration_tests/`)
+### 2. Integration Tests (`tests/integration/`)
 - **Purpose**: Component data flow validation per WORKFLOW_GUIDE.md
 - **Scope**: Component interaction patterns and data flows
 - **Dependencies**: Real components with minimal real data
 - **Execution Time**: Medium (~60s for all integration tests)
 - **Critical**: Yes - validates component interactions
 
-### 3. E2E Tests (`scripts/e2e_tests/`)
+### 3. E2E Tests (`tests/e2e/`)
 - **Purpose**: Full strategy execution with real data
 - **Scope**: Complete strategy workflows
 - **Dependencies**: Full system with real data
@@ -30,8 +30,8 @@ This document describes the new 3-tier testing structure for the Basis Strategy 
 ## Directory Structure
 
 ```
-tests/                             # Conventional test directory
-├── unit/                          # Unit tests with mocked dependencies
+tests/                             # Conventional test directory (78 total test files)
+├── unit/                          # Unit tests with mocked dependencies (64 files)
 │   ├── conftest.py               # Shared pytest fixtures
 │   ├── test_position_monitor_unit.py
 │   ├── test_exposure_monitor_unit.py
@@ -41,26 +41,30 @@ tests/                             # Conventional test directory
 │   ├── test_execution_manager_unit.py
 │   ├── test_data_provider_unit.py
 │   └── test_config_manager_unit.py
-├── integration/                   # Integration tests with real components
+├── integration/                   # Integration tests with real components (15 files)
 │   ├── conftest.py               # Real component fixtures
 │   ├── test_data_flow_position_to_exposure.py
 │   ├── test_data_flow_exposure_to_risk.py
 │   ├── test_data_flow_risk_to_strategy.py
 │   ├── test_data_flow_strategy_to_execution.py
-│   └── test_tight_loop_reconciliation.py
-└── e2e/                          # E2E tests with full system
+│   ├── test_tight_loop_reconciliation.py
+│   ├── test_api_endpoints_quality_gates.py
+│   ├── test_health_monitoring_quality_gates.py
+│   ├── test_authentication_system_quality_gates.py
+│   ├── test_live_mode_quality_gates.py
+│   ├── test_live_trading_ui_quality_gates.py
+│   └── test_frontend_implementation_quality_gates.py
+└── e2e/                          # E2E tests with full system (13 files)
     ├── test_pure_lending_e2e.py
     ├── test_btc_basis_e2e.py
     ├── test_eth_basis_e2e.py
-    └── test_usdt_market_neutral_e2e.py
+    ├── test_usdt_market_neutral_e2e.py
+    ├── test_pure_lending_quality_gates.py
+    ├── test_btc_basis_quality_gates.py
+    ├── test_eth_basis_quality_gates.py
+    └── test_usdt_market_neutral_quality_gates.py
 
 scripts/
-├── deprecated/                    # Deprecated quality gate scripts
-│   ├── monitor_quality_gates.py
-│   ├── test_config_and_data_validation.py
-│   ├── test_async_ordering_quality_gates.py
-│   ├── test_tight_loop_quality_gates.py
-│   └── test_e2e_backtest_flow.py
 └── run_quality_gates.py          # Main quality gate runner
 ```
 
@@ -166,7 +170,7 @@ This prevents wasting time on E2E tests when the foundation is broken.
 
 ## Legacy Script Migration
 
-### Scripts Moved to Legacy:
+### Scripts Deleted (Deprecated):
 - `monitor_quality_gates.py` → replaced by unit tests for position/exposure/pnl
 - `test_config_and_data_validation.py` → replaced by config + data provider unit tests
 - `test_async_ordering_quality_gates.py` → moved to integration tests
@@ -178,7 +182,7 @@ This prevents wasting time on E2E tests when the foundation is broken.
 2. **Phase 2**: Update quality gate runner ✅
 3. **Phase 3**: Move legacy scripts ✅
 4. **Phase 4**: Update documentation ✅
-5. **Phase 5**: Deprecate legacy scripts (future)
+5. **Phase 5**: Delete deprecated scripts ✅
 
 ## Adding New Tests
 

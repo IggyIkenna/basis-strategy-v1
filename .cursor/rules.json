@@ -68,6 +68,30 @@
         "No bypassing of components",
         "Root causes addressed, not symptoms"
       ]
+    },
+    {
+      "id": "post-refactor-compliance-check",
+      "title": "Post-Refactor Compliance Check",
+      "description": "Run implementation gap quality gate after any component refactor to ensure compliance with standards.",
+      "severity": "error",
+      "requirements": [
+        "Run implementation gap quality gate after component refactors",
+        "Verify component still complies with architectural standards",
+        "Check that refactor maintains canonical patterns",
+        "Ensure no regressions in component alignment",
+        "Validate implementation_gap_report.json is updated"
+      ],
+      "quality_gate": "scripts/test_implementation_gap_quality_gates.py",
+      "examples": {
+        "required_after": [
+          "Component refactoring",
+          "Architecture pattern changes", 
+          "Configuration system updates",
+          "Data flow modifications",
+          "Interface changes"
+        ],
+        "command": "python scripts/test_implementation_gap_quality_gates.py"
+      }
     }
   ],
   "validation": {
@@ -81,7 +105,15 @@
       "Dynamic data used, not static values",
       "Root cause addressed, not symptoms",
       "Configuration entries added to appropriate YAML files",
-      "Pydantic models updated if new config fields added"
+      "Pydantic models updated if new config fields added",
+      "Post-refactor compliance check completed (implementation gap quality gate)"
+    ],
+    "after_refactor": [
+      "Run implementation gap quality gate",
+      "Verify component compliance with standards",
+      "Check canonical pattern adherence",
+      "Validate no regressions introduced",
+      "Update implementation_gap_report.json"
     ]
   }
 }

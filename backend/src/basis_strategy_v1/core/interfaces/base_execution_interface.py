@@ -11,6 +11,8 @@ import pandas as pd
 from datetime import datetime, timezone
 import logging
 
+from ...core.logging.base_logging_interface import StandardizedLoggingMixin, LogLevel, EventType
+
 logger = logging.getLogger(__name__)
 
 
@@ -35,6 +37,8 @@ class BaseExecutionInterface(ABC):
         self.position_monitor = None
         self.event_logger = None
         self.data_provider = None
+        self.health_status = "healthy"
+        self.error_count = 0
         
         logger.info(f"{self.__class__.__name__} initialized in {execution_mode} mode")
     
@@ -43,6 +47,60 @@ class BaseExecutionInterface(ABC):
         self.position_monitor = position_monitor
         self.event_logger = event_logger
         self.data_provider = data_provider
+    
+    def _handle_error(self, error: Exception, context: str = "") -> None:
+        """Handle errors with structured error handling."""
+        self.error_count += 1
+        error_code = f"EXECUTION_ERROR_{self.error_count:04d}"
+        
+        logger.error(f"Execution error {error_code}: {str(error)}", extra={
+            'error_code': error_code,
+            'context': context,
+            'execution_mode': self.execution_mode,
+            'component': self.__class__.__name__
+        })
+        
+        # Update health status based on error count
+        if self.error_count > 10:
+            self.health_status = "unhealthy"
+        elif self.error_count > 5:
+            self.health_status = "degraded"
+    
+    def check_component_health(self) -> Dict[str, Any]:
+        """Check component health status."""
+        return {
+            'status': self.health_status,
+            'error_count': self.error_count,
+            'execution_mode': self.execution_mode,
+            'component': self.__class__.__name__
+        }
+    
+    def _process_config_driven_operations(self, operations: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Process operations based on configuration settings."""
+        processed_operations = []
+        
+        for operation in operations:
+            try:
+                # Apply config-driven logic
+                if self.config.get('enable_validation', True):
+                    # Validate operation based on config
+                    if self._validate_operation(operation):
+                        processed_operations.append(operation)
+                    else:
+                        logger.warning(f"Operation validation failed: {operation}")
+                else:
+                    processed_operations.append(operation)
+                    
+            except Exception as e:
+                self._handle_error(e, f"config_driven_operation_processing")
+                
+        return processed_operations
+    
+    def _validate_operation(self, operation: Dict[str, Any]) -> bool:
+        """Validate operation based on configuration."""
+        # Basic validation logic
+        required_fields = self.config.get('required_operation_fields', ['type', 'amount'])
+        return all(field in operation for field in required_fields)
     
     @abstractmethod
     async def execute_trade(self, instruction: Dict[str, Any], market_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -112,6 +170,146 @@ class BaseExecutionInterface(ABC):
             Transfer execution result dictionary
         """
         pass
+    
+    @abstractmethod
+    async def execute_borrow(self, instruction: Dict[str, Any], market_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Execute borrow action on OnChain protocol.
+        
+        Args:
+            instruction: Borrow instruction dictionary
+            market_data: Current market data snapshot
+            
+        Returns:
+            Borrow execution result dictionary
+        """
+        pass
+    
+    @abstractmethod
+    async def execute_spot_trade(self, instruction: Dict[str, Any], market_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Execute spot trade on CEX.
+        
+        Args:
+            instruction: Spot trade instruction dictionary
+            market_data: Current market data snapshot
+            
+        Returns:
+            Spot trade execution result dictionary
+        """
+        pass
+    
+    @abstractmethod
+    async def execute_supply(self, instruction: Dict[str, Any], market_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Execute supply action on OnChain protocol.
+        
+        Args:
+            instruction: Supply instruction dictionary
+            market_data: Current market data snapshot
+            
+        Returns:
+            Supply execution result dictionary
+        """
+        pass
+    
+    @abstractmethod
+    async def execute_perp_trade(self, instruction: Dict[str, Any], market_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Execute perpetual trade on CEX.
+        
+        Args:
+            instruction: Perp trade instruction dictionary
+            market_data: Current market data snapshot
+            
+        Returns:
+            Perp trade execution result dictionary
+        """
+        pass
+    
+    @abstractmethod
+    async def execute_swap(self, instruction: Dict[str, Any], market_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Execute token swap on DEX.
+        
+        Args:
+            instruction: Swap instruction dictionary
+            market_data: Current market data snapshot
+            
+        Returns:
+            Swap execution result dictionary
+        """
+        pass
+    
+    def update_state(self, timestamp: pd.Timestamp, trigger_source: str, **kwargs) -> Dict[str, Any]:
+        """
+        Update component state with new data.
+        
+        Args:
+            timestamp: Current timestamp from EventDrivenStrategyEngine
+            trigger_source: Source component that triggered this update
+            **kwargs: Additional parameters specific to component
+            
+        Returns:
+            State update result dictionary
+        """
+        try:
+            logger.info(f"{self.__class__.__name__}: Updating state from {trigger_source}")
+            
+            # Update internal state if needed
+            self._update_internal_state(timestamp, trigger_source, **kwargs)
+            
+            return {
+                'status': 'success',
+                'timestamp': timestamp,
+                'trigger_source': trigger_source,
+                'component': self.__class__.__name__
+            }
+            
+        except Exception as e:
+            logger.error(f"{self.__class__.__name__}: Error in update_state: {e}")
+            return {
+                'status': 'error',
+                'error': str(e),
+                'timestamp': timestamp,
+                'trigger_source': trigger_source,
+                'component': self.__class__.__name__
+            }
+    
+    def _update_internal_state(self, timestamp: pd.Timestamp, trigger_source: str, **kwargs):
+        """Update internal component state."""
+        # Override in subclasses if needed
+        pass
+    
+    def get_position_interfaces(self, venues: List[str], execution_mode: str, config: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Create position monitoring interfaces for multiple venues.
+        
+        Args:
+            venues: List of venue names
+            execution_mode: Execution mode ('backtest' or 'live')
+            config: Configuration dictionary
+            
+        Returns:
+            Dictionary of venue name to position interface instance
+        """
+        from .venue_interface_factory import VenueInterfaceFactory
+        return VenueInterfaceFactory.get_venue_position_interfaces(venues, execution_mode, config)
+    
+    def create_position_interface(self, venue: str, execution_mode: str, config: Dict[str, Any]) -> Any:
+        """
+        Create position monitoring interface for specific venue.
+        
+        Args:
+            venue: Venue name
+            execution_mode: Execution mode ('backtest' or 'live')
+            config: Configuration dictionary
+            
+        Returns:
+            Position interface instance
+        """
+        from .venue_interface_factory import VenueInterfaceFactory
+        return VenueInterfaceFactory.create_venue_position_interface(venue, execution_mode, config)
     
     async def _log_execution_event(self, event_type: str, details: Dict[str, Any]):
         """Log execution event."""

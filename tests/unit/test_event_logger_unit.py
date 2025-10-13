@@ -12,21 +12,21 @@ from datetime import datetime
 class TestEventLogger:
     """Test Event Logger component in isolation."""
     
-    def test_event_logger_initialization(self, mock_config, mock_data_provider):
+    def test_event_logger_initialization(self, mock_config, mock_data_provider, mock_utility_manager):
         """Test event logger initializes correctly with config and data provider."""
         from backend.src.basis_strategy_v1.infrastructure.logging.event_logger import EventLogger
         
-        event_logger = EventLogger(config=mock_config, data_provider=mock_data_provider)
+        event_logger = EventLogger(config=mock_config, data_provider=mock_data_provider, utility_manager=mock_utility_manager)
         
         assert event_logger.config == mock_config
         assert event_logger.data_provider == mock_data_provider
         assert event_logger.log_level == mock_config.get('log_level', 'INFO')
     
-    def test_log_strategy_event(self, mock_config, mock_data_provider):
+    def test_log_strategy_event(self, mock_config, mock_data_provider, mock_utility_manager):
         """Test logging strategy events with proper formatting."""
         from backend.src.basis_strategy_v1.infrastructure.logging.event_logger import EventLogger
         
-        event_logger = EventLogger(config=mock_config, data_provider=mock_data_provider)
+        event_logger = EventLogger(config=mock_config, data_provider=mock_data_provider, utility_manager=mock_utility_manager)
         
         with patch('backend.src.basis_strategy_v1.infrastructure.logging.event_logger.logger') as mock_logger:
             event_logger.log_strategy_event(
@@ -41,11 +41,11 @@ class TestEventLogger:
             assert "pure_lending" in call_args
             assert "1000.0" in call_args
     
-    def test_log_error_event(self, mock_config, mock_data_provider):
+    def test_log_error_event(self, mock_config, mock_data_provider, mock_utility_manager):
         """Test logging error events with stack traces."""
         from backend.src.basis_strategy_v1.infrastructure.logging.event_logger import EventLogger
         
-        event_logger = EventLogger(config=mock_config, data_provider=mock_data_provider)
+        event_logger = EventLogger(config=mock_config, data_provider=mock_data_provider, utility_manager=mock_utility_manager)
         
         with patch('backend.src.basis_strategy_v1.infrastructure.logging.event_logger.logger') as mock_logger:
             try:
@@ -63,11 +63,11 @@ class TestEventLogger:
             assert "Test error" in call_args
             assert "test_context" in call_args
     
-    def test_log_performance_metrics(self, mock_config, mock_data_provider):
+    def test_log_performance_metrics(self, mock_config, mock_data_provider, mock_utility_manager):
         """Test logging performance metrics with timing data."""
         from backend.src.basis_strategy_v1.infrastructure.logging.event_logger import EventLogger
         
-        event_logger = EventLogger(config=mock_config, data_provider=mock_data_provider)
+        event_logger = EventLogger(config=mock_config, data_provider=mock_data_provider, utility_manager=mock_utility_manager)
         
         with patch('backend.src.basis_strategy_v1.infrastructure.logging.event_logger.logger') as mock_logger:
             event_logger.log_performance_metrics(
@@ -84,11 +84,11 @@ class TestEventLogger:
             assert "45.2" in call_args
             assert "10" in call_args
     
-    def test_log_audit_trail(self, mock_config, mock_data_provider):
+    def test_log_audit_trail(self, mock_config, mock_data_provider, mock_utility_manager):
         """Test logging audit trail events for compliance."""
         from backend.src.basis_strategy_v1.infrastructure.logging.event_logger import EventLogger
         
-        event_logger = EventLogger(config=mock_config, data_provider=mock_data_provider)
+        event_logger = EventLogger(config=mock_config, data_provider=mock_data_provider, utility_manager=mock_utility_manager)
         
         with patch('backend.src.basis_strategy_v1.infrastructure.logging.event_logger.logger') as mock_logger:
             event_logger.log_audit_trail(
@@ -105,11 +105,11 @@ class TestEventLogger:
             assert "dev" in call_args
             assert "staging" in call_args
     
-    def test_log_health_status(self, mock_config, mock_data_provider):
+    def test_log_health_status(self, mock_config, mock_data_provider, mock_utility_manager):
         """Test logging health status events."""
         from backend.src.basis_strategy_v1.infrastructure.logging.event_logger import EventLogger
         
-        event_logger = EventLogger(config=mock_config, data_provider=mock_data_provider)
+        event_logger = EventLogger(config=mock_config, data_provider=mock_data_provider, utility_manager=mock_utility_manager)
         
         with patch('backend.src.basis_strategy_v1.infrastructure.logging.event_logger.logger') as mock_logger:
             event_logger.log_health_status(

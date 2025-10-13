@@ -5,14 +5,12 @@
 ### **Product Overview**
 This is a live and backtesting framework for multiple web3 and CEX trading strategies focused on **yield generation through staking and funding rates with optional leverage**. Think Ethena-style strategy enhanced with:
 - **Share Classes**: USDT and ETH share classes for client investments
-- **Fast Withdrawals**: Dynamic buffer management for rapid client redemptions
 - **Dynamic Rebalancing**: Maximum capital allocation to strategies minus withdrawal buffer
 - **Multiple Strategy Modes**: Several modes per share class (weighted average or client-selected)
 
 ### **Product Offering**
 - Clients invest in either **USDT share class** or **ETH share class**
 - Strategy dynamically rebalances to ensure maximum capital allocated to active strategies
-- Buffer maintained for fast client withdrawals
 - Multiple strategy modes available (weighting/selection approach TBD)
 - **Fully automated** with web UI access
 

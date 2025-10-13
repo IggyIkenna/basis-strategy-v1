@@ -369,7 +369,7 @@ def __init__(self, ..., health_manager: UnifiedHealthManager):
     )
 
 def _health_check(self) -> Dict:
-    """Component-specific health check."""
+    """Component-specific health check (private method)."""
     return {
         'status': 'healthy' | 'degraded' | 'unhealthy',
         'last_update': self.last_write_timestamp,
@@ -394,7 +394,67 @@ def _health_check(self) -> Dict:
 
 ## Core Methods
 
-### Primary API Surface
+#
+
+## Standardized Logging Methods
+
+### log_structured_event(timestamp, event_type, level, message, component_name, data=None, correlation_id=None)
+Log a structured event with standardized format.
+
+**Parameters**:
+- `timestamp`: Event timestamp (pd.Timestamp)
+- `event_type`: Type of event (EventType enum)
+- `level`: Log level (LogLevel enum)
+- `message`: Human-readable message (str)
+- `component_name`: Name of the component logging the event (str)
+- `data`: Optional structured data dictionary (Dict[str, Any])
+- `correlation_id`: Optional correlation ID for tracing (str)
+
+**Returns**: None
+
+### log_component_event(event_type, message, data=None, level=LogLevel.INFO)
+Log a component-specific event with automatic timestamp and component name.
+
+**Parameters**:
+- `event_type`: Type of event (EventType enum)
+- `message`: Human-readable message (str)
+- `data`: Optional structured data dictionary (Dict[str, Any])
+- `level`: Log level (defaults to INFO)
+
+**Returns**: None
+
+### log_performance_metric(metric_name, value, unit, data=None)
+Log a performance metric.
+
+**Parameters**:
+- `metric_name`: Name of the metric (str)
+- `value`: Metric value (float)
+- `unit`: Unit of measurement (str)
+- `data`: Optional additional context data (Dict[str, Any])
+
+**Returns**: None
+
+### log_error(error, context=None, correlation_id=None)
+Log an error with standardized format.
+
+**Parameters**:
+- `error`: Exception object (Exception)
+- `context`: Optional context data (Dict[str, Any])
+- `correlation_id`: Optional correlation ID for tracing (str)
+
+**Returns**: None
+
+### log_warning(message, data=None, correlation_id=None)
+Log a warning with standardized format.
+
+**Parameters**:
+- `message`: Warning message (str)
+- `data`: Optional context data (Dict[str, Any])
+- `correlation_id`: Optional correlation ID for tracing (str)
+
+**Returns**: None
+
+## Primary API Surface
 ```python
 async def store_result(self, result: Dict) -> None:
     """Store a single result asynchronously."""
@@ -573,7 +633,7 @@ class ResultsStore:
             )
     
     def _health_check(self) -> Dict:
-        """Component-specific health check."""
+        """Component-specific health check (private method)."""
         return {
             'status': 'healthy' if self.results_queue.qsize() < 9000 else 'degraded',
             'last_write': self.last_write_timestamp,
@@ -665,7 +725,7 @@ async def start(self) -> None:
     self.worker_task = asyncio.create_task(self._worker())
 
 async def _worker(self) -> None:
-    """Async worker for processing results queue"""
+    """Async worker for processing results queue (private method)"""
     while True:
         result_type, data, timestamp = await self.results_queue.get()
         await self._write_result_to_storage(result_type, data, timestamp)
@@ -1073,6 +1133,7 @@ async def process_storage_queue():
 ```python
 # Resume from last successful write
 async def recover_from_failure():
+    """Recover from storage failure (private method)."""
     last_successful = await self._get_last_successful_write()
     await self._replay_queue_from(last_successful)
 ```
@@ -1095,6 +1156,86 @@ This specification ensures the Results Store operates efficiently as an async I/
   - **Shared Clock Pattern**: Methods receive timestamp from engine
   - **Mode-Agnostic Behavior**: Config-driven, no mode-specific logic
   - **Fail-Fast Patterns**: Uses ADR-040 fail-fast access
+
+## Public API Methods
+
+### check_component_health() -> Dict[str, Any]
+**Purpose**: Check component health status for monitoring and diagnostics.
+
+**Returns**:
+```python
+{
+    'status': 'healthy' | 'degraded' | 'unhealthy',
+    'error_count': int,
+    'execution_mode': 'backtest' | 'live',
+    'queue_size': int,
+    'write_count': int,
+    'component': 'ResultsStore'
+}
+```
+
+**Usage**: Called by health monitoring systems to track Results Store status and performance.
+
+### save_final_result(result_data: Dict[str, Any], timestamp: pd.Timestamp) -> Dict[str, Any]
+**Purpose**: Save final result data to storage.
+
+**Parameters**:
+- `result_data`: Final result data to save (Dict[str, Any])
+- `timestamp`: Timestamp for the result (pd.Timestamp)
+
+**Returns**: Dictionary containing save operation status
+
+**Usage**: Called by external systems to save final results after completion.
+
+### get_queue_size() -> int
+**Purpose**: Get current size of the results queue.
+
+**Returns**: Current queue size (int)
+
+**Usage**: Called by external systems to monitor queue status.
+
+### save_event_log(event_data: Dict[str, Any], timestamp: pd.Timestamp) -> Dict[str, Any]
+**Purpose**: Save event log data to storage.
+
+**Parameters**:
+- `event_data`: Event log data to save (Dict[str, Any])
+- `timestamp`: Timestamp for the event (pd.Timestamp)
+
+**Returns**: Dictionary containing save operation status
+
+**Usage**: Called by external systems to save event logs.
+
+### start() -> Dict[str, Any]
+**Purpose**: Start the results store worker.
+
+**Returns**: Dictionary containing start operation status
+
+**Usage**: Called by external systems to start the results store.
+
+### save_timestep_result(result_data: Dict[str, Any], timestamp: pd.Timestamp) -> Dict[str, Any]
+**Purpose**: Save timestep result data to storage.
+
+**Parameters**:
+- `result_data`: Timestep result data to save (Dict[str, Any])
+- `timestamp`: Timestamp for the result (pd.Timestamp)
+
+**Returns**: Dictionary containing save operation status
+
+**Usage**: Called by external systems to save timestep results.
+
+### is_worker_running() -> bool
+**Purpose**: Check if the results store worker is running.
+
+**Returns**: True if worker is running, False otherwise (bool)
+
+**Usage**: Called by external systems to check worker status.
+
+### stop() -> Dict[str, Any]
+**Purpose**: Stop the results store worker.
+
+**Returns**: Dictionary containing stop operation status
+
+**Usage**: Called by external systems to stop the results store.
 
 ## Related Documentation
 

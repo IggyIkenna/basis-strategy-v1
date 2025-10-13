@@ -12,9 +12,11 @@ import logging
 import pandas as pd
 from datetime import datetime
 
+from ...core.logging.base_logging_interface import StandardizedLoggingMixin, LogLevel, EventType
+
 logger = logging.getLogger(__name__)
 
-class UtilityManager:
+class UtilityManager(StandardizedLoggingMixin):
     """Centralized utility methods for all components"""
     
     _instance = None
@@ -34,8 +36,64 @@ class UtilityManager:
         """
         self.config = config
         self.data_provider = data_provider
+        self.health_status = "healthy"
+        self.error_count = 0
         
         logger.info("UtilityManager initialized")
+    
+    def _handle_error(self, error: Exception, context: str = "") -> None:
+        """Handle errors with structured error handling."""
+        self.error_count += 1
+        error_code = f"UTIL_ERROR_{self.error_count:04d}"
+        
+        logger.error(f"Utility Manager error {error_code}: {str(error)}", extra={
+            'error_code': error_code,
+            'context': context,
+            'component': self.__class__.__name__
+        })
+        
+        # Update health status based on error count
+        if self.error_count > 10:
+            self.health_status = "unhealthy"
+        elif self.error_count > 5:
+            self.health_status = "degraded"
+    
+    def check_component_health(self) -> Dict[str, Any]:
+        """Check component health status."""
+        return {
+            'status': self.health_status,
+            'error_count': self.error_count,
+            'component': self.__class__.__name__
+        }
+    
+    def _process_config_driven_operations(self, operations: list) -> list:
+        """Process operations based on configuration settings."""
+        processed_operations = []
+        
+        for operation in operations:
+            try:
+                # Apply config-driven logic
+                if self.config.get('enable_validation', True):
+                    # Validate operation based on config
+                    if self._validate_operation(operation):
+                        processed_operations.append(operation)
+                    else:
+                        logger.warning(f"Operation validation failed: {operation}")
+                else:
+                    processed_operations.append(operation)
+                    
+            except Exception as e:
+                self._handle_error(e, f"config_driven_operation_processing")
+                
+        return processed_operations
+    
+    def _validate_operation(self, operation: Any) -> bool:
+        """Validate operation based on configuration."""
+        # Basic validation logic
+        if isinstance(operation, dict):
+            required_fields = self.config.get('required_operation_fields', ['type'])
+            return all(field in operation for field in required_fields)
+        return True
     
     def get_liquidity_index(self, token: str, timestamp: pd.Timestamp) -> float:
         """
@@ -104,6 +162,14 @@ class UtilityManager:
         try:
             if token == 'USDT':
                 return amount
+            
+            # Handle liquidity index tokens (aUSDT, aETH, etc.)
+            if token.startswith('a') and len(token) > 1:
+                # Convert from liquidity index to underlying token
+                underlying_amount = self.convert_from_liquidity_index(amount, token, timestamp)
+                # Then convert underlying token to USDT
+                underlying_token = token[1:]  # Remove 'a' prefix (aUSDT -> USDT)
+                return self.convert_to_usdt(underlying_amount, underlying_token, timestamp)
             
             price = self.get_market_price(token, 'USDT', timestamp)
             return amount * price

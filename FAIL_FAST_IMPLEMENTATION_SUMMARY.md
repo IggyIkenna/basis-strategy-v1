@@ -75,10 +75,10 @@ self.leverage_enabled = config['leverage_enabled']
 ### 3. Optional Configuration Handling
 ```python
 # ✅ CORRECT: Explicit handling of optional config
-if 'reserve_ratio' in config:
-    self.reserve_ratio = config['reserve_ratio']
+if 'max_drawdown' in config:
+    self.max_drawdown = config['max_drawdown']
 else:
-    self.reserve_ratio = 0.05  # Default only if not specified
+    self.max_drawdown = 0.05  # Default only if not specified
 ```
 
 ## Key Benefits

@@ -20,26 +20,26 @@ class BacktestRequest(BaseModel):
     strategy_name: str = Field(
         ...,
         description="Name of the strategy to backtest",
-        examples=["usdt_pure_lending", "eth_leveraged_staking"]
+        examples=["usdt_market_neutral", "eth_leveraged", "pure_lending", "eth_basis", "btc_basis", "eth_staking_only", "usdt_market_neutral_no_leverage"]
     )
     
     start_date: datetime = Field(
         ...,
         description="Backtest start date",
-        examples=["2024-01-01T00:00:00Z"]
+        examples=["2024-05-12T00:00:00Z", "2024-06-01T00:00:00Z", "2024-07-01T00:00:00Z"]
     )
     
     end_date: datetime = Field(
         ...,
         description="Backtest end date",
-        examples=["2024-01-31T00:00:00Z"]
+        examples=["2024-08-31T23:59:59Z", "2024-09-10T23:59:59Z", "2025-01-31T23:59:59Z"]
     )
     
     initial_capital: Decimal = Field(
         ...,
         gt=0,
         description="Initial capital amount",
-        examples=[100000]
+        examples=[10000, 50000, 100000, 500000]
     )
     
     share_class: ShareClass = Field(
@@ -49,7 +49,7 @@ class BacktestRequest(BaseModel):
     
     config_overrides: Optional[Dict[str, Any]] = Field(
         default=None,
-        description="Optional configuration overrides"
+        description="Optional configuration overrides. Can override component_config, target_apy, max_drawdown, and other strategy parameters. Examples: component_config.risk_monitor.risk_limits, component_config.pnl_calculator.reconciliation_tolerance, target_apy, max_drawdown"
     )
     
     debug_mode: bool = Field(
@@ -80,27 +80,37 @@ class BacktestRequest(BaseModel):
     class Config:
         json_schema_extra = {
             "example": {
-                "strategy_name": "usdt_pure_lending",
-                "start_date": "2024-01-01T00:00:00Z",
-                "end_date": "2024-01-31T00:00:00Z",
+                "strategy_name": "usdt_market_neutral",
+                "start_date": "2024-05-12T00:00:00Z",
+                "end_date": "2024-09-10T23:59:59Z",
                 "initial_capital": 100000,
                 "share_class": "USDT",
                 "config_overrides": {
-                    "strategy": {
-                        "max_underlying_move": 0.12,
-                        "max_basis_move": 0.04,
-                        "max_staked_basis_move": 0.03,
-                        "rebalancing_threshold": 0.10
+                    "component_config": {
+                        "risk_monitor": {
+                            "risk_limits": {
+                                "aave_health_factor_min": 1.2,
+                                "cex_margin_ratio_min": 0.15,
+                                "target_ltv": 0.85
+                            }
+                        },
+                        "pnl_calculator": {
+                            "reconciliation_tolerance": 0.01
+                        },
+                        "strategy_manager": {
+                            "position_calculation": {
+                                "hedge_allocation": {
+                                    "binance": 0.5,
+                                    "bybit": 0.3,
+                                    "okx": 0.2
+                                }
+                            }
+                        }
                     },
-                    "rates": {
-                        "aave_usdt_supply_apr": 0.045,
-                        "eth_staking_apr": 0.030
-                    },
-                    "fees": {
-                        "gas_cost_usd": 30
-                    }
+                    "target_apy": 0.12,
+                    "max_drawdown": 0.03
                 },
-                "debug_mode": True
+                "debug_mode": False
             }
         }
 
@@ -110,7 +120,8 @@ class LiveTradingRequest(BaseModel):
     
     strategy_name: str = Field(
         ...,
-        description="Strategy to run live"
+        description="Strategy to run live",
+        examples=["usdt_market_neutral", "eth_leveraged", "pure_lending", "eth_basis", "btc_basis", "eth_staking_only"]
     )
     
     share_class: ShareClass = Field(
@@ -137,8 +148,7 @@ class LiveTradingRequest(BaseModel):
     class Config:
         json_schema_extra = {
             "example": {
-                "strategy_name": "usdt_pure_lending",
-                "initial_capital": 10000,
+                "strategy_name": "usdt_market_neutral",
                 "share_class": "USDT",
                 "exchange": "bybit",
                 "api_credentials": {

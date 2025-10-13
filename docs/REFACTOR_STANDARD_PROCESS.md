@@ -105,10 +105,18 @@ When conflicts arise, the following hierarchy determines canonical sources:
 - Validates fixes don't break functionality
 - Ensures mode-agnostic component design
 - Verifies configuration loaded from YAML files
+- **NEW**: Runs post-refactor compliance check after component refactors
+- **NEW**: Executes implementation gap quality gate to ensure standards compliance
 
-**Output**: Architecture-compliant codebase
+**Output**: Architecture-compliant codebase with compliance validation
 
 **Timeline**: 4-6 hours
+
+**Post-Refactor Compliance Check**:
+- **Quality Gate**: `scripts/test_implementation_gap_quality_gates.py`
+- **Trigger**: After any component refactor, architecture pattern change, or configuration update
+- **Validation**: Ensures refactored components maintain compliance with architectural standards
+- **Output**: Updated `implementation_gap_report.json` with current compliance status
 
 ### **Phase 3: System Validation** (Agents 5-6)
 
@@ -357,6 +365,8 @@ Execute agents in logical sequence, validating each phase before proceeding:
 
 # Run Agent 4: Architecture Compliance Agent
 # Validate: All architectural violations fixed, code is compliant
+# NEW: Run post-refactor compliance check after component refactors
+python scripts/test_implementation_gap_quality_gates.py
 
 # Phase 3: System Validation
 # Run Agent 5: Quality Gates Agent
@@ -507,8 +517,13 @@ python scripts/run_quality_gates.py --category integration
 # Run repository structure quality gates via main runner
 python scripts/run_quality_gates.py --category repo_structure
 
+# Post-refactor compliance check (REQUIRED after component refactors)
+python scripts/test_implementation_gap_quality_gates.py
+
 # Check for broken links
+```bash
 grep -r "\[.*\](" docs/ | grep -v "http"
+```
 
 # Verify task references
 ```bash
@@ -589,6 +604,22 @@ curl -s http://localhost:8001/health/detailed
 
 ## Integration with Development Workflow
 
+### **CI/CD Integration**
+The following quality gates are integrated into the CI/CD pipeline via `platform.sh` and run automatically on startup:
+
+**Critical Quality Gates (CI/CD Integrated)**:
+- Configuration validation (`--category configuration`)
+- Environment variable validation (`--category env_config_sync`) 
+- Data validation (`test_data_files_quality_gates.py`)
+- Data provider canonical access validation (`test_data_provider_canonical_access_quality_gates_simple.py`)
+- Component communication architecture validation (`test_component_data_flow_architecture_quality_gates.py`)
+
+**Post-Refactor Compliance Check (Manual)**:
+- Implementation gap quality gate (`scripts/test_implementation_gap_quality_gates.py`)
+- **Trigger**: After any component refactor, architecture pattern change, or configuration update
+- **Purpose**: Ensure refactored components maintain compliance with architectural standards
+- **Output**: Updated `implementation_gap_report.json` with current compliance status
+
 ### **Pre-Refactor Checklist**
 Before starting any refactor, ensure:
 - [ ] Relevant tasks exist in `.cursor/tasks/`
@@ -596,6 +627,7 @@ Before starting any refactor, ensure:
 - [ ] Quality gate tests are available
 - [ ] Canonical architectural principles are current
 - [ ] Backend server is running and accessible
+- [ ] CI/CD quality gates are passing (run `./platform.sh backtest` to verify)
 
 ### **During Refactor Process**
 - [ ] Execute agents in proper sequence
@@ -603,9 +635,11 @@ Before starting any refactor, ensure:
 - [ ] Address any issues identified by agents
 - [ ] Validate traceability chain integrity
 - [ ] Update implementation status as work progresses
+- [ ] **NEW**: Run post-refactor compliance check after component refactors: `python scripts/test_implementation_gap_quality_gates.py`
 
 ### **Post-Refactor Validation**
 - [ ] Run quality gates to verify improvements
+- [ ] **NEW**: Run post-refactor compliance check: `python scripts/test_implementation_gap_quality_gates.py`
 - [ ] Validate all traceability links work
 - [ ] Review final reports for completeness
 - [ ] Update documentation with final status

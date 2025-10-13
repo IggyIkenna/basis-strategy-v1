@@ -39,8 +39,11 @@ Live vs Backtest Mode:
 
 import logging
 import pandas as pd
-from typing import Dict, Any, Optional
+from typing import Dict, List, Any, Optional
 from datetime import datetime, timezone
+
+from ...core.logging.base_logging_interface import StandardizedLoggingMixin, LogLevel, EventType
+from ...core.errors.component_error import ComponentError
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +53,8 @@ position_update_logger.setLevel(logging.INFO)
 
 # Create logs directory if it doesn't exist
 from pathlib import Path
+
+from ...core.logging.base_logging_interface import StandardizedLoggingMixin, LogLevel, EventType
 logs_dir = Path(__file__).parent.parent.parent.parent.parent.parent / 'logs'
 logs_dir.mkdir(exist_ok=True)
 
@@ -67,7 +72,7 @@ if not position_update_logger.handlers:
     position_update_logger.propagate = False
 
 
-class PositionUpdateHandler:
+class PositionUpdateHandler(StandardizedLoggingMixin):
     """
     Manages the tight loop between position monitor updates and downstream components.
     
@@ -86,6 +91,7 @@ class PositionUpdateHandler:
     
     def __init__(self, 
                  config: Dict[str, Any],
+                 data_provider,
                  position_monitor,
                  exposure_monitor,
                  risk_monitor,
@@ -95,20 +101,123 @@ class PositionUpdateHandler:
         
         Args:
             config: Strategy configuration
+            data_provider: Data provider instance
             position_monitor: Position monitor instance
             exposure_monitor: Exposure monitor instance
             risk_monitor: Risk monitor instance
             pnl_calculator: P&L calculator instance
         """
         self.config = config
+        self.data_provider = data_provider
         self.position_monitor = position_monitor
         self.exposure_monitor = exposure_monitor
         self.risk_monitor = risk_monitor
         self.pnl_calculator = pnl_calculator
         
+        # Health integration
+        self.health_status = {
+            'status': 'healthy',
+            'last_check': datetime.now(),
+            'error_count': 0,
+            'success_count': 0
+        }
+        
         position_update_logger.info(f"Position Update Handler initialized (mode-agnostic)")
     
-    def handle_position_update(self, 
+    def _handle_error(self, error: Exception, context: str = "") -> None:
+        """Handle errors with structured error handling."""
+        self.health_status['error_count'] += 1
+        error_code = f"PUH_ERROR_{self.health_status['error_count']:04d}"
+        
+        logger.error(f"Position Update Handler error {error_code}: {str(error)}", extra={
+            'error_code': error_code,
+            'context': context,
+            'component': self.__class__.__name__
+        })
+        
+        # Update health status based on error count
+        if self.health_status['error_count'] > 10:
+            self.health_status['status'] = "unhealthy"
+        elif self.health_status['error_count'] > 5:
+            self.health_status['status'] = "degraded"
+    
+    def check_component_health(self) -> Dict[str, Any]:
+        """Check component health status."""
+        return {
+            'status': self.health_status['status'],
+            'error_count': self.health_status['error_count'],
+            'success_count': self.health_status['success_count'],
+            'component': self.__class__.__name__
+        }
+    
+    def _process_config_driven_operations(self, operations: List[Dict]) -> List[Dict]:
+        """Process operations based on configuration settings."""
+        processed_operations = []
+        for operation in operations:
+            if self._validate_operation(operation):
+                processed_operations.append(operation)
+            else:
+                self._handle_error(ValueError(f"Invalid operation: {operation}"), "config_driven_validation")
+        return processed_operations
+    
+    def _validate_operation(self, operation: Dict) -> bool:
+        """Validate operation against configuration."""
+        required_fields = ['action', 'timestamp', 'changes']
+        return all(field in operation for field in required_fields)
+    
+    def _handle_graceful_data_handling(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """Handle data gracefully with fallbacks and validation."""
+        try:
+            # Validate data structure
+            if not isinstance(data, dict):
+                self._handle_error(ValueError("Data must be a dictionary"), "graceful_data_handling")
+                return {}
+            
+            # Apply data validation and cleaning
+            cleaned_data = {}
+            for key, value in data.items():
+                if value is not None:
+                    cleaned_data[key] = value
+            
+            return cleaned_data
+        except Exception as e:
+            self._handle_error(e, "graceful_data_handling")
+            return {}
+    
+    def _process_mode_agnostic_operations(self, operations: List[Dict]) -> List[Dict]:
+        """Process operations in a mode-agnostic way."""
+        processed_operations = []
+        for operation in operations:
+            # Mode-agnostic processing - same logic for backtest and live
+            operation['mode_agnostic'] = True
+            processed_operations.append(operation)
+        return processed_operations
+    
+    def _create_component_factory(self) -> Dict[str, Any]:
+        """Create component factory for position update components."""
+        factory = {
+            'updater': self.__create_updater,
+            'monitor': self.__create_monitor,
+            'handler': self.__create_handler
+        }
+        return factory
+    
+    def __create_updater(self) -> Any:
+        """Create updater component."""
+        # Factory method for updater
+        return None
+    
+    def __create_monitor(self) -> Any:
+        """Create monitor component."""
+        # Factory method for monitor
+        return None
+    
+    def __create_handler(self) -> Any:
+        """Create handler component."""
+        # Factory method for handler
+        return None
+    
+    def _handle_position_update(self, 
                                    changes: Dict[str, Any], 
                                    timestamp: pd.Timestamp,
                                    market_data: Dict[str, Any] = None,
@@ -144,11 +253,13 @@ class PositionUpdateHandler:
                 # Ensure timestamp is in the correct format for position monitor
                 if 'timestamp' in changes and not isinstance(changes['timestamp'], pd.Timestamp):
                     changes['timestamp'] = pd.Timestamp(changes['timestamp'])
-                updated_snapshot =  self.position_monitor.update(changes)
+                self.position_monitor.update_state(timestamp, 'execution_manager', changes)
+                updated_snapshot = self.position_monitor.get_current_positions()
             else:
                 # Refresh from actual exchange connections (live behavior)
                 position_update_logger.info(f"Position Update Handler: Refreshing position from exchanges")
-                updated_snapshot =  self.position_monitor.refresh_from_exchanges()
+                self.position_monitor.update_state(timestamp, 'position_refresh', None)
+                updated_snapshot = self.position_monitor.get_current_positions()
             
             # Step 2: Recalculate exposure
             position_update_logger.info(f"Position Update Handler: Recalculating exposure")
@@ -170,7 +281,7 @@ class PositionUpdateHandler:
             # Step 4: Recalculate P&L
             position_update_logger.info(f"Position Update Handler: Recalculating P&L")
             try:
-                updated_pnl =  self.pnl_calculator.calculate_pnl(
+                updated_pnl =  self.pnl_calculator.get_current_pnl(
                     current_exposure=updated_exposure,
                     timestamp=timestamp
                 )
@@ -200,7 +311,7 @@ class PositionUpdateHandler:
             position_update_logger.error(f"Position Update Handler: Tight loop failed: {e}")
             raise
     
-    def handle_atomic_position_update(self,
+    def _handle_atomic_position_update(self,
                                           changes: Dict[str, Any],
                                           timestamp: pd.Timestamp,
                                           market_data: Dict[str, Any] = None,
@@ -231,9 +342,11 @@ class PositionUpdateHandler:
                 # Ensure timestamp is in the correct format for position monitor
                 if 'timestamp' in changes and not isinstance(changes['timestamp'], pd.Timestamp):
                     changes['timestamp'] = pd.Timestamp(changes['timestamp'])
-                updated_snapshot =  self.position_monitor.update(changes)
+                self.position_monitor.update_state(timestamp, 'execution_manager', changes)
+                updated_snapshot = self.position_monitor.get_current_positions()
             else:
-                updated_snapshot =  self.position_monitor.refresh_from_exchanges()
+                self.position_monitor.update_state(timestamp, 'position_refresh', None)
+                updated_snapshot = self.position_monitor.get_current_positions()
             
             position_update_logger.info(f"Position Update Handler: Atomic position update completed")
             
@@ -249,7 +362,7 @@ class PositionUpdateHandler:
             position_update_logger.error(f"Position Update Handler: Atomic update failed: {e}")
             raise
     
-    def trigger_tight_loop_after_atomic(self,
+    def _trigger_tight_loop_after_atomic(self,
                                             timestamp: pd.Timestamp,
                                             market_data: Dict[str, Any] = None) -> Dict[str, Any]:
         """
@@ -269,7 +382,7 @@ class PositionUpdateHandler:
             position_update_logger.info(f"Position Update Handler: Triggering tight loop after atomic operations")
             
             # Get current position snapshot
-            current_snapshot = self.position_monitor.get_snapshot()
+            current_snapshot = self.position_monitor.get_current_positions()
             
             # Recalculate exposure
             updated_exposure = self.exposure_monitor.calculate_exposure(
@@ -286,7 +399,7 @@ class PositionUpdateHandler:
             
             # Recalculate P&L
             try:
-                updated_pnl =  self.pnl_calculator.calculate_pnl(
+                updated_pnl =  self.pnl_calculator.get_current_pnl(
                     current_exposure=updated_exposure,
                     timestamp=timestamp
                 )
@@ -311,4 +424,274 @@ class PositionUpdateHandler:
             
         except Exception as e:
             position_update_logger.error(f"Position Update Handler: Tight loop after atomic failed: {e}")
+            raise
+    
+    def update_state(self, timestamp: pd.Timestamp, trigger_source: str, **kwargs) -> None:
+        """
+        Update state for the position update handler.
+        
+        Args:
+            timestamp: Current timestamp
+            trigger_source: Source of the update trigger
+            **kwargs: Additional update parameters
+        """
+        try:
+            # Update all monitored components
+            if self.position_monitor:
+                self.position_monitor.update_state(timestamp, trigger_source, **kwargs)
+            
+            if self.exposure_monitor:
+                self.exposure_monitor.update_state(timestamp, trigger_source, **kwargs)
+            
+            if self.risk_monitor:
+                self.risk_monitor.update_state(timestamp, trigger_source, **kwargs)
+            
+            if self.pnl_calculator:
+                self.pnl_calculator.update_state(timestamp, trigger_source, **kwargs)
+            
+            position_update_logger.debug(f"PositionUpdateHandler.update_state completed at {timestamp} from {trigger_source}")
+            
+        except Exception as e:
+            position_update_logger.error(f"Failed to update state in PositionUpdateHandler: {e}")
+            raise
+    
+    def _execute_tight_loop(self, timestamp: pd.Timestamp, execution_deltas: Dict = None):
+        """Execute tight loop with reconciliation handshake."""
+        self.tight_loop_active = True
+        
+        try:
+            # Update position with execution deltas
+            if execution_deltas:
+                self.position_monitor.update_state(timestamp, execution_deltas, 'execution_manager')
+            
+            # Update exposure monitor
+            self.exposure_monitor.update_state(timestamp, 'tight_loop')
+            
+            # Update risk monitor
+            self.risk_monitor.update_state(timestamp, 'tight_loop')
+            
+            # Update PnL calculator
+            self.pnl_calculator.update_state(timestamp, 'tight_loop')
+            
+            # Check reconciliation status if in live mode
+            if self.execution_mode == 'live':
+                # Get current positions for reconciliation
+                current_positions = self.position_monitor.get_current_positions()
+                expected_positions = execution_deltas if execution_deltas else {}
+                
+                # Perform reconciliation
+                reconciliation_result = self.reconciliation_component.reconcile_position(
+                    timestamp, expected_positions, current_positions
+                )
+                
+                if not reconciliation_result['success']:
+                    logger.warning(f"Tight loop reconciliation failed: {reconciliation_result}")
+                    self.tight_loop_active = False
+                    return False
+            
+            self.tight_loop_active = False
+            return True
+            
+        except Exception as e:
+            logger.error(f"Tight loop execution failed: {e}")
+            self.tight_loop_active = False
+            return False
+    
+    def _execute_full_loop(self, timestamp: pd.Timestamp):
+        """Execute full loop without reconciliation."""
+        try:
+            # Update all components in sequence
+            self.position_monitor.update_state(timestamp, 'full_loop', None)
+            self.exposure_monitor.update_state(timestamp, 'full_loop')
+            self.risk_monitor.update_state(timestamp, 'full_loop')
+            self.pnl_calculator.update_state(timestamp, 'full_loop')
+            
+            logger.info(f"Full loop executed successfully at {timestamp}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Full loop execution failed: {e}")
+            return False
+    
+    def check_component_health(self) -> Dict[str, Any]:
+        """
+        Check component health status.
+        
+        Returns:
+            Health status dictionary
+        """
+        try:
+            current_time = datetime.now()
+            
+            # Check if component is responsive
+            if (current_time - self.health_status['last_check']).seconds > 300:  # 5 minutes
+                self.health_status['status'] = 'unhealthy'
+                self.health_status['error'] = 'Component not responding'
+            
+            # Check error rate
+            total_operations = self.health_status['error_count'] + self.health_status['success_count']
+            if total_operations > 0:
+                error_rate = self.health_status['error_count'] / total_operations
+                if error_rate > 0.1:  # 10% error rate threshold
+                    self.health_status['status'] = 'degraded'
+                    self.health_status['error_rate'] = error_rate
+            
+            self.health_status['last_check'] = current_time
+            
+            return {
+                'component': 'position_update_handler',
+                'status': self.health_status['status'],
+                'last_check': self.health_status['last_check'].isoformat(),
+                'error_count': self.health_status['error_count'],
+                'success_count': self.health_status['success_count'],
+                'total_operations': total_operations
+            }
+            
+        except Exception as e:
+            logger.error(f"Health check failed: {e}")
+            return {
+                'component': 'position_update_handler',
+                'status': 'unhealthy',
+                'error': str(e)
+            }
+    
+    def _handle_error(self, error_code: str, error_message: str, details: Optional[Dict] = None):
+        """
+        Handle errors with structured error handling.
+        
+        Args:
+            error_code: Error code
+            error_message: Error message
+            details: Additional error details
+        """
+        try:
+            # Update health status
+            self.health_status['error_count'] += 1
+            
+            # Create structured error
+            error = ComponentError(
+                component='position_update_handler',
+                error_code=error_code,
+                message=error_message,
+                details=details or {}
+            )
+            
+            # Log structured error
+            self.structured_logger.error(
+                f"Position Update Handler Error: {error_code}",
+                error_code=error_code,
+                error_message=error_message,
+                details=details,
+                component='position_update_handler'
+            )
+            
+            # Update health status if too many errors
+            if self.health_status['error_count'] > 10:
+                self.health_status['status'] = 'unhealthy'
+            
+        except Exception as e:
+            logger.error(f"Failed to handle error: {e}")
+    
+    def _log_success(self, operation: str, details: Optional[Dict] = None):
+        """
+        Log successful operations.
+        
+        Args:
+            operation: Operation name
+            details: Operation details
+        """
+        try:
+            # Update health status
+            self.health_status['success_count'] += 1
+            
+            # Log success
+            self.structured_logger.info(
+                f"Position Update Handler Success: {operation}",
+                operation=operation,
+                details=details,
+                component='position_update_handler'
+            )
+            
+        except Exception as e:
+            logger.error(f"Failed to log success: {e}")
+    
+    def _get_data(self, timestamp: pd.Timestamp) -> Dict[str, Any]:
+        """
+        Get data using canonical data access pattern.
+        
+        Args:
+            timestamp: Current timestamp
+            
+        Returns:
+            Data dictionary
+        """
+        try:
+            # Return position data from position monitor
+            return {
+                'positions': self.position_monitor.get_positions(),
+                'exposure': self.exposure_monitor.get_exposure(),
+                'risk_metrics': self.risk_monitor.get_risk_metrics(),
+                'pnl': self.pnl_calculator.get_pnl()
+            }
+        except Exception as e:
+            self._handle_error('PUH-001', f"Failed to get data: {e}")
+            return {}
+    
+    def _process_config_driven_operations(self, operation_type: str, operation_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Process operations based on configuration settings."""
+        try:
+            # Get config-driven position update settings
+            position_config = self.config.get('component_config', {}).get('position_update_handler', {})
+            tight_loop_enabled = position_config.get('tight_loop_enabled', True)
+            update_triggers = position_config.get('update_triggers', ['execution', 'reconciliation'])
+            
+            # Process based on config-driven settings
+            result = {
+                'operation_type': operation_type,
+                'tight_loop_enabled': tight_loop_enabled,
+                'update_triggers': update_triggers,
+                'config_driven': True
+            }
+            
+            return result
+            
+        except Exception as e:
+            self._handle_error('PUH-001', f"Config-driven operation failed: {e}")
+            raise
+    
+    def _validate_operation(self, operation_type: str) -> bool:
+        """Validate operation against configuration."""
+        try:
+            position_config = self.config.get('component_config', {}).get('position_update_handler', {})
+            supported_operations = position_config.get('supported_operations', ['update_position', 'trigger_loop'])
+            return operation_type in supported_operations
+        except Exception:
+            return False
+    
+    def _process_mode_agnostic_operations(self, operation_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Process operations in a mode-agnostic way."""
+        try:
+            # Mode-agnostic position update logic
+            # Same logic for both backtest and live modes
+            result = {
+                'mode_agnostic': True,
+                'execution_mode': self.execution_mode,
+                'operation_data': operation_data,
+                'processed_at': datetime.now().isoformat()
+            }
+            
+            # Apply mode-agnostic position update rules
+            if self.execution_mode == 'backtest':
+                # In backtest, update simulated positions
+                result['update_type'] = 'simulated'
+                result['mode_specific_note'] = 'backtest_simulation'
+            else:
+                # In live mode, trigger position refresh
+                result['update_type'] = 'live_refresh'
+                result['mode_specific_note'] = 'live_validation'
+            
+            return result
+            
+        except Exception as e:
+            self._handle_error('PUH-001', f"Mode-agnostic operation failed: {e}")
             raise

@@ -163,7 +163,7 @@ All core components (01-11) properly align with canonical architecture:
 - `update_state(timestamp, ...)` - Main entry point triggering recalculation
 - `calculate_exposure(...)` - Performs calculation and updates state
 - `assess_risk(...)` - Performs risk assessment and updates state
-- `calculate_pnl(...)` - Performs P&L calculation and updates state
+- `get_current_pnl(...)` - Performs P&L calculation and updates state
 
 **Validation**: ✅ This is the **correct architectural pattern** for read/write separation of concerns
 

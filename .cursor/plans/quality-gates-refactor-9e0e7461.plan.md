@@ -135,7 +135,7 @@ Reference: `docs/specs/05_STRATEGY_MANAGER.md`, `docs/specs/5A_STRATEGY_FACTORY.
 
 #### 1.7: Execution Manager Unit Test (`test_execution_manager_unit.py`)
 
-Test ONLY ExecutionManager with mocked interfaces:
+Test ONLY VenueManager with mocked interfaces:
 
 - **Test 1**: Instruction routing to correct interface
 - **Test 2**: Sequential execution (one at a time)

@@ -109,6 +109,65 @@ setup_environment() {
     echo -e "${GREEN}✅ Environment configured: $ENVIRONMENT${NC}"
 }
 
+run_quality_gates() {
+    echo -e "${BLUE}🚦 Running critical quality gates...${NC}"
+    
+    # Change to project root (docker/deploy.sh runs in docker/ dir)
+    cd ..
+    
+    # Run configuration validation
+    echo -e "${BLUE}  📋 Running configuration validation...${NC}"
+    python3 scripts/run_quality_gates.py --category configuration
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}❌ Configuration validation failed${NC}"
+        cd docker
+        return 1
+    fi
+    
+    # Run environment variable validation
+    echo -e "${BLUE}  🔧 Running environment variable validation...${NC}"
+    python3 scripts/run_quality_gates.py --category env_config_sync
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}❌ Environment variable validation failed${NC}"
+        cd docker
+        return 1
+    fi
+    
+    # Run data validation
+    echo -e "${BLUE}  📊 Running data validation...${NC}"
+    python3 scripts/test_data_files_quality_gates.py
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}❌ Data validation failed${NC}"
+        cd docker
+        return 1
+    fi
+    
+    # Run data provider canonical access validation
+    echo -e "${BLUE}  🔍 Running data provider canonical access validation...${NC}"
+    python3 scripts/test_data_provider_canonical_access_quality_gates_simple.py
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}❌ Data provider canonical access validation failed${NC}"
+        cd docker
+        return 1
+    fi
+    
+    # Run component communication architecture validation
+    echo -e "${BLUE}  🏗️ Running component communication architecture validation...${NC}"
+    python3 scripts/test_component_data_flow_architecture_quality_gates.py
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}❌ Component communication architecture validation failed${NC}"
+        cd docker
+        return 1
+    fi
+    
+    
+    # Return to docker directory
+    cd docker
+    
+    echo -e "${GREEN}✅ All critical quality gates passed${NC}"
+    return 0
+}
+
 get_compose_services() {
     case $SERVICES in
         backend)
@@ -130,6 +189,13 @@ start_services() {
     
     # Validate deployment configuration
     validate_deployment_config
+    
+    # Run quality gates before building
+    run_quality_gates
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}❌ Quality gates failed. Aborting deployment.${NC}"
+        exit 1
+    fi
     
     local compose_services=$(get_compose_services)
     

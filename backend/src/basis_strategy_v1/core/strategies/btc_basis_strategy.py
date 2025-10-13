@@ -13,6 +13,8 @@ import logging
 
 from .base_strategy_manager import BaseStrategyManager, StrategyAction
 
+from ...core.logging.base_logging_interface import StandardizedLoggingMixin, LogLevel, EventType
+
 logger = logging.getLogger(__name__)
 
 
@@ -65,7 +67,6 @@ class BTCBasisStrategy(BaseStrategyManager):
         try:
             # Calculate target allocations
             btc_target = current_equity * self.btc_allocation
-            reserve_target = current_equity * self.reserve_ratio
             
             # Get current BTC price
             btc_price = self._get_asset_price()
@@ -74,7 +75,7 @@ class BTCBasisStrategy(BaseStrategyManager):
             return {
                 'btc_balance': btc_amount,
                 'btc_perpetual_short': -btc_amount,  # Short position
-                f'{self.share_class.lower()}_balance': reserve_target,
+                f'{self.share_class.lower()}_balance': current_equity,
                 'total_equity': current_equity
             }
             
@@ -83,7 +84,7 @@ class BTCBasisStrategy(BaseStrategyManager):
             return {
                 'btc_balance': 0.0,
                 'btc_perpetual_short': 0.0,
-                f'{self.share_class.lower()}_balance': current_equity * self.reserve_ratio,
+                f'{self.share_class.lower()}_balance': current_equity ,
                 'total_equity': current_equity
             }
     
@@ -175,7 +176,6 @@ class BTCBasisStrategy(BaseStrategyManager):
         try:
             # Calculate proportional allocation
             btc_delta = equity_delta * self.btc_allocation
-            reserve_delta = equity_delta * self.reserve_ratio
             
             # Get current BTC price
             btc_price = self._get_asset_price()

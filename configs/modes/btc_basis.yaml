@@ -17,16 +17,13 @@ share_class: "USDT"
 asset: "BTC"
 lst_type: null
 rewards_mode: "base_only"
-btc_allocation: 1.0  # 100% allocation to BTC basis strategy
 funding_threshold: 0.0001  # 0.01% funding threshold
-max_leverage: 1.0  # No leverage for BTC basis
 
 # Execution parameters
 hedge_venues: ["binance", "bybit", "okx"]
 hedge_allocation_binance: 0.4
 hedge_allocation_bybit: 0.3
 hedge_allocation_okx: 0.3
-reserve_ratio: 0.1
 position_deviation_threshold: 0.02  # 2% deviation from target triggers rebalancing
 
 # Risk parameters
@@ -36,17 +33,25 @@ margin_ratio_target: 0.8  # Target CEX margin ratio for futures (80% conservativ
 # Venue configuration
 venues:
   binance:
+    venue_type: "cex"
     enabled: true
-    spot_enabled: true
-    perp_enabled: true
+    instruments: ["BTC-SPOT", "BTC-PERP"]
+    order_types: ["market", "limit"]
   bybit:
+    venue_type: "cex"
     enabled: true
-    spot_enabled: true
-    perp_enabled: true
+    instruments: ["BTC-PERP"]
+    order_types: ["market", "limit"]
   okx:
+    venue_type: "cex"
     enabled: true
-    spot_enabled: true
-    perp_enabled: true
+    instruments: ["BTC-PERP"]
+    order_types: ["market", "limit"]
+  alchemy:
+    venue_type: "infrastructure"
+    enabled: true
+    instruments: ["WALLET-TRANSFER"]
+    order_types: ["transfer"]
 
 # Delta neutrality parameters
 delta_tolerance: 0.005  # 0.5% tolerance of gross exposure for delta neutrality
@@ -117,3 +122,44 @@ component_config:
     timeout: 30
     max_retries: 3
     validation_strict: true
+
+# Event logging configuration
+event_logger:
+  log_path: "./logs"
+  log_format: "json"
+  log_level: "INFO"
+  event_categories:
+    data: ["data_loaded", "data_updated", "data_error"]
+    risk: ["risk_breach", "risk_warning", "risk_calculation"]
+    event: ["event_logged", "event_filtered", "event_exported"]
+    business: ["trade_executed", "position_updated", "strategy_decision"]
+  event_logging_settings:
+    buffer_size: 10000
+    export_format: "both"
+    async_logging: true
+    compression: false
+  log_retention_policy:
+    retention_days: 30
+    max_file_size_mb: 100
+    rotation_frequency: "daily"
+    compression_after_days: 7
+  audit_requirements:
+    audit_trail: true
+    immutable_logs: true
+    encryption: false
+    compliance_mode: "standard"
+  compliance_settings:
+    gdpr_compliant: false
+    sox_compliant: false
+    data_residency: "global"
+    encryption_required: false
+  logging_requirements:
+    structured_logging: true
+    correlation_ids: true
+    performance_metrics: true
+    error_tracking: true
+  event_filtering:
+    filter_by_level: true
+    filter_by_category: true
+    exclude_patterns: []
+    include_patterns: ["*"]

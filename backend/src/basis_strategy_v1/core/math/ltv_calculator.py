@@ -11,6 +11,8 @@ from decimal import Decimal
 from typing import Dict, Optional, Tuple, Any
 import logging
 
+from ...core.logging.base_logging_interface import StandardizedLoggingMixin, LogLevel, EventType
+
 logger = logging.getLogger(__name__)
 
 # Error codes for LTV Calculator
@@ -26,7 +28,7 @@ ERROR_CODES = {
 }
 
 
-class LTVCalculator:
+class LTVCalculator(StandardizedLoggingMixin):
     """Pure function calculator for loan-to-value ratios.
     
     All functions are static and stateless, receiving configuration as parameters.

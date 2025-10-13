@@ -29,17 +29,16 @@ router = APIRouter()
 
 def _derive_strategy_info_from_config(strategy_name: str, config: Dict[str, Any]) -> Dict[str, Any]:
     """Derive strategy information from config parameters."""
-    strategy_params = config.get('strategy', {})  # OK - checking if section exists
-    backtest_params = config.get('backtest', {})  # OK - checking if section exists
+    # Read directly from root level (not from 'strategy' section)
+    share_class = config.get('share_class', 'USDT')
     
-    # Extract key information from config
-    share_class = strategy_params.get('share_class', 'USDT')
+    # Extract feature flags from root level
+    has_leverage = config.get('leverage_enabled', False) or config.get('borrowing_enabled', False)
+    has_basis_trading = config.get('basis_trade_enabled', False)
+    has_staking = config.get('staking_enabled', False)
+    has_lending = config.get('lending_enabled', False)
     
-    # Determine risk level from configuration
-    has_leverage = strategy_params.get('staking_leverage_enabled', False)
-    has_basis_trading = strategy_params.get('basis_trade_enabled', False)
-    has_staking = strategy_params.get('staking_enabled', False)
-    
+    # Derive risk level
     if has_leverage or has_basis_trading:
         risk_level = "high"
     elif has_staking:
@@ -47,9 +46,9 @@ def _derive_strategy_info_from_config(strategy_name: str, config: Dict[str, Any]
     else:
         risk_level = "low"
     
-    # Determine strategy type from enabled features
+    # Build feature list
     features = []
-    if strategy_params.get('lending_enabled', False):
+    if has_lending:
         features.append("lending")
     if has_staking:
         features.append("staking")
@@ -60,32 +59,56 @@ def _derive_strategy_info_from_config(strategy_name: str, config: Dict[str, Any]
     
     strategy_type = "_".join(features) if features else "unknown"
     
-    # Calculate expected return range based on features
-    if risk_level == "low":
-        expected_return = "4-12% APR"
-    elif risk_level == "medium":
-        expected_return = "8-25% APR"
-    else:
-        expected_return = "15-50% APR"
+    # Calculate expected return from target_apy if available
+    target_apy = config.get('target_apy', 0.05)
+    apy_percent = int(target_apy * 100)
+    expected_return = f"{apy_percent}% APR"
+    
+    # Extract venues from config - read actual venues section
+    venues_config = config.get('venues', {}) or {}
+    supported_venues = []
+    
+    # Read venues from the standardized config structure
+    for venue_name, venue_info in (venues_config or {}).items():
+        if isinstance(venue_info, dict):
+            # Check if venue is enabled (required field in standardized structure)
+            if venue_info.get('enabled', False):
+                # Validate standardized structure has required fields
+                if 'venue_type' in venue_info and 'instruments' in venue_info and 'order_types' in venue_info:
+                    supported_venues.append(venue_name.upper())
+                # Fallback for legacy structure
+                elif venue_info.get('enabled', False):
+                    supported_venues.append(venue_name.upper())
+        elif isinstance(venue_info, bool) and venue_info:
+            # Simple boolean venue (legacy support)
+            supported_venues.append(venue_name.upper())
+    
+    # Add hedge venues (for basis trading strategies)
+    hedge_venues = config.get('hedge_venues', []) or []
+    for venue in (hedge_venues or []):
+        venue_upper = venue.upper()
+        if venue_upper not in supported_venues:
+            supported_venues.append(venue_upper)
+    
+    # Remove duplicates while preserving order
+    supported_venues = list(dict.fromkeys(supported_venues))
     
     return {
         "name": strategy_name,
-        "display_name": strategy_name.replace("_", " ").title(),
-        "description": f"Config-driven strategy: {strategy_type}",
+        "description": f"{strategy_name.replace('_', ' ').title()} strategy",
         "share_class": share_class,
         "risk_level": risk_level,
         "expected_return": expected_return,
-        "minimum_capital": backtest_params.get('initial_capital', 1000),
-        "supported_venues": ["AAVE", "LIDO", "BYBIT"],  # From config if available
+        "supported_venues": supported_venues if supported_venues else [],
         "parameters": {
             "strategy_type": strategy_type,
             "complexity": "simple" if risk_level == "low" else "complex",
             "architecture": "config_driven_components",
             "features": {
-                "lending_enabled": strategy_params.get('lending_enabled', False),
-                "staking_enabled": strategy_params.get('staking_enabled', False),
-                "leverage_enabled": strategy_params.get('staking_leverage_enabled', False),
-                "basis_trade_enabled": strategy_params.get('basis_trade_enabled', False),
+                "lending_enabled": has_lending,
+                "staking_enabled": has_staking,
+                "leverage_enabled": has_leverage,
+                "basis_trade_enabled": has_basis_trading,
             }
         }
     }
@@ -116,24 +139,48 @@ async def list_strategies(
         )
         
         # Use centralized strategy discovery
-        available_strategy_names = get_available_strategies()
-        if not available_strategy_names:
-            logger.warning("No strategies found in configs/scenarios/")
-            return StandardResponse(
-                success=True,
-                data=StrategyListResponse(strategies=[], total=0)
-            )
+        try:
+            from ...infrastructure.config.config_manager import get_config_manager
+            cm = get_config_manager()
+            logger.info(f"Config manager created, modes cache: {cm.config_cache.get('modes', 'NOT_FOUND')}")
+            available_strategy_names = get_available_strategies()
+            logger.info(f"get_available_strategies() returned: {available_strategy_names}")
+            if available_strategy_names is None:
+                logger.error("get_available_strategies() returned None - config manager not initialized")
+                raise HTTPException(status_code=500, detail="Configuration manager not initialized")
+            if not available_strategy_names:
+                logger.warning("No strategies found in configs/modes/")
+                return StandardResponse(
+                    success=True,
+                    data=StrategyListResponse(strategies=[], total=0)
+                )
+        except Exception as e:
+            logger.error(f"Failed to get available strategies: {e}")
+            raise HTTPException(status_code=500, detail=f"Configuration error: {str(e)}")
         
         strategies = []
         
         # Process each discovered strategy
+        if available_strategy_names is None:
+            logger.error("available_strategy_names is None - cannot iterate")
+            raise HTTPException(status_code=500, detail="Configuration error: strategy list is None")
+            
         for strategy_name in available_strategy_names:
             # Load merged config and derive strategy info
-            config = load_merged_strategy_config(strategy_name)
-            if not config:
-                continue  # Skip if config can't be loaded
+            try:
+                config = load_merged_strategy_config(strategy_name)
+                if not config:
+                    logger.warning(f"Config not loaded for strategy: {strategy_name}")
+                    continue  # Skip if config can't be loaded
+            except Exception as e:
+                logger.error(f"Failed to load config for strategy {strategy_name}: {e}")
+                continue
                 
-            strategy_info = _derive_strategy_info_from_config(strategy_name, config)
+            try:
+                strategy_info = _derive_strategy_info_from_config(strategy_name, config)
+            except Exception as e:
+                logger.error(f"Failed to derive strategy info for {strategy_name}: {e}")
+                continue
             
             # Apply filters
             if share_class and strategy_info.get("share_class") != share_class:
@@ -159,94 +206,6 @@ async def list_strategies(
         )
         raise HTTPException(status_code=500, detail=f"Failed to list strategies: {str(e)}")
 
-
-@router.post(
-    "/{strategy_name}/validate",
-    response_model=StandardResponse[Dict[str, Any]],
-    summary="Validate strategy configuration",
-    description="Validate strategy configuration parameters"
-)
-async def validate_strategy_config(
-    strategy_name: str,
-    config: Dict[str, Any],
-    request: Request
-) -> StandardResponse[Dict[str, Any]]:
-    """
-    Validate strategy configuration parameters.
-    """
-    correlation_id = getattr(request.state, "correlation_id", "unknown")
-    
-    try:
-        logger.info(
-            "Validating strategy configuration",
-            correlation_id=correlation_id,
-            strategy_name=strategy_name
-        )
-        
-        # Validate strategy name
-        try:
-            validate_strategy_name(strategy_name)
-        except ValueError as e:
-            raise HTTPException(status_code=400, detail=str(e))
-        
-        # Load and validate the configuration
-        merged_config = load_merged_strategy_config(strategy_name)
-        if not merged_config:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Strategy config not found: {strategy_name}"
-            )
-        
-        # Apply the provided config overrides
-        if 'strategy' in config:
-            merged_config['strategy'].update(config['strategy'])
-        if 'backtest' in config:
-            merged_config['backtest'].update(config['backtest'])
-        
-        # Basic validation - check required fields
-        validation_errors = []
-        
-        # Validate strategy section
-        strategy_params = merged_config.get('strategy', {})
-        if not strategy_params.get('share_class'):
-            validation_errors.append("share_class is required")
-        
-        # Validate backtest section
-        backtest_params = merged_config.get('backtest', {})
-        if not backtest_params.get('initial_capital'):
-            validation_errors.append("initial_capital is required")
-        if not backtest_params.get('start_date'):
-            validation_errors.append("start_date is required")
-        if not backtest_params.get('end_date'):
-            validation_errors.append("end_date is required")
-        
-        if validation_errors:
-            return StandardResponse(
-                success=False,
-                data={
-                    "valid": False,
-                    "errors": validation_errors
-                }
-            )
-        
-        return StandardResponse(
-            success=True,
-            data={
-                "valid": True,
-                "config": merged_config
-            }
-        )
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(
-            "Failed to validate strategy configuration",
-            correlation_id=correlation_id,
-            strategy_name=strategy_name,
-            error=str(e)
-        )
-        raise HTTPException(status_code=500, detail=f"Failed to validate strategy configuration: {str(e)}")
 
 
 @router.get(

@@ -27,6 +27,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 import time
+from .timestamp_utils import format_timestamp_utc
 
 # Handle both standalone and module imports
 try:
@@ -252,7 +253,7 @@ class CoinGeckoClient(BaseDownloader):
                 continue
             
             record = {
-                'timestamp': datetime.utcfromtimestamp(hour_timestamp / 1000).isoformat() + 'Z',
+                'timestamp': format_timestamp_utc(hour_timestamp),
                 'open': prices_in_hour[0],
                 'high': max(prices_in_hour),
                 'low': min(prices_in_hour),

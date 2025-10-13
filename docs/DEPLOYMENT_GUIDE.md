@@ -91,6 +91,28 @@ See: REFERENCE_ARCHITECTURE_CANONICAL.md Section II for config-driven architectu
 - **Execution Mode**: Controls venue behavior (simulated vs real execution)
 - **Config Variables**: Control configuration system behavior (validation, caching, reloading)
 
+### Quality Gates Integration
+
+Both platform.sh and docker/deploy.sh automatically validate configuration, environment variables, and data before deployment:
+
+**Validation Steps**:
+
+1. **Configuration Validation**: Ensures all mode configs align with Pydantic models
+2. **Environment Variable Validation**: Ensures all env vars are documented and used
+3. **Data Validation**: Ensures all required data files exist and are valid
+
+**Quality Gate Scripts**:
+
+- `scripts/validate_config_alignment.py` - Config/model alignment
+- `scripts/test_env_config_usage_sync_quality_gates.py` - Env var sync
+- `scripts/test_data_availability_quality_gates.py` - Data availability
+
+**Build Process**:
+
+- **platform.sh**: Quality gates run before backend startup
+- **docker/deploy.sh**: Quality gates run before Docker build
+- **Failure Handling**: Builds abort immediately if any validation fails
+
 #### **4. Main() Entry Point Orchestration Details**
 The `main()` function orchestrates the complete startup sequence:
 
@@ -250,8 +272,8 @@ Strategy modes are selected via API parameters, not environment variables:
 # Backtest Request
 {
     "strategy_name": "usdt_pure_lending",
-    "start_date": "2024-01-01T00:00:00Z",
-    "end_date": "2024-01-31T00:00:00Z",
+    "start_date": "2024-05-12T00:00:00Z",
+    "end_date": "2024-09-10T23:59:59Z",
     "initial_capital": 100000,
     "share_class": "USDT"
 }
@@ -640,6 +662,7 @@ lsof -i :5173
 **Before Deployment**:
 - [ ] Push to main
 - [ ] Configure environment files (`.env.dev`, `.env.prod`, etc.)
+- [ ] Run quality gates: `python3 scripts/run_quality_gates.py --category configuration`
 - [ ] Test locally with Docker
 - [ ] Set proper permissions: `chmod 600 env.unified`
 

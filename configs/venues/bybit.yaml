@@ -2,7 +2,14 @@
 venue: "bybit"
 type: "cex"
 
-# REMOVED: trading_fees - not needed in config, handled by execution engine
+# Trading parameters
+trading_fees:
+  maker: 0.0001  # 0.01% maker fee
+  taker: 0.0006  # 0.06% taker fee
+
+# Trade size limits
+min_trade_size_usd: 10
+max_trade_size_usd: 1000000  # $1M max per trade
 
 # Basic limits
 max_leverage: 100

@@ -25,7 +25,7 @@ def run_coverage_analysis() -> Dict[str, Any]:
             "--cov=backend/src/basis_strategy_v1",
             "--cov-report=json",
             "--cov-report=term-missing",
-            "scripts/unit_tests/",
+            "tests/unit/",
             "-v"
         ], capture_output=True, text=True, cwd=Path(__file__).parent.parent)
         

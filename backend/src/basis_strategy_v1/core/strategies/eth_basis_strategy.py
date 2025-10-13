@@ -13,6 +13,8 @@ import logging
 
 from .base_strategy_manager import BaseStrategyManager, StrategyAction
 
+from ...core.logging.base_logging_interface import StandardizedLoggingMixin, LogLevel, EventType
+
 logger = logging.getLogger(__name__)
 
 
@@ -65,7 +67,6 @@ class ETHBasisStrategy(BaseStrategyManager):
         try:
             # Calculate target allocations
             eth_target = current_equity * self.eth_allocation
-            reserve_target = current_equity * self.reserve_ratio
             
             # Get current ETH price
             eth_price = self._get_asset_price()
@@ -74,7 +75,6 @@ class ETHBasisStrategy(BaseStrategyManager):
             return {
                 'eth_balance': eth_amount,
                 'eth_perpetual_short': -eth_amount,  # Short position
-                f'{self.share_class.lower()}_balance': reserve_target,
                 'total_equity': current_equity
             }
             
@@ -83,7 +83,6 @@ class ETHBasisStrategy(BaseStrategyManager):
             return {
                 'eth_balance': 0.0,
                 'eth_perpetual_short': 0.0,
-                f'{self.share_class.lower()}_balance': current_equity * self.reserve_ratio,
                 'total_equity': current_equity
             }
     
@@ -175,7 +174,6 @@ class ETHBasisStrategy(BaseStrategyManager):
         try:
             # Calculate proportional allocation
             eth_delta = equity_delta * self.eth_allocation
-            reserve_delta = equity_delta * self.reserve_ratio
             
             # Get current ETH price
             eth_price = self._get_asset_price()

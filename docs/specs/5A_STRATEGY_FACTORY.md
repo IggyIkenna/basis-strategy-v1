@@ -431,6 +431,7 @@ class StrategyFactory:
         exposure_monitor: ExposureMonitor,
         risk_monitor: RiskMonitor
     ) -> None:
+        """Validate dependencies (private method)."""
         """
         Validate that all required dependencies are available.
         
@@ -782,7 +783,7 @@ except Exception as e:
 ### Calls TO
 - BaseStrategyManager subclasses (creation): `STRATEGY_MAPmode(config, dependencies)`
 - Component Factory (dependency creation): `ComponentFactory.create_*()` methods
-- Config Manager (validation): `config_manager.validate_strategy_config(mode)`
+- Config Manager (loading): `config_manager.load_strategy_config(mode)`
 
 ### Communication
 - Direct method calls ONLY

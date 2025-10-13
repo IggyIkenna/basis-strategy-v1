@@ -112,8 +112,9 @@ strategy_manager:
 **Strategy Selection Endpoints**:
 - **GET /api/v1/strategies/**: List available strategy modes
 - **GET /api/v1/strategies/{mode}/config**: Get strategy mode configuration
-- **POST /api/v1/strategies/{mode}/validate**: Validate strategy configuration
 - **GET /api/v1/strategies/{mode}/requirements**: Get venue and data requirements
+
+**Note**: Strategy configuration validation happens at startup via Pydantic models, not via API endpoint
 
 **Integration Pattern**:
 1. **Strategy Discovery**: API endpoints expose available strategy modes
@@ -931,6 +932,66 @@ Parameters:
 
 Returns:
 - List[Dict]: Sequential instruction blocks for Execution Manager
+
+
+
+## Standardized Logging Methods
+
+### log_structured_event(timestamp, event_type, level, message, component_name, data=None, correlation_id=None)
+Log a structured event with standardized format.
+
+**Parameters**:
+- `timestamp`: Event timestamp (pd.Timestamp)
+- `event_type`: Type of event (EventType enum)
+- `level`: Log level (LogLevel enum)
+- `message`: Human-readable message (str)
+- `component_name`: Name of the component logging the event (str)
+- `data`: Optional structured data dictionary (Dict[str, Any])
+- `correlation_id`: Optional correlation ID for tracing (str)
+
+**Returns**: None
+
+### log_component_event(event_type, message, data=None, level=LogLevel.INFO)
+Log a component-specific event with automatic timestamp and component name.
+
+**Parameters**:
+- `event_type`: Type of event (EventType enum)
+- `message`: Human-readable message (str)
+- `data`: Optional structured data dictionary (Dict[str, Any])
+- `level`: Log level (defaults to INFO)
+
+**Returns**: None
+
+### log_performance_metric(metric_name, value, unit, data=None)
+Log a performance metric.
+
+**Parameters**:
+- `metric_name`: Name of the metric (str)
+- `value`: Metric value (float)
+- `unit`: Unit of measurement (str)
+- `data`: Optional additional context data (Dict[str, Any])
+
+**Returns**: None
+
+### log_error(error, context=None, correlation_id=None)
+Log an error with standardized format.
+
+**Parameters**:
+- `error`: Exception object (Exception)
+- `context`: Optional context data (Dict[str, Any])
+- `correlation_id`: Optional correlation ID for tracing (str)
+
+**Returns**: None
+
+### log_warning(message, data=None, correlation_id=None)
+Log a warning with standardized format.
+
+**Parameters**:
+- `message`: Warning message (str)
+- `data`: Optional context data (Dict[str, Any])
+- `correlation_id`: Optional correlation ID for tracing (str)
+
+**Returns**: None
 
 ## Data Access Pattern
 
@@ -2335,6 +2396,26 @@ def test_mode_determines_hedging():
 - [Configuration Guide](19_CONFIGURATION.md) - Complete config schemas for all 7 modes
 - [Code Structure Patterns](../CODE_STRUCTURE_PATTERNS.md) - Implementation patterns
 - [Event Logger Specification](08_EVENT_LOGGER.md) - Event logging integration
+
+## Public API Methods
+
+### check_component_health() -> Dict[str, Any]
+**Purpose**: Check component health status for monitoring and diagnostics.
+
+**Returns**:
+```python
+{
+    'status': 'healthy' | 'degraded' | 'unhealthy',
+    'error_count': int,
+    'execution_mode': 'backtest' | 'live',
+    'strategy_type': str,
+    'available_actions_count': int,
+    'decisions_made_count': int,
+    'component': 'StrategyManager'
+}
+```
+
+**Usage**: Called by health monitoring systems to track Strategy Manager status and performance.
 
 ---
 

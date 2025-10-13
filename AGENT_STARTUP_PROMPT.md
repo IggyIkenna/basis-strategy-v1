@@ -29,8 +29,8 @@ python scripts/run_quality_gates.py --category docs_validation
 # Run implementation gap analysis
 python tests/test_implementation_gap_quality_gates.py
 
-# Run detailed gap analysis
-python tests/analyze_implementation_gaps.py
+# Run detailed gap analysis (REMOVED - was generating useless report)
+# python tests/analyze_implementation_gaps.py
 ```
 
 ### **Step 2: Review the Gap Reports**
@@ -90,7 +90,7 @@ python scripts/run_quality_gates.py --category integration
 
 # Run specific gap analysis
 python tests/test_implementation_gap_quality_gates.py
-python tests/analyze_implementation_gaps.py
+# python tests/analyze_implementation_gaps.py  # REMOVED - was generating useless report
 
 # Check current quality gate status
 python scripts/run_quality_gates.py --list-categories

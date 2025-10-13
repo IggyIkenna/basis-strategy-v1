@@ -1,0 +1,59 @@
+2025-10-13 14:37:14,436 - INFO - 🔍 Starting config access validation...
+2025-10-13 14:37:14,437 - INFO - 📊 Running static analysis...
+2025-10-13 14:37:14,616 - INFO - 🏃 Running runtime validation...
+2025-10-13 14:37:15,322 - INFO - NumExpr defaulting to 10 threads.
+2025-10-13 14:37:15,755 - WARNING - Failed to load AAVE risk parameters: 'data_dir'
+# Config Access Validation Report
+==================================================
+
+## Static Analysis Results
+------------------------------
+✅ Valid init patterns: 6
+❌ Invalid init patterns: 1
+⚠️ Missing init methods: 4
+✅ Valid runtime methods: 147
+❌ Config parameter violations: 1
+✅ Valid field types: 198
+❌ Invalid field types: 0
+
+## Runtime Validation Results
+------------------------------
+✅ Successful instantiations: 1
+❌ Failed instantiations: 2
+✅ Valid config values: 18
+❌ Invalid config values: 9
+
+## Detailed Results
+------------------------------
+
+## Specific Issues Found
+------------------------------
+
+### ❌ Invalid Init Patterns:
+- pnl_calculator.PnLCalculatorError: ❌ Missing self.config assignment
+
+### ⚠️ Missing Init Methods:
+- ltv_calculator.LTVCalculator: No details available
+- health_calculator.HealthCalculator: No details available
+- margin_calculator.MarginCalculator: No details available
+- metrics_calculator.MetricsCalculator: No details available
+
+### ❌ Config Parameter Violations:
+- margin_calculator.calculate_margin_health: ❌ Config passed as runtime parameter
+
+### ❌ Failed Instantiations:
+- position_monitor: ❌ Instantiation failed: PositionMonitor.__init__() got an unexpected keyword argument 'execution_mode'
+- exposure_monitor: ❌ Instantiation failed: 'exposure_monitor'
+
+### ❌ Invalid Config Values:
+- ml_btc_directional.leverage_enabled: ✅ Boolean value: False
+- usdt_market_neutral.leverage_enabled: ✅ Boolean value: False
+- btc_basis.leverage_enabled: ✅ Boolean value: False
+- pure_lending.leverage_enabled: ✅ Boolean value: False
+- eth_leveraged.leverage_enabled: ✅ Boolean value: True
+- eth_basis.leverage_enabled: ✅ Boolean value: False
+- ml_usdt_directional.leverage_enabled: ✅ Boolean value: False
+- usdt_market_neutral_no_leverage.leverage_enabled: ✅ Boolean value: False
+- eth_staking_only.leverage_enabled: ✅ Boolean value: False
+
+❌ Config access validation FAILED

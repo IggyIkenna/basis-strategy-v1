@@ -1,0 +1,80 @@
+{
+  "agent_name": "Orphaned Tests Checker Agent",
+  "purpose": "Check for orphaned tests by comparing actual test files with quality gates configuration references",
+  "priority": "High",
+  "phase": "System Validation",
+  "timeline": "1-2 hours",
+  
+  "description": "This agent ensures that all test files in the tests/ directory are properly referenced in the quality gates configuration and that all quality gates references point to existing test files. It prevents orphaned tests and missing test references that could break the quality gates system.",
+  
+  "responsibilities": [
+    "Check for orphaned tests (exist in filesystem but not in quality gates config)",
+    "Check for missing tests (referenced in quality gates config but don't exist)",
+    "Validate test organization and quality gates integration",
+    "Generate fix suggestions for orphaned/missing tests",
+    "Ensure 1:1 mapping between test files and quality gates references"
+  ],
+  
+  "commands": [
+    "python scripts/check_orphaned_tests.py",
+    "python scripts/check_orphaned_tests.py --verbose",
+    "python scripts/run_quality_gates.py --list-categories"
+  ],
+  
+  "success_criteria": [
+    "All test files in tests/ are referenced in quality gates config",
+    "All quality gates references point to existing test files",
+    "No orphaned or missing tests found",
+    "Perfect 1:1 mapping between filesystem and quality gates config"
+  ],
+  
+  "outputs": [
+    "Orphaned tests report",
+    "Missing tests report", 
+    "Fix suggestions for quality gates configuration",
+    "Updated quality gates config (if fixes applied)"
+  ],
+  
+  "integration_points": [
+    "scripts/run_quality_gates.py (quality gates configuration)",
+    "tests/unit/ (unit test files)",
+    "tests/integration/ (integration test files)", 
+    "tests/e2e/ (E2E test files)",
+    "docs/QUALITY_GATES.md (documentation updates)"
+  ],
+  
+  "workflow": [
+    "1. Run orphaned tests check: python scripts/check_orphaned_tests.py",
+    "2. Analyze results for orphaned and missing tests",
+    "3. If issues found, run with --verbose for fix suggestions",
+    "4. Update quality gates configuration to fix orphaned/missing tests",
+    "5. Verify fixes by running check again",
+    "6. Update documentation if test counts changed",
+    "7. Run quality gates to ensure system still works"
+  ],
+  
+  "quality_gates": [
+    "Orphaned tests check passes (no orphaned or missing tests)",
+    "Quality gates configuration syntax is valid",
+    "All test categories have correct counts in documentation"
+  ],
+  
+  "dependencies": [
+    "Quality gates configuration file exists",
+    "Tests directory structure is properly organized",
+    "Test files follow naming conventions"
+  ],
+  
+  "error_handling": [
+    "Handle missing quality gates configuration file",
+    "Handle malformed test file references",
+    "Handle missing test directories",
+    "Provide clear error messages and fix suggestions"
+  ],
+  
+  "documentation_updates": [
+    "Update docs/QUALITY_GATES.md with correct test counts",
+    "Update tests/README.md with current test organization",
+    "Update scripts/README.md with orphaned tests checker usage"
+  ]
+}

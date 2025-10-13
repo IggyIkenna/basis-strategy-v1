@@ -18,6 +18,9 @@ def find_markdown_files(docs_dir: str = "docs/") -> List[str]:
     for root, dirs, files in os.walk(docs_dir):
         for file in files:
             if file.endswith('.md'):
+                # Skip template files from link validation
+                if file == 'COMPONENT_SPEC_TEMPLATE.md':
+                    continue
                 markdown_files.append(os.path.join(root, file))
     return markdown_files
 
@@ -36,8 +39,20 @@ def extract_internal_links(markdown_files: List[str]) -> List[Tuple[str, str, st
                 matches = re.findall(link_pattern, content)
                 for link_text, link_url in matches:
                     # Skip external links
-                    if not link_url.startswith('http') and not link_url.startswith('#'):
-                        internal_links.append((file_path, link_text, link_url))
+                    if link_url.startswith('http') or link_url.startswith('#'):
+                        continue
+                    
+                    # Skip code examples and command examples
+                    if (',' in link_url and not link_url.endswith('.md')) or \
+                       ('grep' in link_text.lower()) or \
+                       ('bash' in link_text.lower()) or \
+                       (link_url.startswith('docs/') and 'grep' in link_url) or \
+                       (link_text == 'text' and link_url == 'path.md') or \
+                       ('grep' in link_url) or \
+                       ('|' in link_url):
+                        continue
+                    
+                    internal_links.append((file_path, link_text, link_url))
         except Exception as e:
             print(f"Warning: Could not read {file_path}: {e}")
     

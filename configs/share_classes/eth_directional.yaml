@@ -25,3 +25,10 @@ supported_strategies:
 leverage_supported: true
 staking_supported: true
 basis_trading_supported: true
+
+# Risk Management
+max_leverage: 3.0  # 3x leverage for directional strategies
+max_drawdown: 0.20  # 20% max drawdown for directional strategies
+target_apy_range:
+  min: 0.15  # 15% minimum target APY
+  max: 0.35  # 35% maximum target APY

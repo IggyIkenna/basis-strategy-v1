@@ -19,6 +19,8 @@ import pandas as pd
 
 from ..instructions import WalletTransferInstruction, InstructionBlock
 
+from ...core.logging.base_logging_interface import StandardizedLoggingMixin, LogLevel, EventType
+
 logger = logging.getLogger(__name__)
 
 # Create dedicated wallet transfer executor logger
@@ -51,7 +53,7 @@ ERROR_CODES = {
 }
 
 
-class WalletTransferExecutor:
+class WalletTransferExecutor(StandardizedLoggingMixin):
     """
     Execute simple wallet-to-venue transfers.
     
@@ -151,7 +153,7 @@ class WalletTransferExecutor:
             
             # Check sufficient balance
             if instruction.source_venue == 'wallet':
-                current_snapshot = self.position_monitor.get_snapshot()
+                current_snapshot = self.position_monitor.get_current_positions()
                 current_wallet = current_snapshot.get('wallet', {})
                 current_balance = current_wallet.get(instruction.token, 0)
                 
@@ -217,7 +219,7 @@ class WalletTransferExecutor:
                 )
             else:
                 # Fallback to direct position monitor update
-                self.position_monitor.update(changes)
+                self.position_monitor.update_state(timestamp, 'wallet_transfer', changes)
             
         except Exception as e:
             wallet_transfer_logger.error(f"Position monitor update failed: {e}")

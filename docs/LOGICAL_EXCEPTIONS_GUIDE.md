@@ -171,7 +171,7 @@ def update_state(self, timestamp: pd.Timestamp, trigger_source: str):
     await self.event_logger.log_event('state_update', data, timestamp)
 
 # Internal calculations: Must be synchronous
-def calculate_pnl(self, data: Dict[str, Any]) -> float:
+def get_current_pnl(self, data: Dict[str, Any]) -> float:
     """Calculate PnL synchronously"""
     return self._compute_pnl(data)
 

@@ -169,6 +169,55 @@ load_environment() {
     return 0
 }
 
+# Function to run quality gates
+run_quality_gates() {
+    echo -e "${BLUE}🚦 Running critical quality gates...${NC}"
+    
+    # Run configuration validation
+    echo -e "${BLUE}  📋 Running configuration validation...${NC}"
+    python3 scripts/run_quality_gates.py --category configuration
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}❌ Configuration validation failed${NC}"
+        return 1
+    fi
+    
+    # Run environment variable validation
+    echo -e "${BLUE}  🔧 Running environment variable validation...${NC}"
+    python3 scripts/run_quality_gates.py --category env_config_sync
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}❌ Environment variable validation failed${NC}"
+        return 1
+    fi
+    
+    # Run data validation
+    echo -e "${BLUE}  📊 Running data validation...${NC}"
+    python3 scripts/test_data_files_quality_gates.py
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}❌ Data validation failed${NC}"
+        return 1
+    fi
+    
+    # Run data provider canonical access validation
+    echo -e "${BLUE}  🔍 Running data provider canonical access validation...${NC}"
+    python3 scripts/test_data_provider_canonical_access_quality_gates_simple.py
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}❌ Data provider canonical access validation failed${NC}"
+        return 1
+    fi
+    
+    # Run component communication architecture validation
+    echo -e "${BLUE}  🏗️ Running component communication architecture validation...${NC}"
+    python3 scripts/test_component_data_flow_architecture_quality_gates.py
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}❌ Component communication architecture validation failed${NC}"
+        return 1
+    fi
+    
+    
+    echo -e "${GREEN}✅ All critical quality gates passed${NC}"
+    return 0
+}
+
 # Function to start backend
 start_backend() {
     echo -e "${BLUE}🚀 Starting backend...${NC}"
@@ -182,7 +231,15 @@ start_backend() {
     # Create required directories
     create_directories
     
-    # Redis removed - using in-memory cache only
+    # Run quality gates before starting
+    run_quality_gates
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}❌ Quality gates failed. Aborting startup.${NC}"
+        return 1
+    fi
+    
+    # Call pip install dependencies
+    pip_install_dependencies
     
     # Check if port is already in use with timeout
     echo -e "${BLUE}🔍 Checking if port $BACKEND_PORT is available...${NC}"
@@ -209,7 +266,7 @@ start_backend() {
     local max_timeout=30
     
     while [ $timeout_count -lt $max_timeout ]; do
-        if curl -s http://localhost:$BACKEND_PORT/health/ >/dev/null 2>&1; then
+        if curl -s --connect-timeout 3 --max-time 5 http://localhost:$BACKEND_PORT/health/ >/dev/null 2>&1; then
             echo -e "${GREEN}✅ Backend started successfully on port $BACKEND_PORT (PID: $BACKEND_PID)${NC}"
             
             # Start health monitor
@@ -295,6 +352,16 @@ start_backtest() {
     # Create required directories
     create_directories
     
+    # Run quality gates before starting
+    run_quality_gates
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}❌ Quality gates failed. Aborting startup.${NC}"
+        return 1
+    fi
+    
+    # Call pip install dependencies
+    pip_install_dependencies
+    
     # Redis removed - using in-memory cache only
     
     # Start backend in backtest mode
@@ -308,7 +375,7 @@ start_backtest() {
     sleep 5
     
     # Test backend health
-    if curl -s http://localhost:$BACKEND_PORT/health/ >/dev/null 2>&1; then
+    if curl -s --connect-timeout 3 --max-time 5 http://localhost:$BACKEND_PORT/health/ >/dev/null 2>&1; then
         echo -e "${GREEN}✅ Backend started successfully in backtest mode on port $BACKEND_PORT (PID: $BACKEND_PID)${NC}"
         echo -e "${BLUE}📊 Backtest API available at: http://localhost:$BACKEND_PORT/backtest/${NC}"
         
@@ -412,9 +479,7 @@ run_tests() {
     
     # Run backend tests
     echo -e "${BLUE}🔧 Running backend tests...${NC}"
-    cd backend
-    python scripts/run_quality_gates.py
-    cd ..
+    python3 scripts/run_quality_gates.py
     
     # Run frontend tests
     echo -e "${BLUE}⚛️ Running frontend tests...${NC}"
@@ -442,6 +507,13 @@ set_environment() {
         echo -e "${GREEN}✅ Environment set to development${NC}"
         echo -e "${YELLOW}💡 Now run: ./platform.sh start${NC}"
     fi
+}
+
+# Function to pip install dependencies with pip install -r requirements.txt
+pip_install_dependencies() {
+    echo -e "${BLUE}🔧 Pip installing dependencies...${NC}"
+    pip3 install -r requirements.txt
+    echo -e "${GREEN}✅ Dependencies pip installed${NC}"
 }
 
 # Function to start health monitor

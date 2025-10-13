@@ -16,6 +16,8 @@ from dataclasses import dataclass
 from typing import Optional, Dict, Any, List
 from enum import Enum
 
+from ...core.logging.base_logging_interface import StandardizedLoggingMixin, LogLevel, EventType
+
 
 class ExecutionMode(Enum):
     """Execution mode for instructions."""
@@ -49,7 +51,7 @@ class InstructionType(Enum):
 
 
 @dataclass
-class WalletTransferInstruction:
+class WalletTransferInstruction(StandardizedLoggingMixin):
     """
     Instruction for simple wallet-to-venue transfers.
     
@@ -77,7 +79,7 @@ class WalletTransferInstruction:
 
 
 @dataclass
-class CEXTradeInstruction:
+class CEXTradeInstruction(StandardizedLoggingMixin):
     """
     Instruction for CEX spot and perpetual trades.
     
@@ -108,7 +110,7 @@ class CEXTradeInstruction:
 
 
 @dataclass
-class SmartContractInstruction:
+class SmartContractInstruction(StandardizedLoggingMixin):
     """
     Instruction for smart contract operations (AAVE, EtherFi, Flash loans, DEX swaps).
     
@@ -149,7 +151,7 @@ class SmartContractInstruction:
 
 
 @dataclass
-class InstructionBlock:
+class InstructionBlock(StandardizedLoggingMixin):
     """
     A block of related instructions to be executed together.
     
@@ -171,7 +173,7 @@ class InstructionBlock:
         }
 
 
-class InstructionGenerator:
+class InstructionGenerator(StandardizedLoggingMixin):
     """
     Helper class for generating instruction blocks for different strategies.
     

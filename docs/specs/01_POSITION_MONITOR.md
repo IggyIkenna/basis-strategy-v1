@@ -39,9 +39,22 @@ The following are set once during initialization and NEVER passed as runtime par
 - execution_mode: str (BASIS_EXECUTION_MODE)
 - initial_capital: float (reference, never modified)
 - share_class: str (reference, never modified)
+- execution_interface_factory: ExecutionInterfaceFactory (reference, for position interface creation)
 
 These references are stored in __init__ and used throughout component lifecycle.
 Components NEVER receive these as method parameters during runtime.
+
+### Live Position Monitoring Integration
+
+**Position Interface Dependencies**:
+- Position Monitor creates position interfaces via Execution Interface Factory
+- Each enabled venue gets a position interface
+- Position interfaces handle venue-specific API calls
+
+**Initialization Sequence**:
+1. Execution Interface Factory initialized first
+2. Position Monitor requests position interfaces from factory
+3. Position interfaces created with same credentials as execution interfaces
 
 ## Configuration Parameters
 
@@ -228,6 +241,64 @@ Get real position snapshot (for reconciliation).
 
 **Returns**:
 - Dict: Real position snapshot (same as simulated in backtest, live API data in live mode)
+
+## Standardized Logging Methods
+
+### log_structured_event(timestamp, event_type, level, message, component_name, data=None, correlation_id=None)
+Log a structured event with standardized format.
+
+**Parameters**:
+- `timestamp`: Event timestamp (pd.Timestamp)
+- `event_type`: Type of event (EventType enum)
+- `level`: Log level (LogLevel enum)
+- `message`: Human-readable message (str)
+- `component_name`: Name of the component logging the event (str)
+- `data`: Optional structured data dictionary (Dict[str, Any])
+- `correlation_id`: Optional correlation ID for tracing (str)
+
+**Returns**: None
+
+### log_component_event(event_type, message, data=None, level=LogLevel.INFO)
+Log a component-specific event with automatic timestamp and component name.
+
+**Parameters**:
+- `event_type`: Type of event (EventType enum)
+- `message`: Human-readable message (str)
+- `data`: Optional structured data dictionary (Dict[str, Any])
+- `level`: Log level (defaults to INFO)
+
+**Returns**: None
+
+### log_performance_metric(metric_name, value, unit, data=None)
+Log a performance metric.
+
+**Parameters**:
+- `metric_name`: Name of the metric (str)
+- `value`: Metric value (float)
+- `unit`: Unit of measurement (str)
+- `data`: Optional additional context data (Dict[str, Any])
+
+**Returns**: None
+
+### log_error(error, context=None, correlation_id=None)
+Log an error with standardized format.
+
+**Parameters**:
+- `error`: Exception object (Exception)
+- `context`: Optional context data (Dict[str, Any])
+- `correlation_id`: Optional correlation ID for tracing (str)
+
+**Returns**: None
+
+### log_warning(message, data=None, correlation_id=None)
+Log a warning with standardized format.
+
+**Parameters**:
+- `message`: Warning message (str)
+- `data`: Optional context data (Dict[str, Any])
+- `correlation_id`: Optional correlation ID for tracing (str)
+
+**Returns**: None
 
 ## Data Access Pattern
 
@@ -621,6 +692,152 @@ class ComponentFactory:
 - **Position Update Handler** orchestrates tight loop reconciliation
 - **Reconciliation Component** validates real vs simulated positions
 - **Execution Manager** awaits reconciliation success before next instruction
+
+## Component Integration
+
+### Integration with Event-Driven Strategy Engine
+The Position Monitor integrates with the Event-Driven Strategy Engine as a core component in the tight loop architecture:
+
+**Integration Pattern**:
+```python
+# Event-Driven Strategy Engine integration
+class EventDrivenStrategyEngine:
+    def __init__(self, ...):
+        # Position Monitor is initialized first (foundational component)
+        self.position_monitor = PositionMonitor(
+            config=self.config,
+            execution_mode=self.execution_mode,
+            initial_capital=self.initial_capital,
+            share_class=self.share_class
+        )
+    
+    def _process_timestep(self, timestamp, market_data, request_id):
+        # Position Monitor provides position snapshots to other components
+        position_snapshot = self.position_monitor.get_current_positions()
+        
+        # Exposure Monitor uses position snapshot
+        exposure = self.exposure_monitor.calculate_exposure(
+            timestamp=timestamp,
+            position_snapshot=position_snapshot,
+            market_data=market_data
+        )
+```
+
+### Integration with Position Update Handler
+The Position Monitor is the central component in the tight loop architecture managed by the Position Update Handler:
+
+**Tight Loop Pattern**:
+```python
+# Position Update Handler tight loop
+class PositionUpdateHandler:
+    def handle_position_update(self, changes, timestamp, market_data, trigger_component):
+        # Step 1: Update position monitor
+        self.position_monitor.update_state(timestamp, trigger_component, changes)
+        
+        # Step 2: Get updated position snapshot
+        updated_snapshot = self.position_monitor.get_current_positions()
+        
+        # Step 3: Recalculate exposure
+        updated_exposure = self.exposure_monitor.calculate_exposure(
+            timestamp=timestamp,
+            position_snapshot=updated_snapshot,
+            market_data=market_data
+        )
+        
+        # Step 4: Reassess risk
+        updated_risk = self.risk_monitor.assess_risk(
+            exposure_data=updated_exposure,
+            market_data=market_data
+        )
+        
+        # Step 5: Recalculate P&L
+        updated_pnl = self.pnl_calculator.get_current_pnl(
+            current_exposure=updated_exposure,
+            timestamp=timestamp
+        )
+        
+        return {
+            'position_snapshot': updated_snapshot,
+            'exposure': updated_exposure,
+            'risk': updated_risk,
+            'pnl': updated_pnl
+        }
+```
+
+### Integration with Execution Interfaces
+The Position Monitor receives execution deltas from execution interfaces and updates positions accordingly:
+
+**Execution Integration Pattern**:
+```python
+# Execution Interface integration
+class CEXExecutionInterface:
+    def execute_instruction(self, instruction, timestamp):
+        # Execute trade
+        result = self._execute_trade(instruction)
+        
+        # Create execution delta
+        execution_delta = {
+            'wallet': {
+                'USDT': -result['cost_usdt'],
+                'ETH': result['eth_received']
+            }
+        }
+        
+        # Update position monitor
+        self.position_monitor.update_state(
+            timestamp=timestamp,
+            trigger_source='execution',
+            execution_deltas=execution_delta
+        )
+```
+
+### Integration with Reconciliation Component
+The Position Monitor provides both simulated and real positions for reconciliation:
+
+**Reconciliation Integration Pattern**:
+```python
+# Reconciliation Component integration
+class ReconciliationComponent:
+    def reconcile_position(self, timestamp, position_snapshot):
+        # Get real positions from position monitor
+        real_positions = self.position_monitor.get_real_positions()
+        
+        # Compare simulated vs real positions
+        reconciliation_result = self._compare_positions(
+            simulated=position_snapshot,
+            real=real_positions
+        )
+        
+        return reconciliation_result
+```
+
+### Communication Patterns
+- **Direct Method Calls**: All integration uses direct method calls
+- **No Event Publishing**: Position Monitor doesn't publish events
+- **No Message Queues**: No Redis or message queue integration
+- **Synchronous Updates**: All position updates are synchronous
+- **Reference-Based**: Components receive position monitor reference at initialization
+
+## Public API Methods
+
+### check_component_health() -> Dict[str, Any]
+**Purpose**: Check component health status for monitoring and diagnostics.
+
+**Returns**:
+```python
+{
+    'status': 'healthy' | 'degraded' | 'unhealthy',
+    'error_count': int,
+    'execution_mode': 'backtest' | 'live',
+    'tracked_assets_count': int,
+    'wallet_balances_count': int,
+    'cex_accounts_count': int,
+    'perp_positions_count': int,
+    'component': 'PositionMonitor'
+}
+```
+
+**Usage**: Called by health monitoring systems to track Position Monitor status and performance.
 
 ## Current Implementation Status
 

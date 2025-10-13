@@ -11,7 +11,7 @@ Reference: docs/specs/12_EVENT_LOGGER.md - Mode-agnostic event logging
 from typing import Dict, List, Any, Optional
 import logging
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
 import os
 
@@ -40,6 +40,8 @@ class EventLogger:
         self.config = config
         self.data_provider = data_provider
         self.utility_manager = utility_manager
+        self.health_status = "healthy"
+        self.error_count = 0
         
         # Initialize structured logger
         self.structured_logger = get_structured_logger('event_logger')
@@ -64,12 +66,92 @@ class EventLogger:
         else:
             self.log_level = 'INFO'  # Default only if not specified
         
+        # Event logging configuration parameters
+        self.event_categories = config.get('event_categories', {
+            'data': ['data_loaded', 'data_updated', 'data_error'],
+            'risk': ['risk_breach', 'risk_warning', 'risk_calculation'],
+            'event': ['event_logged', 'event_filtered', 'event_exported'],
+            'business': ['trade_executed', 'position_updated', 'strategy_decision']
+        })
+        
+        self.event_logging_settings = config.get('event_logging_settings', {
+            'buffer_size': 10000,
+            'export_format': 'both',  # 'csv', 'json', or 'both'
+            'async_logging': True,
+            'compression': False
+        })
+        
+        self.log_retention_policy = config.get('log_retention_policy', {
+            'retention_days': 30,
+            'max_file_size_mb': 100,
+            'rotation_frequency': 'daily',
+            'compression_after_days': 7
+        })
+        
+        
+        self.logging_requirements = config.get('logging_requirements', {
+            'structured_logging': True,
+            'correlation_ids': True,
+            'performance_metrics': True,
+            'error_tracking': True
+        })
+        
+        self.event_filtering = config.get('event_filtering', {
+            'filter_by_level': True,
+            'filter_by_category': True,
+            'exclude_patterns': [],
+            'include_patterns': ['*']
+        })
+        
         self.structured_logger.info(
             "EventLogger initialized",
             event_type="component_initialization",
             component="event_logger",
             mode="mode-agnostic"
         )
+    
+    def _handle_error(self, error: Exception, context: str = "") -> None:
+        """Handle errors with structured error handling."""
+        self.error_count += 1
+        error_code = f"EL_ERROR_{self.error_count:04d}"
+        
+        logger.error(f"Event Logger error {error_code}: {str(error)}", extra={
+            'error_code': error_code,
+            'context': context,
+            'component': self.__class__.__name__
+        })
+        
+        # Update health status based on error count
+        if self.error_count > 10:
+            self.health_status = "unhealthy"
+        elif self.error_count > 5:
+            self.health_status = "degraded"
+    
+    def check_component_health(self) -> Dict[str, Any]:
+        """Check component health status."""
+        return {
+            'status': self.health_status,
+            'error_count': self.error_count,
+            'event_history_count': len(self.event_history),
+            'logged_events_count': len(self.logged_events),
+            'log_path': self.log_path,
+            'component': self.__class__.__name__
+        }
+    
+    def _process_config_driven_operations(self, operations: List[Dict]) -> List[Dict]:
+        """Process operations based on configuration settings."""
+        processed_operations = []
+        for operation in operations:
+            if self._validate_operation(operation):
+                processed_operations.append(operation)
+            else:
+                self._handle_error(ValueError(f"Invalid operation: {operation}"), "config_driven_validation")
+        return processed_operations
+    
+    def _validate_operation(self, operation: Dict) -> bool:
+        """Validate operation against configuration."""
+        required_fields = ['event_type', 'timestamp', 'data']
+        return all(field in operation for field in required_fields)
     
     async def log_event(self, event_type: str, event_data: Dict[str, Any], 
                        timestamp: pd.Timestamp) -> Dict[str, Any]:
@@ -304,7 +386,7 @@ class EventLogger:
                 'timestamp': timestamp
             }
     
-    def get_event_history(self) -> Dict[str, Any]:
+    def _get_event_history(self) -> Dict[str, Any]:
         """Get event history."""
         try:
             return {
@@ -504,6 +586,218 @@ class EventLogger:
             logger.error(f"Error converting event to text line: {e}")
             return f"[{event_record.get('timestamp', '')}] {event_record.get('event_type', '')}: "
     
-    def get_all_events(self) -> List[Dict[str, Any]]:
+    def _get_all_events(self) -> List[Dict[str, Any]]:
         """Get all logged events."""
         return self.event_history
+    
+    def get_events(self, event_type: Optional[str] = None, limit: Optional[int] = None) -> List[Dict[str, Any]]:
+        """
+        Get events with optional filtering.
+        
+        Args:
+            event_type: Filter by event type (optional)
+            limit: Maximum number of events to return (optional)
+            
+        Returns:
+            List of event dictionaries
+        """
+        events = self.event_history
+        
+        if event_type:
+            events = [e for e in events if e.get('event_type') == event_type]
+        
+        if limit:
+            events = events[-limit:]  # Get most recent events
+        
+        return events
+    
+    # Standardized Logging Methods (per 17_HEALTH_ERROR_SYSTEMS.md and 08_EVENT_LOGGER.md)
+    
+    def log_structured_event(self, timestamp: pd.Timestamp, event_type: str, level: str, message: str, component_name: str, data: Optional[Dict[str, Any]] = None, correlation_id: Optional[str] = None) -> None:
+        """Log a structured event with standardized format."""
+        try:
+            event_data = {
+                'timestamp': timestamp,
+                'event_type': event_type,
+                'level': level,
+                'message': message,
+                'component_name': component_name,
+                'data': data or {},
+                'correlation_id': correlation_id
+            }
+            
+            self.structured_logger.log_structured_event(event_data)
+            self.event_history.append(event_data)
+            
+        except Exception as e:
+            logger.error(f"Failed to log structured event: {e}")
+    
+    def log_component_event(self, event_type: str, message: str, data: Optional[Dict[str, Any]] = None, level: str = 'INFO') -> None:
+        """Log a component-specific event with automatic timestamp and component name."""
+        try:
+            timestamp = pd.Timestamp.now(tz='UTC')
+            event_data = {
+                'timestamp': timestamp,
+                'event_type': event_type,
+                'level': level,
+                'message': message,
+                'component_name': 'EventLogger',
+                'data': data or {}
+            }
+            
+            self.structured_logger.log_component_event(event_data)
+            self.event_history.append(event_data)
+            
+        except Exception as e:
+            logger.error(f"Failed to log component event: {e}")
+    
+    def log_performance_metric(self, metric_name: str, value: float, unit: str, data: Optional[Dict[str, Any]] = None) -> None:
+        """Log a performance metric."""
+        try:
+            timestamp = pd.Timestamp.now(tz='UTC')
+            event_data = {
+                'timestamp': timestamp,
+                'event_type': 'performance_metric',
+                'level': 'INFO',
+                'message': f"Performance metric: {metric_name} = {value} {unit}",
+                'component_name': 'EventLogger',
+                'data': {
+                    'metric_name': metric_name,
+                    'value': value,
+                    'unit': unit,
+                    **(data or {})
+                }
+            }
+            
+            self.structured_logger.log_performance_metric(event_data)
+            self.event_history.append(event_data)
+            
+        except Exception as e:
+            logger.error(f"Failed to log performance metric: {e}")
+    
+    def log_error(self, error: Exception, context: Optional[Dict[str, Any]] = None, correlation_id: Optional[str] = None) -> None:
+        """Log an error with standardized format."""
+        try:
+            timestamp = pd.Timestamp.now(tz='UTC')
+            event_data = {
+                'timestamp': timestamp,
+                'event_type': 'error',
+                'level': 'ERROR',
+                'message': str(error),
+                'component_name': 'EventLogger',
+                'data': {
+                    'error_type': type(error).__name__,
+                    'context': context or {},
+                    'correlation_id': correlation_id
+                }
+            }
+            
+            self.structured_logger.log_error(event_data)
+            self.event_history.append(event_data)
+            
+        except Exception as e:
+            logger.error(f"Failed to log error: {e}")
+    
+    def log_warning(self, message: str, data: Optional[Dict[str, Any]] = None, correlation_id: Optional[str] = None) -> None:
+        """Log a warning with standardized format."""
+        try:
+            timestamp = pd.Timestamp.now(tz='UTC')
+            event_data = {
+                'timestamp': timestamp,
+                'event_type': 'warning',
+                'level': 'WARNING',
+                'message': message,
+                'component_name': 'EventLogger',
+                'data': data or {},
+                'correlation_id': correlation_id
+            }
+            
+            self.structured_logger.log_warning(event_data)
+            self.event_history.append(event_data)
+            
+        except Exception as e:
+            logger.error(f"Failed to log warning: {e}")
+    
+    def log_event(self, timestamp: pd.Timestamp, event_type: str, component: str, data: Dict) -> None:
+        """Log an event with global ordering."""
+        try:
+            event_data = {
+                'timestamp': timestamp,
+                'event_type': event_type,
+                'component': component,
+                'data': data
+            }
+            
+            self.structured_logger.log_event(event_data)
+            self.event_history.append(event_data)
+            
+        except Exception as e:
+            logger.error(f"Failed to log event: {e}")
+    
+    def update_state(self, timestamp: pd.Timestamp, trigger_source: str, **kwargs) -> None:
+        """
+        Update component state (called by EventDrivenStrategyEngine).
+        
+        Args:
+            timestamp: Current loop timestamp (from EventDrivenStrategyEngine)
+            trigger_source: 'full_loop' | 'tight_loop' | 'manual'
+            **kwargs: Additional parameters
+        """
+        # Log state update event
+        self.structured_logger.info(
+            "EventLogger state updated",
+            event_type="state_update",
+            component="event_logger",
+            trigger_source=trigger_source,
+            timestamp=timestamp.isoformat()
+        )
+    
+    def _should_log_event(self, event_type: str, details: Dict[str, Any]) -> bool:
+        """Check if event should be logged based on filtering configuration."""
+        if not self.event_filtering.get('filter_by_category', True):
+            return True
+        
+        # Check include patterns
+        include_patterns = self.event_filtering.get('include_patterns', ['*'])
+        if not any(self._matches_pattern(event_type, pattern) for pattern in include_patterns):
+            return False
+        
+        # Check exclude patterns
+        exclude_patterns = self.event_filtering.get('exclude_patterns', [])
+        if any(self._matches_pattern(event_type, pattern) for pattern in exclude_patterns):
+            return False
+        
+        return True
+    
+    def _matches_pattern(self, event_type: str, pattern: str) -> bool:
+        """Check if event type matches pattern."""
+        if pattern == '*':
+            return True
+        return event_type.startswith(pattern.replace('*', ''))
+    
+    def _get_event_category(self, event_type: str) -> str:
+        """Get event category based on event type."""
+        for category, events in self.event_categories.items():
+            if event_type in events:
+                return category
+        return 'unknown'
+    
+    def _apply_retention_policy(self):
+        """Apply log retention policy to event history."""
+        if not self.log_retention_policy.get('retention_days'):
+            return
+        
+        retention_days = self.log_retention_policy['retention_days']
+        cutoff_date = datetime.now(timezone.utc) - timedelta(days=retention_days)
+        
+        # Remove old events
+        self.event_history = [
+            event for event in self.event_history
+            if event.get('timestamp', datetime.now(timezone.utc)) > cutoff_date
+        ]
+        
+        # Remove old logged events
+        self.logged_events = {
+            event_id: event for event_id, event in self.logged_events.items()
+            if event.get('timestamp', datetime.now(timezone.utc)) > cutoff_date
+        }

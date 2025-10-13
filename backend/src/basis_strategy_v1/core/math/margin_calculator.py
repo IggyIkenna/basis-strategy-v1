@@ -14,6 +14,8 @@ from decimal import Decimal
 from typing import Dict, List, Optional, Tuple, Any
 import logging
 
+from ...core.logging.base_logging_interface import StandardizedLoggingMixin, LogLevel, EventType
+
 logger = logging.getLogger(__name__)
 
 # Error codes for Margin Calculator
@@ -33,7 +35,7 @@ ERROR_CODES = {
 }
 
 
-class MarginCalculator:
+class MarginCalculator(StandardizedLoggingMixin):
     """Pure margin calculation functions - no side effects or I/O.
     
     All functions receive configuration as parameters following Service-Engine separation.
@@ -433,8 +435,7 @@ class MarginCalculator:
     @staticmethod
     def calculate_margin_health(
         positions: List[Dict[str, Any]],
-        current_prices: Dict[str, float],
-        config: Dict[str, Any]
+        current_prices: Dict[str, float]
     ) -> Dict[str, Any]:
         """
         Calculate margin health for perpetual positions.
@@ -442,7 +443,6 @@ class MarginCalculator:
         Args:
             positions: List of position dicts with 'symbol', 'size', 'side'
             current_prices: Current market prices
-            config: Strategy configuration
             
         Returns:
             Margin health assessment with action recommendations

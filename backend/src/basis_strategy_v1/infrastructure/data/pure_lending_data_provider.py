@@ -39,7 +39,7 @@ class PureLendingDataProvider(BaseDataProvider):
         
         logger.info(f"PureLendingDataProvider initialized for {execution_mode} mode")
     
-    def validate_data_requirements(self, data_requirements: List[str]) -> None:
+    def _validate_data_requirements(self, data_requirements: List[str]) -> None:
         """
         Validate that this provider can satisfy all data requirements.
         
@@ -137,7 +137,7 @@ class PureLendingDataProvider(BaseDataProvider):
             }),
             'aave_usdt_indexes': pd.DataFrame({
                 'timestamp': pd.date_range('2024-01-01', periods=100, freq='H', tz='UTC'),
-                'index': [1.0 + i * 0.0001 for i in range(100)]
+                'index': [1.0 + i * 0.0005 for i in range(100)]  # 0.05% per hour = ~5% APY
             }),
             'gas_costs': pd.DataFrame({
                 'timestamp': pd.date_range('2024-01-01', periods=100, freq='H', tz='UTC'),
@@ -178,18 +178,23 @@ class PureLendingDataProvider(BaseDataProvider):
     
     def _get_wallet_balances(self, timestamp: pd.Timestamp) -> Dict[str, float]:
         """Get wallet balances at timestamp."""
-        # Placeholder implementation
+        # For pure lending, most capital is in smart contracts, not wallet
+        # Only keep small amount in wallet for gas and operations
         return {
-            'USDT': 1000.0,
+            'USDT': 100.0,  # Small amount for gas and operations
             'ETH': 0.0
         }
     
     def _get_smart_contract_balances(self, timestamp: pd.Timestamp) -> Dict[str, Dict[str, float]]:
         """Get smart contract balances at timestamp."""
-        # Placeholder implementation
+        # Calculate aUSDT balance based on liquidity index growth
+        # Initial USDT deposit was 100000 (initial capital), so aUSDT balance grows with liquidity index
+        aave_index = self._get_aave_usdt_index(timestamp)
+        ausdt_balance = 100000.0 * aave_index  # 100000 USDT * liquidity index
+        
         return {
             'aave': {
-                'aUSDT': 1000.0
+                'aUSDT': ausdt_balance
             }
         }
     

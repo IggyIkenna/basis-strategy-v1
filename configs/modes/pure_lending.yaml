@@ -1,5 +1,5 @@
 # Pure Lending Mode Configuration
-# Simple lending USDT strategy without leverage or staking or hedging
+# Pure lending strategy using AAVE
 
 mode: "pure_lending"
 
@@ -8,80 +8,136 @@ lending_enabled: true
 staking_enabled: false
 basis_trade_enabled: false
 borrowing_enabled: false
-  # No borrowing/leverage loops
+leverage_enabled: false
+# No borrowing/leverage loops
 enable_market_impact: true
 
 # Asset configuration
 share_class: "USDT"
-asset: "USDT"
+asset: "BTC"
 lst_type: null
 rewards_mode: "base_only"
-reserve_ratio: 0.1
-position_deviation_threshold: 0.02  # 2% deviation from target triggers rebalancing
+funding_threshold: 0.0001  # 0.01% funding threshold
 
 # Execution parameters
-# Venues are handled through separate venue configurations
+position_deviation_threshold: 0.02  # 2% deviation from target triggers rebalancing
 
 # Risk parameters
-margin_ratio_target: 1.0  # Not applicable (no CEX margin, no borrowing)
-leverage_enabled: false  # No leverage in pure lending
-max_drawdown: 0.005  # 0.5% max drawdown (only gas/conversion costs)
-# NOTE: No AAVE borrowing in this mode, so no max_ltv/liquidation_threshold/max_stake_spread_move
+margin_ratio_target: 0.8  # Target CEX margin ratio for futures (80% conservative)
+# NOTE: No AAVE in this mode, so no max_ltv/liquidation_threshold/max_stake_spread_move
+
+# Venue configuration
+venues:
+  aave_v3:
+    venue_type: "defi"
+    enabled: true
+    instruments: ["USDT-LENDING"]
+    order_types: ["supply", "withdraw"]
+  alchemy:
+    venue_type: "infrastructure"
+    enabled: true
+    instruments: ["WALLET-TRANSFER"]
+    order_types: ["transfer"]
+
+# Delta neutrality parameters
+delta_tolerance: 0.005  # 0.5% tolerance of gross exposure for delta neutrality
 
 # Data requirements
 data_requirements:
-  - "usdt_prices"  # USDT/USD spot
-  - "aave_lending_rates"  # AAVE rates (USDT)
+  - "usdt_prices"  # USDT price data
+  - "aave_rates"  # AAVE lending rates
   - "gas_costs"  # Ethereum gas prices
   - "execution_costs"  # Execution cost model
 
 # Live time throttling 
 time_throttle_interval: 60
 
-# REMOVED: capital_allocation - not needed in config, calculated at runtime
-
 # Performance targets
-target_apy: 0.05  # 5% APY target
+target_apy: 0.05  # 5% APY target (lending yield)
+max_drawdown: 0.01  # 1% max drawdown (lending is low risk)
 
 # Component configuration
 component_config:
   risk_monitor:
-    enabled_risk_types: []  # No liquidation risk for pure lending
-    risk_limits: {}
+    enabled_risk_types: ["cex_margin_ratio", "delta_risk"]
+    risk_limits:
+      target_margin_ratio: 0.5
+      cex_margin_ratio_min: 0.15
+      maintenance_margin_requirement: 0.10
+      delta_tolerance: 0.005
   
   exposure_monitor:
     exposure_currency: "USDT"
-    track_assets: ["USDT", "aUSDT"]
+    track_assets: ["BTC", "BTC_PERP"]
     conversion_methods:
-      USDT: "direct"
-      aUSDT: "aave_index"
+      BTC: "usd_price"
+      BTC_PERP: "perp_mark_price"
   
   pnl_calculator:
-    attribution_types: ["supply_yield", "transaction_costs"]
+    attribution_types: ["funding_pnl", "delta_pnl", "basis_pnl", "transaction_costs"]
     reporting_currency: "USDT"
     reconciliation_tolerance: 0.02
   
   strategy_manager:
     strategy_type: "pure_lending"
-    actions: ["entry_full", "exit_full"]
+    actions: ["supply", "withdraw"]
     rebalancing_triggers: ["deposit", "withdrawal"]
     position_calculation:
-      target_position: "aave_usdt_supply"
-      max_position: "equity"
+      target_position: "usdt_lending"
   
   execution_manager:
     supported_actions: ["aave_supply", "aave_withdraw"]
     action_mapping:
-      entry_full: ["aave_supply"]
-      exit_full: ["aave_withdraw"]
+      supply: ["aave_supply"]
+      withdraw: ["aave_withdraw"]
   
   results_store:
-    result_types: ["balance_sheet", "pnl_attribution", "execution_log"]
-    balance_sheet_assets: ["USDT", "aUSDT"]
-    pnl_attribution_types: ["supply_yield", "transaction_costs"]
+    result_types: ["balance_sheet", "pnl_attribution", "risk_metrics", "execution_log"]
+    balance_sheet_assets: ["USDT"]
+    pnl_attribution_types: ["lending_pnl", "transaction_costs"]
   
   strategy_factory:
     timeout: 30
     max_retries: 3
     validation_strict: true
 
+# Event logging configuration
+event_logger:
+  log_path: "./logs"
+  log_format: "json"
+  log_level: "INFO"
+  event_categories:
+    data: ["data_loaded", "data_updated", "data_error"]
+    risk: ["risk_breach", "risk_warning", "risk_calculation"]
+    event: ["event_logged", "event_filtered", "event_exported"]
+    business: ["trade_executed", "position_updated", "strategy_decision"]
+  event_logging_settings:
+    buffer_size: 10000
+    export_format: "both"
+    async_logging: true
+    compression: false
+  log_retention_policy:
+    retention_days: 30
+    max_file_size_mb: 100
+    rotation_frequency: "daily"
+    compression_after_days: 7
+  audit_requirements:
+    audit_trail: true
+    immutable_logs: true
+    encryption: false
+    compliance_mode: "standard"
+  compliance_settings:
+    gdpr_compliant: false
+    sox_compliant: false
+    data_residency: "global"
+    encryption_required: false
+  logging_requirements:
+    structured_logging: true
+    correlation_ids: true
+    performance_metrics: true
+    error_tracking: true
+  event_filtering:
+    filter_by_level: true
+    filter_by_category: true
+    exclude_patterns: []
+    include_patterns: ["*"]

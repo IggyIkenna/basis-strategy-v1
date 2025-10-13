@@ -6,6 +6,12 @@
 
 ## 🚀 Quick Start
 
+### Environment Setup
+```bash
+# Load environment variables for data processing
+source scripts/load_env.sh
+```
+
 ### Complete Data Pipeline (Recommended)
 ```bash
 # 1. Market Data (CEX + DEX pools)
@@ -690,6 +696,37 @@ python scripts/orchestrators/fetch_execution_costs.py --start-date 2024-09-01 --
 - Use Alchemy for accurate historical gas data: `--alchemy-api-url "https://eth-mainnet.g.alchemy.com/v2/YOUR_API_KEY"`
 - Uses Alchemy JSON-RPC for complete historical coverage (2024-2025)
 - Accurate gas price data with base fee + priority fee percentiles
+
+## 🔧 Utility Scripts
+
+### Environment Loading
+- **`load_env.sh`** - Loads environment variables for data processing scripts
+  - Usage: `source scripts/load_env.sh`
+  - Loads variables from `env.downloaders` file
+  - Required for all data downloader scripts
+
+- **`load_env.py`** - Loads environment variables for quality gates
+  - Usage: `python scripts/load_env.py`
+  - Loads variables from `configs/env/shared.env` and `configs/env/quality-gates.env`
+  - Used by quality gate scripts for proper environment setup
+
+### Quality Gates
+- **`run_quality_gates.py`** - Main quality gate runner
+  - Usage: `python scripts/run_quality_gates.py`
+  - Runs comprehensive test validation across all categories
+  - Supports category-specific execution: `--category unit`
+
+### Test Coverage Analysis
+- **`analyze_test_coverage.py`** - Test coverage analysis
+  - Usage: `python scripts/analyze_test_coverage.py`
+  - Analyzes test coverage for unit tests in `tests/unit/`
+  - Generates coverage reports and statistics
+
+- **`check_orphaned_tests.py`** - Orphaned tests checker
+  - Usage: `python scripts/check_orphaned_tests.py`
+  - Checks for orphaned tests by comparing filesystem with quality gates config
+  - Ensures 1:1 mapping between test files and quality gates references
+  - Use `--verbose` flag for detailed fix suggestions
 
 ### Debug Mode
 ```bash

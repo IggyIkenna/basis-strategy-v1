@@ -34,7 +34,7 @@ All components follow the **Reference-Based Architecture** pattern where compone
 - **risk_monitor**: RiskMonitor instance
 - **pnl_calculator**: PnLCalculator instance
 - **strategy_manager**: StrategyManager instance
-- **execution_manager**: ExecutionManager instance
+- **venue_manager**: VenueManager instance
 
 These references are stored in `__init__` and used throughout component lifecycle. Components NEVER receive these as method parameters during runtime.
 
@@ -488,6 +488,35 @@ execution_manager → execution_interface_manager → position_update_handler �
 - Bypassing configuration loading architecture
 - Using static configuration values instead of dynamic loading
 
+#### 6.1.1. Configuration Validation Architecture
+**CRITICAL REQUIREMENT**: All configuration must be validated through comprehensive quality gates before deployment.
+
+**Validation Framework**:
+- **Mode Config Validation**: All mode YAML files validated against Pydantic models
+- **Documentation Sync**: All config fields documented in component specs
+- **Usage Sync**: All documented fields used in mode configurations
+- **Strategy Intention**: Mode configs match intended strategy descriptions
+- **Config Loading**: All configs load successfully at startup
+
+**Quality Gate Scripts**:
+- `validate_config_alignment.py` - Pydantic model alignment validation
+- `test_config_documentation_sync_quality_gates.py` - Component spec sync validation
+- `test_config_usage_sync_quality_gates.py` - Mode YAML usage validation
+- `test_modes_intention_quality_gates.py` - Strategy intention validation
+- `test_config_loading_quality_gates.py` - Config loading validation
+
+**CI/CD Integration**:
+- Quality gates run automatically in `platform.sh` before backend startup
+- Quality gates run automatically in `docker/deploy.sh` before Docker build
+- Builds fail immediately if any validation fails
+
+**Business Logic Validation**:
+- **Venue-LST validation**: LST type requires appropriate venue (weeth → etherfi, wsteth → lido)
+- **Share class consistency**: USDT modes use USDT asset, ETH modes use ETH/BTC
+- **Risk parameter alignment**: Warnings for high drawdown (>50%) or APY (>100%)
+- **Basis trading validation**: Basis trading requires hedge venues
+- **Market neutral validation**: Market neutral modes require hedge venues
+
 #### 6.1. Infrastructure Configuration Elimination
 **CRITICAL DECISION**: JSON configs eliminated entirely - all infrastructure configuration handled through environment variables and hardcoded defaults.
 
@@ -631,7 +660,41 @@ def get_data(self, timestamp: pd.Timestamp) -> Dict[str, Any]:
 - **DeFi**: AAVE V3, Lido, EtherFi, Morpho (flash loans)
 - **Infrastructure**: Alchemy (Web3), Uniswap (DEX swaps), Instadapp (atomic transaction middleware)
 
-### 9. Backtest vs Live Mode Architecture
+### 9. Execution Interface Factory (Extended)
+
+**Position Interface Creation**:
+- Creates both execution and position monitoring interfaces
+- Uses same credentials and venue configuration
+- Handles both backtest (simulation) and live (real API) modes
+
+**Initialization Dependencies**:
+- Position Monitor depends on Execution Interface Factory
+- Execution Interface Factory must be initialized before Position Monitor
+
+**Factory Methods**:
+```python
+@staticmethod
+def create_position_interface(venue: str, execution_mode: str, config: Dict) -> BasePositionInterface:
+    """Create position monitoring interface for a specific venue."""
+
+@staticmethod
+def get_position_interfaces(venues: List[str], execution_mode: str, config: Dict) -> Dict[str, BasePositionInterface]:
+    """Create position monitoring interfaces for multiple venues."""
+```
+
+**Position Interface Types**:
+- **CEX Position Interface**: Binance, Bybit, OKX position monitoring
+- **OnChain Position Interface**: AAVE, Morpho, Lido, EtherFi position monitoring
+- **Transfer Position Interface**: Wallet position monitoring
+
+**Architecture Benefits**:
+- Same credentials (API keys, endpoints) as execution interfaces
+- Same venues (from `configs/modes/*.yaml`) as execution
+- Maintains canonical factory pattern consistency
+- Avoids credential management duplication
+- Follows DRY principles
+
+### 10. Backtest vs Live Mode Architecture
 **CRITICAL DISTINCTION**: System operates in two distinct modes with specific considerations.
 
 **Backtest Mode**:
@@ -652,7 +715,7 @@ def get_data(self, timestamp: pd.Timestamp) -> Dict[str, Any]:
 - Direct function call communication (no Redis)
 - State persistence across runs
 
-### 10. P&L Calculator Mode-Agnostic
+### 11. P&L Calculator Mode-Agnostic
 **CRITICAL FIX**: P&L calculator must be mode-agnostic and work for both backtest and live modes.
 
 **Requirements**:
@@ -668,7 +731,7 @@ def get_data(self, timestamp: pd.Timestamp) -> Dict[str, Any]:
 - Duplicated utility methods across components
 - Mode-specific if statements in P&L calculations
 
-### 11. Strategy Manager Refactor
+### 12. Strategy Manager Refactor
 **CRITICAL REQUIREMENT**: Remove complex rebalancing system and implement inheritance-based strategy modes.
 
 **Key Changes**:
@@ -679,7 +742,7 @@ def get_data(self, timestamp: pd.Timestamp) -> Dict[str, Any]:
 - **Strategy Factory**: Create strategy instances based on mode
 - **Fixed Wallet Assumption**: All deposits/withdrawals go to same on-chain wallet
 
-### 12. Duplicate Risk Monitors Consolidation
+### 13. Duplicate Risk Monitors Consolidation
 **CRITICAL REQUIREMENT**: Consolidate duplicate risk monitor files.
 
 **Files to Consolidate**:
@@ -687,7 +750,7 @@ def get_data(self, timestamp: pd.Timestamp) -> Dict[str, Any]:
 - **REMOVE**: `backend/src/basis_strategy_v1/core/rebalancing/risk_monitor.py` (duplicate)
 - **Update**: Import in `rebalancing/__init__.py` to use correct location
 
-### 13. Dust Management System
+### 14. Dust Management System
 **REQUIREMENT**: Implement dust management for non-share-class tokens.
 
 **Dust Tokens**:

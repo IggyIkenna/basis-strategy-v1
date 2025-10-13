@@ -108,7 +108,6 @@ BASIS_API_CORS_ORIGINS=http://localhost:3000,http://localhost:5173
             "borrowing_enabled": False,
             "leverage_enabled": False,
             "rewards_mode": "base_only",
-            "reserve_ratio": 0.1,
             "position_deviation_threshold": 0.05,
             "margin_ratio_target": 1.0,
             "target_apy": 0.05,

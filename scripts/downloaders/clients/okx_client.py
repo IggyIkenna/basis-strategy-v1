@@ -16,6 +16,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Any
 from collections import defaultdict
+from .timestamp_utils import format_timestamp_utc, format_timestamp_from_datetime
 
 # Handle both standalone and module imports
 try:
@@ -218,7 +219,7 @@ class OKXClient(BaseDownloader):
             total_volume = sum(record["volume"] for record in minute_records)
             
             hourly_candle = {
-                "timestamp": hour_key.isoformat() + "Z",
+                "timestamp": format_timestamp_from_datetime(hour_key),
                 "open": open_price,
                 "high": high_price,
                 "low": low_price,
@@ -415,7 +416,7 @@ class OKXClient(BaseDownloader):
                                             timestamp_ms = int(parts[8])  # open_time is the timestamp
                                             
                                             record = {
-                                                'timestamp': datetime.utcfromtimestamp(timestamp_ms / 1000).isoformat() + 'Z',
+                                                'timestamp': format_timestamp_utc(timestamp_ms),
                                                 'open': open_price,
                                                 'high': high_price,
                                                 'low': low_price,
@@ -493,7 +494,7 @@ class OKXClient(BaseDownloader):
 
             try:
                 rec = {
-                    "timestamp": datetime.utcfromtimestamp(ts_ms / 1000).isoformat() + "Z",
+                    "timestamp": format_timestamp_utc(ts_ms),
                     "open": float(o),
                     "high": float(h),
                     "low": float(l),
@@ -536,7 +537,7 @@ class OKXClient(BaseDownloader):
 
             try:
                 rec = {
-                    "funding_timestamp": datetime.utcfromtimestamp(int(ft) / 1000).isoformat() + "Z",
+                    "funding_timestamp": format_timestamp_utc(int(ft)),
                     "funding_rate": float(fr),
                     "symbol": inst_id or symbol_out,
                     "source": "okx",

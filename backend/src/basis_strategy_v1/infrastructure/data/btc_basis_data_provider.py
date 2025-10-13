@@ -39,7 +39,7 @@ class BTCBasisDataProvider(BaseDataProvider):
         
         logger.info(f"BTCBasisDataProvider initialized for {execution_mode} mode")
     
-    def validate_data_requirements(self, data_requirements: List[str]) -> None:
+    def _validate_data_requirements(self, data_requirements: List[str]) -> None:
         """
         Validate that this provider can satisfy all data requirements.
         

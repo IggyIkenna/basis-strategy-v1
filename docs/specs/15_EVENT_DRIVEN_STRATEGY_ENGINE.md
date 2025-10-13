@@ -236,7 +236,7 @@ async def execute_tight_loop(self, timestamp: pd.Timestamp, market_data: Dict[st
     self.components['risk_monitor'].calculate_risk(timestamp, market_data)
     
     # 4. Update P&L based on new positions and market data
-    self.components['pnl_calculator'].calculate_pnl(timestamp, 'tight_loop', market_data)
+    self.components['pnl_calculator'].get_current_pnl(timestamp, 'tight_loop', market_data)
 ```
 
 ### **Sequence Selection Logic**
@@ -732,6 +732,66 @@ Behavior:
 3. Handle strategy decisions and execution
 4. Store results asynchronously via AsyncResultsStore
 
+
+
+## Standardized Logging Methods
+
+### log_structured_event(timestamp, event_type, level, message, component_name, data=None, correlation_id=None)
+Log a structured event with standardized format.
+
+**Parameters**:
+- `timestamp`: Event timestamp (pd.Timestamp)
+- `event_type`: Type of event (EventType enum)
+- `level`: Log level (LogLevel enum)
+- `message`: Human-readable message (str)
+- `component_name`: Name of the component logging the event (str)
+- `data`: Optional structured data dictionary (Dict[str, Any])
+- `correlation_id`: Optional correlation ID for tracing (str)
+
+**Returns**: None
+
+### log_component_event(event_type, message, data=None, level=LogLevel.INFO)
+Log a component-specific event with automatic timestamp and component name.
+
+**Parameters**:
+- `event_type`: Type of event (EventType enum)
+- `message`: Human-readable message (str)
+- `data`: Optional structured data dictionary (Dict[str, Any])
+- `level`: Log level (defaults to INFO)
+
+**Returns**: None
+
+### log_performance_metric(metric_name, value, unit, data=None)
+Log a performance metric.
+
+**Parameters**:
+- `metric_name`: Name of the metric (str)
+- `value`: Metric value (float)
+- `unit`: Unit of measurement (str)
+- `data`: Optional additional context data (Dict[str, Any])
+
+**Returns**: None
+
+### log_error(error, context=None, correlation_id=None)
+Log an error with standardized format.
+
+**Parameters**:
+- `error`: Exception object (Exception)
+- `context`: Optional context data (Dict[str, Any])
+- `correlation_id`: Optional correlation ID for tracing (str)
+
+**Returns**: None
+
+### log_warning(message, data=None, correlation_id=None)
+Log a warning with standardized format.
+
+**Parameters**:
+- `message`: Warning message (str)
+- `data`: Optional context data (Dict[str, Any])
+- `correlation_id`: Optional correlation ID for tracing (str)
+
+**Returns**: None
+
 ## Async Results Storage
 
 **Integration with AsyncResultsStore**
@@ -976,7 +1036,7 @@ async def execute_tight_loop(self, timestamp: pd.Timestamp, market_data: Dict[st
     risk_data = await self.risk_monitor.assess_risk(exposure_data, market_data)
     
     # 4. Calculate P&L
-    pnl_data = await self.pnl_calculator.calculate_pnl(exposure_data, timestamp)
+    pnl_data = await self.pnl_calculator.get_current_pnl(exposure_data, timestamp)
     
     # 5. Make strategy decision
     strategy_decision = await self.strategy_manager.make_decision(exposure_data, risk_data, market_data)
@@ -1082,7 +1142,7 @@ class PositionUpdateHandler:
         risk = await self.risk_monitor.assess_risk(exposure, self.current_timestamp)
         
         # Calculate P&L
-        pnl = await self.pnl_calculator.calculate_pnl(exposure, risk, self.current_timestamp)
+        pnl = await self.pnl_calculator.get_current_pnl(exposure, risk, self.current_timestamp)
 ```
 
 ---
@@ -1473,7 +1533,7 @@ while True:
 position = await engine.position_monitor.get_snapshot()
 exposure = await engine.exposure_monitor.calculate_exposure(position, timestamp)
 risk = await engine.risk_monitor.assess_risk(exposure, timestamp)
-pnl = await engine.pnl_calculator.calculate_pnl(exposure, risk, timestamp)
+pnl = await engine.pnl_calculator.get_current_pnl(exposure, risk, timestamp)
 
 # Execute strategy decision
 decision = await engine.strategy_manager.make_decision(timestamp, market_data)
@@ -1590,6 +1650,50 @@ Following [Quality Gate Validation](QUALITY_GATES.md) <!-- Redirected from 17_qu
 ---
 
 **Status**: Event-Driven Strategy Engine is complete and fully operational! 🎉
+
+## Public API Methods
+
+### check_component_health() -> Dict[str, Any]
+**Purpose**: Check component health status for monitoring and diagnostics.
+
+**Returns**:
+```python
+{
+    'status': 'healthy' | 'degraded' | 'unhealthy',
+    'error_count': int,
+    'execution_mode': 'backtest' | 'live',
+    'components_health': Dict[str, Any],
+    'tight_loop_executions_count': int,
+    'component': 'EventDrivenStrategyEngine'
+}
+```
+
+**Usage**: Called by health monitoring systems to track Event Driven Strategy Engine status and performance.
+
+### get_status() -> Dict[str, Any]
+**Purpose**: Get current status of the event-driven strategy engine.
+
+**Returns**: Dictionary containing engine status information
+
+**Usage**: Called by external systems to check engine status and health.
+
+### run_live() -> Dict[str, Any]
+**Purpose**: Start live trading execution.
+
+**Returns**: Dictionary containing live trading execution status
+
+**Usage**: Called by external systems to initiate live trading operations.
+
+### update_state(timestamp: pd.Timestamp, trigger_source: str) -> None
+**Purpose**: Update engine state with new timestamp and trigger source.
+
+**Parameters**:
+- `timestamp`: Current timestamp for state update (pd.Timestamp)
+- `trigger_source`: Source of the update trigger (str)
+
+**Returns**: None
+
+**Usage**: Called by external systems to update engine state and trigger component updates.
 
 ## Related Documentation
 

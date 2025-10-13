@@ -21,10 +21,12 @@ from .usdt_market_neutral_no_leverage_strategy import USDTMarketNeutralNoLeverag
 from .usdt_market_neutral_strategy import USDTMarketNeutralStrategy
 from ...infrastructure.logging.structured_logger import get_strategy_manager_logger
 
+from ...core.logging.base_logging_interface import StandardizedLoggingMixin, LogLevel, EventType
+
 logger = logging.getLogger(__name__)
 
 
-class StrategyFactory:
+class StrategyFactory(StandardizedLoggingMixin):
     """Factory for creating strategy instances based on mode."""
     
     # Strategy class mapping - all strategies implemented

@@ -26,6 +26,7 @@ flake8
 # Testing dependencies
 pytest>=8.4.0
 pytest-asyncio>=1.2.0
+pyyaml>=6.0.0
 # Frontend dependencies (installed via npm)
 # lucide-react (installed via npm install lucide-react)
 # Additional dependencies installed during implementation:

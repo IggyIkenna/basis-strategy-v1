@@ -13,6 +13,8 @@ import logging
 
 from .base_strategy_manager import BaseStrategyManager, StrategyAction
 
+from ...core.logging.base_logging_interface import StandardizedLoggingMixin, LogLevel, EventType
+
 logger = logging.getLogger(__name__)
 
 
@@ -68,7 +70,6 @@ class USDTMarketNeutralNoLeverageStrategy(BaseStrategyManager):
             # Calculate target allocations
             usdt_target = current_equity * self.usdt_allocation
             eth_target = current_equity * self.eth_allocation
-            reserve_target = current_equity * self.reserve_ratio
             
             # Get current ETH price
             eth_price = self._get_asset_price()
@@ -79,7 +80,7 @@ class USDTMarketNeutralNoLeverageStrategy(BaseStrategyManager):
                 'aUSDT_balance': usdt_target,  # Lent USDT
                 'eth_balance': 0.0,  # No raw ETH, all staked
                 f'{self.lst_type.lower()}_balance': eth_amount,  # Staked ETH
-                f'{self.share_class.lower()}_balance': reserve_target,
+                f'{self.share_class.lower()}_balance': 0.0,  # No reserve balance needed
                 'total_equity': current_equity
             }
             
@@ -90,7 +91,7 @@ class USDTMarketNeutralNoLeverageStrategy(BaseStrategyManager):
                 'aUSDT_balance': 0.0,
                 'eth_balance': 0.0,
                 f'{self.lst_type.lower()}_balance': 0.0,
-                f'{self.share_class.lower()}_balance': current_equity * self.reserve_ratio,
+                f'{self.share_class.lower()}_balance': 0.0,  # No reserve balance needed
                 'total_equity': current_equity
             }
     
@@ -197,7 +198,6 @@ class USDTMarketNeutralNoLeverageStrategy(BaseStrategyManager):
             # Calculate proportional allocation
             usdt_delta = equity_delta * self.usdt_allocation
             eth_delta = equity_delta * self.eth_allocation
-            reserve_delta = equity_delta * self.reserve_ratio
             
             # Get current ETH price
             eth_price = self._get_asset_price()
@@ -237,15 +237,7 @@ class USDTMarketNeutralNoLeverageStrategy(BaseStrategyManager):
                     'target_token': self.lst_type
                 })
             
-            # 4. Add to reserves
-            if reserve_delta > 0:
-                instructions.append({
-                    'action': 'reserve',
-                    'asset': self.share_class,
-                    'amount': reserve_delta,
-                    'venue': 'wallet',
-                    'order_type': 'hold'
-                })
+            # No reserve allocation needed - all equity goes to active positions
             
             return StrategyAction(
                 action_type='entry_partial',
@@ -257,7 +249,6 @@ class USDTMarketNeutralNoLeverageStrategy(BaseStrategyManager):
                     'strategy': 'usdt_market_neutral_no_leverage',
                     'usdt_delta': usdt_delta,
                     'eth_delta': eth_delta,
-                    'reserve_delta': reserve_delta,
                     'lst_type': self.lst_type
                 }
             )

@@ -90,7 +90,7 @@
 - DataProvider factory patterns
 - ComponentFactory patterns
 
-→ **[COMPONENT_SPEC_TEMPLATE.md](COMPONENT_SPEC_TEMPLATE.md)** ⭐ **STANDARDIZED SPEC FORMAT**
+→ **Component Specification Template (removed - was template file)** ⭐ **STANDARDIZED SPEC FORMAT**
 - Exact spec structure (19 sections in order)
 - Prevents hallucination in spec updates
 - Standardized headers and formatting

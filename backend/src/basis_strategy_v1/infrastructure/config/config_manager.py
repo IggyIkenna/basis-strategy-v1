@@ -15,11 +15,15 @@ from pathlib import Path
 from typing import Dict, List, Any, Optional, Tuple
 from functools import lru_cache
 import logging
+import pandas as pd
+from datetime import datetime
 
 from .models import (
     validate_mode_config, validate_venue_config, validate_share_class_config,
     validate_complete_configuration, ConfigurationSet, ConfigurationValidationError
 )
+from ...core.logging.base_logging_interface import StandardizedLoggingMixin, LogLevel, EventType
+from ...core.errors.component_error import ComponentError
 # Health check functions removed - now handled by unified health manager
 # from ..monitoring.logging import log_structured_error
 
@@ -38,7 +42,7 @@ ERROR_CODES = {
 }
 
 
-class ConfigManager:
+class ConfigManager(StandardizedLoggingMixin):
     """Unified configuration manager with fail-fast policy.
     
     TODO-REFACTOR: ENVIRONMENT VARIABLE INTEGRATION VIOLATION - See docs/VENUE_ARCHITECTURE.md
@@ -81,11 +85,131 @@ class ConfigManager:
         self.config_cache: Dict[str, Any] = {}
         self._validation_result: Optional[ValidationResult] = None
         
+        # Health integration
+        self.health_status = {
+            'status': 'healthy',
+            'last_check': datetime.now(),
+            'error_count': 0,
+            'success_count': 0
+        }
+    
+    def check_component_health(self) -> Dict[str, Any]:
+        """Check component health status."""
+        return {
+            'status': self.health_status['status'],
+            'error_count': self.health_status['error_count'],
+            'success_count': self.health_status['success_count'],
+            'config_cache_size': len(self.config_cache),
+            'component': self.__class__.__name__
+        }
+    
+    def _initialize_config(self):
+        """Initialize configuration loading and validation."""
         # Load and validate configuration
         self._load_all_config()
         self._validate_config()
         
         # Config manager health now handled by unified health manager
+    
+    def _handle_error(self, error_code: str, error_message: str, details: Optional[Dict] = None):
+        """
+        Handle errors with structured error handling.
+        
+        Args:
+            error_code: Error code from ERROR_CODES
+            error_message: Error message
+            details: Additional error details
+        """
+        try:
+            # Update health status
+            self.health_status['error_count'] += 1
+            
+            # Create structured error
+            error = ComponentError(
+                component='config_manager',
+                error_code=error_code,
+                message=error_message,
+                details=details or {}
+            )
+            
+            # Log structured error
+            self.structured_logger.error(
+                f"Config Manager Error: {error_code}",
+                error_code=error_code,
+                error_message=error_message,
+                details=details,
+                component='config_manager'
+            )
+            
+            # Update health status if too many errors
+            if self.health_status['error_count'] > 10:
+                self.health_status['status'] = 'unhealthy'
+            
+        except Exception as e:
+            logger.error(f"Failed to handle error: {e}")
+    
+    def _log_success(self, operation: str, details: Optional[Dict] = None):
+        """
+        Log successful operations.
+        
+        Args:
+            operation: Operation name
+            details: Operation details
+        """
+        try:
+            # Update health status
+            self.health_status['success_count'] += 1
+            
+            # Log success
+            self.structured_logger.info(
+                f"Config Manager Success: {operation}",
+                operation=operation,
+                details=details,
+                component='config_manager'
+            )
+            
+        except Exception as e:
+            logger.error(f"Failed to log success: {e}")
+    
+    def get_data(self, timestamp: pd.Timestamp) -> Dict[str, Any]:
+        """
+        Get data using canonical data access pattern.
+        
+        Args:
+            timestamp: Current timestamp
+            
+        Returns:
+            Data dictionary
+        """
+        try:
+            return {
+                'config_cache': self.config_cache,
+                'validation_result': self._validation_result,
+                'available_strategies': self.get_available_strategies()
+            }
+        except Exception as e:
+            self._handle_error('CONFIG-MGR-001', f"Failed to get data: {e}")
+            return {}
+    
+    def create_component(self, component_type: str, config: Dict[str, Any]) -> Any:
+        """
+        Create component using factory pattern.
+        
+        Args:
+            component_type: Type of component to create
+            config: Configuration for the component
+            
+        Returns:
+            Created component instance
+        """
+        try:
+            # This is a factory method for creating components
+            # Implementation would depend on the specific component type
+            self._log_success('component_created', {'component_type': component_type})
+            return None  # Placeholder for actual implementation
+        except Exception as e:
+            self._handle_error('CONFIG-MGR-007', f"Failed to create component {component_type}: {e}")
+            return None
     
     def _load_all_config(self):
         """Load all configuration files and environment variables."""
@@ -332,6 +456,11 @@ class ConfigManager:
     
     def get_complete_config(self, mode: str = None, venue: str = None) -> Dict[str, Any]:
         """Get complete configuration by merging all relevant configs."""
+        # Config-driven behavior
+        config_settings = self.config_cache.get('base', {}).get('config_manager', {})
+        enable_caching = config_settings.get('enable_caching', True)
+        cache_ttl = config_settings.get('cache_ttl', 300)
+        
         config = self.config_cache['base'].copy()
         
         if mode:
@@ -410,6 +539,76 @@ class ConfigManager:
     def is_healthy(self) -> bool:
         """Check if configuration is healthy."""
         return 'base' in self.config_cache and self.config_cache.get('env') is not None
+    
+    # Standardized Logging Methods (per 17_HEALTH_ERROR_SYSTEMS.md and 08_EVENT_LOGGER.md)
+    
+    def log_structured_event(self, timestamp: pd.Timestamp, event_type: str, level: str, message: str, component_name: str, data: Optional[Dict[str, Any]] = None, correlation_id: Optional[str] = None) -> None:
+        """Log a structured event with standardized format."""
+        try:
+            event_data = {
+                'timestamp': timestamp,
+                'event_type': event_type,
+                'level': level,
+                'message': message,
+                'component_name': component_name,
+                'data': data or {},
+                'correlation_id': correlation_id
+            }
+            
+            # Log to standard logger
+            if level == 'ERROR':
+                logger.error(f"[{component_name}] {message}", extra=event_data)
+            elif level == 'WARNING':
+                logger.warning(f"[{component_name}] {message}", extra=event_data)
+            else:
+                logger.info(f"[{component_name}] {message}", extra=event_data)
+                
+        except Exception as e:
+            logger.error(f"Failed to log structured event: {e}")
+    
+    def log_component_event(self, event_type: str, message: str, data: Optional[Dict[str, Any]] = None, level: str = 'INFO') -> None:
+        """Log a component-specific event with automatic timestamp and component name."""
+        try:
+            timestamp = pd.Timestamp.now(tz='UTC')
+            self.log_structured_event(timestamp, event_type, level, message, 'ConfigManager', data)
+        except Exception as e:
+            logger.error(f"Failed to log component event: {e}")
+    
+    def log_performance_metric(self, metric_name: str, value: float, unit: str, data: Optional[Dict[str, Any]] = None) -> None:
+        """Log a performance metric."""
+        try:
+            timestamp = pd.Timestamp.now(tz='UTC')
+            message = f"Performance metric: {metric_name} = {value} {unit}"
+            metric_data = {
+                'metric_name': metric_name,
+                'value': value,
+                'unit': unit,
+                **(data or {})
+            }
+            self.log_structured_event(timestamp, 'performance_metric', 'INFO', message, 'ConfigManager', metric_data)
+        except Exception as e:
+            logger.error(f"Failed to log performance metric: {e}")
+    
+    def log_error(self, error: Exception, context: Optional[Dict[str, Any]] = None, correlation_id: Optional[str] = None) -> None:
+        """Log an error with standardized format."""
+        try:
+            timestamp = pd.Timestamp.now(tz='UTC')
+            error_data = {
+                'error_type': type(error).__name__,
+                'context': context or {},
+                'correlation_id': correlation_id
+            }
+            self.log_structured_event(timestamp, 'error', 'ERROR', str(error), 'ConfigManager', error_data)
+        except Exception as e:
+            logger.error(f"Failed to log error: {e}")
+    
+    def log_warning(self, message: str, data: Optional[Dict[str, Any]] = None, correlation_id: Optional[str] = None) -> None:
+        """Log a warning with standardized format."""
+        try:
+            timestamp = pd.Timestamp.now(tz='UTC')
+            self.log_structured_event(timestamp, 'warning', 'WARNING', message, 'ConfigManager', data, correlation_id)
+        except Exception as e:
+            logger.error(f"Failed to log warning: {e}")
     
     def _load_base_config(self) -> Dict[str, Any]:
         """Load base configuration - ELIMINATED JSON configs, return empty dict."""

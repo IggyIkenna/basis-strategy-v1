@@ -11,7 +11,7 @@ from unittest.mock import Mock, patch
 from pathlib import Path
 
 # Import the component under test
-from basis_strategy_v1.core.strategies.components.position_monitor import PositionMonitor
+from basis_strategy_v1.core.components.position_monitor import PositionMonitor
 
 
 class TestPositionMonitorUnit:

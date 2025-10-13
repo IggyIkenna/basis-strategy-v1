@@ -255,11 +255,7 @@ class BaseStrategyManager(ABC):
         self.action_history = []
         self.instruction_blocks_generated = 0
         
-        # Validate config
-        self._validate_strategy_config()
-    
-    def _validate_strategy_config(self):
-        """Validate strategy manager configuration"""
+        # Config validation happens at startup via Pydantic models
         if not self.strategy_type:
             raise ValueError("strategy_manager.strategy_type cannot be empty")
         
@@ -383,6 +379,7 @@ class BaseStrategyManager(ABC):
     
     def _determine_rebalancing_action(self, condition: str, current_exposure: Dict, 
                                     risk_metrics: Dict, market_data: Dict) -> str:
+        """Determine rebalancing action (private method)."""
         """Determine specific rebalancing action based on condition"""
         # This can be overridden by subclasses for mode-specific logic
         if condition == 'margin_critical':
@@ -395,7 +392,7 @@ class BaseStrategyManager(ABC):
             return 'entry_partial' if 'entry_partial' in self.available_actions else None
     
     def _generate_entry_full_instructions(self, target_positions: Dict, params: Dict, market_data: Dict) -> List[Dict]:
-        """Generate instruction blocks for entry_full action"""
+        """Generate instruction blocks for entry_full action (private method)"""
         # Base implementation - can be overridden by subclasses
         return [{
             'block_id': f"entry_full_{self.last_decision_timestamp}",
@@ -407,7 +404,7 @@ class BaseStrategyManager(ABC):
         }]
     
     def _generate_entry_partial_instructions(self, target_positions: Dict, params: Dict, market_data: Dict) -> List[Dict]:
-        """Generate instruction blocks for entry_partial action"""
+        """Generate instruction blocks for entry_partial action (private method)"""
         return [{
             'block_id': f"entry_partial_{self.last_decision_timestamp}",
             'action': 'entry_partial',
@@ -418,7 +415,7 @@ class BaseStrategyManager(ABC):
         }]
     
     def _generate_exit_full_instructions(self, target_positions: Dict, params: Dict, market_data: Dict) -> List[Dict]:
-        """Generate instruction blocks for exit_full action"""
+        """Generate instruction blocks for exit_full action (private method)"""
         return [{
             'block_id': f"exit_full_{self.last_decision_timestamp}",
             'action': 'exit_full',
@@ -429,7 +426,7 @@ class BaseStrategyManager(ABC):
         }]
     
     def _generate_exit_partial_instructions(self, target_positions: Dict, params: Dict, market_data: Dict) -> List[Dict]:
-        """Generate instruction blocks for exit_partial action"""
+        """Generate instruction blocks for exit_partial action (private method)"""
         return [{
             'block_id': f"exit_partial_{self.last_decision_timestamp}",
             'action': 'exit_partial',
@@ -440,7 +437,7 @@ class BaseStrategyManager(ABC):
         }]
     
     def _generate_sell_dust_instructions(self, target_positions: Dict, params: Dict, market_data: Dict) -> List[Dict]:
-        """Generate instruction blocks for sell_dust action"""
+        """Generate instruction blocks for sell_dust action (private method)"""
         return [{
             'block_id': f"sell_dust_{self.last_decision_timestamp}",
             'action': 'sell_dust',

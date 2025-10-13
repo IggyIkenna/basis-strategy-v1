@@ -13,6 +13,8 @@ import logging
 
 from .base_strategy_manager import BaseStrategyManager, StrategyAction
 
+from ...core.logging.base_logging_interface import StandardizedLoggingMixin, LogLevel, EventType
+
 logger = logging.getLogger(__name__)
 
 
@@ -69,7 +71,6 @@ class ETHLeveragedStrategy(BaseStrategyManager):
             leveraged_equity = current_equity * self.leverage_multiplier
             eth_target = leveraged_equity * self.eth_allocation
             hedge_target = leveraged_equity * self.hedge_allocation
-            reserve_target = current_equity * self.reserve_ratio
             
             # Get current ETH price
             eth_price = self._get_asset_price()
@@ -91,7 +92,6 @@ class ETHLeveragedStrategy(BaseStrategyManager):
                 'eth_balance': 0.0,
                 f'{self.lst_type.lower()}_balance': 0.0,
                 'eth_perpetual_short': 0.0,
-                f'{self.share_class.lower()}_balance': current_equity * self.reserve_ratio,
                 'total_equity': current_equity,
                 'leveraged_equity': current_equity
             }
@@ -200,7 +200,6 @@ class ETHLeveragedStrategy(BaseStrategyManager):
             leveraged_delta = equity_delta * self.leverage_multiplier
             eth_delta = leveraged_delta * self.eth_allocation
             hedge_delta = leveraged_delta * self.hedge_allocation
-            reserve_delta = equity_delta * self.reserve_ratio
             
             # Get current ETH price
             eth_price = self._get_asset_price()

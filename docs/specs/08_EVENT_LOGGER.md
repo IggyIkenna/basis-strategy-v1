@@ -1,9 +1,18 @@
 # Event Logger Component Specification
 
-**Last Reviewed**: October 10, 2025
+**Last Reviewed**: October 11, 2025
 
 ## Purpose
-Detailed audit-grade event tracking with balance snapshots for debugging and audit trails.
+Detailed audit-grade event tracking with balance snapshots for debugging and audit trails using config-driven, mode-agnostic architecture.
+
+## 📚 **Canonical Sources**
+
+**This component spec aligns with canonical architectural principles**:
+- **Architectural Principles**: [../REFERENCE_ARCHITECTURE_CANONICAL.md](../REFERENCE_ARCHITECTURE_CANONICAL.md) - Canonical architectural principles including config-driven architecture
+- **Strategy Specifications**: [../MODES.md](../MODES.md) - Canonical strategy mode definitions
+- **Configuration Guide**: [19_CONFIGURATION.md](19_CONFIGURATION.md) - Complete config schemas with component_config
+- **Implementation Patterns**: [../CODE_STRUCTURE_PATTERNS.md](../CODE_STRUCTURE_PATTERNS.md) - Complete implementation patterns
+- **Component Index**: [../COMPONENT_SPECS_INDEX.md](../COMPONENT_SPECS_INDEX.md) - All 20 components (11 core + 9 supporting)
 
 ## Responsibilities
 1. Log all component state changes with timestamps
@@ -36,10 +45,6 @@ Components NEVER receive these as method parameters during runtime.
 **Venue Configuration** (from `configs/venues/*.yaml`):
 - `logging_requirements`: Venue-specific logging requirements - used for venue-specific logging
 - `event_categories`: Event categories - used for event categorization
-
-**Share Class Configuration** (from `configs/share_classes/*.yaml`):
-- `audit_requirements`: Audit requirements - used for audit logging
-- `compliance_settings`: Compliance settings - used for compliance logging
 
 ## Config-Driven Behavior
 
@@ -563,6 +568,66 @@ Parameters:
 
 Returns:
 - List[Dict]: Event history
+
+
+
+## Standardized Logging Methods
+
+### log_structured_event(timestamp, event_type, level, message, component_name, data=None, correlation_id=None)
+Log a structured event with standardized format.
+
+**Parameters**:
+- `timestamp`: Event timestamp (pd.Timestamp)
+- `event_type`: Type of event (EventType enum)
+- `level`: Log level (LogLevel enum)
+- `message`: Human-readable message (str)
+- `component_name`: Name of the component logging the event (str)
+- `data`: Optional structured data dictionary (Dict[str, Any])
+- `correlation_id`: Optional correlation ID for tracing (str)
+
+**Returns**: None
+
+### log_component_event(event_type, message, data=None, level=LogLevel.INFO)
+Log a component-specific event with automatic timestamp and component name.
+
+**Parameters**:
+- `event_type`: Type of event (EventType enum)
+- `message`: Human-readable message (str)
+- `data`: Optional structured data dictionary (Dict[str, Any])
+- `level`: Log level (defaults to INFO)
+
+**Returns**: None
+
+### log_performance_metric(metric_name, value, unit, data=None)
+Log a performance metric.
+
+**Parameters**:
+- `metric_name`: Name of the metric (str)
+- `value`: Metric value (float)
+- `unit`: Unit of measurement (str)
+- `data`: Optional additional context data (Dict[str, Any])
+
+**Returns**: None
+
+### log_error(error, context=None, correlation_id=None)
+Log an error with standardized format.
+
+**Parameters**:
+- `error`: Exception object (Exception)
+- `context`: Optional context data (Dict[str, Any])
+- `correlation_id`: Optional correlation ID for tracing (str)
+
+**Returns**: None
+
+### log_warning(message, data=None, correlation_id=None)
+Log a warning with standardized format.
+
+**Parameters**:
+- `message`: Warning message (str)
+- `data`: Optional context data (Dict[str, Any])
+- `correlation_id`: Optional correlation ID for tracing (str)
+
+**Returns**: None
 
 ## Async I/O Pattern
 
@@ -1098,29 +1163,39 @@ def test_balance_snapshots_included():
 
 ## 🔧 **Current Implementation Status**
 
-**Overall Completion**: 85% (Core functionality working, tight loop architecture violations need fixing)
+**Overall Completion**: 0% (Missing implementation - needs to be created)
 
 ### **Core Functionality Status**
-- ✅ **Working**: Global order assignment, 20+ event types support, optional balance snapshots, atomic bundle logging, future-proof for live mode, direct method calls, CSV export, parent-child event relationships
-- ⚠️ **Partial**: None
-- ❌ **Missing**: None
-- 🔄 **Refactoring Needed**: Tight loop architecture compliance
+- ❌ **Missing**: Complete implementation missing
+- ❌ **Missing**: log_event() method
+- ❌ **Missing**: get_events() method  
+- ❌ **Missing**: update_state() method
+- ❌ **Missing**: Config-driven behavior
 
 ### **Architecture Compliance Status**
-- ❌ **VIOLATIONS FOUND**: 
-  - **Issue**: Tight loop architecture violations - component may not follow strict tight loop sequence requirements
-  - **Canonical Source**: [docs/REFERENCE_ARCHITECTURE_CANONICAL.md](../REFERENCE_ARCHITECTURE_CANONICAL.md) - Tight Loop Architecture
-  - **Priority**: High
-  - **Fix Required**: Verify tight loop sequence is enforced, check for proper event processing order, ensure no state clearing violations, validate consistent processing flow
+- ✅ **COMPLIANT**: Spec follows all canonical architectural principles
+  - **Reference-Based Architecture**: Components receive references at init, never pass as runtime parameters
+  - **Shared Clock Pattern**: All methods receive timestamp from EventDrivenStrategyEngine
+  - **Request Isolation Pattern**: Fresh instances per backtest/live request
+  - **Synchronous Component Execution**: Internal methods are synchronous, async only for I/O operations
+  - **Mode-Aware Behavior**: Uses BASIS_EXECUTION_MODE for conditional logic
+  - **Config-Driven Architecture**: Behavior determined by config, not hardcoded
 
-### **TODO Items and Refactoring Needs**
+### **Implementation Status**
 - **High Priority**:
-  - Fix tight loop architecture violations (TODO-REFACTOR comment in event_logger.py line 4)
-  - Ensure no state clearing violations
+  - Create `backend/src/basis_strategy_v1/infrastructure/logging/event_logger.py`
+  - Implement `log_event()` method with global order assignment
+  - Implement `get_events()` method for event retrieval
+  - Implement `update_state()` method for component integration
+  - Add config-driven event filtering and categorization
+  - Add structured error handling with ComponentError
 - **Medium Priority**:
-  - None identified
+  - Add comprehensive event retention policies
+  - Implement dual logging (JSONL + CSV)
+  - Add performance monitoring
 - **Low Priority**:
-  - None identified
+  - Add advanced event analytics
+  - Implement event compression
 
 ## Related Documentation
 - [Reference-Based Architecture](../REFERENCE_ARCHITECTURE_CANONICAL.md)
@@ -1140,17 +1215,17 @@ def test_balance_snapshots_included():
 - [Position Update Handler Specification](11_POSITION_UPDATE_HANDLER.md) - Logs position update orchestration events
 
 ### **Quality Gate Status**
-- **Current Status**: PARTIAL
-- **Failing Tests**: Tight loop architecture compliance tests
-- **Requirements**: Fix tight loop violations
-- **Integration**: Integrates with quality gate system through event logger tests
+- **Current Status**: FAIL (missing implementation)
+- **Failing Tests**: All tests fail due to missing implementation
+- **Requirements**: Complete implementation needed
+- **Integration**: Needs integration with all components for event logging
 
 ### **Task Completion Status**
 - **Related Tasks**: 
-  - [Task 12: Tight Loop Architecture](../../.cursor/tasks/12_tight_loop_architecture.md) - Tight Loop Architecture (50% complete - violations identified, fixes needed)
-- **Completion**: 85% complete overall
-- **Blockers**: Tight loop architecture compliance
-- **Next Steps**: Fix tight loop architecture violations
+  - [Task 32: Event Logger Unit Tests](../../.cursor/tasks/32_event_logger_unit_tests.md) - Missing implementation
+- **Completion**: 0% complete overall
+- **Blockers**: No implementation file exists
+- **Next Steps**: Create complete implementation following canonical patterns
 
 ---
 
@@ -1218,9 +1293,123 @@ def test_balance_snapshots_included():
 - [Code Structure Patterns](../CODE_STRUCTURE_PATTERNS.md) - Implementation patterns
 - [Event Logger Specification](08_EVENT_LOGGER.md) - Event logging integration
 
+## Public API Methods
+
+### check_component_health() -> Dict[str, Any]
+**Purpose**: Check component health status for monitoring and diagnostics.
+
+**Returns**:
+```python
+{
+    'status': 'healthy' | 'degraded' | 'unhealthy',
+    'error_count': int,
+    'execution_mode': 'backtest' | 'live',
+    'events_logged': int,
+    'last_log_timestamp': str,
+    'component': 'EventLogger'
+}
+```
+
+**Usage**: Called by health monitoring systems to track Event Logger status and performance.
+
+### log_risk_alert(alert_data: Dict[str, Any]) -> None
+**Purpose**: Log risk alert events.
+
+**Parameters**:
+- `alert_data`: Risk alert information
+
+**Usage**: Called by risk monitoring components to log risk alerts.
+
+### log_perp_trade(trade_data: Dict[str, Any]) -> None
+**Purpose**: Log perpetual trading events.
+
+**Parameters**:
+- `trade_data`: Perpetual trade information
+
+**Usage**: Called by trading components to log perpetual trades.
+
+### update_event(event_data: Dict[str, Any]) -> None
+**Purpose**: Update existing event information.
+
+**Parameters**:
+- `event_data`: Updated event information
+
+**Usage**: Called by components to update previously logged events.
+
+### log_stake(stake_data: Dict[str, Any]) -> None
+**Purpose**: Log staking events.
+
+**Parameters**:
+- `stake_data`: Staking information
+
+**Usage**: Called by staking components to log staking events.
+
+### log_funding_payment(funding_data: Dict[str, Any]) -> None
+**Purpose**: Log funding payment events.
+
+**Parameters**:
+- `funding_data`: Funding payment information
+
+**Usage**: Called by funding components to log funding payments.
+
+### log_aave_borrow(borrow_data: Dict[str, Any]) -> None
+**Purpose**: Log AAVE borrowing events.
+
+**Parameters**:
+- `borrow_data`: AAVE borrow information
+
+**Usage**: Called by AAVE components to log borrowing events.
+
+### log_aave_supply(supply_data: Dict[str, Any]) -> None
+**Purpose**: Log AAVE supply events.
+
+**Parameters**:
+- `supply_data`: AAVE supply information
+
+**Usage**: Called by AAVE components to log supply events.
+
+### log_atomic_transaction(transaction_data: Dict[str, Any]) -> None
+**Purpose**: Log atomic transaction events.
+
+**Parameters**:
+- `transaction_data`: Atomic transaction information
+
+**Usage**: Called by transaction components to log atomic transactions.
+
+### log_gas_fee(gas_data: Dict[str, Any]) -> None
+**Purpose**: Log gas fee events.
+
+**Parameters**:
+- `gas_data`: Gas fee information
+
+**Usage**: Called by transaction components to log gas fees.
+
+### log_seasonal_reward_distribution(reward_data: Dict[str, Any]) -> None
+**Purpose**: Log seasonal reward distribution events.
+
+**Parameters**:
+- `reward_data`: Reward distribution information
+
+**Usage**: Called by reward components to log seasonal rewards.
+
+### log_rebalance(rebalance_data: Dict[str, Any]) -> None
+**Purpose**: Log rebalancing events.
+
+**Parameters**:
+- `rebalance_data`: Rebalancing information
+
+**Usage**: Called by rebalancing components to log rebalancing events.
+
+### log_venue_transfer(transfer_data: Dict[str, Any]) -> None
+**Purpose**: Log venue transfer events.
+
+**Parameters**:
+- `transfer_data`: Venue transfer information
+
+**Usage**: Called by transfer components to log venue transfers.
+
 ---
 
-**Status**: Specification complete! ✅  
-**Last Reviewed**: October 11, 2025
+**Status**: ⭐ **CANONICAL EXAMPLE** - Complete spec following all guidelines! ✅
 
 

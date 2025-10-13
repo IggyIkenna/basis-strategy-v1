@@ -76,8 +76,8 @@ These components execute during backtest/live strategy runs:
 5. **[Strategy Manager](specs/05_STRATEGY_MANAGER.md)** - Mode-specific orchestration
 
 **Execution** (4 components):
-6. **[Execution Manager](specs/06_EXECUTION_MANAGER.md)** - Execution orchestration
-7. **[Execution Interface Manager](specs/07_EXECUTION_INTERFACE_MANAGER.md)** - Interface routing
+6. **[Venue Manager](specs/06_VENUE_MANAGER.md)** - Venue orchestration
+7. **[Venue Interface Manager](specs/07_VENUE_INTERFACE_MANAGER.md)** - Venue routing
 8. **[Reconciliation Component](specs/10_RECONCILIATION_COMPONENT.md)** - Position verification
 9. **[Position Update Handler](specs/11_POSITION_UPDATE_HANDLER.md)** - Tight loop orchestration
 
@@ -94,8 +94,8 @@ These components provide services and infrastructure:
 14. **[Event Driven Strategy Engine](specs/15_EVENT_DRIVEN_STRATEGY_ENGINE.md)** - Event loop management
 
 **Execution Infrastructure** (3 components):
-15. **[Execution Interfaces](specs/07B_EXECUTION_INTERFACES.md)** - Venue-specific execution
-16. **[Execution Interface Factory](specs/07C_EXECUTION_INTERFACE_FACTORY.md)** - Interface creation
+15. **[Venue Interfaces](specs/07A_VENUE_INTERFACES.md)** - Venue-specific execution
+16. **[Venue Interface Factory](specs/07B_VENUE_INTERFACE_FACTORY.md)** - Venue interface creation
 17. **[Strategy Factory](specs/5A_STRATEGY_FACTORY.md)** - Strategy manager creation
 
 **Utilities & Infrastructure** (3 components):
@@ -103,6 +103,9 @@ These components provide services and infrastructure:
 19. **[Health & Error Systems](specs/17_HEALTH_ERROR_SYSTEMS.md)** - Monitoring
 20. **[Results Store](specs/18_RESULTS_STORE.md)** - Results persistence
 21. **[Configuration](specs/19_CONFIGURATION.md)** - Config management
+
+## Logging & Monitoring
+- **Standardized logging methods** are defined in **[Health & Error Systems](specs/17_HEALTH_ERROR_SYSTEMS.md)** - All components should implement the standardized logging methods defined in the Health & Error Systems spec
 
 ## Config-Driven Mode-Agnostic Architecture
 

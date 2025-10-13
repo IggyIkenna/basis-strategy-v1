@@ -4,6 +4,8 @@
 
 This directory contains the complete test suite for the Basis Strategy project, organized into a conventional 3-tier testing structure that replaces the previous monolithic quality gates.
 
+**Note**: All tests are now consolidated in this `tests/` directory. Orchestration scripts remain in `scripts/` directory.
+
 ## 3-Tier Testing Philosophy
 
 ### 1. Unit Tests (`tests/unit/`)
@@ -31,7 +33,7 @@ This directory contains the complete test suite for the Basis Strategy project, 
 
 ```
 tests/
-├── unit/                          # 64 component isolation tests
+├── unit/                          # 67 component isolation tests
 │   ├── conftest.py               # Shared pytest fixtures
 │   ├── test_position_monitor_unit.py
 │   ├── test_exposure_monitor_unit.py
@@ -103,7 +105,7 @@ tests/
 │   ├── test_reconciliation_component_unit.py
 │   ├── test_api_call_queue_unit.py
 │   └── test_chart_storage_visualization_unit.py
-├── integration/                   # 6 component data flow tests
+├── integration/                   # 14 component data flow tests
 │   ├── conftest.py               # Real component fixtures
 │   ├── test_data_flow_position_to_exposure.py
 │   ├── test_data_flow_exposure_to_risk.py
@@ -111,7 +113,7 @@ tests/
 │   ├── test_data_flow_strategy_to_execution.py
 │   ├── test_tight_loop_reconciliation.py
 │   └── test_repo_structure_integration.py
-└── e2e/                          # 8 strategy execution tests
+└── e2e/                          # 12 strategy execution tests (8 *_e2e.py + 4 *_quality_gates.py)
     ├── test_pure_lending_e2e.py
     ├── test_btc_basis_e2e.py
     ├── test_eth_basis_e2e.py
@@ -119,7 +121,11 @@ tests/
     ├── test_eth_staking_only_e2e.py
     ├── test_eth_leveraged_staking_e2e.py
     ├── test_usdt_market_neutral_no_leverage_e2e.py
-    └── test_performance_e2e.py
+    ├── test_performance_e2e.py
+    ├── test_pure_lending_quality_gates.py
+    ├── test_btc_basis_quality_gates.py
+    ├── test_eth_basis_quality_gates.py
+    ├── test_usdt_market_neutral_quality_gates.py
 ```
 
 ## Running Tests
@@ -142,6 +148,11 @@ python scripts/run_quality_gates.py --category integration_data_flows
 ### Run E2E Tests Only
 ```bash
 python scripts/run_quality_gates.py --category e2e_strategies
+```
+
+### Run E2E Quality Gates Tests (Legacy)
+```bash
+python scripts/run_quality_gates.py --category e2e_quality_gates
 ```
 
 ### Run Specific Test File
@@ -176,7 +187,7 @@ This test structure replaces the previous `scripts/` quality gates:
 - **Meaningful E2E**: Only run when foundation solid
 - **Faster execution**: Unit tests run in parallel (~10s), skip E2E if foundation broken
 - **Expected passing rate**: 80%+ for unit tests, 70%+ for integration, E2E depends on fixes
-- **Complete coverage**: 64 unit tests, 6 integration tests, 8 E2E tests (all 7 strategy modes + performance)
+- **Complete coverage**: 67 unit tests, 14 integration tests, 12 E2E tests (8 *_e2e.py + 4 *_quality_gates.py)
 
 ## Quality Gate Integration
 
@@ -205,7 +216,7 @@ The quality gate runner (`scripts/run_quality_gates.py`) automatically:
 1. Create test file in `tests/e2e/`
 2. Test complete strategy execution
 3. Use real data and full system
-4. Add to `e2e_strategies` category
+4. Add to `e2e_strategies` category (use *_e2e.py naming)
 
 ## Troubleshooting
 
@@ -233,9 +244,35 @@ The quality gate runner (`scripts/run_quality_gates.py`) automatically:
 3. Check configuration files
 4. Review system requirements
 
+## Relationship with Scripts Directory
+
+The `scripts/` directory contains orchestration and utility scripts that work with these tests:
+
+### Quality Gate Orchestration
+- **`scripts/run_quality_gates.py`** - Main quality gate runner that executes tests by category
+- **`scripts/analyze_test_coverage.py`** - Test coverage analysis for unit tests
+- **`scripts/load_env.py`** - Environment loading for quality gates
+
+### Test Execution
+```bash
+# Run all quality gates (includes tests)
+python scripts/run_quality_gates.py
+
+# Run specific test categories
+python scripts/run_quality_gates.py --category unit
+python scripts/run_quality_gates.py --category integration_data_flows
+python scripts/run_quality_gates.py --category e2e_strategies
+
+# Run tests directly with pytest
+pytest tests/unit/ -v
+pytest tests/integration/ -v
+pytest tests/e2e/ -v
+```
+
 ## Reference Documentation
 
 - **Test Organization Guide**: `scripts/TEST_ORGANIZATION.md`
 - **Component Workflows**: `docs/WORKFLOW_GUIDE.md`
 - **Architecture Reference**: `docs/REFERENCE_ARCHITECTURE_CANONICAL.md`
 - **Quality Gates**: `scripts/run_quality_gates.py`
+- **Scripts Documentation**: `scripts/README.md`

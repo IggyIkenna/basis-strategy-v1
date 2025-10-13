@@ -265,12 +265,12 @@ class BaseExecutionInterface(ABC):
 
 ## Execution Interface Factory
 
-**File**: `backend/src/basis_strategy_v1/core/interfaces/execution_interface_factory.py`
+**File**: `backend/src/basis_strategy_v1/core/interfaces/venue_interface_factory.py`
 
 **Purpose**: Create and configure execution interfaces based on strategy requirements.
 
 ```python
-class ExecutionInterfaceFactory:
+class VenueInterfaceFactory:
     @staticmethod
     def create_interface(
         interface_type: str,

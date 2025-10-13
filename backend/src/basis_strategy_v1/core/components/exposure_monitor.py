@@ -13,9 +13,11 @@ import logging
 import pandas as pd
 from datetime import datetime
 
+from ...core.logging.base_logging_interface import StandardizedLoggingMixin, LogLevel, EventType
+
 logger = logging.getLogger(__name__)
 
-class ExposureMonitor:
+class ExposureMonitor(StandardizedLoggingMixin):
     """Mode-agnostic exposure monitor that works for both backtest and live modes"""
     _instance = None
     
@@ -36,6 +38,8 @@ class ExposureMonitor:
         self.config = config
         self.data_provider = data_provider
         self.utility_manager = utility_manager
+        self.health_status = "healthy"
+        self.error_count = 0
         
         # Load component-specific configuration
         component_config = config['component_config']
@@ -49,23 +53,52 @@ class ExposureMonitor:
         
         logger.info("ExposureMonitor initialized (mode-agnostic)")
     
-    def calculate_exposures(self, positions: Dict[str, Any], timestamp: pd.Timestamp) -> Dict[str, Any]:
+    def _handle_error(self, error: Exception, context: str = "") -> None:
+        """Handle errors with structured error handling."""
+        self.error_count += 1
+        error_code = f"EXP_ERROR_{self.error_count:04d}"
+        
+        logger.error(f"Exposure Monitor error {error_code}: {str(error)}", extra={
+            'error_code': error_code,
+            'context': context,
+            'component': self.__class__.__name__
+        })
+        
+        # Update health status based on error count
+        if self.error_count > 10:
+            self.health_status = "unhealthy"
+        elif self.error_count > 5:
+            self.health_status = "degraded"
+    
+    def check_component_health(self) -> Dict[str, Any]:
+        """Check component health status."""
+        return {
+            'status': self.health_status,
+            'error_count': self.error_count,
+            'exposure_currency': self.exposure_currency,
+            'track_assets_count': len(self.track_assets),
+            'last_exposures_available': self.last_exposures is not None,
+            'component': self.__class__.__name__
+        }
+    
+    def calculate_exposure(self, timestamp: pd.Timestamp, position_snapshot: Dict, market_data: Dict) -> Dict[str, Any]:
         """
-        Calculate exposures regardless of mode (backtest or live).
+        Main entry point for exposure calculations.
         
         Args:
-            positions: Current position data
-            timestamp: Current timestamp
+            timestamp: Current loop timestamp (from EventDrivenStrategyEngine)
+            position_snapshot: Current position data from position_monitor.get_current_positions()
+            market_data: Market data from DataProvider (queried by caller)
             
         Returns:
             Dictionary with exposure calculation results
         """
         try:
-            # Get all positions across all venues
-            wallet_positions = self._get_wallet_positions(positions, timestamp)
-            smart_contract_positions = self._get_smart_contract_positions(positions, timestamp)
-            cex_spot_positions = self._get_cex_spot_positions(positions, timestamp)
-            cex_derivatives_positions = self._get_cex_derivatives_positions(positions, timestamp)
+            # Get all positions across all venues from position_snapshot
+            wallet_positions = self._get_wallet_positions(position_snapshot, timestamp)
+            smart_contract_positions = self._get_smart_contract_positions(position_snapshot, timestamp)
+            cex_spot_positions = self._get_cex_spot_positions(position_snapshot, timestamp)
+            cex_derivatives_positions = self._get_cex_derivatives_positions(position_snapshot, timestamp)
             
             # Calculate total exposures
             total_exposures = self._calculate_total_exposures(
@@ -351,22 +384,22 @@ class ExposureMonitor:
         except Exception as e:
             logger.error(f"Error updating last exposures: {e}")
     
-    def get_exposure_summary(self) -> Dict[str, Any]:
-        """Get exposure summary."""
+    def get_current_exposure(self) -> Dict[str, Any]:
+        """Get current exposure snapshot."""
         try:
             return {
                 'last_exposures': self.last_exposures,
                 'mode_agnostic': True
             }
         except Exception as e:
-            logger.error(f"Error getting exposure summary: {e}")
+            logger.error(f"Error getting current exposure: {e}")
             return {
                 'last_exposures': None,
                 'mode_agnostic': True,
                 'error': str(e)
             }
     
-    def get_config_parameters(self, mode: str) -> Dict[str, Any]:
+    def _get_config_parameters(self, mode: str) -> Dict[str, Any]:
         """Get config parameters using utility manager (config-driven approach)."""
         try:
             # Use utility manager to get config parameters (config-driven, not hardcoded)
@@ -384,3 +417,38 @@ class ExposureMonitor:
         except Exception as e:
             logger.error(f"Error getting config parameters: {e}")
             return {}
+    
+    def update_state(self, timestamp: pd.Timestamp, trigger_source: str, **kwargs) -> None:
+        """
+        Update component state (called by EventDrivenStrategyEngine).
+        
+        Args:
+            timestamp: Current loop timestamp (from EventDrivenStrategyEngine)
+            trigger_source: 'full_loop' | 'tight_loop' | 'manual'
+            **kwargs: Additional parameters (position_snapshot, market_data, etc.)
+        """
+        # Extract position and market data from kwargs if present
+        position_snapshot = kwargs.get('position_snapshot')
+        market_data = kwargs.get('market_data')
+        
+        if position_snapshot and market_data:
+            # Perform exposure calculation
+            exposure_result = self.calculate_exposure(timestamp, position_snapshot, market_data)
+            
+            # Log exposure calculation
+            logger.info(
+                f"Exposure calculation completed: trigger_source={trigger_source}, "
+                f"total_value_usd={exposure_result.get('total_value_usd', 0.0):.2f}, "
+                f"tracked_assets={len(exposure_result.get('tracked_assets', []))}"
+            )
+            
+            # Log using standardized logging
+            self.log_component_event(
+                EventType.BUSINESS_EVENT,
+                f"Exposure calculation completed: trigger_source={trigger_source}",
+                {
+                    'total_value_usd': exposure_result.get('total_value_usd', 0.0),
+                    'tracked_assets_count': len(exposure_result.get('tracked_assets', [])),
+                    'trigger_source': trigger_source
+                }
+            )

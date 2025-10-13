@@ -17,6 +17,8 @@ import pytz
 from ..event_engine.event_driven_strategy_engine import EventDrivenStrategyEngine
 from ...infrastructure.data.historical_data_provider import DataProvider
 
+from ...core.logging.base_logging_interface import StandardizedLoggingMixin, LogLevel, EventType
+
 logger = logging.getLogger(__name__)
 
 # Error codes for Live Service
@@ -36,7 +38,7 @@ ERROR_CODES = {
 
 
 @dataclass
-class LiveTradingRequest:
+class LiveTradingRequest(StandardizedLoggingMixin):
     """Request object for live trading execution."""
     strategy_name: str
     initial_capital: Decimal
@@ -44,8 +46,53 @@ class LiveTradingRequest:
     config_overrides: Dict[str, Any] = field(default_factory=dict)
     risk_limits: Dict[str, Any] = field(default_factory=dict)
     request_id: str = field(default_factory=lambda: str(uuid.uuid4()))
+    health_status: str = "healthy"
+    error_count: int = 0
     
-    def validate(self) -> List[str]:
+    def _handle_error(self, error: Exception, context: str = "") -> None:
+        """Handle errors with structured error handling."""
+        self.error_count += 1
+        error_code = f"LTS_ERROR_{self.error_count:04d}"
+        
+        logger.error(f"Live Trading Service error {error_code}: {str(error)}", extra={
+            'error_code': error_code,
+            'context': context,
+            'request_id': self.request_id,
+            'component': self.__class__.__name__
+        })
+        
+        # Update health status based on error count
+        if self.error_count > 10:
+            self.health_status = "unhealthy"
+        elif self.error_count > 5:
+            self.health_status = "degraded"
+    
+    def check_component_health(self) -> Dict[str, Any]:
+        """Check component health status."""
+        return {
+            'status': self.health_status,
+            'error_count': self.error_count,
+            'request_id': self.request_id,
+            'strategy_name': self.strategy_name,
+            'share_class': self.share_class
+        }
+    
+    def _process_config_driven_operations(self, operations: List[Dict]) -> List[Dict]:
+        """Process operations based on configuration settings."""
+        processed_operations = []
+        for operation in operations:
+            if self._validate_operation(operation):
+                processed_operations.append(operation)
+            else:
+                self._handle_error(ValueError(f"Invalid operation: {operation}"), "config_driven_validation")
+        return processed_operations
+    
+    def _validate_operation(self, operation: Dict) -> bool:
+        """Validate operation against configuration."""
+        required_fields = ['action', 'strategy', 'capital']
+        return all(field in operation for field in required_fields)
+    
+    def _validate(self) -> List[str]:
         """Validate request parameters."""
         errors = []
         
@@ -71,7 +118,7 @@ class LiveTradingRequest:
         return errors
 
 
-class LiveTradingService:
+class LiveTradingService(StandardizedLoggingMixin):
     """Service for running live trading strategies using the new component architecture."""
     
     def __init__(self):
@@ -87,7 +134,7 @@ class LiveTradingService:
         self.heartbeat_timeout_seconds = int(os.getenv('BASIS_LIVE_TRADING__HEARTBEAT_TIMEOUT_SECONDS', '300'))
         self.circuit_breaker_enabled = os.getenv('BASIS_LIVE_TRADING__CIRCUIT_BREAKER_ENABLED', 'true').lower() == 'true'
     
-    def create_request(self, strategy_name: str, initial_capital: Decimal, share_class: str,
+    def _create_request(self, strategy_name: str, initial_capital: Decimal, share_class: str,
                       config_overrides: Dict[str, Any] = None, 
                       risk_limits: Dict[str, Any] = None) -> LiveTradingRequest:
         """Create a live trading request."""
@@ -263,6 +310,48 @@ class LiveTradingService:
         except Exception as e:
             logger.error(f"[LT-006] Failed to stop live trading {request_id}: {e}")
             return False
+    
+    async def get_strategy_status(self, request_id: str) -> Dict[str, Any]:
+        """Get current status of live trading strategy."""
+        try:
+            if request_id in self.running_strategies:
+                strategy_info = self.running_strategies[request_id]
+                return {
+                    'request_id': request_id,
+                    'status': strategy_info['status'],
+                    'strategy_name': strategy_info['strategy_name'],
+                    'started_at': strategy_info['started_at'],
+                    'progress': strategy_info.get('progress', 0),
+                    'current_positions': strategy_info.get('current_positions', {}),
+                    'pnl': strategy_info.get('pnl', 0),
+                    'risk_metrics': strategy_info.get('risk_metrics', {})
+                }
+            elif request_id in self.completed_strategies:
+                strategy_info = self.completed_strategies[request_id]
+                return {
+                    'request_id': request_id,
+                    'status': strategy_info['status'],
+                    'strategy_name': strategy_info['strategy_name'],
+                    'started_at': strategy_info['started_at'],
+                    'completed_at': strategy_info.get('completed_at'),
+                    'final_positions': strategy_info.get('final_positions', {}),
+                    'final_pnl': strategy_info.get('final_pnl', 0),
+                    'final_risk_metrics': strategy_info.get('final_risk_metrics', {})
+                }
+            else:
+                return {
+                    'request_id': request_id,
+                    'status': 'not_found',
+                    'error': f'Strategy {request_id} not found'
+                }
+                
+        except Exception as e:
+            logger.error(f"[LT-007] Failed to get strategy status {request_id}: {e}")
+            return {
+                'request_id': request_id,
+                'status': 'error',
+                'error': str(e)
+            }
     
     async def get_status(self, request_id: str) -> Dict[str, Any]:
         """Get the status of a live trading strategy."""

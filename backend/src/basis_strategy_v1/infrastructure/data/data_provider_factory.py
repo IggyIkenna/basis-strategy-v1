@@ -72,7 +72,7 @@ def create_data_provider(
     provider = _create_mode_specific_provider(execution_mode, config)
     
     # Validate that provider can satisfy data requirements
-    provider.validate_data_requirements(data_requirements)
+    provider._validate_data_requirements(data_requirements)
     
     # Load data for backtest mode
     if execution_mode == 'backtest':

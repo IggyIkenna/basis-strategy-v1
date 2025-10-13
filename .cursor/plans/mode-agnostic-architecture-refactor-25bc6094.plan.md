@@ -96,7 +96,7 @@ Update `backend/src/basis_strategy_v1/infrastructure/config/models.py`:
 - Add ExposureMonitorConfigModel schema
 - Add PnLCalculatorConfigModel schema
 - Add StrategyManagerConfigModel schema
-- Add ExecutionManagerConfigModel schema
+- Add VenueManagerConfigModel schema
 - Add ResultsStoreConfigModel schema
 - Add validation methods for each config type
 - Add comprehensive error messages for validation failures

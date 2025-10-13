@@ -11,7 +11,7 @@ from .error_code_registry import (
     error_code_registry,
     get_error_info,
     validate_error_code,
-    get_component_error_codes
+    get_errors_by_component
 )
 
 __all__ = [
@@ -21,7 +21,7 @@ __all__ = [
     'error_code_registry',
     'get_error_info',
     'validate_error_code',
-    'get_component_error_codes'
+    'get_errors_by_component'
 ]
 
 

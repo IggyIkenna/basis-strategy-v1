@@ -10,7 +10,7 @@ import pandas as pd
 from unittest.mock import Mock, patch
 
 # Import the component under test
-from basis_strategy_v1.core.strategies.components.risk_monitor import RiskMonitor
+from basis_strategy_v1.core.components.risk_monitor import RiskMonitor
 
 
 class TestRiskMonitorUnit:

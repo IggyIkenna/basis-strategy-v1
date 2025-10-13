@@ -100,7 +100,7 @@ The system implements a **config-driven mode-agnostic architecture** that enable
 
 **3. Component Factory Patterns**:
 - `StrategyFactory` creates mode-specific strategy instances
-- `ExecutionInterfaceFactory` creates venue-specific execution interfaces
+- `VenueInterfaceFactory` creates venue-specific execution interfaces
 - `ComponentFactory` creates config-driven component instances
 - Dependency injection with proper component references
 
@@ -122,7 +122,7 @@ components = ComponentFactory.create_all(config, data_provider)
 strategy = StrategyFactory.create_strategy(mode, config, dependencies)
 
 # Execution Interface Factory
-interfaces = ExecutionInterfaceFactory.create_all_interfaces(config, data_provider)
+interfaces = VenueInterfaceFactory.create_all_venue_interfaces(config, data_provider)
 ```
 
 **6. Config-Driven Workflow**:
@@ -559,10 +559,10 @@ graph TD
 ```mermaid
 graph TD
     A[POST /api/v1/capital/withdraw] --> B[Validate withdrawal request]
-    B --> C[Check reserve balance]
-    C --> D{Sufficient reserves?}
-    D -->|Yes| E[Fast withdrawal from reserves]
-    D -->|No| F[Slow withdrawal via position unwinding]
+    B --> C[Check balance]
+    C --> D{Sufficient free equity?}
+    D -->|Yes| E[Immediate withdrawal from free equity]
+    D -->|No| F[Complex withdrawal via position unwinding]
     E --> G[Update position monitor]
     F --> G
     G --> H[Trigger time-based workflow]
@@ -1082,9 +1082,8 @@ graph TD
 ```
 
 **Reserve Management**:
-- **Separate Wallet**: Dedicated wallet for share class currency (USDT/ETH)
-- **Threshold Monitoring**: Check reserve balance against configured threshold
-- **Fast Withdrawals**: Use reserves for immediate client redemptions
+- **Free Equity **: Any balance in wallet for share class currency (USDT/ETH) which is not locked in smart contracts
+- **Fast Withdrawals**: Use free equity for immediate client redemptions
 - **Slow Withdrawals**: Unwind positions when reserves insufficient
 
 ### **4. Dust Management Workflow**
@@ -1495,21 +1494,45 @@ graph TD
     A[EventDrivenStrategyEngine.__init__] --> B[Load Configuration]
     B --> C[Detect Mode & Share Class]
     C --> D[Initialize DataProvider]
-    D --> E[Initialize PositionMonitor]
-    E --> F[Initialize EventLogger]
-    F --> G[Initialize ExposureMonitor]
-    G --> H[Initialize RiskMonitor]
-    H --> I[Initialize PnLCalculator]
-    I --> J[Initialize StrategyManager]
-    J --> K[Initialize CEXExecutionManager]
-    K --> L[Initialize OnChainExecutionManager]
-    L --> M[Create Execution Interfaces]
-    M --> N[Set Interface Dependencies]
-    N --> O[Engine Ready]
+    D --> E[Initialize VenueInterfaceFactory]
+    E --> F[Initialize PositionMonitor with Factory]
+    F --> G[Initialize EventLogger]
+    G --> H[Initialize ExposureMonitor]
+    H --> I[Initialize RiskMonitor]
+    I --> J[Initialize PnLCalculator]
+    J --> K[Initialize StrategyManager]
+    K --> L[Initialize CEXExecutionManager]
+    L --> M[Initialize OnChainExecutionManager]
+    M --> N[Create Execution Interfaces]
+    N --> O[Set Interface Dependencies]
+    O --> P[Engine Ready]
     
     style A fill:#e3f2fd
-    style O fill:#e8f5e8
+    style P fill:#e8f5e8
 ```
+
+### **Position Interface Creation Workflow**
+
+**Trigger**: Position Monitor initialization requires position interfaces for live mode
+
+```mermaid
+graph TD
+    A[EventDrivenStrategyEngine] --> B[Initialize VenueInterfaceFactory]
+    B --> C[VenueInterfaceFactory creates execution interfaces]
+    C --> D[Position Monitor requests position interfaces]
+    D --> E[Position interfaces created with same credentials]
+    E --> F[Position Monitor uses interfaces for live monitoring]
+    
+    style A fill:#e3f2fd
+    style F fill:#e8f5e8
+```
+
+**Position Interface Creation Steps**:
+1. Event Driven Strategy Engine initializes Execution Interface Factory
+2. Execution Interface Factory creates execution interfaces for enabled venues
+3. Position Monitor requests position interfaces from Execution Interface Factory
+4. Position interfaces created with same credentials and configuration
+5. Position Monitor uses interfaces for live position monitoring
 
 ### **Runtime Initialization Details**
 
@@ -1572,7 +1595,7 @@ The system supports simulating deposits and withdrawals during backtests:
 
 ```mermaid
 graph TD
-    A[ExecutionInterfaceFactory.create_all_interfaces] --> B[Create CEXExecutionInterface]
+    A[VenueInterfaceFactory.create_all_venue_interfaces] --> B[Create CEXExecutionInterface]
     B --> C[Create OnChainExecutionInterface]
     C --> D[Create TransferExecutionInterface]
     D --> E[Set Dependencies]
@@ -1585,7 +1608,7 @@ graph TD
 
 ### **Code References**
 - **Engine Init**: `backend/src/basis_strategy_v1/core/event_engine/event_driven_strategy_engine.py:_initialize_components()`
-- **Interface Factory**: `backend/src/basis_strategy_v1/core/interfaces/execution_interface_factory.py:create_all_interfaces()`
+- **Interface Factory**: `backend/src/basis_strategy_v1/core/interfaces/execution_interface_factory.py:create_all_venue_interfaces()`
 - **Dependencies**: `backend/src/basis_strategy_v1/core/interfaces/execution_interface_factory.py:set_interface_dependencies()`
 
 ---
@@ -1871,7 +1894,7 @@ position_monitor → exposure_monitor → risk_monitor → pnl_monitor
 | **Position Monitor** | `get_current_positions()` | Get current positions | None | Position dict |
 | **Exposure Monitor** | `calculate_exposure()` | Convert to share class | timestamp, position, market_data | Exposure dict |
 | **Risk Monitor** | `assess_risk()` | Calculate risk metrics | exposure, market_data | Risk dict |
-| **P&L Monitor** | `calculate_pnl()` | Calculate performance | timestamp, trigger_source, market_data | P&L dict |
+| **P&L Monitor** | `get_current_pnl()` | Calculate performance | timestamp, trigger_source, market_data | P&L dict |
 
 ### **State Persistence Requirements**
 
@@ -1894,7 +1917,7 @@ position_monitor → exposure_monitor → risk_monitor → pnl_monitor
 - **Position Monitor**: `backend/src/basis_strategy_v1/core/strategies/components/position_monitor.py:get_current_positions()`
 - **Exposure Monitor**: `backend/src/basis_strategy_v1/core/strategies/components/exposure_monitor.py:calculate_exposure()`
 - **Risk Monitor**: `backend/src/basis_strategy_v1/core/strategies/components/risk_monitor.py:assess_risk()`
-- **P&L Monitor**: `backend/src/basis_strategy_v1/core/math/pnl_calculator.py:calculate_pnl()`
+- **P&L Monitor**: `backend/src/basis_strategy_v1/core/math/pnl_calculator.py:get_current_pnl()`
 
 ---
 
@@ -2037,7 +2060,7 @@ graph TD
     style H fill:#e8f5e8
 ```
 
-**Implementation Note**: Execution managers are implemented as interfaces (`CEXExecutionInterface`, `OnChainExecutionInterface`, `TransferExecutionInterface`) rather than separate manager classes. The interfaces are created by `ExecutionInterfaceFactory` and handle both backtest simulation and live execution.
+**Implementation Note**: Execution managers are implemented as interfaces (`CEXExecutionInterface`, `OnChainExecutionInterface`, `TransferExecutionInterface`) rather than separate manager classes. The interfaces are created by `VenueInterfaceFactory` and handle both backtest simulation and live execution.
 
 ### **Cross-Venue Transfer Workflow**
 
@@ -2578,6 +2601,77 @@ graph TD
    - Create separate `CEXExecutionManager` and `OnChainExecutionManager` classes
    - Keep execution interfaces for abstraction
    - Update Strategy Manager to use manager classes instead of interfaces
+
+## 📊 **Event Logging Workflow**
+
+The Event Logger provides audit-grade event tracking throughout the system workflow. All components use the Event Logger to maintain complete event trails for debugging and compliance.
+
+### **Event Logger Usage Patterns**
+
+**Core Logging Method**:
+```python
+# All components use the main log_event method
+await event_logger.log_event(event_type, event_data, timestamp)
+```
+
+**Specialized Event Methods** (Public API):
+```python
+# AAVE Operations
+await event_logger.log_aave_supply(supply_data, timestamp)
+await event_logger.log_aave_borrow(borrow_data, timestamp)
+
+# Trading Operations  
+await event_logger.log_perp_trade(trade_data, timestamp)
+await event_logger.log_funding_payment(funding_data, timestamp)
+
+# Staking Operations
+await event_logger.log_stake(stake_data, timestamp)
+await event_logger.log_seasonal_reward_distribution(reward_data, timestamp)
+
+# Transfer Operations
+await event_logger.log_venue_transfer(transfer_data, timestamp)
+await event_logger.log_atomic_transaction(transaction_data, timestamp)
+
+# Risk Management
+await event_logger.log_risk_alert(risk_data, timestamp)
+
+# System Operations
+await event_logger.log_gas_fee(gas_fee_data, timestamp)
+await event_logger.log_rebalance(rebalance_data, timestamp)
+
+# Event Updates
+await event_logger.update_event(event_key, update_data, timestamp)
+```
+
+### **Event Logging by Component**
+
+**Position Monitor**:
+- Logs position changes, balance updates, exposure changes
+- Uses: `log_event('position_update', position_data, timestamp)`
+
+**Risk Monitor**:
+- Logs risk alerts, margin calls, liquidation warnings
+- Uses: `log_risk_alert(risk_data, timestamp)`
+
+**Strategy Manager**:
+- Logs strategy decisions, rebalancing actions, mode switches
+- Uses: `log_rebalance(rebalance_data, timestamp)`
+
+**Venue Manager**:
+- Logs venue transfers, atomic transactions, gas fees
+- Uses: `log_venue_transfer(transfer_data, timestamp)`, `log_atomic_transaction(transaction_data, timestamp)`, `log_gas_fee(gas_fee_data, timestamp)`
+
+**Execution Interfaces**:
+- Logs trades, funding payments, AAVE operations, staking
+- Uses: `log_perp_trade(trade_data, timestamp)`, `log_funding_payment(funding_data, timestamp)`, `log_aave_supply(supply_data, timestamp)`, `log_stake(stake_data, timestamp)`
+
+### **Event Logging Principles**
+
+1. **Mode-Agnostic**: Same logging logic for backtest and live modes
+2. **Audit-Grade**: Complete event trail with timestamps and global ordering
+3. **Config-Driven**: Log retention and buffer size determined by configuration
+4. **Structured**: All events follow consistent data structure
+5. **Async**: All logging operations are asynchronous for performance
 
 **Status**: Workflow guide updated with comprehensive workflow documentation covering all trigger types and system activities! ✅
 

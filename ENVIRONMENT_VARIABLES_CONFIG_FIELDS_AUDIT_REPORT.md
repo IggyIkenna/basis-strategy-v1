@@ -232,7 +232,6 @@
 - `basis_trading_enabled` (Purpose: Enable/disable basis trading, Required: Yes)
 - `hedging_enabled` (Purpose: Enable/disable hedging strategies, Required: Yes)
 - `rewards_mode` (Purpose: Reward calculation mode, Required: Yes)
-- `reserve_ratio` (Purpose: Reserve ratio for fast withdrawals, Required: Yes)
 - `position_deviation_threshold` (Purpose: Min deviation to trigger rebalancing, Required: Yes)
 - `stake_allocation_eth` (Purpose: ETH allocation to staking, Required: No)
 

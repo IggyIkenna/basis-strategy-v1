@@ -1,417 +1,325 @@
 """
 Unified Health Manager
 
-Consolidates infrastructure health, config health, and component health
-into a single, mode-aware health checking system.
+Centralized health monitoring and management system for all components.
+Provides health checks, status monitoring, and error handling integration.
 
-Features:
-- Fast basic health check (< 50ms)
-- Comprehensive detailed health check
-- Mode-aware (backtest vs live)
-- No health history (only last check timestamp)
-- No caching (real-time checks)
-- Excludes components not needed in current mode
-- Preserves 200+ error codes system
+Reference: docs/specs/17_HEALTH_ERROR_SYSTEMS.md
+Reference: docs/REFERENCE_ARCHITECTURE_CANONICAL.md - Health System Architecture
 """
 
-import asyncio
-import psutil
-import time
-from datetime import datetime, timezone
-from typing import Dict, Any, Optional, List, Set
+from typing import Dict, List, Optional, Callable, Any
+import pandas as pd
 import logging
+from datetime import datetime, timedelta
+from dataclasses import dataclass
+from enum import Enum
+import threading
+import time
 
-from .component_health import (
-    HealthStatus,
-    ComponentHealthReport,
-    ComponentHealthChecker,
-    PositionMonitorHealthChecker,
-    DataProviderHealthChecker,
-    RiskMonitorHealthChecker,
-    EventLoggerHealthChecker,
-    system_health_aggregator
-)
+from ..error_codes.exceptions import ComponentError, HealthError
+
+from ...core.logging.base_logging_interface import StandardizedLoggingMixin, LogLevel, EventType
 
 logger = logging.getLogger(__name__)
 
 
-class UnifiedHealthManager:
-    """Unified health manager that consolidates all health checking."""
+class HealthStatus(Enum):
+    """Health status levels."""
+    HEALTHY = "healthy"
+    DEGRADED = "degraded"
+    UNHEALTHY = "unhealthy"
+    UNKNOWN = "unknown"
+
+
+@dataclass
+class ComponentHealth(StandardizedLoggingMixin):
+    """Component health information."""
+    component_name: str
+    status: HealthStatus
+    last_check: datetime
+    message: str
+    details: Dict[str, Any]
+    error_count: int = 0
+    last_error: Optional[str] = None
+
+
+class UnifiedHealthManager(StandardizedLoggingMixin):
+    """Unified health management system for all components."""
     
-    _instance = None
-    
-    def __new__(cls, *args, **kwargs):
-        if cls._instance is None:
-            cls._instance = super(UnifiedHealthManager, cls).__new__(cls)
-        return cls._instance
-    
-    def __init__(self):
-        self.start_time = datetime.utcnow()
-        self.last_check_timestamp = None
-        self.execution_mode = self._get_execution_mode()
-        
-        # Component checkers (will be registered by components)
-        self.component_checkers: Dict[str, ComponentHealthChecker] = {}
-        
-        # Infrastructure dependencies (will be injected)
-        self.database = None
-        self.cache = None
-        self.data_provider = None
-        self.live_trading_service = None
-    
-    def _get_execution_mode(self) -> str:
-        """Get current execution mode from environment."""
-        import os
-        return os.getenv('BASIS_EXECUTION_MODE', 'backtest')
-    
-    def register_component(self, component_name: str, health_checker: ComponentHealthChecker):
-        """Register a component health checker."""
-        self.component_checkers[component_name] = health_checker
-        logger.debug(f"Registered health checker for {component_name}")
-    
-    def set_infrastructure_dependencies(self, database=None, cache=None, data_provider=None, live_trading_service=None):
-        """Set infrastructure dependencies for health checking."""
-        self.database = database
-        self.cache = cache
-        self.data_provider = data_provider
-        self.live_trading_service = live_trading_service
-    
-    async def check_basic_health(self) -> Dict[str, Any]:
+    def __init__(self, config: Dict, execution_mode: str):
         """
-        Fast heartbeat check (< 50ms).
+        Initialize unified health manager.
         
-        Returns:
-            Basic health status with system metrics
+        Args:
+            config: Configuration dictionary (reference, never modified)
+            execution_mode: 'backtest' or 'live' (from BASIS_EXECUTION_MODE)
         """
-        start_time = time.perf_counter()
+        # Store references (NEVER modified)
+        self.config = config
+        self.execution_mode = execution_mode
         
-        try:
-            # Get basic system metrics
-            cpu_percent = psutil.cpu_percent(interval=0.01)  # Very fast check
-            memory = psutil.virtual_memory()
-            uptime = (datetime.utcnow() - self.start_time).total_seconds()
-            
-            # Determine overall status (quick check)
-            status = "healthy"  # Default to healthy unless critical issues
-            
-            # Quick infrastructure check (non-blocking)
-            try:
-                if self.cache and hasattr(self.cache, 'ping'):
-                    await asyncio.wait_for(self.cache.ping(), timeout=0.01)
-            except:
-                # Cache issues don't affect basic health in backtest mode
-                if self.execution_mode == 'live':
-                    status = "degraded"
-            
-            self.last_check_timestamp = datetime.utcnow()
-            
-            return {
-                "status": status,
-                "timestamp": self.last_check_timestamp.isoformat(),
-                "service": "basis-strategy-v1",
-                "execution_mode": self.execution_mode,
-                "uptime_seconds": uptime,
-                "system": {
-                    "cpu_percent": cpu_percent,
-                    "memory_percent": memory.percent,
-                    "memory_available_gb": round(memory.available / (1024**3), 2)
-                }
-            }
-            
-        except Exception as e:
-            logger.error(f"Basic health check failed: {e}")
-            return {
-                "status": "unhealthy",
-                "timestamp": datetime.utcnow().isoformat(),
-                "service": "basis-strategy-v1",
-                "execution_mode": self.execution_mode,
-                "error": str(e)
-            }
-        finally:
-            elapsed = (time.perf_counter() - start_time) * 1000
-            if elapsed > 50:
-                logger.warning(f"Basic health check took {elapsed:.1f}ms (target: <50ms)")
+        # Component registry
+        self._components: Dict[str, Callable] = {}
+        self._component_health: Dict[str, ComponentHealth] = {}
+        
+        # Health monitoring settings
+        self.health_check_interval = 30  # seconds
+        self.health_check_timeout = 10  # seconds
+        self.max_consecutive_failures = 3
+        
+        # Monitoring state
+        self._monitoring_active = False
+        self._monitoring_thread = None
+        self._lock = threading.Lock()
+        
+        # System health state
+        self.system_health_status = HealthStatus.UNKNOWN
+        self.last_system_check = None
+        self.system_error_count = 0
+        
+        logger.info(f"UnifiedHealthManager initialized in {execution_mode} mode")
     
-    async def check_detailed_health(self) -> Dict[str, Any]:
+    def register_component(self, component_name: str, health_checker: Callable[[], Dict[str, Any]]):
         """
-        Comprehensive health check.
+        Register a component with the health manager.
         
-        Returns:
-            Detailed health status with all components, system metrics, and summary
+        Args:
+            component_name: Name of the component
+            health_checker: Function that returns health status dictionary
         """
-        timestamp = datetime.utcnow()
-        
-        try:
-            # Get system metrics
-            system_metrics = await self._get_system_metrics()
+        with self._lock:
+            self._components[component_name] = health_checker
             
-            # Get infrastructure health
-            infrastructure_health = await self._check_infrastructure_health()
-            
-            # Get component health (mode-filtered)
-            component_health = await self._check_component_health()
-            
-            # Get live trading health (if in live mode)
-            live_trading_health = await self._check_live_trading_health()
-            
-            # Determine overall status
-            overall_status = self._determine_overall_status(
-                infrastructure_health, component_health, live_trading_health
+            # Initialize component health
+            self._component_health[component_name] = ComponentHealth(
+                component_name=component_name,
+                status=HealthStatus.UNKNOWN,
+                last_check=datetime.now(),
+                message="Component registered",
+                details={}
             )
             
-            # Create summary
-            summary = self._create_health_summary(component_health)
-            
-            # Combine live trading health into components if present
-            if live_trading_health:
-                component_health["live_trading"] = live_trading_health
-            
-            self.last_check_timestamp = timestamp
-            
-            return {
-                "status": overall_status,
-                "timestamp": timestamp.isoformat(),
-                "execution_mode": self.execution_mode,
-                "components": component_health,
-                "system": system_metrics,
-                "summary": summary
-            }
-            
-        except Exception as e:
-            logger.error(f"Detailed health check failed: {e}")
-            return {
-                "status": "unhealthy",
-                "timestamp": timestamp.isoformat(),
-                "execution_mode": self.execution_mode,
-                "error": str(e)
-            }
+            logger.info(f"Registered component: {component_name}")
     
-    async def _get_system_metrics(self) -> Dict[str, Any]:
-        """Get comprehensive system metrics."""
-        try:
-            cpu_percent = psutil.cpu_percent(interval=0.1)
-            memory = psutil.virtual_memory()
-            disk = psutil.disk_usage("/")
+    def unregister_component(self, component_name: str):
+        """Unregister a component from health monitoring."""
+        with self._lock:
+            if component_name in self._components:
+                del self._components[component_name]
+                del self._component_health[component_name]
+                logger.info(f"Unregistered component: {component_name}")
+    
+    def get_component_health(self, component_name: str) -> Optional[ComponentHealth]:
+        """Get health status for a specific component."""
+        with self._lock:
+            return self._component_health.get(component_name)
+    
+    def get_all_component_health(self) -> Dict[str, ComponentHealth]:
+        """Get health status for all components."""
+        with self._lock:
+            return self._component_health.copy()
+    
+    def get_system_health(self) -> Dict[str, Any]:
+        """Get overall system health status."""
+        with self._lock:
+            # Calculate system health based on component health
+            component_statuses = [health.status for health in self._component_health.values()]
             
-            # Get process metrics
-            process = psutil.Process()
-            process_memory = process.memory_info()
+            if not component_statuses:
+                self.system_health_status = HealthStatus.UNKNOWN
+            elif all(status == HealthStatus.HEALTHY for status in component_statuses):
+                self.system_health_status = HealthStatus.HEALTHY
+            elif any(status == HealthStatus.UNHEALTHY for status in component_statuses):
+                self.system_health_status = HealthStatus.UNHEALTHY
+            else:
+                self.system_health_status = HealthStatus.DEGRADED
+            
+            self.last_system_check = datetime.now()
             
             return {
-                "cpu_percent": cpu_percent,
-                "memory_percent": memory.percent,
-                "memory_available_gb": round(memory.available / (1024**3), 2),
-                "disk_percent": disk.percent,
-                "disk_free_gb": round(disk.free / (1024**3), 2),
-                "uptime_seconds": (datetime.utcnow() - self.start_time).total_seconds(),
-                "process": {
-                    "memory_mb": round(process_memory.rss / (1024**2), 2),
-                    "threads": process.num_threads(),
-                    "connections": len(process.connections(kind="inet"))
+                'system_status': self.system_health_status.value,
+                'last_check': self.last_system_check.isoformat(),
+                'component_count': len(self._component_health),
+                'healthy_components': sum(1 for h in self._component_health.values() if h.status == HealthStatus.HEALTHY),
+                'degraded_components': sum(1 for h in self._component_health.values() if h.status == HealthStatus.DEGRADED),
+                'unhealthy_components': sum(1 for h in self._component_health.values() if h.status == HealthStatus.UNHEALTHY),
+                'components': {
+                    name: {
+                        'status': health.status.value,
+                        'last_check': health.last_check.isoformat(),
+                        'message': health.message,
+                        'error_count': health.error_count,
+                        'last_error': health.last_error
+                    }
+                    for name, health in self._component_health.items()
                 }
             }
-        except Exception as e:
-            logger.warning(f"Could not get system metrics: {e}")
-            return {
-                "cpu_percent": 0,
-                "memory_percent": 0,
-                "uptime_seconds": (datetime.utcnow() - self.start_time).total_seconds()
-            }
     
-    async def _check_infrastructure_health(self) -> Dict[str, str]:
-        """Check infrastructure components (DB, data provider)."""
-        infrastructure = {}
+    def check_component_health(self, component_name: str) -> ComponentHealth:
+        """Check health for a specific component."""
+        if component_name not in self._components:
+            raise HealthError(
+                'HEALTH-003',
+                message=f'Component not registered: {component_name}',
+                component_name=component_name
+            )
         
-        # Check database
-        if self.database:
-            infrastructure["database"] = await self._check_database()
-        else:
-            infrastructure["database"] = "not_configured"
-        
-        # Cache removed - using in-memory caching only
-        infrastructure["cache"] = "in_memory_only"
-        
-        # Check data provider
-        if self.data_provider:
-            infrastructure["data_provider"] = await self._check_data_provider()
-        else:
-            infrastructure["data_provider"] = "not_configured"
-        
-        return infrastructure
-    
-    async def _check_database(self) -> str:
-        """Check database connectivity."""
         try:
-            if hasattr(self.database, 'ping'):
-                await self.database.ping()
-                return 'healthy'
-            elif hasattr(self.database, 'execute'):
-                await self.database.execute("SELECT 1")
-                return 'healthy'
-            elif hasattr(self.database, 'connected'):
-                return 'healthy' if self.database.connected else 'unhealthy'
-            else:
-                logger.warning("Database has no health check method")
-                return 'unknown'
+            # Get health checker function
+            health_checker = self._components[component_name]
+            
+            # Perform health check with timeout
+            start_time = time.time()
+            health_data = health_checker()
+            check_duration = time.time() - start_time
+            
+            # Parse health data
+            status_str = health_data.get('status', 'unknown')
+            message = health_data.get('message', 'Health check completed')
+            details = health_data.get('details', {})
+            
+            # Convert status string to enum
+            try:
+                status = HealthStatus(status_str.lower())
+            except ValueError:
+                status = HealthStatus.UNKNOWN
+                message = f"Invalid status: {status_str}"
+            
+            # Update component health
+            with self._lock:
+                component_health = self._component_health[component_name]
+                component_health.status = status
+                component_health.last_check = datetime.now()
+                component_health.message = message
+                component_health.details = details
+                component_health.details['check_duration_ms'] = check_duration * 1000
+                
+                # Update error tracking
+                if status in [HealthStatus.DEGRADED, HealthStatus.UNHEALTHY]:
+                    component_health.error_count += 1
+                    component_health.last_error = message
+                else:
+                    # Reset error count on successful check
+                    component_health.error_count = 0
+                    component_health.last_error = None
+            
+            logger.debug(f"Health check for {component_name}: {status.value} ({check_duration:.3f}s)")
+            return component_health
+            
         except Exception as e:
-            logger.error(f"Database health check failed: {e}")
-            return 'unhealthy'
+            # Handle health check failures
+            with self._lock:
+                component_health = self._component_health[component_name]
+                component_health.status = HealthStatus.UNHEALTHY
+                component_health.last_check = datetime.now()
+                component_health.message = f"Health check failed: {str(e)}"
+                component_health.error_count += 1
+                component_health.last_error = str(e)
+            
+            logger.error(f"Health check failed for {component_name}: {e}")
+            return component_health
     
-    # Cache health check removed - using in-memory caching only
-    
-    async def _check_data_provider(self) -> str:
-        """Check data provider health."""
-        try:
-            if not self.data_provider:
-                return "not_configured"
-            
-            # Check if data provider is initialized
-            if not hasattr(self.data_provider, 'data'):
-                return "unhealthy"
-            
-            # Check environment variables
-            import os
-            if not os.getenv('BASIS_DATA_MODE'):
-                return "unhealthy"
-            if not os.getenv('BASIS_EXECUTION_MODE'):
-                return "unhealthy"
-            
-            # Check if data is available using canonical pattern
+    def check_all_components(self) -> Dict[str, ComponentHealth]:
+        """Check health for all registered components."""
+        results = {}
+        
+        for component_name in list(self._components.keys()):
             try:
-                test_timestamp = pd.Timestamp('2024-06-01', tz='UTC')
-                test_data = self.data_provider.get_data(test_timestamp)
-                if not test_data:
-                    return "not_ready"  # Provider is ready but no data available
-            except Exception:
-                return "not_ready"  # Data not available
-            
-            # Check if data provider can provide market data
-            try:
-                # Get data using canonical pattern
-                data = self.data_provider.get_data(test_timestamp)
-                market_data = data['market_data']
-                if not isinstance(market_data, dict) or len(market_data) == 0:
-                    return "unhealthy"
+                results[component_name] = self.check_component_health(component_name)
             except Exception as e:
-                logger.warning(f"Data provider market data check failed: {e}")
-                return "unhealthy"
-            
-            return "healthy"
-            
-        except Exception as e:
-            logger.warning(f"Data provider health check failed: {e}")
-            return 'unhealthy'
+                logger.error(f"Failed to check health for {component_name}: {e}")
+                # Create unhealthy status for failed checks
+                results[component_name] = ComponentHealth(
+                    component_name=component_name,
+                    status=HealthStatus.UNHEALTHY,
+                    last_check=datetime.now(),
+                    message=f"Health check failed: {str(e)}",
+                    details={'error': str(e)},
+                    error_count=1,
+                    last_error=str(e)
+                )
+        
+        return results
     
-    async def _check_component_health(self) -> Dict[str, Any]:
-        """Check all registered component health (mode-filtered)."""
-        component_health = {}
+    def start_monitoring(self):
+        """Start continuous health monitoring."""
+        if self._monitoring_active:
+            logger.warning("Health monitoring already active")
+            return
         
-        # Define which components are relevant for each mode
-        backtest_components = {
-            'position_monitor', 'data_provider', 'risk_monitor', 'event_logger',
-            'exposure_monitor', 'pnl_calculator', 'strategy_manager'
-        }
-        
-        live_components = backtest_components | {
-            'cex_execution_manager', 'onchain_execution_manager', 'live_data_provider'
-        }
-        
-        # Filter components based on execution mode
-        relevant_components = live_components if self.execution_mode == 'live' else backtest_components
-        
-        # Check each relevant component
-        for component_name, checker in self.component_checkers.items():
-            if component_name in relevant_components:
-                try:
-                    report = checker.check_health()
-                    component_health[component_name] = {
-                        "status": report.status.value,
-                        "timestamp": report.timestamp.isoformat(),
-                        "error_code": report.error_code,
-                        "error_message": report.error_message,
-                        "readiness_checks": report.readiness_checks,
-                        "metrics": report.metrics,
-                        "dependencies": report.dependencies
-                    }
-                except Exception as e:
-                    logger.error(f"Component health check failed for {component_name}: {e}")
-                    component_health[component_name] = {
-                        "status": "unknown",
-                        "timestamp": datetime.utcnow().isoformat(),
-                        "error_code": "HEALTH-001",
-                        "error_message": f"Health check failed: {str(e)}",
-                        "readiness_checks": {},
-                        "metrics": {},
-                        "dependencies": []
-                    }
-        
-        return component_health
+        self._monitoring_active = True
+        self._monitoring_thread = threading.Thread(target=self._monitoring_loop, daemon=True)
+        self._monitoring_thread.start()
+        logger.info("Health monitoring started")
     
-    async def _check_live_trading_health(self) -> Optional[Dict[str, Any]]:
-        """Check live trading health (only in live mode)."""
-        if self.execution_mode != 'live' or not self.live_trading_service:
-            return None
-        
-        try:
-            health = await self.live_trading_service.health_check()
-            return {
-                "status": "healthy" if health.get('unhealthy_strategies', 0) == 0 else "degraded",
-                "timestamp": datetime.utcnow().isoformat(),
-                "metrics": {
-                    "total_strategies": health.get('total_strategies', 0),
-                    "healthy_strategies": health.get('healthy_strategies', 0),
-                    "unhealthy_strategies": health.get('unhealthy_strategies', 0)
-                },
-                "strategies": health.get('strategies', [])
-            }
-        except Exception as e:
-            logger.error(f"Live trading health check failed: {e}")
-            return {
-                "status": "unhealthy",
-                "timestamp": datetime.utcnow().isoformat(),
-                "error": str(e)
-            }
+    def stop_monitoring(self):
+        """Stop continuous health monitoring."""
+        self._monitoring_active = False
+        if self._monitoring_thread:
+            self._monitoring_thread.join(timeout=5)
+        logger.info("Health monitoring stopped")
     
-    def _determine_overall_status(self, infrastructure: Dict[str, str], components: Dict[str, Any], live_trading: Optional[Dict[str, Any]]) -> str:
-        """Determine overall system status."""
-        # Check infrastructure status
-        infrastructure_statuses = list(infrastructure.values())
-        if 'unhealthy' in infrastructure_statuses:
-            return 'unhealthy'
-        if 'unknown' in infrastructure_statuses:
-            return 'degraded'
-        
-        # Check component status
-        component_statuses = [comp.get('status', 'unknown') for comp in components.values()]
-        if 'unhealthy' in component_statuses:
-            return 'unhealthy'
-        if 'unknown' in component_statuses or 'not_ready' in component_statuses:
-            return 'degraded'
-        
-        # Check live trading status
-        if live_trading and live_trading.get('status') == 'unhealthy':
-            return 'unhealthy'
-        if live_trading and live_trading.get('status') == 'degraded':
-            return 'degraded'
-        
-        return 'healthy'
+    def _monitoring_loop(self):
+        """Continuous health monitoring loop."""
+        while self._monitoring_active:
+            try:
+                # Check all components
+                self.check_all_components()
+                
+                # Update system health
+                system_health = self.get_system_health()
+                
+                # Log system health status
+                if system_health['system_status'] == 'unhealthy':
+                    logger.warning(f"System health degraded: {system_health['unhealthy_components']} unhealthy components")
+                elif system_health['system_status'] == 'degraded':
+                    logger.info(f"System health degraded: {system_health['degraded_components']} degraded components")
+                
+                # Sleep until next check
+                time.sleep(self.health_check_interval)
+                
+            except Exception as e:
+                logger.error(f"Error in health monitoring loop: {e}")
+                time.sleep(self.health_check_interval)
     
-    def _create_health_summary(self, components: Dict[str, Any]) -> Dict[str, Any]:
-        """Create health summary statistics."""
-        total_components = len(components)
-        healthy_components = sum(1 for comp in components.values() if comp.get('status') == 'healthy')
-        unhealthy_components = sum(1 for comp in components.values() if comp.get('status') == 'unhealthy')
-        not_ready_components = sum(1 for comp in components.values() if comp.get('status') == 'not_ready')
-        unknown_components = sum(1 for comp in components.values() if comp.get('status') == 'unknown')
-        
-        return {
-            "total_components": total_components,
-            "healthy_components": healthy_components,
-            "unhealthy_components": unhealthy_components,
-            "not_ready_components": not_ready_components,
-            "unknown_components": unknown_components
-        }
+    def report_error(self, component_name: str, error: ComponentError):
+        """Report an error from a component."""
+        with self._lock:
+            if component_name in self._component_health:
+                component_health = self._component_health[component_name]
+                component_health.error_count += 1
+                component_health.last_error = str(error)
+                
+                # Update status based on error severity
+                if error.severity == "CRITICAL":
+                    component_health.status = HealthStatus.UNHEALTHY
+                elif error.severity == "HIGH":
+                    component_health.status = HealthStatus.DEGRADED
+                
+                logger.warning(f"Error reported from {component_name}: {error.error_code} - {error.message}")
+    
+    def is_system_healthy(self) -> bool:
+        """Check if the overall system is healthy."""
+        system_health = self.get_system_health()
+        return system_health['system_status'] == 'healthy'
+    
+    def get_unhealthy_components(self) -> List[str]:
+        """Get list of unhealthy components."""
+        with self._lock:
+            return [
+                name for name, health in self._component_health.items()
+                if health.status == HealthStatus.UNHEALTHY
+            ]
+    
+    def get_degraded_components(self) -> List[str]:
+        """Get list of degraded components."""
+        with self._lock:
+            return [
+                name for name, health in self._component_health.items()
+                if health.status == HealthStatus.DEGRADED
+            ]
 
 
-# Global unified health manager instance
-unified_health_manager = UnifiedHealthManager()
+# Global instance for dependency injection
+unified_health_manager = None

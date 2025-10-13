@@ -39,7 +39,7 @@ class ETHStakingOnlyDataProvider(BaseDataProvider):
         
         logger.info(f"ETHStakingOnlyDataProvider initialized for {execution_mode} mode")
     
-    def validate_data_requirements(self, data_requirements: List[str]) -> None:
+    def _validate_data_requirements(self, data_requirements: List[str]) -> None:
         """
         Validate that this provider can satisfy all data requirements.
         

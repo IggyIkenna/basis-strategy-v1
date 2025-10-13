@@ -20,10 +20,10 @@ from pydantic import ValidationError
 # Add backend to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "backend" / "src"))
 
-from basis_strategy_v1.core.config.config_models import (
-    ConfigSchema, StrategyConfig, VenueConfig, ShareClassConfig,
-    InfrastructureConfig, MODE_REQUIREMENTS
+from basis_strategy_v1.infrastructure.config.models import (
+    ModeConfig, VenueConfig, ShareClassConfig, ConfigurationSet
 )
+from config_field_classifier import ConfigFieldClassifier
 
 
 class ConfigAlignmentValidator:
@@ -34,6 +34,7 @@ class ConfigAlignmentValidator:
         self.errors = []
         self.warnings = []
         self.alignment_report = {}
+        self.field_classifier = ConfigFieldClassifier()
     
     def load_all_config_files(self) -> Dict[str, Any]:
         """Load all configuration files from configs/ directory."""
@@ -64,123 +65,118 @@ class ConfigAlignmentValidator:
         return configs
     
     def get_pydantic_model_fields(self, model_class) -> Set[str]:
-        """Extract all field names from a Pydantic model, including nested fields."""
+        """Extract all field names from a Pydantic model using the field classifier."""
         fields = set()
         
-        if hasattr(model_class, '__fields__'):
-            # Pydantic v1
-            for field_name, field_info in model_class.__fields__.items():
-                fields.add(field_name)
-                # Check if this field is a nested model
-                if hasattr(field_info, 'type_') and hasattr(field_info.type_, '__fields__'):
-                    # It's a nested Pydantic model, extract its fields too
-                    nested_fields = self.get_pydantic_model_fields(field_info.type_)
-                    for nested_field in nested_fields:
-                        fields.add(f"{field_name}.{nested_field}")
-        elif hasattr(model_class, 'model_fields'):
-            # Pydantic v2
-            for field_name, field_info in model_class.model_fields.items():
-                fields.add(field_name)
-                # Check if this field is a nested model
-                annotation = field_info.annotation
-                
-                # Check if this field is a nested Pydantic model
-                if hasattr(annotation, 'model_fields'):
-                    # It's a direct nested Pydantic model
-                    nested_fields = self.get_pydantic_model_fields(annotation)
-                    for nested_field in nested_fields:
-                        fields.add(f"{field_name}.{nested_field}")
-                # Special handling for Dict[str, Any] fields that represent nested structures
-                elif (annotation == Dict[str, Any] or 
-                      (hasattr(annotation, '__origin__') and annotation.__origin__ == dict)):
-                    # For Dict[str, Any] fields, we need to manually add known nested paths
-                    if field_name == 'monitoring':
-                        fields.update([
-                            'monitoring.position_check_interval',
-                            'monitoring.risk_check_interval', 
-                            'monitoring.alert_thresholds',
-                            'monitoring.alert_thresholds.drawdown_warning',
-                            'monitoring.alert_thresholds.drawdown_critical'
-                        ])
-                    elif field_name == 'capital_allocation':
-                        fields.update([
-                            'capital_allocation.spot_capital',
-                            'capital_allocation.perp_capital',
-                            'capital_allocation.max_position_size'
-                        ])
-                    elif field_name == 'hedge_allocation':
-                        fields.update([
-                            'hedge_allocation.binance',
-                            'hedge_allocation.bybit',
-                            'hedge_allocation.okx'
-                        ])
-                    elif field_name == 'trading_fees':
-                        fields.update([
-                            'trading_fees.maker',
-                            'trading_fees.taker'
-                        ])
-                    elif field_name == 'testnet':
-                        fields.update([
-                            'testnet.enabled',
-                            'testnet.confirmation_blocks',
-                            'testnet.faucet_url',
-                            'testnet.max_gas_price_gwei'
-                        ])
-                    elif field_name == 'database':
-                        fields.update([
-                            'database.url'
-                        ])
-                    elif field_name == 'rates':
-                        fields.update([
-                            'rates.use_fixed_rates'
-                        ])
-                elif hasattr(annotation, '__origin__'):
-                    # Handle Union types and Optional types
-                    actual_type = annotation
-                    if annotation.__origin__ is Union:
-                        # For Union types, find the first non-None type
-                        for union_type in annotation.__args__:
-                            if union_type is not type(None) and hasattr(union_type, 'model_fields'):
-                                actual_type = union_type
-                                break
-                    elif annotation.__origin__ is type(None):
-                        # For Optional types, get the first argument
-                        if len(annotation.__args__) > 0:
-                            actual_type = annotation.__args__[0]
-                    
-                    # Check if the actual type is a nested Pydantic model
-                    if hasattr(actual_type, 'model_fields'):
-                        nested_fields = self.get_pydantic_model_fields(actual_type)
-                        for nested_field in nested_fields:
-                            fields.add(f"{field_name}.{nested_field}")
+        # Get model name for field classifier
+        model_name = model_class.__name__
+        
+        # Get fields by level from the classifier
+        fields_by_level = self.field_classifier.get_required_fields_by_level(model_name)
+        
+        # Add all required fields (top-level, nested, fixed schema dicts), optional fields, and data values
+        for level in ['required_toplevel', 'required_nested', 'fixed_schema_dict', 'optional_field', 'data_value']:
+            fields.update(fields_by_level[level])
+        
+        # Add nested fields from fixed schema dicts
+        for dict_name in self.field_classifier.FIXED_SCHEMA_DICTS.keys():
+            if dict_name in fields:
+                # Add all nested fields for this fixed schema dict with proper prefix
+                nested_fields = self.field_classifier.get_fixed_schema_fields(dict_name)
+                for nested_field in nested_fields:
+                    # Prepend the dict name to create full field path
+                    full_field_path = f"{dict_name}.{nested_field}"
+                    fields.add(full_field_path)
+        
+        # Add wildcards for dynamic dicts (for matching purposes)
+        for field_path in fields_by_level['dynamic_dict']:
+            fields.add(field_path)
+            fields.add(f"{field_path}.*")  # Add wildcard for matching
         
         return fields
     
+    def _is_dict_field(self, annotation) -> bool:
+        """Check if annotation represents a Dict[str, Any] field (including Optional)."""
+        # Direct Dict[str, Any]
+        if annotation == Dict[str, Any]:
+            return True
+        
+        # Dict with __origin__ == dict
+        if hasattr(annotation, '__origin__') and annotation.__origin__ == dict:
+            return True
+        
+        # Optional[Dict[str, Any]] - Union with dict and None
+        if (hasattr(annotation, '__origin__') and annotation.__origin__ == Union and 
+            len(annotation.__args__) == 2 and type(None) in annotation.__args__):
+            for arg in annotation.__args__:
+                if hasattr(arg, '__origin__') and arg.__origin__ == dict:
+                    return True
+        
+        return False
+    
+    def _field_matches_model(self, config_field: str, model_fields: Set[str]) -> bool:
+        """Check if a config field matches any model field using the field classifier."""
+        # Direct match
+        if config_field in model_fields:
+            return True
+        
+        # Check if it's a dynamic dict key (e.g., hedge_allocation.binance)
+        parent_dynamic_dict = self.field_classifier.get_parent_dynamic_dict(config_field)
+        if parent_dynamic_dict:
+            # If parent dynamic dict is in model fields, allow the key
+            if parent_dynamic_dict in model_fields or f"{parent_dynamic_dict}.*" in model_fields:
+                return True
+        
+        # Check if it's a nested field from a fixed schema dict
+        # e.g., component_config.strategy_manager.position_calculation should match strategy_manager.position_calculation
+        for model_field in model_fields:
+            if '.' in model_field and '.' in config_field:
+                # Check if config_field ends with model_field (after removing the prefix)
+                if config_field.endswith(model_field):
+                    # Extract the prefix part
+                    prefix = config_field[:-len(model_field)-1]  # Remove the model_field and the dot
+                    # Check if the prefix is a fixed schema dict
+                    if prefix in self.field_classifier.FIXED_SCHEMA_DICTS:
+                        return True
+        
+        # Wildcard match - check if any wildcard prefix matches
+        for model_field in model_fields:
+            if model_field.endswith('.*'):
+                prefix = model_field[:-2]  # Remove .*
+                if config_field.startswith(prefix + '.'):
+                    return True
+                # Also match the prefix itself
+                if config_field == prefix:
+                    return True
+        
+        # Parent field match - if parent is Dict[str, Any], allow nested paths
+        parts = config_field.split('.')
+        for i in range(1, len(parts)):
+            parent_path = '.'.join(parts[:i])
+            # Check if parent with wildcard exists
+            if f"{parent_path}.*" in model_fields:
+                return True
+        
+        return False
+    
     def get_nested_fields(self, data: Dict[str, Any], prefix: str = "") -> Set[str]:
-        """Extract all field paths from nested dictionary and create flattened equivalents."""
+        """Extract all field paths from nested dictionary without creating duplicates."""
         fields = set()
         
         for key, value in data.items():
             field_path = f"{prefix}.{key}" if prefix else key
             fields.add(field_path)
             
-            # Also add flattened version (replace dots with underscores)
-            flattened_path = field_path.replace('.', '_')
-            fields.add(flattened_path)
-            
-            # Also add the reverse mapping (for model fields that are flattened)
-            if '_' in key and prefix:
-                # If we have a flattened field in config, also check if there's a nested equivalent
-                nested_equivalent = f"{prefix}.{key.replace('_', '.')}"
-                fields.add(nested_equivalent)
-            
             if isinstance(value, dict):
+                # Recurse into nested dicts
                 fields.update(self.get_nested_fields(value, field_path))
-            elif isinstance(value, list) and value and isinstance(value[0], dict):
-                # Handle list of objects
-                for i, item in enumerate(value):
-                    if isinstance(item, dict):
-                        fields.update(self.get_nested_fields(item, f"{field_path}[{i}]"))
+            elif isinstance(value, list) and value:
+                # For lists, check if first item is dict
+                if isinstance(value[0], dict):
+                    # Extract fields from first dict item as pattern
+                    # Don't include [0], [1] indices - those don't exist in Pydantic
+                    list_fields = self.get_nested_fields(value[0], field_path)
+                    fields.update(list_fields)
         
         return fields
     
@@ -192,8 +188,8 @@ class ConfigAlignmentValidator:
         total_orphaned_config = 0
         total_orphaned_model = 0
         
-        # 1. StrategyConfig ↔ configs/modes/*.yaml
-        print("  📁 Validating StrategyConfig ↔ configs/modes/*.yaml")
+        # 1. ModeConfig ↔ configs/modes/*.yaml
+        print("  📁 Validating ModeConfig ↔ configs/modes/*.yaml")
         mode_configs = {}
         modes_dir = self.configs_dir / "modes"
         if modes_dir.exists():
@@ -201,29 +197,46 @@ class ConfigAlignmentValidator:
                 with open(mode_file, 'r') as f:
                     mode_configs[mode_file.stem] = yaml.safe_load(f)
         
-        model_fields = self.get_pydantic_model_fields(StrategyConfig)
+        model_fields = self.get_pydantic_model_fields(ModeConfig)
         all_mode_config_fields = set()
         for config_data in mode_configs.values():
             all_mode_config_fields.update(self.get_nested_fields(config_data))
         
-        strategy_orphaned_config = all_mode_config_fields - model_fields
-        strategy_orphaned_model = model_fields - all_mode_config_fields
+        # Handle field matching using the classifier
+        mode_orphaned_config = set()
+        for config_field in all_mode_config_fields:
+            if not self._field_matches_model(config_field, model_fields):
+                # Only flag as orphaned if it's not a dynamic dict key
+                parent_dynamic_dict = self.field_classifier.get_parent_dynamic_dict(config_field)
+                if not parent_dynamic_dict:
+                    mode_orphaned_config.add(config_field)
         
-        alignment_results['strategy'] = {
+        # Check required fields for orphaned model fields
+        mode_orphaned_model = set()
+        required_fields = set()
+        fields_by_level = self.field_classifier.get_required_fields_by_level('ModeConfig')
+        for level in ['required_toplevel', 'required_nested', 'fixed_schema_dict']:
+            required_fields.update(fields_by_level[level])
+        
+        for model_field in required_fields:
+            if model_field not in all_mode_config_fields:
+                mode_orphaned_model.add(model_field)
+        
+        alignment_results['modes'] = {
             'config_fields': len(all_mode_config_fields),
             'model_fields': len(model_fields),
-            'orphaned_config': list(strategy_orphaned_config),
-            'orphaned_model': list(strategy_orphaned_model),
-            'coverage': (len(all_mode_config_fields - strategy_orphaned_config) / len(all_mode_config_fields)) * 100 if all_mode_config_fields else 100
+            'orphaned_config': list(mode_orphaned_config),
+            'orphaned_model': list(mode_orphaned_model),
+            'coverage': (len(all_mode_config_fields - mode_orphaned_config) / len(all_mode_config_fields)) * 100 if all_mode_config_fields else 100
         }
-        total_orphaned_config += len(strategy_orphaned_config)
-        total_orphaned_model += len(strategy_orphaned_model)
-        strategy_status = "✅ PASS" if len(strategy_orphaned_config) == 0 and len(strategy_orphaned_model) == 0 else "❌ FAIL"
-        print(f"    Strategy: {len(all_mode_config_fields)} config fields, {len(model_fields)} model fields - {strategy_status}")
-        if strategy_orphaned_config:
-            print(f"    ⚠️  {len(strategy_orphaned_config)} orphaned config fields: {list(strategy_orphaned_config)[:5]}...")
-        if strategy_orphaned_model:
-            print(f"    ⚠️  {len(strategy_orphaned_model)} orphaned model fields: {list(strategy_orphaned_model)[:5]}...")
+        total_orphaned_config += len(mode_orphaned_config)
+        total_orphaned_model += len(mode_orphaned_model)
+        mode_status = "✅ PASS" if len(mode_orphaned_config) == 0 and len(mode_orphaned_model) == 0 else "❌ FAIL"
+        print(f"    Modes: {len(all_mode_config_fields)} config fields, {len(model_fields)} model fields - {mode_status}")
+        if mode_orphaned_config:
+            print(f"    ⚠️  {len(mode_orphaned_config)} orphaned config fields: {list(mode_orphaned_config)[:5]}...")
+        if mode_orphaned_model:
+            print(f"    ⚠️  {len(mode_orphaned_model)} orphaned model fields: {list(mode_orphaned_model)[:5]}...")
         
         # 2. VenueConfig ↔ configs/venues/*.yaml
         print("  📁 Validating VenueConfig ↔ configs/venues/*.yaml")
@@ -239,8 +252,25 @@ class ConfigAlignmentValidator:
         for config_data in venue_configs.values():
             all_venue_config_fields.update(self.get_nested_fields(config_data))
         
-        venue_orphaned_config = all_venue_config_fields - venue_model_fields
-        venue_orphaned_model = venue_model_fields - all_venue_config_fields
+        # Handle field matching using the classifier
+        venue_orphaned_config = set()
+        for config_field in all_venue_config_fields:
+            if not self._field_matches_model(config_field, venue_model_fields):
+                # Only flag as orphaned if it's not a dynamic dict key
+                parent_dynamic_dict = self.field_classifier.get_parent_dynamic_dict(config_field)
+                if not parent_dynamic_dict:
+                    venue_orphaned_config.add(config_field)
+        
+        # Only check required fields for orphaned model fields
+        venue_orphaned_model = set()
+        required_fields = set()
+        fields_by_level = self.field_classifier.get_required_fields_by_level('VenueConfig')
+        for level in ['required_toplevel', 'required_nested', 'fixed_schema_dict']:
+            required_fields.update(fields_by_level[level])
+        
+        for model_field in required_fields:
+            if model_field not in all_venue_config_fields:
+                venue_orphaned_model.add(model_field)
         
         alignment_results['venue'] = {
             'config_fields': len(all_venue_config_fields),
@@ -272,8 +302,25 @@ class ConfigAlignmentValidator:
         for config_data in share_class_configs.values():
             all_share_class_config_fields.update(self.get_nested_fields(config_data))
         
-        share_class_orphaned_config = all_share_class_config_fields - share_class_model_fields
-        share_class_orphaned_model = share_class_model_fields - all_share_class_config_fields
+        # Handle field matching using the classifier
+        share_class_orphaned_config = set()
+        for config_field in all_share_class_config_fields:
+            if not self._field_matches_model(config_field, share_class_model_fields):
+                # Only flag as orphaned if it's not a dynamic dict key
+                parent_dynamic_dict = self.field_classifier.get_parent_dynamic_dict(config_field)
+                if not parent_dynamic_dict:
+                    share_class_orphaned_config.add(config_field)
+        
+        # Only check required fields for orphaned model fields
+        share_class_orphaned_model = set()
+        required_fields = set()
+        fields_by_level = self.field_classifier.get_required_fields_by_level('ShareClassConfig')
+        for level in ['required_toplevel', 'required_nested', 'fixed_schema_dict']:
+            required_fields.update(fields_by_level[level])
+        
+        for model_field in required_fields:
+            if model_field not in all_share_class_config_fields:
+                share_class_orphaned_model.add(model_field)
         
         alignment_results['share_class'] = {
             'config_fields': len(all_share_class_config_fields),
@@ -335,6 +382,46 @@ class ConfigAlignmentValidator:
             mode_name = config_name.replace('mode_', '')
             print(f"  Validating mode: {mode_name}")
             
+            # Define mode requirements
+            MODE_REQUIREMENTS = {
+                'btc_basis': {
+                    'required_fields': ['mode', 'share_class', 'asset', 'basis_trade_enabled', 'venues', 'hedge_venues'],
+                    'optional_fields': ['lending_enabled', 'staking_enabled', 'borrowing_enabled']
+                },
+                'eth_basis': {
+                    'required_fields': ['mode', 'share_class', 'asset', 'basis_trade_enabled', 'venues', 'hedge_venues'],
+                    'optional_fields': ['lending_enabled', 'staking_enabled', 'borrowing_enabled']
+                },
+                'eth_leveraged': {
+                    'required_fields': ['mode', 'share_class', 'asset', 'staking_enabled', 'borrowing_enabled', 'lst_type', 'venues'],
+                    'optional_fields': ['lending_enabled', 'basis_trade_enabled']
+                },
+                'eth_staking_only': {
+                    'required_fields': ['mode', 'share_class', 'asset', 'staking_enabled', 'lst_type', 'venues'],
+                    'optional_fields': ['lending_enabled', 'basis_trade_enabled', 'borrowing_enabled']
+                },
+                'pure_lending': {
+                    'required_fields': ['mode', 'share_class', 'asset', 'lending_enabled', 'venues'],
+                    'optional_fields': ['staking_enabled', 'basis_trade_enabled', 'borrowing_enabled']
+                },
+                'usdt_market_neutral': {
+                    'required_fields': ['mode', 'share_class', 'asset', 'staking_enabled', 'borrowing_enabled', 'lst_type', 'venues', 'hedge_venues'],
+                    'optional_fields': ['lending_enabled', 'basis_trade_enabled']
+                },
+                'usdt_market_neutral_no_leverage': {
+                    'required_fields': ['mode', 'share_class', 'asset', 'staking_enabled', 'venues', 'hedge_venues'],
+                    'optional_fields': ['lending_enabled', 'basis_trade_enabled', 'borrowing_enabled']
+                },
+                'ml_btc_directional': {
+                    'required_fields': ['mode', 'share_class', 'asset', 'venues'],
+                    'optional_fields': ['lending_enabled', 'staking_enabled', 'basis_trade_enabled', 'borrowing_enabled']
+                },
+                'ml_usdt_directional': {
+                    'required_fields': ['mode', 'share_class', 'asset', 'venues'],
+                    'optional_fields': ['lending_enabled', 'staking_enabled', 'basis_trade_enabled', 'borrowing_enabled']
+                }
+            }
+            
             # Check if mode has requirements defined
             if mode_name not in MODE_REQUIREMENTS:
                 self.warnings.append(f"Mode '{mode_name}' not found in MODE_REQUIREMENTS")
@@ -391,18 +478,7 @@ class ConfigAlignmentValidator:
         
         validation_report = {}
         
-        # Test default config
-        if 'default' in configs:
-            try:
-                config = ConfigSchema(**configs['default'])
-                validation_report['default'] = {'valid': True, 'error': None}
-                print("  ✅ Default config validation: PASS")
-            except ValidationError as e:
-                validation_report['default'] = {'valid': False, 'error': str(e)}
-                self.errors.append(f"Default config validation failed: {e}")
-                print(f"  ❌ Default config validation: FAIL - {e}")
-        
-        # Test mode configs
+        # Test mode configs using ModeConfig model
         for config_name, config_data in configs.items():
             if not config_name.startswith('mode_'):
                 continue
@@ -410,11 +486,9 @@ class ConfigAlignmentValidator:
             mode_name = config_name.replace('mode_', '')
             
             try:
-                # Merge with default config
-                merged_config = configs.get('default', {}).copy()
-                merged_config.update(config_data)
-                
-                config = ConfigSchema(**merged_config)
+                # Use ModeConfig for validation
+                from basis_strategy_v1.infrastructure.config.models import ModeConfig
+                config = ModeConfig(**config_data)
                 validation_report[mode_name] = {'valid': True, 'error': None}
                 print(f"  ✅ Mode '{mode_name}' validation: PASS")
             except ValidationError as e:

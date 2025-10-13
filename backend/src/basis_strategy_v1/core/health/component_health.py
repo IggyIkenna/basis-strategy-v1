@@ -18,6 +18,8 @@ import pandas as pd
 
 from ..error_codes import get_error_info, ErrorSeverity
 
+from ...core.logging.base_logging_interface import StandardizedLoggingMixin, LogLevel, EventType
+
 logger = logging.getLogger(__name__)
 
 
@@ -31,7 +33,7 @@ class HealthStatus(Enum):
 
 
 @dataclass
-class ComponentHealthReport:
+class ComponentHealthReport(StandardizedLoggingMixin):
     """Health report for a single component."""
     component_name: str
     status: HealthStatus
@@ -51,7 +53,7 @@ class ComponentHealthReport:
             self.dependencies = []
 
 
-class ComponentHealthChecker:
+class ComponentHealthChecker(StandardizedLoggingMixin):
     """Base class for component health checking."""
     
     def __init__(self, component_name: str):
@@ -182,7 +184,7 @@ class PositionMonitorHealthChecker(ComponentHealthChecker):
             
             # Check if can get snapshot
             try:
-                snapshot = self.position_monitor.get_snapshot()
+                snapshot = self.position_monitor.get_current_positions()
                 checks["snapshot_available"] = isinstance(snapshot, dict) and len(snapshot) > 0
             except:
                 checks["snapshot_available"] = False
@@ -427,7 +429,7 @@ class EventLoggerHealthChecker(ComponentHealthChecker):
         return "EVENT-003", "Event Logger readiness check failed"
 
 
-class SystemHealthAggregator:
+class SystemHealthAggregator(StandardizedLoggingMixin):
     """Aggregates health reports from all components."""
     
     def __init__(self):

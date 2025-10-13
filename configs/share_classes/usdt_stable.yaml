@@ -28,3 +28,10 @@ supported_strategies:
 leverage_supported: true
 staking_supported: false
 basis_trading_supported: true
+
+# Risk Management
+max_leverage: 1.0  # No leverage for stable strategies
+max_drawdown: 0.05  # 5% max drawdown for stable strategies
+target_apy_range:
+  min: 0.08  # 8% minimum target APY
+  max: 0.15  # 15% maximum target APY

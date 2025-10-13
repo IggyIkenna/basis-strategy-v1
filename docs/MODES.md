@@ -65,13 +65,7 @@ See: 19_CONFIGURATION.md for complete mode configs, REFERENCE_ARCHITECTURE_CANON
 - **All capital can be staked**: No need to reserve for perp margin
 - **No cross-venue capital allocation**: Single venue focus
 
-### Reserve Management & Execution Modes
-
-**Reserve Parameters**:
-- Each strategy defines a `reserve_ratio` config parameter (e.g., 5% of total capital)
-- Strategies monitor reserves and send fast execution requests when reserves are low
-- Reserve low events are published for downstream consumers to handle withdrawal speed
-- Position deviation from target must exceed `position_deviation_threshold` before rebalancing triggers
+### Execution Modes
 
 **Execution Modes**:
 - **Atomic Transactions**: Via Instadapp middleware for complex multi-step operations (leveraged staking)
@@ -80,9 +74,8 @@ See: 19_CONFIGURATION.md for complete mode configs, REFERENCE_ARCHITECTURE_CANON
 
 **Withdrawal Handling**:
 - **All strategies unwind 1:1 with withdrawals** (no exceptions)
-- **Reserve balance affects speed**: Fast vs slow unwinding
-- **Fast unwinding**: Uses available reserves
-- **Slow unwinding**: Requires unwinding locked positions
+- **Immediate processing**: Withdrawals processed immediately if free equity available
+- **Complex unwinding**: Only required for unstaking and/or unwinding basis trades
 
 ### Standardized Strategy Manager Architecture
 
@@ -163,11 +156,6 @@ See: 19_CONFIGURATION.md for complete mode configs, REFERENCE_ARCHITECTURE_CANON
 6. **Rebalancing**: Based on equity changes (deposits/withdrawals/PnL)
 7. **Tight Loop**: Position updates trigger sequential component chain (position_monitor → exposure_monitor → risk_monitor → pnl_monitor)
 
-**Reserve Balance Management**:
-- **Fast Withdrawals**: Maintain USDT reserve for immediate client redemptions
-- **Reserve Threshold**: If reserve < `reserve_ratio` of total USDT, publish reserve_low event
-- **Unwinding**: All withdrawals unwind 1:1 from AAVE (fast, ~1-2 blocks)
-
 **Risk Profile**:
 - **Market Risk**: None (USDT stablecoin)
 - **Protocol Risk**: AAVE smart contract risk
@@ -235,11 +223,6 @@ See: 19_CONFIGURATION.md for complete mode configs, REFERENCE_ARCHITECTURE_CANON
    - **PnL Changes**: Adjust positions to match equity changes
 4. **Risk Override**: If maintenance margin issues, reduce position to stay within limits
 5. **Tight Loop**: Position updates trigger sequential component chain (position_monitor → exposure_monitor → risk_monitor → pnl_monitor)
-
-**Reserve Balance Management**:
-- **Fast Withdrawals**: Maintain USDT reserve for immediate client redemptions
-- **Reserve Threshold**: If reserve < `reserve_ratio` of total USDT, publish reserve_low event
-- **Unwinding**: All withdrawals unwind 1:1 (close perp shorts first, then sell spot positions)
 
 **Risk Profile**:
 - **Market Risk**: None (delta neutral)
@@ -313,10 +296,6 @@ See: 19_CONFIGURATION.md for complete mode configs, REFERENCE_ARCHITECTURE_CANON
 4. **Risk Override**: If maintenance margin issues, reduce position to stay within limits
 5. **Tight Loop**: Position updates trigger sequential component chain (position_monitor → exposure_monitor → risk_monitor → pnl_monitor)
 
-**Reserve Balance Management**:
-- **Fast Withdrawals**: Maintain ETH reserve for immediate client redemptions
-- **Reserve Threshold**: If reserve < `reserve_ratio` of total ETH, publish reserve_low event
-- **Unwinding**: All withdrawals unwind 1:1 (close perp shorts first, then sell spot positions)
 
 **Risk Profile**:
 - **Market Risk**: None (delta neutral)
@@ -382,10 +361,6 @@ See: 19_CONFIGURATION.md for complete mode configs, REFERENCE_ARCHITECTURE_CANON
    - **Sell Dust**: Convert KING tokens (EIGEN/ETHFI composite) to ETH (if `lst_type: weeth` and dust > `dust_delta` threshold)
 5. **Tight Loop**: Position updates trigger sequential component chain (position_monitor → exposure_monitor → risk_monitor → pnl_monitor)
 
-**Reserve Balance Management**:
-- **Fast Withdrawals**: Maintain ETH reserve for immediate client redemptions
-- **Reserve Threshold**: If reserve < 10% of total ETH, slow down withdrawals
-- **Unwinding**: If too many withdrawals, unstake LST (slow, can take days via protocol)
 
 **Risk Profile**:
 - **Market Risk**: Full ETH price exposure (directional strategy)
@@ -458,10 +433,6 @@ See: 19_CONFIGURATION.md for complete mode configs, REFERENCE_ARCHITECTURE_CANON
    - **Fast Unwind**: If reserves too low, DEX swap LST to ETH for immediate withdrawal
 6. **Tight Loop**: Position updates trigger sequential component chain (position_monitor → exposure_monitor → risk_monitor → pnl_monitor)
 
-**Reserve Balance Management**:
-- **Fast Withdrawals**: Maintain ETH reserve for immediate client redemptions
-- **Reserve Threshold**: If reserve < `reserve_ratio` of total ETH, publish reserve_low event
-- **Unwinding**: If too many withdrawals, unwind leveraged position (slow, requires multiple AAVE transactions)
 
 **Risk Profile**:
 - **Market Risk**: Full ETH price exposure (directional strategy)
@@ -559,10 +530,6 @@ See: 19_CONFIGURATION.md for complete mode configs, REFERENCE_ARCHITECTURE_CANON
 5. **Withdrawals**: Scale down both legs proportionally (1:1 with withdrawal amount)
 6. **Tight Loop**: Position updates trigger sequential component chain (position_monitor → exposure_monitor → risk_monitor → pnl_monitor)
 
-**Reserve Balance Management**:
-- **Fast Withdrawals**: Maintain USDT reserve for immediate client redemptions
-- **Reserve Threshold**: If reserve < `reserve_ratio` of total USDT, publish reserve_low event
-- **Unwinding**: All withdrawals unwind 1:1 (close perp shorts first, then unstake LST)
 
 **Risk Profile**:
 - **Market Risk**: None (delta neutral)
@@ -663,10 +630,6 @@ See: 19_CONFIGURATION.md for complete mode configs, REFERENCE_ARCHITECTURE_CANON
 5. **Withdrawals**: Unwind both legs proportionally (1:1 with withdrawal amount)
 6. **Tight Loop**: Position updates trigger sequential component chain (position_monitor → exposure_monitor → risk_monitor → pnl_monitor)
 
-**Reserve Balance Management**:
-- **Fast Withdrawals**: Maintain USDT reserve for immediate client redemptions
-- **Reserve Threshold**: If reserve < `reserve_ratio` of total USDT, publish reserve_low event
-- **Unwinding**: All withdrawals unwind 1:1 (close perp shorts first, then unwind leveraged position)
 
 **Risk Profile**:
 - **Market Risk**: None (delta neutral)
@@ -920,6 +883,8 @@ All strategies monitor:
 | **ETH Leveraged** | None | Lido/EtherFi, AAVE V3, Morpho | Alchemy, Instadapp |
 | **USDT Market Neutral No Leverage** | Binance, Bybit, OKX | Lido/EtherFi | Alchemy |
 | **USDT Market Neutral** | Binance, Bybit, OKX | Lido/EtherFi, AAVE V3, Morpho | Alchemy, Instadapp |
+| **ML BTC Directional** | Binance | None | None |
+| **ML USDT Directional** | Binance | None | None |
 
 ### Venue Selection Logic
 
@@ -938,6 +903,12 @@ All strategies monitor:
 - **Wallet Transfers**: Alchemy (Web3 wrapper) for all on-chain operations
 - **Atomic Transactions**: Instadapp middleware for complex multi-step operations
 - **Data Access**: All venues provide market data and execution interfaces
+
+**ML Strategy Special Cases**:
+- **ML BTC/USDT Directional**: Pure CEX strategies with **no wallet transfers required**
+- **Capital Flow**: Initial capital lands directly in CEX wallet (no on-chain → CEX transfers)
+- **Position Monitor**: Assumes capital starts at CEX, no transfer tracking needed
+- **Infrastructure Integration**: Uses same framework as DeFi strategies but CEX-only execution
 
 ### Venue Configuration Requirements
 

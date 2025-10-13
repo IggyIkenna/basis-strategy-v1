@@ -13,6 +13,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict, List, Optional
 import time
+from .timestamp_utils import format_timestamp_utc
 
 # Handle both standalone and module imports
 try:
@@ -170,7 +171,7 @@ class BybitClient(BaseDownloader):
                 timestamp_ms = int(kline[0])
                 
                 record = {
-                    'timestamp': datetime.utcfromtimestamp(timestamp_ms / 1000).isoformat() + 'Z',
+                    'timestamp': format_timestamp_utc(timestamp_ms),
                     'open': float(kline[1]),
                     'high': float(kline[2]),
                     'low': float(kline[3]),
@@ -212,7 +213,7 @@ class BybitClient(BaseDownloader):
         
         for funding in funding_list:
             record = {
-                'funding_timestamp': datetime.utcfromtimestamp(int(funding['fundingRateTimestamp']) / 1000).isoformat() + 'Z',
+                'funding_timestamp': format_timestamp_utc(int(funding['fundingRateTimestamp'])),
                 'funding_rate': float(funding['fundingRate']),
                 'symbol': funding['symbol'],
                 'source': 'bybit'
