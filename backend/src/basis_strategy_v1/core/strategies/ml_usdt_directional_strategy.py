@@ -3,7 +3,7 @@ ML USDT Directional Strategy Implementation
 
 Implements ML-driven directional USDT trading strategy using 5-minute interval signals
 to generate long/short positions. Uses machine learning predictions for entry/exit signals
-while taking full directional USDT exposure.
+while taking full directional USDT exposure. Uses unified Order/Trade system.
 
 Reference: docs/specs/strategies/09_ML_USDT_DIRECTIONAL_STRATEGY.md
 Reference: docs/MODES.md - ML USDT Directional Strategy Mode
@@ -14,8 +14,8 @@ from typing import Dict, List, Any
 import logging
 import pandas as pd
 
-from .base_strategy_manager import BaseStrategyManager, StrategyAction
-
+from .base_strategy_manager import BaseStrategyManager
+from ...core.models.order import Order, OrderOperation
 from ...core.logging.base_logging_interface import StandardizedLoggingMixin, LogLevel, EventType
 
 logger = logging.getLogger(__name__)
@@ -68,15 +68,19 @@ class MLUSDTDirectionalStrategy(BaseStrategyManager):
         
         logger.info(f"MLUSDTDirectionalStrategy initialized with signal threshold: {self.signal_threshold}")
     
-    def make_strategy_decision(self, timestamp, trigger_source: str, market_data: Dict, exposure_data: Dict, risk_assessment: Dict) -> StrategyAction:
+    def make_strategy_decision(self, timestamp: pd.Timestamp, trigger_source: str, market_data: Dict, exposure_data: Dict, risk_assessment: Dict) -> List[Order]:
         """
         Make ML USDT directional strategy decision based on market conditions and ML predictions.
         
-        ML USDT Directional Strategy Logic:
-        - Get ML predictions from data provider
-        - Analyze signal confidence and direction
-        - Check risk management (stop-loss, take-profit)
-        - Generate appropriate instructions for USDT directional positions
+        Args:
+            timestamp: Current timestamp
+            trigger_source: What triggered this decision
+            market_data: Current market data
+            exposure_data: Current exposure data
+            risk_assessment: Risk assessment data
+            
+        Returns:
+            List of Order objects to execute
         """
         try:
             # Log strategy decision start
@@ -109,11 +113,11 @@ class MLUSDTDirectionalStrategy(BaseStrategyManager):
             # ML USDT Directional Strategy Decision Logic
             if ml_predictions is None:
                 # No ML predictions available - maintain current position
-                return self.sell_dust({})
+                return self._create_dust_sell_orders({})
             
             # Check risk management first
             if self._should_exit_for_risk_management(usdt_price, current_positions, ml_predictions):
-                return self.exit_full(current_equity)
+                return self._create_exit_full_orders(current_equity)
             
             # Check ML signal for entry/exit
             if ml_predictions['confidence'] > self.signal_threshold:
@@ -121,16 +125,16 @@ class MLUSDTDirectionalStrategy(BaseStrategyManager):
                 
                 if signal == 'long' and not self._has_long_position(current_positions):
                     # Enter long position
-                    return self.entry_full(current_equity)
+                    return self._create_entry_full_orders(current_equity, signal)
                 elif signal == 'short' and not self._has_short_position(current_positions):
                     # Enter short position
-                    return self.entry_full(current_equity)
+                    return self._create_entry_full_orders(current_equity, signal)
                 elif signal == 'neutral' and self._has_any_position(current_positions):
                     # Exit position
-                    return self.exit_full(current_equity)
+                    return self._create_exit_full_orders(current_equity)
             
             # Default: maintain current position
-            return self.sell_dust({})
+            return self._create_dust_sell_orders({})
                 
         except Exception as e:
             self.log_error(
@@ -142,8 +146,7 @@ class MLUSDTDirectionalStrategy(BaseStrategyManager):
                 }
             )
             logger.error(f"Error in ML USDT directional strategy decision: {e}")
-            # Return safe default action
-            return self.sell_dust({})
+            return []
     
     def _get_ml_predictions(self, market_data: Dict) -> Dict:
         """Get ML predictions from data provider."""
@@ -168,6 +171,11 @@ class MLUSDTDirectionalStrategy(BaseStrategyManager):
         except Exception as e:
             logger.error(f"Error getting ML predictions: {e}")
             return None
+    
+    def _get_asset_price(self) -> float:
+        """Get current USDT price for testing."""
+        # In real implementation, this would get actual price from market data
+        return 1.0  # Mock USDT price
     
     def _should_exit_for_risk_management(self, current_price: float, current_positions: Dict, ml_predictions: Dict) -> bool:
         """Check if we should exit position for risk management."""
@@ -259,256 +267,265 @@ class MLUSDTDirectionalStrategy(BaseStrategyManager):
             logger.error(f"Failed to calculate target position: {e}")
             return {'usdt_perp_position': 0.0, 'btc_balance': current_equity}
     
-    def entry_full(self, equity: float) -> StrategyAction:
-        """Enter full ML USDT directional position."""
-        try:
-            # Log action start
-            self.log_component_event(
-                event_type=EventType.BUSINESS_EVENT,
-                message=f"Executing entry_full action with equity={equity}",
-                data={
-                    'action': 'entry_full',
-                    'equity': equity,
-                    'strategy_type': self.__class__.__name__
-                },
-                level=LogLevel.INFO
-            )
+    def _create_entry_full_orders(self, equity: float, signal: str) -> List[Order]:
+        """
+        Create entry full orders for ML USDT directional strategy.
+        
+        Args:
+            equity: Available equity in share class currency
+            signal: ML signal ('long' or 'short')
             
+        Returns:
+            List of Order objects for full entry
+        """
+        try:
             # Calculate target position
             target_position = self.calculate_target_position(equity)
             
-            # Generate instructions for ML USDT directional trading
-            instructions = [
-                {
-                    'type': 'cex_trade',
-                    'venue': 'binance',
-                    'action': 'buy' if self.last_signal == 'long' else 'sell',
-                    'symbol': 'USDTUSDT_PERP',
-                    'amount': target_position['usdt_perp_position']
-                }
-            ]
+            # Store signal for reference
+            self.last_signal = signal
             
-            return StrategyAction(
-                action_type='entry_full',
-                target_amount=equity,
-                target_currency='USDT',
-                instructions=instructions,
-                atomic=True
+            # Calculate take profit and stop loss
+            usdt_price = self._get_asset_price()
+            stop_loss, take_profit = self._calculate_stop_loss_take_profit(
+                usdt_price, 0.02, signal  # 2% standard deviation
             )
+            
+            # Create USDT perpetual order with risk management
+            order = Order(
+                venue='binance',
+                operation=OrderOperation.PERP_TRADE,
+                pair='USDTUSDT',
+                side='LONG' if signal == 'long' else 'SHORT',
+                amount=target_position['usdt_perp_position'],
+                price=usdt_price,
+                order_type='market',
+                take_profit=take_profit,
+                stop_loss=stop_loss,
+                execution_mode='sequential',
+                strategy_intent='entry_full',
+                strategy_id='ml_usdt_directional',
+                metadata={
+                    'ml_signal': signal,
+                    'confidence': 0.8,  # Would come from ML predictions
+                    'signal_threshold': self.signal_threshold
+                }
+            )
+            
+            return [order]
             
         except Exception as e:
-            self.log_error(
-                error=e,
-                context={
-                    'action': 'entry_full',
-                    'equity': equity
-                }
-            )
-            logger.error(f"Error in entry_full: {e}")
-            return StrategyAction(
-                action_type='entry_full',
-                target_amount=0.0,
-                target_currency='USDT',
-                instructions=[],
-                atomic=False
-            )
+            logger.error(f"Error creating entry full orders: {e}")
+            return []
     
-    def entry_partial(self, equity_delta: float) -> StrategyAction:
-        """Enter partial ML USDT directional position."""
-        try:
-            # Log action start
-            self.log_component_event(
-                event_type=EventType.BUSINESS_EVENT,
-                message=f"Executing entry_partial action with equity_delta={equity_delta}",
-                data={
-                    'action': 'entry_partial',
-                    'equity_delta': equity_delta,
-                    'strategy_type': self.__class__.__name__
-                },
-                level=LogLevel.INFO
-            )
+    def _create_entry_partial_orders(self, equity_delta: float, signal: str) -> List[Order]:
+        """
+        Create entry partial orders for ML USDT directional strategy.
+        
+        Args:
+            equity_delta: Additional equity to deploy
+            signal: ML signal ('long' or 'short')
             
+        Returns:
+            List of Order objects for partial entry
+        """
+        try:
             # Calculate partial position
             partial_position = equity_delta * self.max_position_size
             
-            instructions = [
-                {
-                    'type': 'cex_trade',
-                    'venue': 'binance',
-                    'action': 'buy' if self.last_signal == 'long' else 'sell',
-                    'symbol': 'USDTUSDT_PERP',
-                    'amount': partial_position
-                }
-            ]
+            # Store signal for reference
+            self.last_signal = signal
             
-            return StrategyAction(
-                action_type='entry_partial',
-                target_amount=equity_delta,
-                target_currency='USDT',
-                instructions=instructions,
-                atomic=True
+            # Calculate take profit and stop loss
+            usdt_price = self._get_asset_price()
+            stop_loss, take_profit = self._calculate_stop_loss_take_profit(
+                usdt_price, 0.02, signal  # 2% standard deviation
             )
+            
+            # Create USDT perpetual order with risk management
+            order = Order(
+                venue='binance',
+                operation=OrderOperation.PERP_TRADE,
+                pair='USDTUSDT',
+                side='LONG' if signal == 'long' else 'SHORT',
+                amount=partial_position,
+                price=usdt_price,
+                order_type='market',
+                take_profit=take_profit,
+                stop_loss=stop_loss,
+                execution_mode='sequential',
+                strategy_intent='entry_partial',
+                strategy_id='ml_usdt_directional',
+                metadata={
+                    'ml_signal': signal,
+                    'confidence': 0.8,  # Would come from ML predictions
+                    'signal_threshold': self.signal_threshold
+                }
+            )
+            
+            return [order]
             
         except Exception as e:
-            self.log_error(
-                error=e,
-                context={
-                    'action': 'entry_partial',
-                    'equity_delta': equity_delta
-                }
-            )
-            logger.error(f"Error in entry_partial: {e}")
-            return StrategyAction(
-                action_type='entry_partial',
-                target_amount=0.0,
-                target_currency='USDT',
-                instructions=[],
-                atomic=False
-            )
+            logger.error(f"Error creating entry partial orders: {e}")
+            return []
     
-    def exit_full(self, equity: float) -> StrategyAction:
-        """Exit full ML USDT directional position."""
+    def _create_exit_full_orders(self, equity: float) -> List[Order]:
+        """
+        Create exit full orders for ML USDT directional strategy.
+        
+        Args:
+            equity: Total equity to exit
+            
+        Returns:
+            List of Order objects for full exit
+        """
         try:
-            # Log action start
-            self.log_component_event(
-                event_type=EventType.BUSINESS_EVENT,
-                message=f"Executing exit_full action with equity={equity}",
-                data={
-                    'action': 'exit_full',
-                    'equity': equity,
-                    'strategy_type': self.__class__.__name__
-                },
-                level=LogLevel.INFO
-            )
+            # Get current position to determine close side
+            current_position = self.position_monitor.get_current_position()
+            usdt_position = current_position.get('usdt_perp_position', 0.0)
             
-            instructions = [
-                {
-                    'type': 'cex_trade',
-                    'venue': 'binance',
-                    'action': 'close_position',
-                    'symbol': 'USDTUSDT_PERP',
-                    'amount': 'all'
+            if usdt_position == 0:
+                return []  # No position to close
+            
+            # Determine close side based on current position
+            close_side = 'SELL' if usdt_position > 0 else 'BUY'
+            
+            # Create close position order
+            order = Order(
+                venue='binance',
+                operation=OrderOperation.PERP_TRADE,
+                pair='USDTUSDT',
+                side=close_side,
+                amount=abs(usdt_position),
+                order_type='market',
+                execution_mode='sequential',
+                strategy_intent='exit_full',
+                strategy_id='ml_usdt_directional',
+                metadata={
+                    'close_position': True,
+                    'original_position': usdt_position
                 }
-            ]
-            
-            return StrategyAction(
-                action_type='exit_full',
-                target_amount=equity,
-                target_currency='USDT',
-                instructions=instructions,
-                atomic=True
             )
+            
+            return [order]
             
         except Exception as e:
-            self.log_error(
-                error=e,
-                context={
-                    'action': 'exit_full',
-                    'equity': equity
-                }
-            )
-            logger.error(f"Error in exit_full: {e}")
-            return StrategyAction(
-                action_type='exit_full',
-                target_amount=0.0,
-                target_currency='USDT',
-                instructions=[],
-                atomic=False
-            )
+            logger.error(f"Error creating exit full orders: {e}")
+            return []
     
-    def exit_partial(self, equity_delta: float) -> StrategyAction:
-        """Exit partial ML USDT directional position."""
+    def _create_exit_partial_orders(self, equity_delta: float) -> List[Order]:
+        """
+        Create exit partial orders for ML USDT directional strategy.
+        
+        Args:
+            equity_delta: Equity to remove from position
+            
+        Returns:
+            List of Order objects for partial exit
+        """
         try:
-            # Log action start
-            self.log_component_event(
-                event_type=EventType.BUSINESS_EVENT,
-                message=f"Executing exit_partial action with equity_delta={equity_delta}",
-                data={
-                    'action': 'exit_partial',
-                    'equity_delta': equity_delta,
-                    'strategy_type': self.__class__.__name__
-                },
-                level=LogLevel.INFO
-            )
+            # Get current position to determine close side
+            current_position = self.position_monitor.get_current_position()
+            usdt_position = current_position.get('usdt_perp_position', 0.0)
+            
+            if usdt_position == 0:
+                return []  # No position to close
             
             # Calculate partial exit amount
             partial_exit = equity_delta * self.max_position_size
+            partial_exit = min(partial_exit, abs(usdt_position))  # Don't exceed current position
             
-            instructions = [
-                {
-                    'type': 'cex_trade',
-                    'venue': 'binance',
-                    'action': 'close_position',
-                    'symbol': 'USDTUSDT_PERP',
-                    'amount': partial_exit
+            # Determine close side based on current position
+            close_side = 'SELL' if usdt_position > 0 else 'BUY'
+            
+            # Create close position order
+            order = Order(
+                venue='binance',
+                operation=OrderOperation.PERP_TRADE,
+                pair='USDTUSDT',
+                side=close_side,
+                amount=partial_exit,
+                order_type='market',
+                execution_mode='sequential',
+                strategy_intent='exit_partial',
+                strategy_id='ml_usdt_directional',
+                metadata={
+                    'close_position': True,
+                    'partial_exit': True,
+                    'original_position': usdt_position
                 }
-            ]
-            
-            return StrategyAction(
-                action_type='exit_partial',
-                target_amount=equity_delta,
-                target_currency='USDT',
-                instructions=instructions,
-                atomic=True
             )
+            
+            return [order]
             
         except Exception as e:
-            self.log_error(
-                error=e,
-                context={
-                    'action': 'exit_partial',
-                    'equity_delta': equity_delta
-                }
-            )
-            logger.error(f"Error in exit_partial: {e}")
-            return StrategyAction(
-                action_type='exit_partial',
-                target_amount=0.0,
-                target_currency='USDT',
-                instructions=[],
-                atomic=False
-            )
+            logger.error(f"Error creating exit partial orders: {e}")
+            return []
     
-    def sell_dust(self, dust_tokens: Dict[str, float]) -> StrategyAction:
-        """Sell dust tokens for ML USDT directional strategy."""
+    def _create_dust_sell_orders(self, dust_tokens: Dict[str, float]) -> List[Order]:
+        """
+        Create dust sell orders for ML USDT directional strategy.
+        
+        Args:
+            dust_tokens: Dictionary of dust tokens and amounts
+            
+        Returns:
+            List of Order objects for dust selling
+        """
         try:
-            # Log action start
-            self.log_component_event(
-                event_type=EventType.BUSINESS_EVENT,
-                message=f"Executing sell_dust action with dust_tokens={dust_tokens}",
-                data={
-                    'action': 'sell_dust',
-                    'dust_tokens': dust_tokens,
-                    'strategy_type': self.__class__.__name__
-                },
-                level=LogLevel.INFO
-            )
+            orders = []
             
-            # For ML directional strategy, dust management is minimal
-            # Just maintain current position
-            instructions = []
+            for token, amount in dust_tokens.items():
+                if amount > 0 and token != 'USDT':  # USDT is the target asset
+                    # Sell dust tokens for USDT
+                    orders.append(Order(
+                        venue='binance',
+                        operation=OrderOperation.SPOT_TRADE,
+                        pair=f'{token}/USDT',
+                        side='SELL',
+                        amount=amount,
+                        execution_mode='sequential',
+                        strategy_intent='sell_dust',
+                        strategy_id='ml_usdt_directional'
+                    ))
             
-            return StrategyAction(
-                action_type='sell_dust',
-                target_amount=0.0,
-                target_currency='USDT',
-                instructions=instructions,
-                atomic=False
-            )
+            return orders
             
         except Exception as e:
-            self.log_error(
-                error=e,
-                context={
-                    'action': 'sell_dust',
-                    'dust_tokens': dust_tokens
-                }
-            )
-            logger.error(f"Error in sell_dust: {e}")
-            return StrategyAction(
-                action_type='sell_dust',
-                target_amount=0.0,
-                target_currency='USDT',
-                instructions=[],
-                atomic=False
-            )
+            logger.error(f"Error creating dust sell orders: {e}")
+            return []
+    
+    def get_strategy_info(self) -> Dict[str, Any]:
+        """
+        Get ML USDT directional strategy information and status.
+        
+        Returns:
+            Dictionary with strategy information
+        """
+        try:
+            base_info = super().get_strategy_info()
+            
+            # Add ML USDT directional-specific information
+            base_info.update({
+                'strategy_type': 'ml_usdt_directional',
+                'signal_threshold': self.signal_threshold,
+                'max_position_size': self.max_position_size,
+                'stop_loss_pct': self.stop_loss_pct,
+                'take_profit_pct': self.take_profit_pct,
+                'description': 'ML-driven directional USDT trading with 5-minute signals using Order/Trade system',
+                'order_system': 'unified_order_trade',
+                'risk_management': 'take_profit_stop_loss'
+            })
+            
+            return base_info
+            
+        except Exception as e:
+            logger.error(f"Error getting strategy info: {e}")
+            return {
+                'strategy_type': 'ml_usdt_directional',
+                'mode': self.mode,
+                'share_class': self.share_class,
+                'asset': self.asset,
+                'equity': 0.0,
+                'error': str(e)
+            }
