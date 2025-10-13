@@ -28,7 +28,10 @@ class TestExposureMonitorUnit:
         )
         
         # Act
-        exposure_report = exposure_monitor.calculate_exposure(mock_position_snapshot)
+        import pandas as pd
+        timestamp = pd.Timestamp.now()
+        market_data = {'prices': {'BTC': 50000, 'ETH': 3000, 'USDT': 1.0}}
+        exposure_report = exposure_monitor.calculate_exposure(timestamp, mock_position_snapshot, market_data)
         
         # Assert - Should only track configured assets
         assert isinstance(exposure_report, dict)
@@ -56,7 +59,10 @@ class TestExposureMonitorUnit:
         )
         
         # Act
-        exposure_report = exposure_monitor.calculate_exposure(mock_position_snapshot)
+        import pandas as pd
+        timestamp = pd.Timestamp.now()
+        market_data = {'prices': {'BTC': 50000, 'ETH': 3000, 'USDT': 1.0}}
+        exposure_report = exposure_monitor.calculate_exposure(timestamp, mock_position_snapshot, market_data)
         
         # Assert - Should calculate net delta in share class currency
         assert isinstance(exposure_report, dict)
@@ -85,7 +91,10 @@ class TestExposureMonitorUnit:
         )
         
         # Act
-        exposure_report = exposure_monitor.calculate_exposure(mock_position_snapshot)
+        import pandas as pd
+        timestamp = pd.Timestamp.now()
+        market_data = {'prices': {'BTC': 50000, 'ETH': 3000, 'USDT': 1.0, 'weETH': 3150, 'aUSDT': 1.02}}
+        exposure_report = exposure_monitor.calculate_exposure(timestamp, mock_position_snapshot, market_data)
         
         # Assert - Should calculate underlying balance for derivatives
         assert isinstance(exposure_report, dict)
@@ -109,7 +118,10 @@ class TestExposureMonitorUnit:
         )
         
         # Act
-        exposure_report = exposure_monitor.calculate_exposure(mock_position_snapshot)
+        import pandas as pd
+        timestamp = pd.Timestamp.now()
+        market_data = {'prices': {'BTC': 50000, 'ETH': 3000, 'USDT': 1.0, 'weETH': 3150, 'aUSDT': 1.02}}
+        exposure_report = exposure_monitor.calculate_exposure(timestamp, mock_position_snapshot, market_data)
         
         # Assert - Should provide venue breakdown
         assert isinstance(exposure_report, dict)
@@ -143,7 +155,10 @@ class TestExposureMonitorUnit:
         )
         
         # Act
-        exposure_report = exposure_monitor.calculate_exposure(empty_snapshot)
+        import pandas as pd
+        timestamp = pd.Timestamp.now()
+        market_data = {'prices': {}}
+        exposure_report = exposure_monitor.calculate_exposure(timestamp, empty_snapshot, market_data)
         
         # Assert - Should handle zero exposure gracefully
         assert isinstance(exposure_report, dict)
@@ -166,7 +181,10 @@ class TestExposureMonitorUnit:
         )
         
         # Act - Should not raise exception
-        exposure_report = exposure_monitor.calculate_exposure(mock_position_snapshot)
+        import pandas as pd
+        timestamp = pd.Timestamp.now()
+        market_data = {'prices': {'BTC': 50000, 'ETH': 3000, 'USDT': 1.0, 'weETH': 3150, 'aUSDT': 1.02}}
+        exposure_report = exposure_monitor.calculate_exposure(timestamp, mock_position_snapshot, market_data)
         
         # Assert - Should handle missing prices gracefully
         assert isinstance(exposure_report, dict)
@@ -219,7 +237,10 @@ class TestExposureMonitorUnit:
             utility_manager=mock_utility_manager
         )
         
-        exposure_report = exposure_monitor.calculate_exposure(mock_position_snapshot)
+        import pandas as pd
+        timestamp = pd.Timestamp.now()
+        market_data = {'prices': {'BTC': 50000, 'ETH': 3000, 'USDT': 1.0, 'weETH': 3150, 'aUSDT': 1.02}}
+        exposure_report = exposure_monitor.calculate_exposure(timestamp, mock_position_snapshot, market_data)
         assert exposure_report['share_class_currency'] == 'USDT'
         
         # Test ETH share class
@@ -232,7 +253,10 @@ class TestExposureMonitorUnit:
             utility_manager=mock_utility_manager
         )
         
-        exposure_report = exposure_monitor.calculate_exposure(mock_position_snapshot)
+        import pandas as pd
+        timestamp = pd.Timestamp.now()
+        market_data = {'prices': {'BTC': 50000, 'ETH': 3000, 'USDT': 1.0, 'weETH': 3150, 'aUSDT': 1.02}}
+        exposure_report = exposure_monitor.calculate_exposure(timestamp, mock_position_snapshot, market_data)
         assert exposure_report['share_class_currency'] == 'ETH'
     
     def test_exposure_monitor_error_handling(self, mock_config, mock_data_provider, mock_utility_manager, mock_position_snapshot):
@@ -248,7 +272,10 @@ class TestExposureMonitorUnit:
         
         # Act & Assert - Should handle errors gracefully
         try:
-            exposure_report = exposure_monitor.calculate_exposure(mock_position_snapshot)
+            import pandas as pd
+            timestamp = pd.Timestamp.now()
+            market_data = {'prices': {'BTC': 50000, 'ETH': 3000, 'USDT': 1.0, 'weETH': 3150, 'aUSDT': 1.02}}
+            exposure_report = exposure_monitor.calculate_exposure(timestamp, mock_position_snapshot, market_data)
             # If no exception, should return error state
             assert isinstance(exposure_report, dict)
             assert 'error' in exposure_report or 'net_delta' in exposure_report
@@ -272,7 +299,10 @@ class TestExposureMonitorUnit:
             )
             
             # Should work for all modes
-            exposure_report = exposure_monitor.calculate_exposure(mock_position_snapshot)
+            import pandas as pd
+            timestamp = pd.Timestamp.now()
+            market_data = {'prices': {'BTC': 50000, 'ETH': 3000, 'USDT': 1.0, 'weETH': 3150, 'aUSDT': 1.02}}
+            exposure_report = exposure_monitor.calculate_exposure(timestamp, mock_position_snapshot, market_data)
             assert isinstance(exposure_report, dict)
             assert 'net_delta' in exposure_report
             assert 'share_class_currency' in exposure_report
@@ -294,8 +324,11 @@ class TestExposureMonitorUnit:
         
         # Act
         import time
+        import pandas as pd
+        timestamp = pd.Timestamp.now()
+        market_data = {'prices': {f'ASSET_{i}': 1000.0 for i in range(100)}}
         start_time = time.time()
-        exposure_report = exposure_monitor.calculate_exposure(large_snapshot)
+        exposure_report = exposure_monitor.calculate_exposure(timestamp, large_snapshot, market_data)
         end_time = time.time()
         
         # Assert - Should complete within reasonable time
