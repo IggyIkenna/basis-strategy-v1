@@ -41,7 +41,7 @@ class AsyncAwaitQualityGates:
         ]
         self.io_files = [
             "basis_strategy_v1/infrastructure/logging/event_logger.py",
-            "basis_strategy_v1/core/strategies/components/results_store.py"
+            "basis_strategy_v1/infrastructure/persistence/async_results_store.py"
         ]
         self.api_files = [
             "basis_strategy_v1/api/backtest_service.py",
@@ -280,10 +280,17 @@ class AsyncAwaitQualityGates:
         """Integration test - verify overall async/await architecture."""
         # Test that we can import the components without errors
         try:
-            from basis_strategy_v1.core.strategies.components.position_monitor import PositionMonitor
-            from basis_strategy_v1.core.strategies.components.risk_monitor import RiskMonitor
-            from basis_strategy_v1.core.strategies.components.strategy_manager import StrategyManager
-            from basis_strategy_v1.core.strategies.components.position_update_handler import PositionUpdateHandler
+            import sys
+            import os
+            # Add backend/src to Python path
+            backend_src = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'backend', 'src')
+            if backend_src not in sys.path:
+                sys.path.insert(0, backend_src)
+            
+            from basis_strategy_v1.core.components.position_monitor import PositionMonitor
+            from basis_strategy_v1.core.components.risk_monitor import RiskMonitor
+            from basis_strategy_v1.core.components.strategy_manager import StrategyManager
+            from basis_strategy_v1.core.components.position_update_handler import PositionUpdateHandler
             from basis_strategy_v1.core.math.pnl_calculator import PnLCalculator
             
             logger.info("✅ All components imported successfully")
