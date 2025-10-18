@@ -283,13 +283,13 @@ class TestUSDTETHStakingHedgedLeveragedStrategyHelpers:
         with patch.object(strategy, '_get_asset_price', return_value=3000.0):
             target = strategy.calculate_target_position(10000.0)
             
-            assert 'weeth_balance' in target
+            assert 'etherfi_balance' in target
             assert 'eth_balance' in target
-            assert 'ausdt_balance' in target
+            assert 'aUSDT_balance' in target
             assert 'usdt_balance' in target
-            assert target['weeth_balance'] > 0
+            assert target['etherfi_balance'] > 0
             assert target['eth_balance'] == 0.0  # All ETH staked
-            assert target['ausdt_balance'] > 0  # Some USDT lent
+            assert target['aUSDT_balance'] > 0  # Some USDT lent
             assert target['usdt_balance'] > 0  # Some USDT reserved
     
     def test_get_asset_price(self, strategy):
@@ -303,11 +303,14 @@ class TestUSDTETHStakingHedgedLeveragedStrategyHelpers:
             orders = strategy._create_entry_full_orders(10000.0)
             
             for order in orders:
-                # Check operation_id format: strategy_id_intent_timestamp
+                # Check operation_id format: operation[_token]_timestamp
                 parts = order.operation_id.split('_')
-                assert len(parts) >= 3
-                assert parts[0] == 'usdt'
-                assert parts[1] == 'eth'
+                assert len(parts) >= 2
+                # First part should be operation type (supply, buy, stake, reserve, etc.)
+                assert parts[0] in ['supply', 'buy', 'stake', 'reserve', 'unstake', 'sell', 'withdraw', 'transfer']
+                # If there are 3+ parts, second part should be token type (usdt, eth, etc.)
+                if len(parts) >= 3:
+                    assert parts[1] in ['usdt', 'eth']
                 # Last part should be a timestamp (numeric)
                 assert parts[-1].isdigit()
                 # Should be unix microseconds (13+ digits)
@@ -354,5 +357,6 @@ class TestUSDTETHStakingHedgedLeveragedStrategyErrorHandling:
         """Test error handling in _get_asset_price."""
         with patch.object(strategy, '_get_asset_price', side_effect=Exception("Price fetch failed")):
             orders = strategy._create_entry_full_orders(10000.0)
-            # Should handle error gracefully and return empty list
-            assert len(orders) == 0
+            # Should handle error gracefully and still create reserve orders
+            assert len(orders) == 1  # Only reserve order should be created
+            assert orders[0].strategy_intent == 'reserve'

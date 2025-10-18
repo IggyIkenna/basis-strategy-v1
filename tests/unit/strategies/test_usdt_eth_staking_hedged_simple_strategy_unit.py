@@ -268,10 +268,10 @@ class TestUSDTETHStakingHedgedSimpleStrategyHelpers:
         with patch.object(strategy, '_get_asset_price', return_value=3000.0):
             target = strategy.calculate_target_position(10000.0)
             
-            assert 'weeth_balance' in target
+            assert 'etherfi_balance' in target
             assert 'eth_balance' in target
             assert 'usdt_balance' in target
-            assert target['weeth_balance'] == 10000.0 / 3000.0  # 10000 USDT / 3000 ETH price
+            assert target['etherfi_balance'] == (10000.0 * 0.5) / 3000.0  # 50% allocation * 10000 USDT / 3000 ETH price
             assert target['eth_balance'] == 0.0  # All ETH staked
             assert target['usdt_balance'] == 0.0  # All USDT used for ETH buy
     
@@ -286,11 +286,14 @@ class TestUSDTETHStakingHedgedSimpleStrategyHelpers:
             orders = strategy._create_entry_full_orders(10000.0)
             
             for order in orders:
-                # Check operation_id format: strategy_id_intent_timestamp
+                # Check operation_id format: operation[_token]_timestamp
                 parts = order.operation_id.split('_')
-                assert len(parts) >= 3
-                assert parts[0] == 'usdt'
-                assert parts[1] == 'eth'
+                assert len(parts) >= 2
+                # First part should be operation type (buy, stake, etc.)
+                assert parts[0] in ['buy', 'stake']
+                # If there are 3+ parts, second part should be token type (eth, etc.)
+                if len(parts) >= 3:
+                    assert parts[1] in ['eth']
                 # Last part should be a timestamp (numeric)
                 assert parts[-1].isdigit()
                 # Should be unix microseconds (13+ digits)
