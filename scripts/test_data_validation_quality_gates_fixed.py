@@ -174,26 +174,6 @@ class ComprehensiveDataValidator:
                     }
                 }
             },
-            'ml_usdt_directional_usdt_margin': {
-                'mode': 'ml_usdt_directional_usdt_margin',
-                'data_type': 'cefi',
-                'data_dir': 'data',
-                'hedge_venues': ['binance', 'bybit', 'okx'],
-                'share_class': 'USDT',
-                'asset': 'USDT',
-                'backtest_start_date': '2024-05-01',
-                'backtest_end_date': '2024-06-02',
-                'component_config': {
-                    'position_monitor': {
-                        'position_subscriptions': [
-                            'binance:BaseToken:USDT',
-                            'binance:Perp:USDTUSDT',
-                            'bybit:Perp:USDTUSDT',
-                            'okx:Perp:USDTUSDT'
-                        ]
-                    }
-                }
-            }
         }
     
     def validate_data_provider_factory(self) -> Dict[str, Any]:
