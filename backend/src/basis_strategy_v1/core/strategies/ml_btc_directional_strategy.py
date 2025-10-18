@@ -14,7 +14,7 @@ from typing import Dict, List, Any
 import logging
 import pandas as pd
 
-from .base_strategy_manager import BaseStrategyManager
+from .base_strategy_manager import BaseStrategyManager, StrategyAction
 from ...core.models.order import Order, OrderOperation
 from ...core.logging.base_logging_interface import StandardizedLoggingMixin, LogLevel, EventType
 
