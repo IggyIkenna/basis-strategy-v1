@@ -306,6 +306,28 @@ class USDTETHStakingHedgedSimpleStrategy(BaseStrategyManager):
                     strategy_intent='entry_partial',
                     strategy_id='usdt_eth_staking_hedged_simple'
                 ))
+                
+                # Stake ETH
+                operation_id2 = f"stake_eth_partial_{int(pd.Timestamp.now().timestamp() * 1000000)}"
+                orders.append(Order(
+                    operation_id=operation_id2,
+                    venue=Venue.ETHERFI,
+                    operation=OrderOperation.STAKE,
+                    token_in='ETH',
+                    token_out=self.lst_type,
+                    amount=eth_amount,
+                    source_venue=Venue.WALLET,
+                    target_venue=Venue.ETHERFI,
+                    source_token='ETH',
+                    target_token=self.lst_type,
+                    expected_deltas={
+                        f"etherfi:LST:{self.lst_type}": eth_amount,
+                        "wallet:BaseToken:ETH": -eth_amount
+                    },
+                    execution_mode='sequential',
+                    strategy_intent='entry_partial',
+                    strategy_id='usdt_eth_staking_hedged_simple'
+                ))
             
             return orders
             
@@ -339,6 +361,29 @@ class USDTETHStakingHedgedSimpleStrategy(BaseStrategyManager):
                     expected_deltas={
                         f"etherfi:LST:{self.lst_type}": -lst_balance,
                         "wallet:BaseToken:ETH": lst_balance
+                    },
+                    execution_mode='sequential',
+                    strategy_intent='exit_full',
+                    strategy_id='usdt_eth_staking_hedged_simple'
+                ))
+                
+                # Sell ETH for USDT
+                operation_id2 = f"sell_eth_{int(pd.Timestamp.now().timestamp() * 1000000)}"
+                eth_price = self._get_asset_price()
+                orders.append(Order(
+                    operation_id=operation_id2,
+                    venue=Venue.BINANCE,
+                    operation=OrderOperation.SPOT_TRADE,
+                    pair='ETH/USDT',
+                    side='SELL',
+                    amount=lst_balance,
+                    source_venue=Venue.WALLET,
+                    target_venue=Venue.BINANCE,
+                    source_token='ETH',
+                    target_token='USDT',
+                    expected_deltas={
+                        "wallet:BaseToken:ETH": -lst_balance,
+                        "wallet:BaseToken:USDT": lst_balance * eth_price
                     },
                     execution_mode='sequential',
                     strategy_intent='exit_full',
@@ -380,6 +425,29 @@ class USDTETHStakingHedgedSimpleStrategy(BaseStrategyManager):
                     expected_deltas={
                         f"etherfi:LST:{self.lst_type}": -partial_exit,
                         "wallet:BaseToken:ETH": partial_exit
+                    },
+                    execution_mode='sequential',
+                    strategy_intent='exit_partial',
+                    strategy_id='usdt_eth_staking_hedged_simple'
+                ))
+                
+                # Sell ETH for USDT
+                operation_id2 = f"sell_eth_partial_{int(pd.Timestamp.now().timestamp() * 1000000)}"
+                eth_price = self._get_asset_price()
+                orders.append(Order(
+                    operation_id=operation_id2,
+                    venue=Venue.BINANCE,
+                    operation=OrderOperation.SPOT_TRADE,
+                    pair='ETH/USDT',
+                    side='SELL',
+                    amount=partial_exit,
+                    source_venue=Venue.WALLET,
+                    target_venue=Venue.BINANCE,
+                    source_token='ETH',
+                    target_token='USDT',
+                    expected_deltas={
+                        "wallet:BaseToken:ETH": -partial_exit,
+                        "wallet:BaseToken:USDT": partial_exit * eth_price
                     },
                     execution_mode='sequential',
                     strategy_intent='exit_partial',

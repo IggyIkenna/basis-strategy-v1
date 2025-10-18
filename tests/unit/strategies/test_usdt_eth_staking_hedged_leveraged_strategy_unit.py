@@ -240,7 +240,11 @@ class TestUSDTETHStakingHedgedLeveragedStrategyActions:
     
     def test_create_exit_partial_orders(self, strategy):
         """Test _create_exit_partial_orders method."""
-        with patch.object(strategy, '_get_asset_price', return_value=3000.0):
+        with patch.object(strategy, '_get_asset_price', return_value=3000.0), \
+             patch.object(strategy.position_monitor, 'get_current_position', return_value={
+                 'aUSDT_balance': 10000.0,
+                 'etherfi_balance': 3.33
+             }):
             orders = strategy._create_exit_partial_orders(5000.0)
             
             assert len(orders) >= 3  # Similar to exit_full but partial amounts
@@ -250,7 +254,8 @@ class TestUSDTETHStakingHedgedLeveragedStrategyActions:
     def test_create_dust_sell_orders(self, strategy):
         """Test _create_dust_sell_orders method."""
         with patch.object(strategy, '_get_asset_price', return_value=3000.0):
-            orders = strategy._create_dust_sell_orders(10000.0)
+            dust_tokens = {'EIGEN': 100.0, 'ETHFI': 50.0}
+            orders = strategy._create_dust_sell_orders(dust_tokens)
             
             # Should have orders for EIGEN and ETHFI dust
             assert len(orders) == 2
