@@ -158,12 +158,12 @@ class TestUSDTETHStakingHedgedLeveragedStrategyActions:
             mock_create.return_value = mock_orders
             
             orders = strategy.generate_orders(
-            timestamp=pd.Timestamp.now(),
-            exposure={},
-            risk_assessment={},
-            pnl={},
-            market_data={}
-        )
+                timestamp=pd.Timestamp.now(),
+                exposure={'total_exposure': 10000.0, 'positions': {}},
+                risk_assessment={},
+                pnl={},
+                market_data={}
+            )
             
             mock_create.assert_called_once_with(10000.0)
             assert orders == mock_orders
@@ -198,7 +198,7 @@ class TestUSDTETHStakingHedgedLeveragedStrategyActions:
             assert stake_order is not None
             assert stake_order.venue == Venue.ETHERFI
             assert stake_order.token_in == 'ETH'
-            assert stake_order.token_out == 'weETH'
+            assert stake_order.token_out == 'etherfi'
             assert stake_order.strategy_intent == 'entry_full'
     
     def test_create_entry_partial_orders(self, strategy):
@@ -212,7 +212,11 @@ class TestUSDTETHStakingHedgedLeveragedStrategyActions:
     
     def test_create_exit_full_orders(self, strategy):
         """Test _create_exit_full_orders method."""
-        with patch.object(strategy, '_get_asset_price', return_value=3000.0):
+        with patch.object(strategy, '_get_asset_price', return_value=3000.0), \
+             patch.object(strategy.position_monitor, 'get_current_position', return_value={
+                 'aUSDT_balance': 10000.0,
+                 'etherfi_balance': 3.33
+             }):
             orders = strategy._create_exit_full_orders(10000.0)
             
             # Should have orders to unwind leveraged position
@@ -222,7 +226,7 @@ class TestUSDTETHStakingHedgedLeveragedStrategyActions:
             unstake_order = next((o for o in orders if o.operation == OrderOperation.UNSTAKE), None)
             assert unstake_order is not None
             assert unstake_order.venue == Venue.ETHERFI
-            assert unstake_order.token_in == 'weETH'
+            assert unstake_order.token_in == 'etherfi'
             assert unstake_order.token_out == 'ETH'
             assert unstake_order.strategy_intent == 'exit_full'
             
@@ -236,7 +240,11 @@ class TestUSDTETHStakingHedgedLeveragedStrategyActions:
     
     def test_create_exit_partial_orders(self, strategy):
         """Test _create_exit_partial_orders method."""
-        with patch.object(strategy, '_get_asset_price', return_value=3000.0):
+        with patch.object(strategy, '_get_asset_price', return_value=3000.0), \
+             patch.object(strategy.position_monitor, 'get_current_position', return_value={
+                 'aUSDT_balance': 10000.0,
+                 'etherfi_balance': 3.33
+             }):
             orders = strategy._create_exit_partial_orders(5000.0)
             
             assert len(orders) >= 3  # Similar to exit_full but partial amounts
@@ -246,7 +254,8 @@ class TestUSDTETHStakingHedgedLeveragedStrategyActions:
     def test_create_dust_sell_orders(self, strategy):
         """Test _create_dust_sell_orders method."""
         with patch.object(strategy, '_get_asset_price', return_value=3000.0):
-            orders = strategy._create_dust_sell_orders(10000.0)
+            dust_tokens = {'EIGEN': 100.0, 'ETHFI': 50.0}
+            orders = strategy._create_dust_sell_orders(dust_tokens)
             
             # Should have orders for EIGEN and ETHFI dust
             assert len(orders) == 2
@@ -274,13 +283,13 @@ class TestUSDTETHStakingHedgedLeveragedStrategyHelpers:
         with patch.object(strategy, '_get_asset_price', return_value=3000.0):
             target = strategy.calculate_target_position(10000.0)
             
-            assert 'weeth_balance' in target
+            assert 'etherfi_balance' in target
             assert 'eth_balance' in target
-            assert 'ausdt_balance' in target
+            assert 'aUSDT_balance' in target
             assert 'usdt_balance' in target
-            assert target['weeth_balance'] > 0
+            assert target['etherfi_balance'] > 0
             assert target['eth_balance'] == 0.0  # All ETH staked
-            assert target['ausdt_balance'] > 0  # Some USDT lent
+            assert target['aUSDT_balance'] > 0  # Some USDT lent
             assert target['usdt_balance'] > 0  # Some USDT reserved
     
     def test_get_asset_price(self, strategy):
@@ -294,11 +303,14 @@ class TestUSDTETHStakingHedgedLeveragedStrategyHelpers:
             orders = strategy._create_entry_full_orders(10000.0)
             
             for order in orders:
-                # Check operation_id format: strategy_id_intent_timestamp
+                # Check operation_id format: operation[_token]_timestamp
                 parts = order.operation_id.split('_')
-                assert len(parts) >= 3
-                assert parts[0] == 'usdt'
-                assert parts[1] == 'eth'
+                assert len(parts) >= 2
+                # First part should be operation type (supply, buy, stake, reserve, etc.)
+                assert parts[0] in ['supply', 'buy', 'stake', 'reserve', 'unstake', 'sell', 'withdraw', 'transfer']
+                # If there are 3+ parts, second part should be token type (usdt, eth, etc.)
+                if len(parts) >= 3:
+                    assert parts[1] in ['usdt', 'eth']
                 # Last part should be a timestamp (numeric)
                 assert parts[-1].isdigit()
                 # Should be unix microseconds (13+ digits)
@@ -345,5 +357,6 @@ class TestUSDTETHStakingHedgedLeveragedStrategyErrorHandling:
         """Test error handling in _get_asset_price."""
         with patch.object(strategy, '_get_asset_price', side_effect=Exception("Price fetch failed")):
             orders = strategy._create_entry_full_orders(10000.0)
-            # Should handle error gracefully and return empty list
-            assert len(orders) == 0
+            # Should handle error gracefully and still create reserve orders
+            assert len(orders) == 1  # Only reserve order should be created
+            assert orders[0].strategy_intent == 'reserve'

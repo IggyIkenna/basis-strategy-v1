@@ -454,33 +454,34 @@ class ETHStakingOnlyStrategy(BaseStrategyManager):
                         
                         # Calculate expected deltas for dust conversion
                         dust_instrument = f"{Venue.WALLET.value}:BaseToken:{token}"
-                        share_class_instrument = f"{Venue.WALLET.value}:BaseToken:{self.share_class}"
+                        eth_instrument = f"{Venue.WALLET.value}:BaseToken:ETH"
                         expected_deltas = {
                             dust_instrument: -amount,  # Lose dust token
-                            share_class_instrument: amount  # Gain share class (simplified 1:1)
+                            eth_instrument: amount  # Gain ETH
                         }
                         
                         # Operation details
                         operation_details = {
                             'dust_token': token,
-                            'target_currency': self.share_class,
+                            'target_currency': 'ETH',
                             'conversion_type': 'dust_cleanup'
                         }
                         
                         orders.append(Order(
                             operation_id=operation_id,
-                            venue=Venue.WALLET,
-                            operation=OrderOperation.TRANSFER,
-                            token=token,
+                            venue=Venue.UNISWAP,
+                            operation=OrderOperation.SWAP,
+                            token_in=token,
+                            token_out='ETH',
                             amount=amount,
                             source_venue=Venue.WALLET,
                             target_venue=Venue.WALLET,
                             source_token=token,
-                            target_token=self.share_class,
+                            target_token='ETH',
                             expected_deltas=expected_deltas,
                             operation_details=operation_details,
                             execution_mode='sequential',
-                            strategy_intent='dust_cleanup',
+                            strategy_intent='dust_sell',
                             strategy_id='eth_staking_only'
                         ))
             

@@ -725,10 +725,16 @@ class ETHLeveragedStrategy(BaseStrategyManager):
             # 1. Repay proportional AAVE debt (atomic group)
             if aave_debt_reduction > 0:
                 orders.append(Order(
+                    operation_id=f"repay_{int(pd.Timestamp.now().timestamp() * 1000000)}",
                     venue=Venue.AAVE_V3,
                     operation=OrderOperation.REPAY,
                     token_in='WETH',
                     amount=aave_debt_reduction,
+                    source_venue='wallet',
+                    target_venue=Venue.AAVE_V3,
+                    source_token='WETH',
+                    target_token='debtWETH',
+                    expected_deltas={'aave_v3:debtToken:debtWETH': -aave_debt_reduction},
                     execution_mode='atomic',
                     atomic_group_id=atomic_group_id,
                     sequence_in_group=1,
@@ -739,10 +745,16 @@ class ETHLeveragedStrategy(BaseStrategyManager):
             # 2. Withdraw proportional LST from AAVE (atomic group)
             if aave_supply_reduction > 0:
                 orders.append(Order(
+                    operation_id=f"withdraw_{int(pd.Timestamp.now().timestamp() * 1000000)}",
                     venue=Venue.AAVE_V3,
                     operation=OrderOperation.WITHDRAW,
                     token_out=self.lst_type,
                     amount=aave_supply_reduction,
+                    source_venue=Venue.AAVE_V3,
+                    target_venue='wallet',
+                    source_token=f'a{self.lst_type}',
+                    target_token=self.lst_type,
+                    expected_deltas={f'aave_v3:aToken:a{self.lst_type}': -aave_supply_reduction},
                     execution_mode='atomic',
                     atomic_group_id=atomic_group_id,
                     sequence_in_group=2,
@@ -754,11 +766,17 @@ class ETHLeveragedStrategy(BaseStrategyManager):
             total_lst_reduction = lst_reduction + aave_supply_reduction
             if total_lst_reduction > 0:
                 orders.append(Order(
+                    operation_id=f"unstake_{int(pd.Timestamp.now().timestamp() * 1000000)}",
                     venue=Venue.ETHERFI,
                     operation=OrderOperation.UNSTAKE,
                     token_in=self.lst_type,
                     token_out='WETH',
                     amount=total_lst_reduction,
+                    source_venue=Venue.ETHERFI,
+                    target_venue='wallet',
+                    source_token=self.lst_type,
+                    target_token='WETH',
+                    expected_deltas={f'{self.lst_type.lower()}_balance': -total_lst_reduction, 'weth_balance': total_lst_reduction},
                     execution_mode='atomic',
                     atomic_group_id=atomic_group_id,
                     sequence_in_group=3,
@@ -768,12 +786,16 @@ class ETHLeveragedStrategy(BaseStrategyManager):
             
             # 4. Convert to share class currency (sequential)
             orders.append(Order(
+                operation_id=f"transfer_{int(pd.Timestamp.now().timestamp() * 1000000)}",
                 venue='wallet',
                 operation=OrderOperation.TRANSFER,
                 source_venue='wallet',
                 target_venue='wallet',
                 token=self.share_class,
+                source_token='WETH',
+                target_token=self.share_class,
                 amount=equity_delta,
+                expected_deltas={'weth_balance': -equity_delta, f'{self.share_class.lower()}_balance': equity_delta},
                 execution_mode='sequential',
                 strategy_intent='exit_partial',
                 strategy_id='eth_leveraged'
@@ -871,24 +893,25 @@ class ETHLeveragedStrategy(BaseStrategyManager):
                         ))
                     
                     elif token in ['EIGEN', 'ETHFI', 'KING']:
-                        # Dust tokens from staking rewards - convert to share class
+                        # Dust tokens from staking rewards - swap via Uniswap
                         orders.append(Order(
-                            operation_id=f"dust_transfer_{int(pd.Timestamp.now().timestamp() * 1000000)}",
-                            venue='wallet',
-                            operation=OrderOperation.TRANSFER,
+                            operation_id=f"dust_swap_{int(pd.Timestamp.now().timestamp() * 1000000)}",
+                            venue=Venue.UNISWAP,
+                            operation=OrderOperation.SWAP,
+                            token_in=token,
+                            token_out='ETH',
+                            amount=amount,
                             source_venue='wallet',
                             target_venue='wallet',
                             source_token=token,
-                            target_token=self.share_class,
-                            token=token,
-                            amount=amount,
+                            target_token='ETH',
                             expected_deltas={
                                 f'{Venue.WALLET}:BaseToken:{token}': -amount,  # Lose dust token
-                                f'{Venue.WALLET}:BaseToken:{self.share_class}': amount  # Gain share class (simplified 1:1)
+                                f'{Venue.WALLET}:BaseToken:ETH': amount  # Gain ETH
                             },
-                            operation_details={'conversion_type': 'dust_cleanup', 'from_asset': token, 'to_asset': self.share_class},
+                            operation_details={'conversion_type': 'dust_cleanup', 'from_asset': token, 'to_asset': 'ETH'},
                             execution_mode='sequential',
-                            strategy_intent='sell_dust',
+                            strategy_intent='dust_sell',
                             strategy_id='eth_leveraged'
                         ))
                     

@@ -122,7 +122,7 @@ class USDTETHStakingHedgedLeveragedStrategy(BaseStrategyManager):
         """
         try:
             # Log strategy decision start
-            self.logger.info(f"Making USDT market neutral strategy decision triggered by {trigger_source}")
+            self.logger.info("Making USDT market neutral strategy decision")
             
             # Get current equity and positions
             current_equity = exposure.get('total_exposure', 0.0)
@@ -152,14 +152,13 @@ class USDTETHStakingHedgedLeveragedStrategy(BaseStrategyManager):
                 return []
                 
         except Exception as e:
-            self.log_error(
-                error=e,
-                context={
-                    'method': 'generate_orders',
-                    'strategy_type': self.__class__.__name__
-                }
+            self.logger.error(
+                f"Error in USDT market neutral strategy order generation: {e}",
+                error_code="STRAT-001",
+                exc_info=e,
+                method='generate_orders',
+                strategy_type=self.__class__.__name__
             )
-            logger.error(f"Error in USDT market neutral strategy order generation: {e}")
             return []
     
     def _get_asset_price(self) -> float:
@@ -357,12 +356,22 @@ class USDTETHStakingHedgedLeveragedStrategy(BaseStrategyManager):
             
             # 1. Lend additional USDT with leverage (atomic group)
             if usdt_delta > 0:
+                operation_id = f"supply_usdt_{int(pd.Timestamp.now().timestamp() * 1000000)}"
                 orders.append(Order(
+                    operation_id=operation_id,
                     venue=self.lending_protocol,
                     operation=OrderOperation.SUPPLY,
                     token_in='USDT',
                     token_out='aUSDT',
                     amount=usdt_delta,
+                    source_venue=Venue.WALLET,
+                    target_venue=Venue.AAVE_V3,
+                    source_token='USDT',
+                    target_token='aUSDT',
+                    expected_deltas={
+                        "aave_v3:aToken:aUSDT": usdt_delta,
+                        "wallet:BaseToken:USDT": -usdt_delta
+                    },
                     execution_mode='atomic',
                     atomic_group_id=atomic_group_id,
                     sequence_in_group=1,
@@ -373,12 +382,22 @@ class USDTETHStakingHedgedLeveragedStrategy(BaseStrategyManager):
             
             # 2. Buy additional ETH (atomic group)
             if eth_amount > 0:
+                operation_id = f"buy_eth_{int(pd.Timestamp.now().timestamp() * 1000000)}"
                 orders.append(Order(
+                    operation_id=operation_id,
                     venue='binance',
                     operation=OrderOperation.SPOT_TRADE,
                     pair='ETH/USDT',
                     side='BUY',
                     amount=eth_amount,
+                    source_venue=Venue.WALLET,
+                    target_venue=Venue.BINANCE,
+                    source_token='USDT',
+                    target_token='ETH',
+                    expected_deltas={
+                        "wallet:BaseToken:ETH": eth_amount,
+                        "wallet:BaseToken:USDT": -eth_amount * eth_price
+                    },
                     execution_mode='atomic',
                     atomic_group_id=atomic_group_id,
                     sequence_in_group=2,
@@ -388,15 +407,50 @@ class USDTETHStakingHedgedLeveragedStrategy(BaseStrategyManager):
             
             # 3. Stake additional ETH (atomic group)
             if eth_amount > 0:
+                operation_id = f"stake_eth_{int(pd.Timestamp.now().timestamp() * 1000000)}"
                 orders.append(Order(
+                    operation_id=operation_id,
                     venue=self.staking_protocol,
                     operation=OrderOperation.STAKE,
                     token_in='ETH',
                     token_out=self.lst_type,
                     amount=eth_amount,
+                    source_venue=Venue.WALLET,
+                    target_venue=Venue.ETHERFI,
+                    source_token='ETH',
+                    target_token=self.lst_type,
+                    expected_deltas={
+                        f"etherfi:LST:{self.lst_type}": eth_amount,
+                        "wallet:BaseToken:ETH": -eth_amount
+                    },
                     execution_mode='atomic',
                     atomic_group_id=atomic_group_id,
                     sequence_in_group=3,
+                    strategy_intent='entry_partial',
+                    strategy_id='usdt_market_neutral'
+                ))
+            
+            # 4. Short ETH perps for hedging (atomic group)
+            if eth_amount > 0:
+                operation_id = f"short_eth_{int(pd.Timestamp.now().timestamp() * 1000000)}"
+                orders.append(Order(
+                    operation_id=operation_id,
+                    venue=Venue.BINANCE,
+                    operation=OrderOperation.PERP_TRADE,
+                    pair='ETHUSDT',
+                    side='SELL',
+                    amount=eth_amount,
+                    source_venue=Venue.WALLET,
+                    target_venue=Venue.BINANCE,
+                    source_token='USDT',
+                    target_token='ETH',
+                    expected_deltas={
+                        "binance:Perp:ETHUSDT": -eth_amount,  # Short position
+                        "wallet:BaseToken:USDT": -eth_amount * eth_price  # Margin requirement
+                    },
+                    execution_mode='atomic',
+                    atomic_group_id=atomic_group_id,
+                    sequence_in_group=4,
                     strategy_intent='entry_partial',
                     strategy_id='usdt_market_neutral'
                 ))
@@ -428,12 +482,22 @@ class USDTETHStakingHedgedLeveragedStrategy(BaseStrategyManager):
             
             # 1. Unstake LST to get ETH (atomic group)
             if lst_balance > 0:
+                operation_id = f"unstake_{int(pd.Timestamp.now().timestamp() * 1000000)}"
                 orders.append(Order(
+                    operation_id=operation_id,
                     venue=self.staking_protocol,
                     operation=OrderOperation.UNSTAKE,
                     token_in=self.lst_type,
                     token_out='ETH',
                     amount=lst_balance,
+                    source_venue=Venue.ETHERFI,
+                    target_venue=Venue.WALLET,
+                    source_token=self.lst_type,
+                    target_token='ETH',
+                    expected_deltas={
+                        f"etherfi:LST:{self.lst_type}": -lst_balance,
+                        "wallet:BaseToken:ETH": lst_balance
+                    },
                     execution_mode='atomic',
                     atomic_group_id=atomic_group_id,
                     sequence_in_group=1,
@@ -443,12 +507,23 @@ class USDTETHStakingHedgedLeveragedStrategy(BaseStrategyManager):
             
             # 2. Sell ETH (atomic group)
             if lst_balance > 0:
+                operation_id = f"sell_eth_{int(pd.Timestamp.now().timestamp() * 1000000)}"
+                eth_price = self._get_asset_price()
                 orders.append(Order(
+                    operation_id=operation_id,
                     venue='binance',
                     operation=OrderOperation.SPOT_TRADE,
                     pair='ETH/USDT',
                     side='SELL',
                     amount=lst_balance,
+                    source_venue=Venue.WALLET,
+                    target_venue=Venue.BINANCE,
+                    source_token='ETH',
+                    target_token='USDT',
+                    expected_deltas={
+                        "wallet:BaseToken:ETH": -lst_balance,
+                        "wallet:BaseToken:USDT": lst_balance * eth_price
+                    },
                     execution_mode='atomic',
                     atomic_group_id=atomic_group_id,
                     sequence_in_group=2,
@@ -458,12 +533,22 @@ class USDTETHStakingHedgedLeveragedStrategy(BaseStrategyManager):
             
             # 3. Withdraw lent USDT (atomic group)
             if ausdt_balance > 0:
+                operation_id = f"withdraw_usdt_{int(pd.Timestamp.now().timestamp() * 1000000)}"
                 orders.append(Order(
+                    operation_id=operation_id,
                     venue=self.lending_protocol,
                     operation=OrderOperation.WITHDRAW,
                     token_in='aUSDT',
                     token_out='USDT',
                     amount=ausdt_balance,
+                    source_venue=Venue.AAVE_V3,
+                    target_venue=Venue.WALLET,
+                    source_token='aUSDT',
+                    target_token='USDT',
+                    expected_deltas={
+                        "aave_v3:aToken:aUSDT": -ausdt_balance,
+                        "wallet:BaseToken:USDT": ausdt_balance
+                    },
                     execution_mode='atomic',
                     atomic_group_id=atomic_group_id,
                     sequence_in_group=3,
@@ -472,13 +557,20 @@ class USDTETHStakingHedgedLeveragedStrategy(BaseStrategyManager):
                 ))
             
             # 4. Convert all to share class currency (sequential)
+            operation_id = f"transfer_{int(pd.Timestamp.now().timestamp() * 1000000)}"
             orders.append(Order(
+                operation_id=operation_id,
                 venue='wallet',
                 operation=OrderOperation.TRANSFER,
                 source_venue='wallet',
                 target_venue='wallet',
+                source_token=self.share_class,
+                target_token=self.share_class,
                 token=self.share_class,
                 amount=equity,
+                expected_deltas={
+                    f"wallet:BaseToken:{self.share_class}": equity
+                },
                 execution_mode='sequential',
                 strategy_intent='exit_full',
                 strategy_id='usdt_market_neutral'
@@ -521,12 +613,22 @@ class USDTETHStakingHedgedLeveragedStrategy(BaseStrategyManager):
             
             # 1. Unstake proportional LST (atomic group)
             if lst_reduction > 0:
+                operation_id = f"unstake_partial_{int(pd.Timestamp.now().timestamp() * 1000000)}"
                 orders.append(Order(
+                    operation_id=operation_id,
                     venue=self.staking_protocol,
                     operation=OrderOperation.UNSTAKE,
                     token_in=self.lst_type,
                     token_out='ETH',
                     amount=lst_reduction,
+                    source_venue=Venue.ETHERFI,
+                    target_venue=Venue.WALLET,
+                    source_token=self.lst_type,
+                    target_token='ETH',
+                    expected_deltas={
+                        f"etherfi:LST:{self.lst_type}": -lst_reduction,
+                        "wallet:BaseToken:ETH": lst_reduction
+                    },
                     execution_mode='atomic',
                     atomic_group_id=atomic_group_id,
                     sequence_in_group=1,
@@ -536,12 +638,23 @@ class USDTETHStakingHedgedLeveragedStrategy(BaseStrategyManager):
             
             # 2. Sell proportional ETH (atomic group)
             if lst_reduction > 0:
+                operation_id = f"sell_eth_partial_{int(pd.Timestamp.now().timestamp() * 1000000)}"
+                eth_price = self._get_asset_price()
                 orders.append(Order(
+                    operation_id=operation_id,
                     venue='binance',
                     operation=OrderOperation.SPOT_TRADE,
                     pair='ETH/USDT',
                     side='SELL',
                     amount=lst_reduction,
+                    source_venue=Venue.WALLET,
+                    target_venue=Venue.BINANCE,
+                    source_token='ETH',
+                    target_token='USDT',
+                    expected_deltas={
+                        "wallet:BaseToken:ETH": -lst_reduction,
+                        "wallet:BaseToken:USDT": lst_reduction * eth_price
+                    },
                     execution_mode='atomic',
                     atomic_group_id=atomic_group_id,
                     sequence_in_group=2,
@@ -551,12 +664,22 @@ class USDTETHStakingHedgedLeveragedStrategy(BaseStrategyManager):
             
             # 3. Withdraw proportional lent USDT (atomic group)
             if ausdt_reduction > 0:
+                operation_id = f"withdraw_partial_{int(pd.Timestamp.now().timestamp() * 1000000)}"
                 orders.append(Order(
+                    operation_id=operation_id,
                     venue=self.lending_protocol,
                     operation=OrderOperation.WITHDRAW,
                     token_in='aUSDT',
                     token_out='USDT',
                     amount=ausdt_reduction,
+                    source_venue=Venue.AAVE_V3,
+                    target_venue=Venue.WALLET,
+                    source_token='aUSDT',
+                    target_token='USDT',
+                    expected_deltas={
+                        "aave_v3:aToken:aUSDT": -ausdt_reduction,
+                        "wallet:BaseToken:USDT": ausdt_reduction
+                    },
                     execution_mode='atomic',
                     atomic_group_id=atomic_group_id,
                     sequence_in_group=3,
@@ -565,13 +688,20 @@ class USDTETHStakingHedgedLeveragedStrategy(BaseStrategyManager):
                 ))
             
             # 4. Convert to share class currency (sequential)
+            operation_id = f"transfer_partial_{int(pd.Timestamp.now().timestamp() * 1000000)}"
             orders.append(Order(
+                operation_id=operation_id,
                 venue='wallet',
                 operation=OrderOperation.TRANSFER,
                 source_venue='wallet',
                 target_venue='wallet',
+                source_token=self.share_class,
+                target_token=self.share_class,
                 token=self.share_class,
                 amount=equity_delta,
+                expected_deltas={
+                    f"wallet:BaseToken:{self.share_class}": equity_delta
+                },
                 execution_mode='sequential',
                 strategy_intent='exit_partial',
                 strategy_id='usdt_market_neutral'
@@ -601,13 +731,20 @@ class USDTETHStakingHedgedLeveragedStrategy(BaseStrategyManager):
                     # Convert to share class currency
                     if token == 'USDT':
                         # Direct conversion
+                        operation_id = f"transfer_dust_{token}_{int(pd.Timestamp.now().timestamp() * 1000000)}"
                         orders.append(Order(
+                            operation_id=operation_id,
                             venue='wallet',
                             operation=OrderOperation.TRANSFER,
                             source_venue='wallet',
                             target_venue='wallet',
+                            source_token=token,
+                            target_token=token,
                             token=token,
                             amount=amount,
+                            expected_deltas={
+                                f"wallet:BaseToken:{token}": amount
+                            },
                             execution_mode='sequential',
                             strategy_intent='sell_dust',
                             strategy_id='usdt_market_neutral'
@@ -615,12 +752,23 @@ class USDTETHStakingHedgedLeveragedStrategy(BaseStrategyManager):
                     
                     elif token == 'ETH':
                         # Sell ETH for share class
+                        operation_id = f"sell_dust_{token}_{int(pd.Timestamp.now().timestamp() * 1000000)}"
+                        eth_price = self._get_asset_price()
                         orders.append(Order(
+                            operation_id=operation_id,
                             venue='binance',
                             operation=OrderOperation.SPOT_TRADE,
                             pair='ETH/USDT',
                             side='SELL',
                             amount=amount,
+                            source_venue=Venue.WALLET,
+                            target_venue=Venue.BINANCE,
+                            source_token='ETH',
+                            target_token='USDT',
+                            expected_deltas={
+                                "wallet:BaseToken:ETH": -amount,
+                                "wallet:BaseToken:USDT": amount * eth_price
+                            },
                             execution_mode='sequential',
                             strategy_intent='sell_dust',
                             strategy_id='usdt_market_neutral'
@@ -629,24 +777,45 @@ class USDTETHStakingHedgedLeveragedStrategy(BaseStrategyManager):
                     elif token == self.lst_type:
                         # Unstake LST first, then sell ETH (atomic group)
                         atomic_group_id = f"dust_unstake_{token}_{int(amount)}"
+                        operation_id = f"unstake_dust_{token}_{int(pd.Timestamp.now().timestamp() * 1000000)}"
                         orders.append(Order(
+                            operation_id=operation_id,
                             venue=self.staking_protocol,
                             operation=OrderOperation.UNSTAKE,
                             token_in=token,
                             token_out='ETH',
                             amount=amount,
+                            source_venue=Venue.ETHERFI,
+                            target_venue=Venue.WALLET,
+                            source_token=token,
+                            target_token='ETH',
+                            expected_deltas={
+                                f"etherfi:LST:{token}": -amount,
+                                "wallet:BaseToken:ETH": amount
+                            },
                             execution_mode='atomic',
                             atomic_group_id=atomic_group_id,
                             sequence_in_group=1,
                             strategy_intent='sell_dust',
                             strategy_id='usdt_market_neutral'
                         ))
+                        operation_id2 = f"sell_dust_eth_{int(pd.Timestamp.now().timestamp() * 1000000)}"
+                        eth_price = self._get_asset_price()
                         orders.append(Order(
+                            operation_id=operation_id2,
                             venue='binance',
                             operation=OrderOperation.SPOT_TRADE,
                             pair='ETH/USDT',
                             side='SELL',
                             amount=amount,
+                            source_venue=Venue.WALLET,
+                            target_venue=Venue.BINANCE,
+                            source_token='ETH',
+                            target_token='USDT',
+                            expected_deltas={
+                                "wallet:BaseToken:ETH": -amount,
+                                "wallet:BaseToken:USDT": amount * eth_price
+                            },
                             execution_mode='atomic',
                             atomic_group_id=atomic_group_id,
                             sequence_in_group=2,
@@ -657,25 +826,42 @@ class USDTETHStakingHedgedLeveragedStrategy(BaseStrategyManager):
                     elif token == 'aUSDT':
                         # Withdraw from lending protocol first, then convert (atomic group)
                         atomic_group_id = f"dust_withdraw_{token}_{int(amount)}"
+                        operation_id = f"withdraw_dust_{token}_{int(pd.Timestamp.now().timestamp() * 1000000)}"
                         orders.append(Order(
+                            operation_id=operation_id,
                             venue=self.lending_protocol,
                             operation=OrderOperation.WITHDRAW,
                             token_in=token,
                             token_out='USDT',
                             amount=amount,
+                            source_venue=Venue.AAVE_V3,
+                            target_venue=Venue.WALLET,
+                            source_token=token,
+                            target_token='USDT',
+                            expected_deltas={
+                                "aave_v3:aToken:aUSDT": -amount,
+                                "wallet:BaseToken:USDT": amount
+                            },
                             execution_mode='atomic',
                             atomic_group_id=atomic_group_id,
                             sequence_in_group=1,
                             strategy_intent='sell_dust',
                             strategy_id='usdt_market_neutral'
                         ))
+                        operation_id2 = f"transfer_dust_usdt_{int(pd.Timestamp.now().timestamp() * 1000000)}"
                         orders.append(Order(
+                            operation_id=operation_id2,
                             venue='wallet',
                             operation=OrderOperation.TRANSFER,
                             source_venue='wallet',
                             target_venue='wallet',
+                            source_token='USDT',
+                            target_token='USDT',
                             token='USDT',
                             amount=amount,
+                            expected_deltas={
+                                "wallet:BaseToken:USDT": amount
+                            },
                             execution_mode='atomic',
                             atomic_group_id=atomic_group_id,
                             sequence_in_group=2,
@@ -683,14 +869,47 @@ class USDTETHStakingHedgedLeveragedStrategy(BaseStrategyManager):
                             strategy_id='usdt_market_neutral'
                         ))
                     
+                    elif token in ['EIGEN', 'ETHFI']:
+                        # Dust tokens from staking rewards - swap via Uniswap
+                        operation_id = f"swap_dust_{token}_{int(pd.Timestamp.now().timestamp() * 1000000)}"
+                        orders.append(Order(
+                            operation_id=operation_id,
+                            venue=Venue.UNISWAP,
+                            operation=OrderOperation.SWAP,
+                            token_in=token,
+                            token_out='USDT',
+                            amount=amount,
+                            source_venue=Venue.WALLET,
+                            target_venue=Venue.UNISWAP,
+                            source_token=token,
+                            target_token='USDT',
+                            expected_deltas={
+                                f"wallet:BaseToken:{token}": -amount,
+                                "wallet:BaseToken:USDT": amount  # Simplified - would need price lookup
+                            },
+                            execution_mode='sequential',
+                            strategy_intent='dust_sell',
+                            strategy_id='usdt_market_neutral'
+                        ))
+                    
                     else:
                         # Other tokens - sell for share class
+                        operation_id = f"sell_dust_{token}_{int(pd.Timestamp.now().timestamp() * 1000000)}"
                         orders.append(Order(
+                            operation_id=operation_id,
                             venue='binance',
                             operation=OrderOperation.SPOT_TRADE,
                             pair=f'{token}/USDT',
                             side='SELL',
                             amount=amount,
+                            source_venue=Venue.WALLET,
+                            target_venue=Venue.BINANCE,
+                            source_token=token,
+                            target_token='USDT',
+                            expected_deltas={
+                                f"wallet:BaseToken:{token}": -amount,
+                                "wallet:BaseToken:USDT": amount  # Simplified - would need price lookup
+                            },
                             execution_mode='sequential',
                             strategy_intent='sell_dust',
                             strategy_id='usdt_market_neutral'

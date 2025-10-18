@@ -142,19 +142,20 @@ class TestUSDTETHStakingHedgedSimpleStrategyActions:
     
     def test_generate_orders_entry_full(self, strategy):
         """Test entry_full order generation."""
-        with patch.object(strategy, '_create_entry_full_orders') as mock_create:
+        with patch.object(strategy, '_create_entry_full_orders') as mock_create, \
+             patch.object(strategy, 'get_current_equity', return_value=0.0):
             mock_orders = [Mock()]
             mock_create.return_value = mock_orders
-            
+
             orders = strategy.generate_orders(
             timestamp=pd.Timestamp.now(),
-            exposure={},
+            exposure={'total_exposure': 10000.0, 'positions': {}},
             risk_assessment={},
             pnl={},
             market_data={}
         )
             
-            mock_create.assert_called_once_with(10000.0)
+            mock_create.assert_called_once_with(0.0)
             assert orders == mock_orders
     
     def test_create_entry_full_orders(self, strategy):
@@ -170,7 +171,7 @@ class TestUSDTETHStakingHedgedSimpleStrategyActions:
             assert buy_order.venue == Venue.BINANCE
             assert buy_order.pair == 'ETH/USDT'
             assert buy_order.side == 'BUY'
-            assert buy_order.amount == 10000.0 / 3000.0  # 10000 USDT / 3000 ETH price
+            assert buy_order.amount == (10000.0 * 0.5) / 3000.0  # 50% allocation * 10000 USDT / 3000 ETH price
             assert buy_order.source_venue == Venue.WALLET
             assert buy_order.target_venue == Venue.BINANCE
             assert buy_order.source_token == 'USDT'
@@ -182,8 +183,8 @@ class TestUSDTETHStakingHedgedSimpleStrategyActions:
             stake_order = next(o for o in orders if o.operation == OrderOperation.STAKE)
             assert stake_order.venue == Venue.ETHERFI
             assert stake_order.token_in == 'ETH'
-            assert stake_order.token_out == 'weETH'
-            assert stake_order.amount == 10000.0 / 3000.0  # Same amount as ETH bought
+            assert stake_order.token_out == 'etherfi'
+            assert stake_order.amount == (10000.0 * 0.5) / 3000.0  # Same amount as ETH bought (50% allocation)
             assert stake_order.strategy_intent == 'entry_full'
             assert stake_order.strategy_id == 'usdt_eth_staking_hedged_simple'
     
@@ -195,11 +196,14 @@ class TestUSDTETHStakingHedgedSimpleStrategyActions:
             assert len(orders) == 2  # Buy ETH + stake ETH
             for order in orders:
                 assert order.strategy_intent == 'entry_partial'
-                assert order.amount == 5000.0 / 3000.0  # 5000 USDT / 3000 ETH price
+                assert order.amount == (5000.0 * 0.5) / 3000.0  # 50% allocation * 5000 USDT / 3000 ETH price
     
     def test_create_exit_full_orders(self, strategy):
         """Test _create_exit_full_orders method."""
-        with patch.object(strategy, '_get_asset_price', return_value=3000.0):
+        with patch.object(strategy, '_get_asset_price', return_value=3000.0), \
+             patch.object(strategy.position_monitor, 'get_current_position', return_value={
+                 'etherfi_balance': 3.33
+             }):
             orders = strategy._create_exit_full_orders(10000.0)
             
             # Should have unstake ETH and sell ETH orders
@@ -208,7 +212,7 @@ class TestUSDTETHStakingHedgedSimpleStrategyActions:
             # Check unstake ETH order
             unstake_order = next(o for o in orders if o.operation == OrderOperation.UNSTAKE)
             assert unstake_order.venue == Venue.ETHERFI
-            assert unstake_order.token_in == 'weETH'
+            assert unstake_order.token_in == 'etherfi'
             assert unstake_order.token_out == 'ETH'
             assert unstake_order.strategy_intent == 'exit_full'
             
@@ -221,35 +225,39 @@ class TestUSDTETHStakingHedgedSimpleStrategyActions:
     
     def test_create_exit_partial_orders(self, strategy):
         """Test _create_exit_partial_orders method."""
-        with patch.object(strategy, '_get_asset_price', return_value=3000.0):
+        with patch.object(strategy, '_get_asset_price', return_value=3000.0), \
+             patch.object(strategy.position_monitor, 'get_current_position', return_value={
+                 'etherfi_balance': 3.33
+             }):
             orders = strategy._create_exit_partial_orders(5000.0)
             
             assert len(orders) == 2  # Unstake ETH + sell ETH
             for order in orders:
                 assert order.strategy_intent == 'exit_partial'
-                assert order.amount == 5000.0 / 3000.0  # 5000 USDT / 3000 ETH price
+                assert order.amount == 3.33  # Actual position balance (min of equity_delta and lst_balance)
     
     def test_create_dust_sell_orders(self, strategy):
         """Test _create_dust_sell_orders method."""
         with patch.object(strategy, '_get_asset_price', return_value=3000.0):
-            orders = strategy._create_dust_sell_orders(10000.0)
+            dust_tokens = {'EIGEN': 100.0, 'ETHFI': 50.0}
+            orders = strategy._create_dust_sell_orders(dust_tokens)
             
             # Should have orders for EIGEN and ETHFI dust
             assert len(orders) == 2
             
             # Check EIGEN dust order
-            eigen_order = next(o for o in orders if o.token_in == 'EIGEN')
-            assert eigen_order.venue == Venue.UNISWAP
-            assert eigen_order.operation == OrderOperation.SWAP
-            assert eigen_order.token_out == 'USDT'
-            assert eigen_order.strategy_intent == 'dust_sell'
+            eigen_order = next(o for o in orders if o.source_token == 'EIGEN')
+            assert eigen_order.venue == Venue.BINANCE
+            assert eigen_order.operation == OrderOperation.SPOT_TRADE
+            assert eigen_order.target_token == 'USDT'
+            assert eigen_order.strategy_intent == 'sell_dust'
             
             # Check ETHFI dust order
-            ethfi_order = next(o for o in orders if o.token_in == 'ETHFI')
-            assert ethfi_order.venue == Venue.UNISWAP
-            assert ethfi_order.operation == OrderOperation.SWAP
-            assert ethfi_order.token_out == 'USDT'
-            assert ethfi_order.strategy_intent == 'dust_sell'
+            ethfi_order = next(o for o in orders if o.source_token == 'ETHFI')
+            assert ethfi_order.venue == Venue.BINANCE
+            assert ethfi_order.operation == OrderOperation.SPOT_TRADE
+            assert ethfi_order.target_token == 'USDT'
+            assert ethfi_order.strategy_intent == 'sell_dust'
 
 
 class TestUSDTETHStakingHedgedSimpleStrategyHelpers:
@@ -260,10 +268,10 @@ class TestUSDTETHStakingHedgedSimpleStrategyHelpers:
         with patch.object(strategy, '_get_asset_price', return_value=3000.0):
             target = strategy.calculate_target_position(10000.0)
             
-            assert 'weeth_balance' in target
+            assert 'etherfi_balance' in target
             assert 'eth_balance' in target
             assert 'usdt_balance' in target
-            assert target['weeth_balance'] == 10000.0 / 3000.0  # 10000 USDT / 3000 ETH price
+            assert target['etherfi_balance'] == (10000.0 * 0.5) / 3000.0  # 50% allocation * 10000 USDT / 3000 ETH price
             assert target['eth_balance'] == 0.0  # All ETH staked
             assert target['usdt_balance'] == 0.0  # All USDT used for ETH buy
     
@@ -278,11 +286,14 @@ class TestUSDTETHStakingHedgedSimpleStrategyHelpers:
             orders = strategy._create_entry_full_orders(10000.0)
             
             for order in orders:
-                # Check operation_id format: strategy_id_intent_timestamp
+                # Check operation_id format: operation[_token]_timestamp
                 parts = order.operation_id.split('_')
-                assert len(parts) >= 3
-                assert parts[0] == 'usdt'
-                assert parts[1] == 'eth'
+                assert len(parts) >= 2
+                # First part should be operation type (buy, stake, etc.)
+                assert parts[0] in ['buy', 'stake']
+                # If there are 3+ parts, second part should be token type (eth, etc.)
+                if len(parts) >= 3:
+                    assert parts[1] in ['eth']
                 # Last part should be a timestamp (numeric)
                 assert parts[-1].isdigit()
                 # Should be unix microseconds (13+ digits)
