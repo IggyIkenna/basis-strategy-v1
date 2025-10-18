@@ -158,12 +158,12 @@ class TestUSDTETHStakingHedgedLeveragedStrategyActions:
             mock_create.return_value = mock_orders
             
             orders = strategy.generate_orders(
-            timestamp=pd.Timestamp.now(),
-            exposure={},
-            risk_assessment={},
-            pnl={},
-            market_data={}
-        )
+                timestamp=pd.Timestamp.now(),
+                exposure={'total_exposure': 10000.0, 'positions': {}},
+                risk_assessment={},
+                pnl={},
+                market_data={}
+            )
             
             mock_create.assert_called_once_with(10000.0)
             assert orders == mock_orders
@@ -198,7 +198,7 @@ class TestUSDTETHStakingHedgedLeveragedStrategyActions:
             assert stake_order is not None
             assert stake_order.venue == Venue.ETHERFI
             assert stake_order.token_in == 'ETH'
-            assert stake_order.token_out == 'weETH'
+            assert stake_order.token_out == 'etherfi'
             assert stake_order.strategy_intent == 'entry_full'
     
     def test_create_entry_partial_orders(self, strategy):

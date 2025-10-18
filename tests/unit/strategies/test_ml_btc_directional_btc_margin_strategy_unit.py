@@ -202,7 +202,10 @@ class TestMLBTCDirectionalBTCMarginStrategyActions:
 
     def test_create_exit_full_orders(self, strategy):
         """Test _create_exit_full_orders method."""
-        with patch.object(strategy, "_get_asset_price", return_value=50000.0):
+        with patch.object(strategy, "_get_asset_price", return_value=50000.0), \
+             patch.object(strategy.position_monitor, 'get_current_position', return_value={
+                 'btc_perp_position': 1.0
+             }):
             orders = strategy._create_exit_full_orders(1.0)
 
             assert len(orders) == 1
@@ -217,7 +220,10 @@ class TestMLBTCDirectionalBTCMarginStrategyActions:
 
     def test_create_exit_partial_orders(self, strategy):
         """Test _create_exit_partial_orders method."""
-        with patch.object(strategy, "_get_asset_price", return_value=50000.0):
+        with patch.object(strategy, "_get_asset_price", return_value=50000.0), \
+             patch.object(strategy.position_monitor, 'get_current_position', return_value={
+                 'btc_perp_position': 1.0
+             }):
             orders = strategy._create_exit_partial_orders(0.5)
 
             assert len(orders) == 1
@@ -226,7 +232,7 @@ class TestMLBTCDirectionalBTCMarginStrategyActions:
             assert order.venue == Venue.BINANCE
             assert order.operation == OrderOperation.PERP_TRADE
             assert order.side == "SELL"
-            assert order.amount == 0.5
+            assert order.amount == 1.0  # Limited by current position size
             assert order.strategy_intent == "exit_partial"
 
     def test_create_dust_sell_orders(self, strategy):

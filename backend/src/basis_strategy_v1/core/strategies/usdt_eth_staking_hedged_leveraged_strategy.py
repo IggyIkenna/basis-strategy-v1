@@ -122,7 +122,7 @@ class USDTETHStakingHedgedLeveragedStrategy(BaseStrategyManager):
         """
         try:
             # Log strategy decision start
-            self.logger.info(f"Making USDT market neutral strategy decision triggered by {trigger_source}")
+            self.logger.info("Making USDT market neutral strategy decision")
             
             # Get current equity and positions
             current_equity = exposure.get('total_exposure', 0.0)
@@ -152,14 +152,13 @@ class USDTETHStakingHedgedLeveragedStrategy(BaseStrategyManager):
                 return []
                 
         except Exception as e:
-            self.log_error(
-                error=e,
-                context={
-                    'method': 'generate_orders',
-                    'strategy_type': self.__class__.__name__
-                }
+            self.logger.error(
+                f"Error in USDT market neutral strategy order generation: {e}",
+                error_code="STRAT-001",
+                exc_info=e,
+                method='generate_orders',
+                strategy_type=self.__class__.__name__
             )
-            logger.error(f"Error in USDT market neutral strategy order generation: {e}")
             return []
     
     def _get_asset_price(self) -> float:
