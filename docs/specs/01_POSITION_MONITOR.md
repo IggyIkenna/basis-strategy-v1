@@ -15,7 +15,6 @@ Track raw ERC-20/token balances across all venues with NO conversions, NO valuat
 - **Component Index**: [../COMPONENT_SPECS_INDEX.md](../COMPONENT_SPECS_INDEX.md) - All 20 components (11 core + 9 supporting)
 
 ## Responsibilities
-1. **Config-Driven Asset Tracking**: Track only assets specified in `component_config.position_monitor.track_assets`
 2. **Raw Balance Tracking**: Track raw token balances with NO conversions or valuations
 3. **Mode-Agnostic Implementation**: Same tracking logic for all strategy modes (pure_lending, btc_basis, eth_leveraged, etc.)
 4. **Fail-Fast Asset Validation**: Fail-fast if unknown asset appears (safeguard against errors)
@@ -60,7 +59,6 @@ Components NEVER receive these as method parameters during runtime.
 
 ### **Config-Driven Architecture**
 
-The Position Monitor is **mode-agnostic** and uses `component_config.position_monitor` from the mode configuration:
 
 ```yaml
 component_config:
@@ -124,9 +122,6 @@ def __init__(self, ...):
 ```
 
 ### Behavior NOT Determinable from Environment Variables
-- Asset tracking configuration (from component_config.position_monitor)
-- Initial balance setup (from component_config.position_monitor.initial_balances)
-- Fail-fast behavior (from component_config.position_monitor.fail_on_unknown_asset)
 
 ## Config Fields Used
 
@@ -135,7 +130,6 @@ def __init__(self, ...):
 - `share_class`: str - 'USDT' | 'ETH'
 - `asset`: str - 'USDT' | 'ETH' | 'BTC'
 
-### Component-Specific Config (from component_config.position_monitor)
 - `track_assets`: List[str] - Assets to track for position monitoring
   - **Usage**: Determines which assets to initialize and track
   - **Required**: Yes
@@ -648,7 +642,6 @@ class ComponentFactory:
 - **Message**: "Position monitor config validation failed: {error}"
 - **Severity**: HIGH
 - **Trigger**: Invalid configuration during initialization
-- **Resolution**: Fix configuration in component_config.position_monitor
 
 ## Quality Gates
 
@@ -842,7 +835,6 @@ class ReconciliationComponent:
 ## Current Implementation Status
 
 ### **Architecture Compliance**
-- [x] Config-driven architecture (component_config.position_monitor)
 - [x] Mode-agnostic implementation (same logic for all strategy modes)
 - [x] Event-driven integration (tight loop architecture)
 - [x] Structured error handling (ComponentError with error codes)

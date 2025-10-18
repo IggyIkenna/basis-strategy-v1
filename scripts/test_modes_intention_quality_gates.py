@@ -53,7 +53,7 @@ class ModeIntentionQualityGates:
         
         # Define expected strategy intentions
         self.strategy_intentions = {
-            'pure_lending': {
+            'pure_lending_usdt': {
                 'description': 'Pure lending strategy using AAVE',
                 'expected_venues': ['aave_v3'],
                 'forbidden_venues': ['binance', 'bybit', 'okx'],
@@ -98,14 +98,14 @@ class ModeIntentionQualityGates:
                 'forbidden_flags': ['staking_enabled', 'borrowing_enabled'],
                 'required_hedge_venues': ['binance', 'bybit', 'okx']
             },
-            'ml_btc_directional': {
+            'ml_btc_directional_usdt_margin': {
                 'description': 'ML BTC directional strategy',
                 'expected_venues': ['binance', 'bybit', 'okx'],
                 'forbidden_venues': ['aave_v3', 'etherfi', 'lido', 'alchemy'],
                 'required_flags': [],
                 'forbidden_flags': ['lending_enabled', 'staking_enabled', 'basis_trade_enabled']
             },
-            'ml_usdt_directional': {
+            'ml_usdt_directional_usdt_margin': {
                 'description': 'ML USDT directional strategy',
                 'expected_venues': ['binance', 'bybit', 'okx'],
                 'forbidden_venues': ['aave_v3', 'etherfi', 'lido', 'alchemy'],

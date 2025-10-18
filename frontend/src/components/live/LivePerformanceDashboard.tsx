@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { apiClient } from '../../services/api';
 import { LivePerformance } from '../../types';
 import { formatCurrency, formatPercentage, formatDateTime } from '../../utils/formatters';
-import { POLLING_INTERVALS } from '../../utils/constants';
+import { POLLING_INTERVALS, API_ENDPOINTS } from '../../utils/constants';
 
 interface LivePerformanceDashboardProps {
   className?: string;
@@ -16,6 +16,8 @@ export const LivePerformanceDashboard: React.FC<LivePerformanceDashboardProps> =
   requestId 
 }) => {
   const [performance, setPerformance] = useState<LivePerformance | null>(null);
+  const [latestPnl, setLatestPnl] = useState<any>(null);
+  const [pnlHistory, setPnlHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -28,8 +30,28 @@ export const LivePerformanceDashboard: React.FC<LivePerformanceDashboardProps> =
 
     const fetchPerformance = async () => {
       try {
+        // Fetch performance data
         const perf = await apiClient.getLivePerformance(requestId);
         setPerformance(perf);
+        
+        // Fetch latest P&L data (read-only, fast)
+        try {
+          const pnlResponse = await apiClient.get(API_ENDPOINTS.PNL.LATEST(requestId));
+          setLatestPnl(pnlResponse.data);
+        } catch (pnlErr) {
+          // P&L data might not be available yet, don't fail the whole request
+          console.warn('P&L data not available:', pnlErr);
+        }
+        
+        // Fetch P&L history (less frequent)
+        try {
+          const historyResponse = await apiClient.get(API_ENDPOINTS.PNL.HISTORY(requestId));
+          setPnlHistory(historyResponse.data);
+        } catch (historyErr) {
+          // P&L history might not be available yet, don't fail the whole request
+          console.warn('P&L history not available:', historyErr);
+        }
+        
         setError(null);
       } catch (err: any) {
         setError(err.message || 'Failed to fetch performance data');
@@ -196,6 +218,41 @@ export const LivePerformanceDashboard: React.FC<LivePerformanceDashboardProps> =
                 </div>
               </div>
             </div>
+
+            {/* P&L Data Section */}
+            {latestPnl && (
+              <div className="bg-blue-50 rounded-lg p-4">
+                <h4 className="text-lg font-medium text-blue-900 mb-3">Latest P&L Data</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <div className="text-sm text-blue-700">Balance-based P&L</div>
+                    <div className="text-xl font-semibold text-blue-900">
+                      {formatCurrency(latestPnl.balance_based?.pnl_cumulative || 0)}
+                    </div>
+                    <div className="text-sm text-blue-600">
+                      {formatPercentage(latestPnl.balance_based?.pnl_pct || 0)} return
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-sm text-blue-700">Attribution P&L</div>
+                    <div className="text-xl font-semibold text-blue-900">
+                      {formatCurrency(latestPnl.attribution?.pnl_cumulative || 0)}
+                    </div>
+                    <div className="text-sm text-blue-600">
+                      Reconciliation: {latestPnl.reconciliation?.passed ? '✅ PASSED' : '⚠️ FAILED'}
+                    </div>
+                  </div>
+                </div>
+                {pnlHistory.length > 0 && (
+                  <div className="mt-3">
+                    <div className="text-sm text-blue-700">P&L History</div>
+                    <div className="text-sm text-blue-600">
+                      {pnlHistory.length} historical records available
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Performance Statistics */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

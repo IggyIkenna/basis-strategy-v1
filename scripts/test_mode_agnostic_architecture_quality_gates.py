@@ -27,8 +27,8 @@ from basis_strategy_v1.core.utilities.utility_manager import UtilityManager
 from basis_strategy_v1.core.components.position_monitor import PositionMonitor
 from basis_strategy_v1.core.components.risk_monitor import RiskMonitor
 from basis_strategy_v1.core.components.exposure_monitor import ExposureMonitor
-from basis_strategy_v1.core.math.pnl_calculator import PnLCalculator
-from basis_strategy_v1.core.strategies.pure_lending_strategy import PureLendingStrategy
+from basis_strategy_v1.core.components.pnl_monitor import PnLCalculator
+from basis_strategy_v1.core.strategies.pure_lending_usdt_strategy import PureLendingStrategy
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -124,9 +124,9 @@ class ModeAgnosticArchitectureQualityGates:
                 return False
             
             # Test P&L Calculator
-            pnl_calculator = PnLCalculator(config, 'USDT', 1000.0, None, None)
+            pnl_monitor = PnLCalculator(config, 'USDT', 1000.0, None, None)
             
-            if hasattr(pnl_calculator, 'utility_manager'):
+            if hasattr(pnl_monitor, 'utility_manager'):
                 self.log_test_result("PnLCalculator.utility_manager", True, "Uses utility manager")
             else:
                 self.log_test_result("PnLCalculator.utility_manager", False, "Missing utility manager")
@@ -237,24 +237,24 @@ class ModeAgnosticArchitectureQualityGates:
             self.log_test_result("Config-Driven Parameters", False, f"Exception: {e}")
             return False
     
-    def test_pnl_calculator_mode_agnostic(self) -> bool:
+    def test_pnl_monitor_mode_agnostic(self) -> bool:
         """Test that P&L Calculator is mode-agnostic."""
         print("\n🔍 Testing P&L Calculator Mode-Agnostic...")
         
         try:
             # Test P&L Calculator initialization
             config = {'mode': 'test', 'share_class': 'USDT', 'asset': 'USDT'}
-            pnl_calculator = PnLCalculator(config, 'USDT', 1000.0, None, None)
+            pnl_monitor = PnLCalculator(config, 'USDT', 1000.0, None, None)
             
             # Check that P&L Calculator has share_class awareness
-            if hasattr(pnl_calculator, 'share_class') and pnl_calculator.share_class == 'USDT':
-                self.log_test_result("PnLCalculator share_class awareness", True, f"Share class: {pnl_calculator.share_class}")
+            if hasattr(pnl_monitor, 'share_class') and pnl_monitor.share_class == 'USDT':
+                self.log_test_result("PnLCalculator share_class awareness", True, f"Share class: {pnl_monitor.share_class}")
             else:
                 self.log_test_result("PnLCalculator share_class awareness", False, "Missing or incorrect share_class")
                 return False
             
             # Check that P&L Calculator doesn't have mode-specific logic
-            pnl_methods = [method for method in dir(pnl_calculator) if not method.startswith('_')]
+            pnl_methods = [method for method in dir(pnl_monitor) if not method.startswith('_')]
             mode_specific_methods = [method for method in pnl_methods if 'mode' in method.lower() or 'strategy' in method.lower()]
             
             if mode_specific_methods:
@@ -273,7 +273,7 @@ class ModeAgnosticArchitectureQualityGates:
             }
             
             try:
-                pnl_result = pnl_calculator.calculate_pnl(test_exposure, timestamp=pd.Timestamp.now())
+                pnl_result = pnl_monitor.calculate_pnl(test_exposure, timestamp=pd.Timestamp.now())
                 if isinstance(pnl_result, dict):
                     self.log_test_result("PnLCalculator calculation", True, "P&L calculation works")
                 else:
@@ -295,11 +295,11 @@ class ModeAgnosticArchitectureQualityGates:
         
         try:
             # Test Strategy Manager initialization
-            config = {'mode': 'pure_lending', 'share_class': 'USDT', 'asset': 'USDT'}
+            config = {'mode': 'pure_lending_usdt', 'share_class': 'USDT', 'asset': 'USDT'}
             strategy_manager = PureLendingStrategy(config, None, None, None)
             
             # Check that Strategy Manager has mode awareness
-            if hasattr(strategy_manager, 'mode') and strategy_manager.mode == 'pure_lending':
+            if hasattr(strategy_manager, 'mode') and strategy_manager.mode == 'pure_lending_usdt':
                 self.log_test_result("StrategyManager mode awareness", True, f"Mode: {strategy_manager.mode}")
             else:
                 self.log_test_result("StrategyManager mode awareness", False, "Missing or incorrect mode")
@@ -370,7 +370,7 @@ class ModeAgnosticArchitectureQualityGates:
             self.test_components_use_utility_manager,
             self.test_no_mode_specific_logic_in_generic_components,
             self.test_config_driven_parameters,
-            self.test_pnl_calculator_mode_agnostic,
+            self.test_pnl_monitor_mode_agnostic,
             self.test_strategy_manager_mode_specific,
             self.test_no_duplicate_utility_methods
         ]

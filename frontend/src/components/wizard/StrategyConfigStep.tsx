@@ -11,7 +11,7 @@ interface StrategyConfigStepProps {
 export function StrategyConfigStep({ mode, shareClass, params, onUpdate }: StrategyConfigStepProps) {
   const getStrategyConfig = (mode: string, shareClass: 'USDT' | 'ETH') => {
     const baseConfigs = {
-      pure_lending: {
+      pure_lending_usdt: {
         title: 'Pure Lending Configuration',
         description: 'Configure lending parameters for stable yield generation',
         fields: [

@@ -27,9 +27,10 @@ backend/logs/
 
 # Data files (large datasets) - EXCLUDED FOR CURSOR AGENTS
 *.zip
+# *.csv
 
 # Large result files and package-lock files
-pure_lending_backtest_results_*.json
+pure_lending_usdt_backtest_results_*.json
 *package-lock.json
 tests/tmp/
 

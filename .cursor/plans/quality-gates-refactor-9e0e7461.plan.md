@@ -33,7 +33,7 @@ scripts/
     test_position_monitor_unit.py
     test_exposure_monitor_unit.py
     test_risk_monitor_unit.py
-    test_pnl_calculator_unit.py
+    test_pnl_monitor_unit.py
     test_strategy_manager_unit.py
     test_execution_manager_unit.py
     test_data_provider_unit.py
@@ -48,7 +48,7 @@ scripts/
     test_tight_loop_reconciliation.py
   e2e_tests/
     __init__.py
-    test_pure_lending_e2e.py
+    test_pure_lending_usdt_e2e.py
     test_btc_basis_e2e.py
     test_eth_basis_e2e.py
     test_usdt_market_neutral_e2e.py
@@ -107,7 +107,7 @@ Test ONLY RiskMonitor with mocked exposure data:
 
 Reference: `docs/specs/03_RISK_MONITOR.md`
 
-#### 1.5: P&L Calculator Unit Test (`test_pnl_calculator_unit.py`)
+#### 1.5: P&L Calculator Unit Test (`test_pnl_monitor_unit.py`)
 
 Test ONLY PnLCalculator with mocked data:
 
@@ -118,7 +118,7 @@ Test ONLY PnLCalculator with mocked data:
 - **Test 5**: Error code propagation
 - **Test 6**: Share class currency conversion
 
-Reference: `docs/specs/04_PNL_CALCULATOR.md`
+Reference: `docs/specs/04_pnl_monitor.md`
 
 #### 1.6: Strategy Manager Unit Test (`test_strategy_manager_unit.py`)
 
@@ -144,7 +144,7 @@ Test ONLY VenueManager with mocked interfaces:
 - **Test 5**: Transaction confirmation in live mode
 - **Test 6**: Execution cost tracking
 
-Reference: `docs/specs/06_EXECUTION_MANAGER.md`
+Reference: `docs/specs/06_VENUE_MANAGER.md`
 
 #### 1.8: Data Provider Unit Test (`test_data_provider_unit.py`)
 
@@ -180,7 +180,7 @@ These validate component interactions per WORKFLOW_GUIDE.md patterns, using real
 
 Create fixtures with minimal real data:
 
-- Load actual config files (modes/pure_lending.yaml)
+- Load actual config files (modes/pure_lending_usdt_usdt.yaml)
 - Load minimal data slice (1 week: 2024-05-12 to 2024-05-19)
 - Real DataProvider instance
 - Real component instances (not mocked)
@@ -249,9 +249,9 @@ Reference: `docs/REFERENCE_ARCHITECTURE_CANONICAL.md` Section 1, `docs/specs/15_
 
 Move existing strategy tests here, mark as non-critical until unit/integration pass.
 
-#### 3.1: Pure Lending E2E (`test_pure_lending_e2e.py`)
+#### 3.1: Pure Lending E2E (`test_pure_lending_usdt_e2e.py`)
 
-Refactor `test_pure_lending_quality_gates.py`:
+Refactor `test_pure_lending_usdt_quality_gates.py`:
 
 - Keep full backtest execution with real data
 - Validate 3-8% APY range
@@ -304,7 +304,7 @@ self.quality_gate_categories = {
             'unit_tests/test_position_monitor_unit.py',
             'unit_tests/test_exposure_monitor_unit.py',
             'unit_tests/test_risk_monitor_unit.py',
-            'unit_tests/test_pnl_calculator_unit.py',
+            'unit_tests/test_pnl_monitor_unit.py',
             'unit_tests/test_strategy_manager_unit.py',
             'unit_tests/test_execution_manager_unit.py',
             'unit_tests/test_data_provider_unit.py',
@@ -326,7 +326,7 @@ self.quality_gate_categories = {
     'e2e': {
         'description': 'E2E Tests - Full Strategy Execution',
         'scripts': [
-            'e2e_tests/test_pure_lending_e2e.py',
+            'e2e_tests/test_pure_lending_usdt_e2e.py',
             'e2e_tests/test_btc_basis_e2e.py',
             'e2e_tests/test_eth_basis_e2e.py',
             'e2e_tests/test_usdt_market_neutral_e2e.py'
@@ -448,7 +448,7 @@ Document for developers:
 - `scripts/unit_tests/test_position_monitor_unit.py`
 - `scripts/unit_tests/test_exposure_monitor_unit.py`
 - `scripts/unit_tests/test_risk_monitor_unit.py`
-- `scripts/unit_tests/test_pnl_calculator_unit.py`
+- `scripts/unit_tests/test_pnl_monitor_unit.py`
 - `scripts/unit_tests/test_strategy_manager_unit.py`
 - `scripts/unit_tests/test_execution_manager_unit.py`
 - `scripts/unit_tests/test_data_provider_unit.py`
@@ -459,7 +459,7 @@ Document for developers:
 - `scripts/integration_tests/test_data_flow_risk_to_strategy.py`
 - `scripts/integration_tests/test_data_flow_strategy_to_execution.py`
 - `scripts/integration_tests/test_tight_loop_reconciliation.py`
-- `scripts/e2e_tests/test_pure_lending_e2e.py`
+- `scripts/e2e_tests/test_pure_lending_usdt_e2e.py`
 - `scripts/e2e_tests/test_btc_basis_e2e.py`
 - `scripts/e2e_tests/test_eth_basis_e2e.py`
 - `scripts/e2e_tests/test_usdt_market_neutral_e2e.py`
@@ -485,7 +485,7 @@ Document for developers:
 - [ ] Create test_position_monitor_unit.py with 6 isolated tests for position collection, state persistence, and conversions
 - [ ] Create test_exposure_monitor_unit.py with 6 isolated tests for asset filtering, net delta, and exposure calculations
 - [ ] Create test_risk_monitor_unit.py with 6 isolated tests for risk calculations, breach detection, and fail-fast config
-- [ ] Create test_pnl_calculator_unit.py with 6 isolated tests for P&L calculation, attribution, and error propagation
+- [ ] Create test_pnl_monitor_unit.py with 6 isolated tests for P&L calculation, attribution, and error propagation
 - [ ] Create test_strategy_manager_unit.py with 6 isolated tests for strategy factory, actions, and mode-specific logic
 - [ ] Create test_execution_manager_unit.py with 6 isolated tests for routing, reconciliation, and error handling
 - [ ] Create test_data_provider_unit.py with 6 isolated tests for data loading, validation, and graceful degradation

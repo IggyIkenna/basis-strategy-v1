@@ -11,7 +11,7 @@ from ..models.responses import (
     StrategyInfoResponse,
     StrategyListResponse
 )
-from ...infrastructure.config.config_manager import get_settings
+
 from ...infrastructure.config.config_manager import load_strategy_config as load_merged_strategy_config
 from ...infrastructure.config.config_manager import (
     get_available_strategies,

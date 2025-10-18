@@ -61,7 +61,7 @@ def analyze_component_coverage(coverage_data: Dict[str, Any]) -> Dict[str, Any]:
         'position_monitor': 'core/strategies/components/position_monitor.py',
         'exposure_monitor': 'core/strategies/components/exposure_monitor.py',
         'risk_monitor': 'core/rebalancing/risk_monitor.py',
-        'pnl_calculator': 'core/math/pnl_calculator.py',
+        'pnl_monitor': 'core/components/pnl_monitor.py',
         'strategy_manager': 'core/strategies/components/strategy_manager.py',
         'data_provider': 'infrastructure/data/historical_data_provider.py',
         'event_logger': 'core/strategies/components/event_logger.py',
@@ -105,7 +105,7 @@ def identify_coverage_gaps(component_coverage: Dict[str, Any]) -> List[Dict[str,
         'position_monitor': 85,
         'exposure_monitor': 90,
         'risk_monitor': 90,
-        'pnl_calculator': 85,
+        'pnl_monitor': 85,
         'strategy_manager': 80,
         'data_provider': 85,
         'event_logger': 90,
@@ -157,7 +157,7 @@ def generate_coverage_report(coverage_data: Dict[str, Any], component_coverage: 
     
     targets = {
         'position_monitor': 85, 'exposure_monitor': 90, 'risk_monitor': 90,
-        'pnl_calculator': 85, 'strategy_manager': 80, 'data_provider': 85,
+        'pnl_monitor': 85, 'strategy_manager': 80, 'data_provider': 85,
         'event_logger': 90, 'event_engine': 80, 'execution_interfaces': 75,
         'health_system': 80, 'api_routes': 70, 'config_system': 80
     }

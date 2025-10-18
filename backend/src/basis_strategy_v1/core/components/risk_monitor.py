@@ -11,14 +11,21 @@ Reference: docs/specs/06_RISK_MONITOR.md - Mode-agnostic risk calculation
 from typing import Dict, List, Any, Optional
 import logging
 import pandas as pd
-from datetime import datetime
+import os
+import uuid
+from pathlib import Path
+from datetime import datetime, timezone
+from decimal import Decimal
 
-from ...infrastructure.logging.structured_logger import get_risk_monitor_logger
-from ...core.logging.base_logging_interface import StandardizedLoggingMixin, LogLevel, EventType
+from ...infrastructure.logging.structured_logger import StructuredLogger
+from ...infrastructure.logging.domain_event_logger import DomainEventLogger
+from ...core.models.domain_events import RiskAssessment
+from ...core.errors.error_codes import ERROR_REGISTRY
+from ...core.utilities.risk_data_loader import RiskDataLoader
 
 logger = logging.getLogger(__name__)
 
-class RiskMonitor(StandardizedLoggingMixin):
+class RiskMonitor:
     """Mode-agnostic risk monitor that works for both backtest and live modes"""
     _instance = None
     
@@ -27,7 +34,7 @@ class RiskMonitor(StandardizedLoggingMixin):
             cls._instance = super().__new__(cls)
         return cls._instance
     
-    def __init__(self, config: Dict[str, Any], data_provider, utility_manager):
+    def __init__(self, config: Dict[str, Any], data_provider, utility_manager, correlation_id: str = None, pid: int = None, log_dir: Path = None):
         """
         Initialize risk monitor.
         
@@ -43,15 +50,38 @@ class RiskMonitor(StandardizedLoggingMixin):
         self.health_status = "healthy"
         self.error_count = 0
         
-        # Initialize structured logger
-        self.structured_logger = get_risk_monitor_logger()
+        # Get position subscriptions from config
+        position_config = config.get('component_config', {}).get('position_monitor', {})
+        self.position_subscriptions = position_config.get('position_subscriptions', [])
         
-        # Load AAVE risk parameters from data provider (as per spec)
-        self._load_aave_risk_parameters()
+        logger.info(f"RiskMonitor subscribed to {len(self.position_subscriptions)} positions")
+        
+        # Initialize logging infrastructure
+        self.correlation_id = correlation_id or str(uuid.uuid4().hex)
+        self.pid = pid or os.getpid()
+        self.log_dir = log_dir
+        
+        # Initialize structured logger
+        self.logger = StructuredLogger(
+            component_name="RiskMonitor",
+            correlation_id=self.correlation_id,
+            pid=self.pid,
+            log_dir=self.log_dir,
+            engine=None
+        )
+        
+        # Initialize domain event logger
+        self.domain_event_logger = DomainEventLogger(self.log_dir) if self.log_dir else None
         
         # Use direct config access for fail-fast behavior
-        self.max_drawdown = config['max_drawdown']
         self.leverage_enabled = config['leverage_enabled']
+        
+        # Initialize risk data loader
+        self.risk_data_loader = RiskDataLoader()
+        
+        # Load risk parameters
+        self._load_risk_parameters()
+        self._initialize_risk_parameters()
     
     def check_component_health(self) -> Dict[str, Any]:
         """Check component health status."""
@@ -63,491 +93,320 @@ class RiskMonitor(StandardizedLoggingMixin):
             'component': self.__class__.__name__
         }
     
+    def _log_risk_assessment(self, risk_data: Dict[str, Any]) -> None:
+        """Log risk assessment as domain event."""
+        if not self.log_dir or not self.domain_event_logger:
+            return
+        
+        timestamp = datetime.now().isoformat()
+        real_utc = datetime.now(timezone.utc).isoformat()
+        
+        assessment = RiskAssessment(
+            timestamp=timestamp,
+            real_utc_time=real_utc,
+            correlation_id=self.correlation_id,
+            pid=self.pid,
+            health_factor=risk_data.get('health_factor'),
+            ltv_ratio=risk_data.get('ltv_ratio'),
+            liquidation_threshold=risk_data.get('liquidation_threshold'),
+            margin_usage=risk_data.get('margin_usage'),
+            risk_level=risk_data.get('risk_level', 'unknown'),
+            warnings=risk_data.get('warnings', []),
+            breaches=risk_data.get('breaches', []),
+            metadata={}
+        )
+        
+        self.domain_event_logger.log_risk_assessment(assessment)
+    
     def _initialize_risk_parameters(self):
         """Initialize risk parameters."""
-        # Calculate target_ltv from AAVE risk parameters (as per spec)
-        self.target_ltv = self._calculate_target_ltv()
-        
-        # Load venue configuration - venues are handled through separate venue configs
-        # For now, use empty dict as venues are not part of mode config
-        self.venues = config.get('venues', {})
-        
-        # Load component-specific configuration with fail-fast behavior
-        component_config = config['component_config']
-        risk_monitor_config = component_config['risk_monitor']
-        self.enabled_risk_types = risk_monitor_config['enabled_risk_types']
-        self.risk_limits = risk_monitor_config['risk_limits']
-        
-        # Initialize risk metrics
-        self.current_risk_metrics = {}
-        self.last_calculation_timestamp = None
-        self.risk_history = []
-        
-        self.structured_logger.info(
-            "RiskMonitor initialized successfully",
-            event_type="component_initialization",
-            component="risk_monitor",
-            target_ltv=self.target_ltv,
-            leverage_enabled=self.leverage_enabled
-        )
-    
-    def _load_aave_risk_parameters(self):
-        """Load AAVE risk parameters from data provider (as per spec)."""
         try:
-            # Load AAVE risk parameters from the actual data file
-            import json
-            from pathlib import Path
+            # Calculate target_ltv from AAVE risk parameters (as per spec)
+            max_stake_spread_move_value = self.config.get('max_stake_spread_move', 0.1)
+            if max_stake_spread_move_value is None:
+                max_stake_spread_move_value = 0.1
+            logger.debug(f"max_stake_spread_move_value: {max_stake_spread_move_value} (type: {type(max_stake_spread_move_value)})")
+            max_stake_spread_move = Decimal(str(max_stake_spread_move_value))
+            self.target_ltv = self.utility_manager.calculate_dynamic_ltv_target(
+                self.aave_max_ltv_emode, 
+                max_stake_spread_move
+            )
             
-            # Get data directory from config
-            data_dir = self.config['data_dir']
-            risk_params_path = Path(data_dir) / 'protocol_data/aave/risk_params/aave_v3_risk_parameters.json'
+            # Calculate CEX target margins for all venues
+            self.cex_target_margins = {}
+            max_underlying_move_value = self.config.get('max_underlying_move', 0.2)
+            if max_underlying_move_value is None:
+                max_underlying_move_value = 0.2
+            max_underlying_move = Decimal(str(max_underlying_move_value))
+            for venue, requirements in self.cex_margin_requirements.items():
+                self.cex_target_margins[venue] = self.utility_manager.calculate_cex_target_margin(
+                    requirements['initial_margin'],
+                    max_underlying_move
+                )
             
-            if risk_params_path.exists():
-                with open(risk_params_path, 'r') as f:
-                    self.aave_risk_params = json.load(f)
-                
-                # Extract E-mode parameters (most permissive)
-                self.aave_liquidation_bonus_emode = self.aave_risk_params['emode']['liquidation_bonus']['weETH_WETH']
-                self.aave_liquidation_threshold_emode = self.aave_risk_params['emode']['liquidation_thresholds']['weETH_WETH']
-                
-                logger.info(f"AAVE risk parameters loaded from {risk_params_path}")
-            else:
-                # Fallback to hardcoded values if file not found
-                logger.warning(f"AAVE risk parameters file not found: {risk_params_path}, using fallback values")
-                self.aave_liquidation_bonus_emode = 0.01
-                self.aave_liquidation_threshold_emode = 0.95
+            # Load component-specific configuration with fail-fast behavior
+            self.enabled_risk_types = self.config['component_config']['risk_monitor']['enabled_risk_types']
+            self.risk_limits = self.config['component_config']['risk_monitor']['risk_limits']
+            
+            self.logger.info(
+                "RiskMonitor initialized successfully",
+                component="risk_monitor",
+                target_ltv=float(self.target_ltv),
+                leverage_enabled=self.leverage_enabled,
+                cex_target_margins={k: float(v) for k, v in self.cex_target_margins.items()}
+            )
             
         except Exception as e:
-            logger.warning(f"Failed to load AAVE risk parameters: {e}")
-            # Use fallback values
-            self.aave_liquidation_bonus_emode = 0.01
-            self.aave_liquidation_threshold_emode = 0.95
+            logger.error(f"Failed to initialize risk parameters: {e}")
+            logger.error(f"Config values - max_stake_spread_move: {self.config.get('max_stake_spread_move')}, max_underlying_move: {self.config.get('max_underlying_move')}")
+            # Use conservative fallback values
+            self.target_ltv = Decimal('0')
+            self.cex_target_margins = {}
+            self.enabled_risk_types = ['cex_margin_ratio', 'delta_risk']
+            self.risk_limits = {
+                'target_margin_ratio': 0.5,
+                'cex_margin_ratio_min': 0.15,
+                'maintenance_margin_requirement': 0.10,
+                'delta_tolerance': 0.005,
+                'liquidation_threshold': 0.95
+            }
+            
+            # Log the fallback initialization
+            self.logger.info(
+                "RiskMonitor initialized with fallback values",
+                component="risk_monitor",
+                target_ltv=0.0,
+                leverage_enabled=self.leverage_enabled,
+                error=str(e)
+            )
     
-    def _calculate_target_ltv(self):
-        """Calculate target LTV from AAVE risk parameters (as per spec)."""
+    def _load_risk_parameters(self):
+        """Load all risk parameters using the risk data loader."""
         try:
-            # For modes that don't borrow (like pure_lending), target_ltv should be 0
-            if not self.leverage_enabled:
-                return 0.0
+            # Load AAVE risk parameters
+            self.aave_max_ltv_emode, self.aave_liquidation_threshold_emode = self.risk_data_loader.get_aave_ltv_limits('emode', 'weETH_WETH')
+            self.aave_liquidation_bonus_emode = self.risk_data_loader.get_aave_liquidation_bonus('emode', 'weETH_WETH')
             
-            # For modes that do borrow, calculate target LTV with safety buffer
-            # Target LTV should be below liquidation threshold with safety buffer
-            safety_buffer = 0.05  # 5% safety buffer
-            target_ltv = self.aave_liquidation_threshold_emode - safety_buffer
+            # Load CEX margin requirements for all available venues
+            self.cex_margin_requirements = {}
+            for venue in self.risk_data_loader.get_available_cex_venues():
+                initial_margin, maintenance_margin, liquidation_threshold = self.risk_data_loader.get_cex_margin_requirements(venue)
+                self.cex_margin_requirements[venue] = {
+                    'initial_margin': initial_margin,
+                    'maintenance_margin': maintenance_margin,
+                    'liquidation_threshold': liquidation_threshold
+                }
             
-            # Ensure target LTV is reasonable (between 0 and 0.9)
-            target_ltv = max(0.0, min(target_ltv, 0.9))
-            
-            logger.info(f"Calculated target LTV: {target_ltv} (liquidation threshold: {self.aave_liquidation_threshold_emode})")
-            return target_ltv
+            logger.info(f"Risk parameters loaded: AAVE (max_ltv: {self.aave_max_ltv_emode}), CEX venues: {list(self.cex_margin_requirements.keys())}")
             
         except Exception as e:
-            logger.warning(f"Failed to calculate target LTV: {e}")
-            # Use fallback value
-            return 0.0
+            logger.error(f"Failed to load risk parameters: {e}")
+            # Use conservative fallback values
+            self.aave_max_ltv_emode = Decimal('0.5')
+            self.aave_liquidation_threshold_emode = Decimal('0.6')
+            self.aave_liquidation_bonus_emode = Decimal('0.05')
+            self.cex_margin_requirements = {
+                'binance': {'initial_margin': Decimal('0.1'), 'maintenance_margin': Decimal('0.15'), 'liquidation_threshold': Decimal('0.1')},
+                'bybit': {'initial_margin': Decimal('0.1'), 'maintenance_margin': Decimal('0.15'), 'liquidation_threshold': Decimal('0.1')},
+                'okx': {'initial_margin': Decimal('0.1'), 'maintenance_margin': Decimal('0.15'), 'liquidation_threshold': Decimal('0.1')}
+            }
     
-    def assess_risk(self, exposure_data: Dict[str, Any], market_data: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Assess risk using exposure data and market data.
-        
-        Args:
-            exposure_data: Current exposure data
-            market_data: Current market data
-            
-        Returns:
-            Dictionary with risk assessment results
-        """
-        # Extract timestamp from market_data
-        timestamp = market_data['timestamp']
-        if isinstance(timestamp, str):
-            timestamp = pd.Timestamp(timestamp)
-        
-        return self.assess_risk(exposure_data, {})
     
-    def assess_risk(self, exposure_data: Dict, market_data: Dict) -> Dict[str, Any]:
+
+    
+    def assess_risk(self, exposure_data: Dict, market_data: Dict, timestamp: pd.Timestamp) -> Dict[str, Any]:
         """
         Main entry point for risk calculations.
         
         Args:
             exposure_data: Current exposure snapshot from ExposureMonitor
             market_data: Market data from DataProvider (queried by caller)
+            timestamp: Current timestamp
             
         Returns:
-            Dictionary with risk calculation results
+            Dictionary with risk calculation results including:
+            - current_ltv: Current LTV accounting for all debt and collateral instruments on AAVE
+            - current_margin_ratio: Current margin ratio on CEX (accounting for all tokens and derivative positions)
+            - health_ratio: Liquidation LTV / current LTV
+            - maintenance_margin_ratio: Strategy risk config maintenance margin ratio
         """
         try:
-            # Use current timestamp for calculations
-            timestamp = pd.Timestamp.now()
+            # Calculate current LTV for AAVE positions
+            current_ltv = self._calculate_current_ltv(exposure_data)
             
-            # Calculate various risk metrics
-            liquidation_risk = self._calculate_liquidation_risk(exposure_data, timestamp)
-            delta_risk = self._calculate_delta_risk(exposure_data, timestamp)
-            funding_risk = self._calculate_funding_risk(exposure_data, timestamp)
-            basis_risk = self._calculate_basis_risk(exposure_data, timestamp)
-            default_risk = self._calculate_default_risk(exposure_data, timestamp)
+            # Calculate current margin ratios for CEX positions
+            cex_margin_ratios = self._calculate_cex_margin_ratios(exposure_data)
             
-            # Calculate overall risk score
-            overall_risk = self._calculate_overall_risk(
-                liquidation_risk, delta_risk, funding_risk, basis_risk, default_risk
+            # Calculate health ratios
+            health_ratios = self._calculate_health_ratios(current_ltv, cex_margin_ratios)
+            
+            # Calculate maintenance margin ratios
+            maintenance_margin_ratios = self._calculate_maintenance_margin_ratios(cex_margin_ratios)
+            
+            risk_result = {
+                'timestamp': timestamp,
+                'current_ltv': float(current_ltv),
+                'target_ltv': float(self.target_ltv),
+                'cex_margin_ratios': {k: float(v) for k, v in cex_margin_ratios.items()},
+                'cex_target_margins': {k: float(v) for k, v in self.cex_target_margins.items()},
+                'health_ratios': health_ratios,
+                'maintenance_margin_ratios': maintenance_margin_ratios,
+                'aave_liquidation_threshold': float(self.aave_liquidation_threshold_emode),
+                'aave_max_ltv': float(self.aave_max_ltv_emode)
+            }
+            
+            self._update_last_risks(risk_result, timestamp)
+            
+            # Log risk assessment
+            self._log_risk_assessment(risk_result)
+            
+            return risk_result
+            
+        except Exception as e:
+            self.logger.error(
+                f"Error calculating risks: {e}",
+                error_code="RISK-001",
+                exc_info=e,
+                operation="assess_risk"
             )
-            
-            # Calculate risk metrics
-            risk_metrics = self._calculate_risk_metrics(
-                liquidation_risk, delta_risk, funding_risk, basis_risk, default_risk
-            )
-            
-            # Update last risks
-            self._update_last_risks(overall_risk, timestamp)
-            
             return {
                 'timestamp': timestamp,
-                'total_risk': overall_risk,  # Add missing total_risk field
-                'overall_risk': overall_risk,
-                'risk_metrics': risk_metrics,
-                'risk_by_venue': {  # Add missing risk_by_venue field
-                    'liquidation': liquidation_risk,
-                    'delta': delta_risk,
-                    'funding': funding_risk,
-                    'basis': basis_risk,
-                    'default': default_risk
-                },
-                'risks': {
-                    'liquidation': liquidation_risk,
-                    'delta': delta_risk,
-                    'funding': funding_risk,
-                    'basis': basis_risk,
-                    'default': default_risk
-                }
-            }
-            
-        except Exception as e:
-            logger.error(f"Error calculating risks: {e}")
-            return {
-                'timestamp': timestamp,
-                'overall_risk': 0.0,
-                'risk_metrics': {},
-                'risks': {},
-                'error': str(e)
+                'error': str(e),
+                'current_ltv': 0.0,
+                'target_ltv': 0.0,
+                'cex_margin_ratios': {},
+                'health_ratios': {},
+                'maintenance_margin_ratios': {}
             }
     
-    def _calculate_liquidation_risk(self, exposures: Dict[str, Any], timestamp: pd.Timestamp) -> float:
-        """Calculate liquidation risk across all venues."""
+    def _calculate_current_ltv(self, exposure_data: Dict) -> Decimal:
+        """Calculate current LTV for AAVE positions."""
         try:
-            liquidation_risk = 0.0
+            # Extract AAVE positions from exposure data
+            exposures = exposure_data.get('exposures', {})
             
-            # Get exposure data (fail-fast on missing keys)
-            try:
-                total_exposures = exposures['total_exposures']
-                exposure_metrics = exposures['exposure_metrics']
-            except KeyError as e:
-                logger.error(f"Missing required exposure data: {e}")
-                return liquidation_risk
+            total_collateral = Decimal('0')
+            total_debt = Decimal('0')
             
-            if not total_exposures or not exposure_metrics:
-                return liquidation_risk
-            
-            # Calculate liquidation risk for each venue
-            for venue, exposure in total_exposures.items():
-                if exposure > 0:
-                    # Get venue-specific liquidation threshold
-                    liquidation_threshold = self._get_liquidation_threshold(venue)
+            for position_key, position_data in exposures.items():
+                if 'aave' in position_key.lower():
+                    amount = Decimal(str(position_data.get('amount', 0)))
+                    value_usd = Decimal(str(position_data.get('value_usd', 0)))
                     
-                    # Calculate risk based on exposure and threshold
-                    venue_risk = min(exposure / liquidation_threshold, 1.0) if liquidation_threshold > 0 else 0.0
-                    liquidation_risk = max(liquidation_risk, venue_risk)
+                    # Determine if it's collateral or debt based on position type
+                    if 'aToken' in position_key:  # Collateral
+                        total_collateral += value_usd
+                    elif 'debt' in position_key.lower() or 'borrow' in position_key.lower():  # Debt
+                        total_debt += value_usd
             
-            return liquidation_risk
+            if total_collateral <= 0:
+                return Decimal('0')
+            
+            current_ltv = total_debt / total_collateral
+            logger.debug(f"Current LTV calculation: debt={total_debt}, collateral={total_collateral}, ltv={current_ltv}")
+            
+            return current_ltv
+            
         except Exception as e:
-            logger.error(f"Error calculating liquidation risk: {e}")
-            return 0.0
+            logger.error(f"Error calculating current LTV: {e}")
+            return Decimal('0')
     
-    def _calculate_delta_risk(self, exposures: Dict[str, Any], timestamp: pd.Timestamp) -> float:
-        """Calculate delta risk (price movement risk)."""
+    def _calculate_cex_margin_ratios(self, exposure_data: Dict) -> Dict[str, Decimal]:
+        """Calculate current margin ratios for CEX positions."""
         try:
-            delta_risk = 0.0
+            cex_margin_ratios = {}
+            exposures = exposure_data.get('exposures', {})
             
-            # Get exposure data (fail-fast on missing keys)
-            try:
-                total_exposures = exposures['total_exposures']
-                exposure_by_category = exposures['exposure_by_category']
-            except KeyError as e:
-                logger.error(f"Missing required exposure data: {e}")
-                return delta_risk
-            
-            if not total_exposures or not exposure_by_category:
-                return delta_risk
-            
-            # Calculate delta risk based on exposure categories
-            for category, exposure in exposure_by_category.items():
-                if exposure > 0:
-                    # Get category-specific delta risk multiplier
-                    delta_multiplier = self._get_delta_risk_multiplier(category)
+            # Group positions by venue
+            venue_positions = {}
+            for position_key, position_data in exposures.items():
+                venue = position_key.split(':')[0] if ':' in position_key else 'unknown'
+                if venue in ['binance', 'bybit', 'okx']:
+                    if venue not in venue_positions:
+                        venue_positions[venue] = {'long': Decimal('0'), 'short': Decimal('0')}
                     
-                    # Calculate risk based on exposure and multiplier
-                    category_risk = exposure * delta_multiplier
-                    delta_risk += category_risk
-            
-            return delta_risk
-        except Exception as e:
-            logger.error(f"Error calculating delta risk: {e}")
-            return 0.0
-    
-    def _calculate_funding_risk(self, exposures: Dict[str, Any], timestamp: pd.Timestamp) -> float:
-        """Calculate funding risk (funding rate risk)."""
-        try:
-            funding_risk = 0.0
-            
-            # Get exposure data
-            exposure_by_category = exposures['exposure_by_category']
-            
-            if not exposure_by_category:
-                return funding_risk
-            
-            # Calculate funding risk based on basis trading exposure
-            try:
-                basis_exposure = exposure_by_category['basis']
-            except KeyError as e:
-                logger.error(f"Missing basis exposure data: {e}")
-                return funding_risk
-            if basis_exposure > 0:
-                # Get current funding rate
-                funding_rate = self._get_current_funding_rate(timestamp)
-                
-                # Calculate risk based on exposure and funding rate
-                funding_risk = basis_exposure * abs(funding_rate)
-            
-            return funding_risk
-        except Exception as e:
-            logger.error(f"Error calculating funding risk: {e}")
-            return 0.0
-    
-    def _calculate_basis_risk(self, exposures: Dict[str, Any], timestamp: pd.Timestamp) -> float:
-        """Calculate basis risk (basis spread risk)."""
-        try:
-            basis_risk = 0.0
-            
-            # Get exposure data
-            exposure_by_category = exposures['exposure_by_category']
-            
-            if not exposure_by_category:
-                return basis_risk
-            
-            # Calculate basis risk based on basis trading exposure
-            try:
-                basis_exposure = exposure_by_category['basis']
-            except KeyError as e:
-                logger.error(f"Missing basis exposure data: {e}")
-                return basis_risk
-            if basis_exposure > 0:
-                # Get current basis spread
-                basis_spread = self._get_current_basis_spread(timestamp)
-                
-                # Calculate risk based on exposure and basis spread
-                basis_risk = basis_exposure * abs(basis_spread)
-            
-            return basis_risk
-        except Exception as e:
-            logger.error(f"Error calculating basis risk: {e}")
-            return 0.0
-    
-    def _calculate_default_risk(self, exposures: Dict[str, Any], timestamp: pd.Timestamp) -> float:
-        """Calculate default risk (counterparty risk)."""
-        try:
-            default_risk = 0.0
-            
-            # Get exposure data
-            total_exposures = exposures['total_exposures']
-            
-            if not total_exposures:
-                return default_risk
-            
-            # Calculate default risk for each venue
-            for venue, exposure in total_exposures.items():
-                if exposure > 0:
-                    # Get venue-specific default risk multiplier
-                    default_multiplier = self._get_default_risk_multiplier(venue)
+                    amount = Decimal(str(position_data.get('amount', 0)))
+                    value_usd = Decimal(str(position_data.get('value_usd', 0)))
                     
-                    # Calculate risk based on exposure and multiplier
-                    venue_risk = exposure * default_multiplier
-                    default_risk += venue_risk
+                    # Determine if long or short position (simplified logic)
+                    if 'spot' in position_key.lower() or amount > 0:
+                        venue_positions[venue]['long'] += value_usd
+                    else:
+                        venue_positions[venue]['short'] += value_usd
             
-            return default_risk
+            # Calculate margin ratios for each venue
+            for venue, positions in venue_positions.items():
+                if venue in self.cex_margin_requirements:
+                    total_value = positions['long'] + positions['short']
+                    if total_value > 0:
+                        # Simplified margin ratio calculation
+                        # In practice, this would be more complex based on CEX margin requirements
+                        margin_ratio = positions['long'] / total_value
+                        cex_margin_ratios[venue] = margin_ratio
+                    else:
+                        cex_margin_ratios[venue] = Decimal('1')  # No positions = 100% margin
+            
+            logger.debug(f"CEX margin ratios calculated: {cex_margin_ratios}")
+            return cex_margin_ratios
+            
         except Exception as e:
-            logger.error(f"Error calculating default risk: {e}")
-            return 0.0
-    
-    def _calculate_overall_risk(self, liquidation_risk: float, delta_risk: float, 
-                              funding_risk: float, basis_risk: float, default_risk: float) -> float:
-        """Calculate overall risk score."""
-        try:
-            # Weight different risk types
-            weights = {
-                'liquidation': 0.4,  # Highest weight for liquidation risk
-                'delta': 0.3,        # High weight for delta risk
-                'funding': 0.15,     # Medium weight for funding risk
-                'basis': 0.1,        # Medium weight for basis risk
-                'default': 0.05      # Low weight for default risk
-            }
-            
-            # Calculate weighted average
-            overall_risk = (
-                liquidation_risk * weights['liquidation'] +
-                delta_risk * weights['delta'] +
-                funding_risk * weights['funding'] +
-                basis_risk * weights['basis'] +
-                default_risk * weights['default']
-            )
-            
-            return min(overall_risk, 1.0)  # Cap at 1.0
-        except Exception as e:
-            logger.error(f"Error calculating overall risk: {e}")
-            return 0.0
-    
-    def _calculate_risk_metrics(self, liquidation_risk: float, delta_risk: float, 
-                              funding_risk: float, basis_risk: float, default_risk: float) -> Dict[str, Any]:
-        """Calculate risk metrics."""
-        try:
-            metrics = {
-                'liquidation_risk': liquidation_risk,
-                'delta_risk': delta_risk,
-                'funding_risk': funding_risk,
-                'basis_risk': basis_risk,
-                'default_risk': default_risk,
-                'risk_level': self._get_risk_level(liquidation_risk, delta_risk, funding_risk, basis_risk, default_risk),
-                'risk_trend': self._get_risk_trend()
-            }
-            
-            return metrics
-        except Exception as e:
-            logger.error(f"Error calculating risk metrics: {e}")
+            logger.error(f"Error calculating CEX margin ratios: {e}")
             return {}
     
-    def _get_liquidation_threshold(self, venue: str) -> float:
-        """Get liquidation threshold for a venue."""
+    def _calculate_health_ratios(self, current_ltv: Decimal, cex_margin_ratios: Dict[str, Decimal]) -> Dict[str, Decimal]:
+        """Calculate health ratios (liquidation LTV / current LTV)."""
         try:
-            # Default liquidation thresholds by venue type
-            thresholds = {
-                'aave': 0.8,      # 80% LTV
-                'compound': 0.75,  # 75% LTV
-                'binance': 0.9,    # 90% margin
-                'bybit': 0.9,      # 90% margin
-                'okx': 0.9,        # 90% margin
-                'lido': 1.0,       # No liquidation risk
-                'etherfi': 1.0     # No liquidation risk
-            }
+            health_ratios = {}
             
-            # Extract venue type from venue name
-            venue_lower = venue.lower()
-            for venue_type, threshold in thresholds.items():
-                if venue_type in venue_lower:
-                    return threshold
-            
-            # Default threshold
-            return 0.8
-        except Exception as e:
-            logger.error(f"Error getting liquidation threshold for {venue}: {e}")
-            return 0.8
-    
-    def _get_delta_risk_multiplier(self, category: str) -> float:
-        """Get delta risk multiplier for a category."""
-        try:
-            # Delta risk multipliers by category
-            multipliers = {
-                'lending': 0.1,    # Low delta risk for lending
-                'staking': 0.2,    # Medium delta risk for staking
-                'basis': 0.5,      # High delta risk for basis trading
-                'funding': 0.3,    # Medium delta risk for funding
-                'delta': 0.8,      # Very high delta risk for delta trading
-                'other': 0.2       # Default delta risk
-            }
-            
-            try:
-                return multipliers[category]
-            except KeyError as e:
-                logger.error(f"Missing delta risk multiplier for category {category}: {e}")
-                return 0.2
-        except Exception as e:
-            logger.error(f"Error getting delta risk multiplier for {category}: {e}")
-            return 0.2
-    
-    def _get_default_risk_multiplier(self, venue: str) -> float:
-        """Get default risk multiplier for a venue."""
-        try:
-            # Default risk multipliers by venue
-            multipliers = {
-                'aave': 0.01,      # Very low default risk
-                'compound': 0.01,  # Very low default risk
-                'binance': 0.02,   # Low default risk
-                'bybit': 0.02,     # Low default risk
-                'okx': 0.02,       # Low default risk
-                'lido': 0.005,     # Very low default risk
-                'etherfi': 0.005   # Very low default risk
-            }
-            
-            # Extract venue type from venue name
-            venue_lower = venue.lower()
-            for venue_type, multiplier in multipliers.items():
-                if venue_type in venue_lower:
-                    return multiplier
-            
-            # Default multiplier
-            return 0.02
-        except Exception as e:
-            logger.error(f"Error getting default risk multiplier for {venue}: {e}")
-            return 0.02
-    
-    def _get_current_funding_rate(self, timestamp: pd.Timestamp) -> float:
-        """Get current funding rate."""
-        try:
-            # Placeholder for actual funding rate calculation
-            # In real implementation, this would query the data provider
-            return 0.0001  # 0.01% funding rate
-        except Exception as e:
-            logger.error(f"Error getting current funding rate: {e}")
-            return 0.0
-    
-    def _get_current_basis_spread(self, timestamp: pd.Timestamp) -> float:
-        """Get current basis spread."""
-        try:
-            # Placeholder for actual basis spread calculation
-            # In real implementation, this would query the data provider
-            return 0.001  # 0.1% basis spread
-        except Exception as e:
-            logger.error(f"Error getting current basis spread: {e}")
-            return 0.0
-    
-    def _get_risk_level(self, liquidation_risk: float, delta_risk: float, 
-                       funding_risk: float, basis_risk: float, default_risk: float) -> str:
-        """Get risk level based on risk metrics."""
-        try:
-            # Calculate overall risk score
-            overall_risk = self._calculate_overall_risk(
-                liquidation_risk, delta_risk, funding_risk, basis_risk, default_risk
-            )
-            
-            # Determine risk level
-            if overall_risk < 0.2:
-                return 'LOW'
-            elif overall_risk < 0.5:
-                return 'MEDIUM'
-            elif overall_risk < 0.8:
-                return 'HIGH'
+            # AAVE health ratio
+            if current_ltv > 0:
+                aave_health_ratio = self.aave_liquidation_threshold_emode / current_ltv
+                health_ratios['aave'] = aave_health_ratio
             else:
-                return 'CRITICAL'
+                health_ratios['aave'] = Decimal('999')  # No debt = infinite health
+            
+            # CEX health ratios
+            for venue, margin_ratio in cex_margin_ratios.items():
+                if venue in self.cex_margin_requirements:
+                    liquidation_threshold = self.cex_margin_requirements[venue]['liquidation_threshold']
+                    if margin_ratio > 0:
+                        cex_health_ratio = liquidation_threshold / margin_ratio
+                        health_ratios[f'cex_{venue}'] = cex_health_ratio
+                    else:
+                        health_ratios[f'cex_{venue}'] = Decimal('999')  # No positions = infinite health
+            
+            logger.debug(f"Health ratios calculated: {health_ratios}")
+            return health_ratios
+            
         except Exception as e:
-            logger.error(f"Error getting risk level: {e}")
-            return 'UNKNOWN'
+            logger.error(f"Error calculating health ratios: {e}")
+            return {}
     
-    def _get_risk_trend(self) -> str:
-        """Get risk trend."""
+    def _calculate_maintenance_margin_ratios(self, cex_margin_ratios: Dict[str, Decimal]) -> Dict[str, Decimal]:
+        """Calculate maintenance margin ratios from strategy risk config."""
         try:
-            # Placeholder for actual risk trend calculation
-            # In real implementation, this would compare current risk with historical risk
-            return 'STABLE'
+            maintenance_margin_ratios = {}
+            
+            for venue, margin_ratio in cex_margin_ratios.items():
+                if venue in self.cex_target_margins:
+                    target_margin = self.cex_target_margins[venue]
+                    maintenance_margin_ratios[venue] = target_margin
+            
+            logger.debug(f"Maintenance margin ratios calculated: {maintenance_margin_ratios}")
+            return maintenance_margin_ratios
+            
         except Exception as e:
-            logger.error(f"Error getting risk trend: {e}")
-            return 'UNKNOWN'
+            logger.error(f"Error calculating maintenance margin ratios: {e}")
+            return {}
+
     
+
+    
+
+    
+
+    
+
     def _update_last_risks(self, overall_risk: float, timestamp: pd.Timestamp):
         """Update last risks."""
         try:
@@ -591,9 +450,8 @@ class RiskMonitor(StandardizedLoggingMixin):
             risk_result = self.assess_risk(exposure_data, market_data)
             
             # Log risk assessment
-            self.structured_logger.info(
+            self.logger.info(
                 "Risk assessment completed",
-                event_type="risk_assessment",
                 component="risk_monitor",
                 trigger_source=trigger_source,
                 overall_risk=risk_result.get('overall_risk', 0.0),
@@ -601,16 +459,6 @@ class RiskMonitor(StandardizedLoggingMixin):
                 timestamp=timestamp.isoformat()
             )
             
-            # Log using standardized logging
-            self.log_component_event(
-                EventType.BUSINESS_EVENT,
-                f"Risk assessment completed: trigger_source={trigger_source}",
-                {
-                    'overall_risk': risk_result.get('overall_risk', 0.0),
-                    'risk_level': risk_result.get('risk_level', 'unknown'),
-                    'trigger_source': trigger_source
-                }
-            )
     
     def _get_config_parameters(self, mode: str) -> Dict[str, Any]:
         """Get config parameters using utility manager (config-driven approach)."""

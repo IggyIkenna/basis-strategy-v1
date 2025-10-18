@@ -71,7 +71,7 @@ async def run_backtest(
     # TODO: [WORKFLOW_STRATEGY_SELECTION] - Strategy mode selection via API parameter
     # Current Issue: Strategy mode is selected via strategy_name parameter in BacktestRequest
     # Required Changes:
-    #   1. Validate strategy_name against available strategies in MODES.md
+    #   1. Validate strategy_name against available strategies in STRATEGY_MODES.md
     #   2. Route to appropriate venue clients based on strategy requirements
     #   3. Initialize venue clients based on environment configuration (dev/staging/prod)
     #   4. Implement time-triggered workflow for backtest execution
@@ -102,7 +102,7 @@ async def run_backtest(
         )
         
         # Submit backtest
-        request_id = await service.run_backtest(service_request)
+        request_id = await service.run_backtest(service_request, correlation_id)
         
         logger.info(
             "Backtest queued successfully",

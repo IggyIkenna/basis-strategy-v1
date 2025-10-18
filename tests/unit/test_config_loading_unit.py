@@ -98,7 +98,7 @@ BASIS_API_CORS_ORIGINS=http://localhost:3000,http://localhost:5173
         
         # Create test mode config
         mode_config = {
-            "mode": "pure_lending",  # Use valid mode name
+            "mode": "pure_lending_usdt",  # Use valid mode name
             "share_class": "USDT",
             "asset": "USDT",
             "enable_market_impact": True,
@@ -112,9 +112,44 @@ BASIS_API_CORS_ORIGINS=http://localhost:3000,http://localhost:5173
             "margin_ratio_target": 1.0,
             "target_apy": 0.05,
             "time_throttle_interval": 60,
-            "data_requirements": ["usdt_prices", "aave_lending_rates"]
+            "data_requirements": ["usdt_prices", "aave_lending_rates"],
+            "event_logger": {
+                "log_path": "./logs",
+                "log_format": "json",
+                "log_level": "INFO",
+                "event_categories": {
+                    "data": ["data_loaded", "data_updated", "data_error"],
+                    "risk": ["risk_breach", "risk_warning", "risk_calculation"],
+                    "event": ["event_logged", "event_filtered", "event_exported"],
+                    "business": ["trade_executed", "position_updated", "strategy_decision"]
+                },
+                "event_logging_settings": {
+                    "buffer_size": 10000,
+                    "export_format": "both",
+                    "async_logging": True,
+                    "compression": False
+                },
+                "log_retention_policy": {
+                    "retention_days": 30,
+                    "max_file_size_mb": 100,
+                    "rotation_frequency": "daily",
+                    "compression_after_days": 7
+                },
+                "logging_requirements": {
+                    "structured_logging": True,
+                    "correlation_ids": True,
+                    "performance_metrics": True,
+                    "error_tracking": True
+                },
+                "event_filtering": {
+                    "filter_by_level": True,
+                    "filter_by_category": True,
+                    "exclude_patterns": [],
+                    "include_patterns": ["*"]
+                }
+            }
         }
-        (self.temp_path / "configs" / "modes" / "pure_lending.yaml").write_text(yaml.dump(mode_config))
+        (self.temp_path / "configs" / "modes" / "pure_lending_usdt.yaml").write_text(yaml.dump(mode_config))
         
         # Create test venue config
         venue_config = {
@@ -130,7 +165,7 @@ BASIS_API_CORS_ORIGINS=http://localhost:3000,http://localhost:5173
             "share_class": "USDT",
             "type": "stable",
             "base_currency": "USDT",
-            "supported_strategies": ["pure_lending"],  # Use valid strategy name
+            "supported_strategies": ["pure_lending_usdt"],  # Use valid strategy name
             "leverage_supported": True
         }
         (self.temp_path / "configs" / "share_classes" / "usdt_stable.yaml").write_text(yaml.dump(share_class_config))
@@ -163,13 +198,13 @@ BASIS_API_CORS_ORIGINS=http://localhost:3000,http://localhost:5173
         config_manager = ConfigManager()
         
         # Verify configurations are loaded and validated
-        assert 'pure_lending' in config_manager.get_available_strategies()
+        assert 'pure_lending_usdt' in config_manager.get_available_strategies()
         assert 'binance' in config_manager.config_cache['venues']
         assert 'usdt_stable' in config_manager.config_cache['share_classes']
         
         # Verify Pydantic validation worked
-        mode_config = config_manager.get_mode_config('pure_lending')
-        assert mode_config['mode'] == 'pure_lending'
+        mode_config = config_manager.get_mode_config('pure_lending_usdt')
+        assert mode_config['mode'] == 'pure_lending_usdt'
         assert mode_config['share_class'] == 'USDT'
         assert mode_config['target_apy'] == 0.05
     

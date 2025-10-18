@@ -75,7 +75,7 @@ export const validateStrategyName = (strategyName: string): { valid: boolean; me
     'btc_basis',
     'eth_basis',
     'eth_leveraged',
-    'pure_lending',
+    'pure_lending_usdt',
     'eth_staking_only',
     'usdt_market_neutral_no_leverage'
   ];

@@ -1,0 +1,34 @@
+# BTC Directional Share Class Configuration
+# For BTC-denominated strategies with BTC margin/collateral
+
+share_class: "BTC"
+type: "directional"
+description: "BTC directional share class for BTC-denominated strategies"
+
+# Currency configuration
+quote_currency: "USDT"
+decimal_places: 8
+
+# Risk Profile
+risk_level: "high"
+market_neutral: false
+allows_hedging: false
+
+# Supported Strategies (modes available for this share class)
+supported_strategies:
+  - "ml_btc_directional_btc_margin"  # BTC directional with BTC margin
+
+# Share Class Features
+leverage_enabled: true
+leverage_supported: true
+staking_supported: false
+basis_trading_supported: false
+
+# Risk parameters
+max_leverage: 3.0
+
+# Performance targets
+target_apy_range:
+  min: 0.10  # 10% minimum APY
+  max: 0.50  # 50% maximum APY
+max_drawdown: 0.30  # 30% max drawdown

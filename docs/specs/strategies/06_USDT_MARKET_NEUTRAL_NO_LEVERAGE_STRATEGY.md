@@ -284,9 +284,6 @@ component_config:
       lst_type: "weeth"  # or "wsteth"
       staking_protocol: "etherfi"  # or "lido"
       hedge_venues: ["binance", "bybit", "okx"]
-      hedge_allocation_binance: 0.4
-      hedge_allocation_bybit: 0.3
-      hedge_allocation_okx: 0.3
       gas_price_multiplier: 1.1
       max_gas_price_gwei: 50
       retry_attempts: 3
@@ -306,36 +303,29 @@ component_config:
 ### Strategy-Specific Config
 - **market_neutral**: bool - Whether strategy is market neutral
 - **allows_hedging**: bool - Whether hedging is allowed
-- **hedge_allocation_binance**: float - Proportion of hedge on Binance (0.0-1.0)
   - **Usage**: Controls capital allocation to Binance for perp hedging
   - **Example**: 0.4 (40% of hedge on Binance)
   - **Used in**: Execution manager venue routing
 
-- **hedge_allocation_bybit**: float - Proportion of hedge on Bybit (0.0-1.0)
   - **Usage**: Controls capital allocation to Bybit for perp hedging
   - **Example**: 0.3 (30% of hedge on Bybit)
   - **Used in**: Execution manager venue routing
 
-- **hedge_allocation_okx**: float - Proportion of hedge on OKX (0.0-1.0)
   - **Usage**: Controls capital allocation to OKX for perp hedging
   - **Example**: 0.3 (30% of hedge on OKX)
   - **Used in**: Execution manager venue routing
 
 ### Venue Configuration
 - **venues.etherfi.venue_type**: str - Venue type ('defi')
-- **venues.etherfi.enabled**: bool - Whether EtherFi is enabled
 - **venues.etherfi.instruments**: List[str] - Available instruments
 - **venues.etherfi.order_types**: List[str] - Available order types
 - **venues.binance.venue_type**: str - Venue type ('cex')
-- **venues.binance.enabled**: bool - Whether Binance is enabled
 - **venues.binance.instruments**: List[str] - Available instruments
 - **venues.binance.order_types**: List[str] - Available order types
 - **venues.bybit.venue_type**: str - Venue type ('cex')
-- **venues.bybit.enabled**: bool - Whether Bybit is enabled
 - **venues.bybit.instruments**: List[str] - Available instruments
 - **venues.bybit.order_types**: List[str] - Available order types
 - **venues.okx.venue_type**: str - Venue type ('cex')
-- **venues.okx.enabled**: bool - Whether OKX is enabled
 - **venues.okx.instruments**: List[str] - Available instruments
 - **venues.okx.order_types**: List[str] - Available order types
 

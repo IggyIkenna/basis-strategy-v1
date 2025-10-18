@@ -385,7 +385,7 @@ curl -s http://localhost:8001/api/v1/strategies/
 curl -s http://localhost:8001/api/v1/strategies/modes/
 
 # Test specific endpoints for frontend
-curl -s http://localhost:8001/api/v1/backtest/run -X POST -H "Content-Type: application/json" -d '{"strategy_name":"pure_lending","share_class":"usdt","initial_capital":10000,"start_date":"2024-01-01T00:00:00Z","end_date":"2024-01-31T00:00:00Z"}'
+curl -s http://localhost:8001/api/v1/backtest/run -X POST -H "Content-Type: application/json" -d '{"strategy_name":"pure_lending_usdt","share_class":"usdt","initial_capital":10000,"start_date":"2024-01-01T00:00:00Z","end_date":"2024-01-31T00:00:00Z"}'
 ```
 
 ### Testing

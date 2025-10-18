@@ -215,7 +215,7 @@ class ConfigAlignmentValidator:
         mode_orphaned_model = set()
         required_fields = set()
         fields_by_level = self.field_classifier.get_required_fields_by_level('ModeConfig')
-        for level in ['required_toplevel', 'required_nested', 'fixed_schema_dict']:
+        for level in ['required_toplevel', 'required_nested']:
             required_fields.update(fields_by_level[level])
         
         for model_field in required_fields:
@@ -265,7 +265,7 @@ class ConfigAlignmentValidator:
         venue_orphaned_model = set()
         required_fields = set()
         fields_by_level = self.field_classifier.get_required_fields_by_level('VenueConfig')
-        for level in ['required_toplevel', 'required_nested', 'fixed_schema_dict']:
+        for level in ['required_toplevel', 'required_nested']:
             required_fields.update(fields_by_level[level])
         
         for model_field in required_fields:
@@ -315,7 +315,7 @@ class ConfigAlignmentValidator:
         share_class_orphaned_model = set()
         required_fields = set()
         fields_by_level = self.field_classifier.get_required_fields_by_level('ShareClassConfig')
-        for level in ['required_toplevel', 'required_nested', 'fixed_schema_dict']:
+        for level in ['required_toplevel', 'required_nested']:
             required_fields.update(fields_by_level[level])
         
         for model_field in required_fields:
@@ -400,7 +400,7 @@ class ConfigAlignmentValidator:
                     'required_fields': ['mode', 'share_class', 'asset', 'staking_enabled', 'lst_type', 'venues'],
                     'optional_fields': ['lending_enabled', 'basis_trade_enabled', 'borrowing_enabled']
                 },
-                'pure_lending': {
+                'pure_lending_usdt': {
                     'required_fields': ['mode', 'share_class', 'asset', 'lending_enabled', 'venues'],
                     'optional_fields': ['staking_enabled', 'basis_trade_enabled', 'borrowing_enabled']
                 },
@@ -412,13 +412,17 @@ class ConfigAlignmentValidator:
                     'required_fields': ['mode', 'share_class', 'asset', 'staking_enabled', 'venues', 'hedge_venues'],
                     'optional_fields': ['lending_enabled', 'basis_trade_enabled', 'borrowing_enabled']
                 },
-                'ml_btc_directional': {
+                'ml_btc_directional_usdt_margin': {
                     'required_fields': ['mode', 'share_class', 'asset', 'venues'],
                     'optional_fields': ['lending_enabled', 'staking_enabled', 'basis_trade_enabled', 'borrowing_enabled']
                 },
-                'ml_usdt_directional': {
+                'ml_usdt_directional_usdt_margin': {
                     'required_fields': ['mode', 'share_class', 'asset', 'venues'],
                     'optional_fields': ['lending_enabled', 'staking_enabled', 'basis_trade_enabled', 'borrowing_enabled']
+                },
+                'ml_btc_directional_btc_margin': {
+                    'required_fields': ['mode', 'share_class', 'asset', 'venues', 'borrowing_enabled', 'leverage_enabled', 'margin_currency'],
+                    'optional_fields': ['lending_enabled', 'staking_enabled', 'basis_trade_enabled', 'max_ltv']
                 }
             }
             

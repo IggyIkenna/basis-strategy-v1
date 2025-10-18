@@ -101,7 +101,6 @@ component_config:
   - **Validation**: Must be > 0 and < 10
   - **Used in**: Strategy creation retry logic
 
-- **component_config.strategy_factory.validation_strict**: bool - Strict mode validation
   - **Usage**: Determines whether to perform strict validation of strategy mode
   - **Default**: true
   - **Used in**: Strategy mode validation

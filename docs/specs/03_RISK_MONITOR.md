@@ -141,10 +141,8 @@ def __init__(self, ...):
 - **component_config.risk_monitor.risk_limits**: Dict[str, float] - Risk limits for each risk type
   - **Usage**: Defines risk thresholds and limits for monitoring
   - **Used in**: Risk monitoring and alert generation
-- **component_config.risk_monitor.risk_limits.liquidation_threshold**: float - Liquidation threshold
   - **Usage**: Defines liquidation threshold for risk monitoring
   - **Used in**: Risk monitoring and position management
-- **component_config.risk_monitor.risk_limits.target_margin_ratio**: float - Target margin ratio
   - **Usage**: Defines target margin ratio for CEX positions
 - **component_config.risk_monitor.risk_limits.cex_margin_ratio_min**: float - Minimum CEX margin ratio
   - **Usage**: Defines minimum CEX margin ratio threshold for risk monitoring
@@ -153,7 +151,6 @@ def __init__(self, ...):
 - **component_config.risk_monitor.risk_limits.delta_tolerance**: float - Delta tolerance threshold
   - **Usage**: Defines maximum allowed delta deviation
   - **Used in**: Risk monitoring and delta neutrality
-- **component_config.risk_monitor.risk_limits.maintenance_margin_requirement**: float - Maintenance margin requirement
 
 ### Global Configuration Parameters
 - **max_drawdown**: float - Maximum allowed drawdown percentage

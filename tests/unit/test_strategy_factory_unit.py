@@ -30,7 +30,7 @@ class TestStrategyFactory:
     def mock_strategy_classes(self):
         """Mock strategy classes for testing."""
         return {
-            'pure_lending': Mock(),
+            'pure_lending_usdt': Mock(),
             'btc_basis': Mock(),
             'eth_basis': Mock(),
             'eth_leveraged': Mock(),
@@ -44,7 +44,7 @@ class TestStrategyFactory:
     def mock_config(self):
         """Mock configuration for testing."""
         return {
-            'mode': 'pure_lending',
+            'mode': 'pure_lending_usdt',
             'strategy_params': {
                 'max_leverage': 1.0,
                 'target_apy': 0.05
@@ -128,7 +128,7 @@ class TestStrategyFactory:
         """Test strategy factory registry management."""
         # Test registry operations
         registry = {
-            'pure_lending': 'PureLendingStrategy',
+            'pure_lending_usdt': 'PureLendingStrategy',
             'btc_basis': 'BTCBasisStrategy',
             'eth_basis': 'ETHBasisStrategy',
             'eth_leveraged': 'ETHLeveragedStrategy',
@@ -140,7 +140,7 @@ class TestStrategyFactory:
         
         # Verify registry structure
         assert len(registry) == 8  # All strategy modes
-        assert 'pure_lending' in registry
+        assert 'pure_lending_usdt' in registry
         assert 'btc_basis' in registry
         assert 'eth_basis' in registry
         assert 'eth_leveraged' in registry
@@ -152,22 +152,21 @@ class TestStrategyFactory:
     def test_strategy_configuration_validation_detailed(self, strategy_factory):
         """Test detailed strategy configuration validation."""
         # Test valid pure lending config
-        pure_lending_config = {
-            'mode': 'pure_lending',
+        pure_lending_usdt_config = {
+            'mode': 'pure_lending_usdt',
             'lending_enabled': True,
             'target_apy': 0.05,
             'max_capital': 100000
         }
         
         with patch.object(strategy_factory, 'validate_strategy_config', return_value=True):
-            is_valid = strategy_factory.validate_strategy_config(pure_lending_config)
+            is_valid = strategy_factory.validate_strategy_config(pure_lending_usdt_config)
             assert is_valid is True
         
         # Test valid BTC basis config
         btc_basis_config = {
             'mode': 'btc_basis',
             'max_leverage': 2.0,
-            'target_ltv': 0.75,
             'liquidation_threshold': 0.85
         }
         
@@ -180,14 +179,14 @@ class TestStrategyFactory:
         # Mock dependencies
         mock_data_provider = Mock()
         mock_execution_interface = Mock()
-        mock_config = {'mode': 'pure_lending'}
+        mock_config = {'mode': 'pure_lending_usdt'}
         
         # Test strategy creation with dependencies
-        strategy = strategy_factory.create_strategy('pure_lending', mock_config)
+        strategy = strategy_factory.create_strategy('pure_lending_usdt', mock_config)
         assert strategy is not None
         
         # Verify strategy creation was called with correct parameters
-        strategy_factory.create_strategy.assert_called_with('pure_lending', mock_config)
+        strategy_factory.create_strategy.assert_called_with('pure_lending_usdt', mock_config)
     
     def test_strategy_factory_singleton_pattern(self, strategy_factory):
         """Test strategy factory follows singleton pattern."""
@@ -202,7 +201,7 @@ class TestStrategyFactory:
         """Test strategy mode validation logic."""
         # Test valid modes
         valid_modes = [
-            'pure_lending',
+            'pure_lending_usdt',
             'btc_basis', 
             'eth_basis',
             'eth_leveraged',
@@ -232,7 +231,7 @@ class TestStrategyFactory:
         # Test strategy creation errors
         with patch.object(strategy_factory, 'create_strategy', side_effect=RuntimeError("Strategy creation failed")):
             with pytest.raises(RuntimeError, match="Strategy creation failed"):
-                strategy_factory.create_strategy('pure_lending', {})
+                strategy_factory.create_strategy('pure_lending_usdt', {})
 
 
 if __name__ == "__main__":

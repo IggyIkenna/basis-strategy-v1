@@ -1,0 +1,110 @@
+mode: pure_lending_usdt
+data_type: defi
+lending_enabled: true
+staking_enabled: false
+basis_trade_enabled: false
+borrowing_enabled: false
+leverage_enabled: false
+share_class: USDT
+asset: USDT
+lst_type: null
+margin_ratio_target: 0.8
+venues:
+  aave_v3:
+    venue_type: defi
+    instruments:
+    - USDT-LENDING
+    order_types:
+    - supply
+    - withdraw
+  alchemy:
+    venue_type: infrastructure
+    instruments:
+    - WALLET-TRANSFER
+    order_types:
+    - transfer
+data_requirements:
+- usdt_prices
+- aave_rates
+- gas_costs
+- execution_costs
+time_throttle_interval: 60
+target_apy: 0.05  # Used for frontend display and e2e quality gates only
+max_drawdown: 0.01
+event_logger:
+  log_path: ./logs
+  log_format: json
+  log_level: INFO
+  event_categories:
+    data:
+    - data_loaded
+    - data_updated
+    - data_error
+    risk:
+    - risk_breach
+    - risk_warning
+    - risk_calculation
+    event:
+    - event_logged
+    - event_filtered
+    - event_exported
+    business:
+    - trade_executed
+    - position_updated
+    - strategy_decision
+  event_logging_settings:
+    buffer_size: 10000
+    export_format: both
+    async_logging: true
+    compression: false
+  log_retention_policy:
+    retention_days: 30
+    max_file_size_mb: 100
+    rotation_frequency: daily
+    compression_after_days: 7
+  logging_requirements:
+    structured_logging: true
+    correlation_ids: true
+    performance_metrics: true
+    error_tracking: true
+  event_filtering:
+    filter_by_level: true
+    filter_by_category: true
+    exclude_patterns: []
+    include_patterns:
+    - '*'
+component_config:
+  strategy_factory:
+    timeout: 30
+  strategy_manager:
+    actions:
+    - entry_full
+    - entry_partial
+    - exit_full
+    - exit_partial
+    - sell_dust
+  risk_monitor:
+    enabled_risk_types:
+    - health_factor
+    - ltv_ratio
+    - liquidation_threshold
+    delta_tracking_asset: USDT
+    maintenance_margin_ratio: 0.15
+  position_monitor:
+    position_subscriptions:
+      - "wallet:BaseToken:USDT"
+      - "aave_v3:aToken:aUSDT"
+      - "alchemy:BaseToken:USDT"
+    dust_tokens:
+      dust_instruments: []
+      collection_venues: []
+      transfer_venues: []
+  pnl_monitor:
+    attribution_types: ["lending_pnl", "transaction_costs"]
+    reconciliation_tolerance: 0.02
+    reporting_currency: "USDT"
+  results_store:
+    result_types: ["balance_sheet", "pnl_attribution", "risk_metrics", "execution_log"]
+    leverage_tracking: false
+strategy_config:
+  position_deviation_threshold: 0.02

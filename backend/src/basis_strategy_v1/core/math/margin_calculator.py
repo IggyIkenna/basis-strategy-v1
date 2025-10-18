@@ -14,7 +14,6 @@ from decimal import Decimal
 from typing import Dict, List, Optional, Tuple, Any
 import logging
 
-from ...core.logging.base_logging_interface import StandardizedLoggingMixin, LogLevel, EventType
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +34,7 @@ ERROR_CODES = {
 }
 
 
-class MarginCalculator(StandardizedLoggingMixin):
+class MarginCalculator:
     """Pure margin calculation functions - no side effects or I/O.
     
     All functions receive configuration as parameters following Service-Engine separation.

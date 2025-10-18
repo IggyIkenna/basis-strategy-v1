@@ -222,7 +222,7 @@ component_config:
       maintenance_margin_requirement: 0.10
       delta_tolerance: 1.0  # 100% delta allowed (directional)
       
-  pnl_calculator:
+  pnl_monitor:
     attribution_types: ["funding_pnl", "price_change_pnl", "transaction_costs"]
     reporting_currency: "BTC"
     reconciliation_tolerance: 0.02

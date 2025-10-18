@@ -37,7 +37,7 @@ class ModeAgnosticDesignValidator:
         
         # Mode-specific data requirements
         self.mode_data_requirements = {
-            'pure_lending': ['usdt_prices', 'aave_lending_rates', 'gas_costs', 'execution_costs'],
+            'pure_lending_usdt': ['usdt_prices', 'aave_lending_rates', 'gas_costs', 'execution_costs'],
             'btc_basis': ['btc_prices', 'btc_futures', 'funding_rates', 'gas_costs', 'execution_costs'],
             'eth_basis': ['eth_prices', 'eth_futures', 'funding_rates', 'gas_costs', 'execution_costs'],
             'eth_leveraged': ['eth_prices', 'weeth_prices', 'aave_lending_rates', 'staking_rewards', 'gas_costs', 'execution_costs'],
@@ -237,9 +237,9 @@ class ModeAgnosticDesignValidator:
             'position_monitor': '01_POSITION_MONITOR.md',
             'exposure_monitor': '02_EXPOSURE_MONITOR.md',
             'risk_monitor': '03_RISK_MONITOR.md',
-            'pnl_calculator': '04_PNL_CALCULATOR.md',
+            'pnl_monitor': '04_pnl_monitor.md',
             'strategy_manager': '05_STRATEGY_MANAGER.md',
-            'execution_manager': '06_EXECUTION_MANAGER.md',
+            'execution_manager': '06_VENUE_MANAGER.md',
             'data_provider': '09_DATA_PROVIDER.md'
         }
         
@@ -327,8 +327,8 @@ class ModeAgnosticDesignValidator:
             component_type = 'exposure_monitor'
         elif 'risk_monitor' in str(file_path):
             component_type = 'risk_monitor'
-        elif 'pnl_calculator' in str(file_path):
-            component_type = 'pnl_calculator'
+        elif 'pnl_monitor' in str(file_path):
+            component_type = 'pnl_monitor'
         elif 'strategy_manager' in str(file_path):
             component_type = 'strategy_manager'
         elif 'execution_manager' in str(file_path):

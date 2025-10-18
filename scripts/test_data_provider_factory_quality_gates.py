@@ -27,7 +27,7 @@ sys.path.insert(0, str(project_root / 'backend' / 'src'))
 
 from basis_strategy_v1.infrastructure.data.data_provider_factory import create_data_provider
 from basis_strategy_v1.infrastructure.data.base_data_provider import BaseDataProvider
-from basis_strategy_v1.infrastructure.data.pure_lending_data_provider import PureLendingDataProvider
+from basis_strategy_v1.infrastructure.data.pure_lending_usdt_data_provider import PureLendingDataProvider
 
 logger = logging.getLogger(__name__)
 
@@ -42,8 +42,8 @@ class DataProviderFactoryTester:
     def _create_test_configs(self) -> Dict[str, Dict[str, Any]]:
         """Create test configurations for each strategy mode."""
         return {
-            'pure_lending': {
-                'mode': 'pure_lending',
+            'pure_lending_usdt': {
+                'mode': 'pure_lending_usdt',
                 'data_requirements': ['usdt_prices', 'aave_lending_rates', 'gas_costs', 'execution_costs'],
                 'data_dir': 'data',
                 'share_class': 'USDT',
@@ -115,8 +115,8 @@ class DataProviderFactoryTester:
                 'backtest_start_date': '2024-05-01',
                 'backtest_end_date': '2024-06-02'
             },
-            'ml_btc_directional': {
-                'mode': 'ml_btc_directional',
+            'ml_btc_directional_usdt_margin': {
+                'mode': 'ml_btc_directional_usdt_margin',
                 'data_requirements': ['ml_ohlcv_5min', 'ml_predictions', 'btc_usd_prices', 'gas_costs', 'execution_costs'],
                 'data_dir': 'data',
                 'share_class': 'BTC',
@@ -124,8 +124,8 @@ class DataProviderFactoryTester:
                 'backtest_start_date': '2024-05-01',
                 'backtest_end_date': '2024-06-02'
             },
-            'ml_usdt_directional': {
-                'mode': 'ml_usdt_directional',
+            'ml_usdt_directional_usdt_margin': {
+                'mode': 'ml_usdt_directional_usdt_margin',
                 'data_requirements': ['ml_ohlcv_5min', 'ml_predictions', 'usdt_usd_prices', 'gas_costs', 'execution_costs'],
                 'data_dir': 'data',
                 'share_class': 'USDT',
@@ -208,11 +208,11 @@ class DataProviderFactoryTester:
             'test_results': {}
         }
         
-        # Test with pure_lending mode (has canonical implementation)
-        test_config = self.test_configs['pure_lending']
+        # Test with pure_lending_usdt mode (has canonical implementation)
+        test_config = self.test_configs['pure_lending_usdt']
         
         try:
-            logger.info("📊 Testing canonical data structure for pure_lending mode...")
+            logger.info("📊 Testing canonical data structure for pure_lending_usdt mode...")
             
             # Create provider
             provider = create_data_provider(
@@ -438,7 +438,7 @@ class DataProviderFactoryTester:
         
         # Test missing data_requirements
         try:
-            create_data_provider('backtest', {'mode': 'pure_lending'})
+            create_data_provider('backtest', {'mode': 'pure_lending_usdt'})
             results['test_results']['missing_requirements'] = {
                 'status': 'failed',
                 'error': 'Should have raised ValueError for missing data_requirements'

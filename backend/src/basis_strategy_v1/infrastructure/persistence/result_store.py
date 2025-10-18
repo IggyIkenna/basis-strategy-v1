@@ -25,7 +25,7 @@ class ResultStore:
         self.base_path = Path(base_path).resolve()
         self.base_path.mkdir(parents=True, exist_ok=True)
 
-    async def save_result(self, request_id: str, result: Dict[str, Any]) -> None:
+    async def save_result(self, request_id: str, result: Dict[str, Any], full_results: Optional[Dict[str, Any]] = None) -> None:
         """
         Save result summary to filesystem using existing format.
 
@@ -69,9 +69,10 @@ class ResultStore:
                 from ..visualization.chart_generator import ChartGenerator
                 chart_generator = ChartGenerator()
                 
-                # Generate charts and CSV files
+                # Generate charts and CSV files using full results if available
+                chart_data = full_results if full_results else result
                 chart_generator.generate_all_charts(
-                    results=result,
+                    results=chart_data,
                     request_id=request_id,
                     strategy_name=strategy_name,
                     output_dir=result_dir

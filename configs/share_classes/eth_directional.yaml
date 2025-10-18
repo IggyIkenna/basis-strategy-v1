@@ -6,7 +6,6 @@ type: "directional"
 description: "ETH directional share class for leveraged staking and basis trading strategies"
 
 # Currency Configuration
-base_currency: "ETH"
 quote_currency: "ETH"
 decimal_places: 18
 
@@ -17,11 +16,14 @@ allows_hedging: false
 
 # Supported Strategies (modes available for this share class)
 supported_strategies:
+  - "pure_lending_eth"  # Pure lending strategy with ETH share class
   - "eth_leveraged"
   - "eth_staking_only"
   - "eth_basis"
+  - "ml_btc_directional_btc_margin"  # BTC directional with BTC margin
 
 # Share Class Features
+leverage_enabled: true
 leverage_supported: true
 staking_supported: true
 basis_trading_supported: true
@@ -29,6 +31,8 @@ basis_trading_supported: true
 # Risk Management
 max_leverage: 3.0  # 3x leverage for directional strategies
 max_drawdown: 0.20  # 20% max drawdown for directional strategies
+
+# Performance targets
 target_apy_range:
   min: 0.15  # 15% minimum target APY
   max: 0.35  # 35% maximum target APY

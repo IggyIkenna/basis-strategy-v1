@@ -61,17 +61,14 @@ Components NEVER receive these as method parameters during runtime.
   - **Examples**: ["balance_sheet", "pnl_attribution", "risk_metrics", "execution_log"]
   - **Used in**: Result storage filtering and aggregation
 
-- **component_config.results_store.balance_sheet_assets**: List[str] - Assets to track in balance sheet
   - **Usage**: Defines which assets to include in balance sheet results
   - **Examples**: ["ETH", "weETH", "aWeETH", "variableDebtWETH", "USDT"]
   - **Used in**: Balance sheet result generation
 
-- **component_config.results_store.pnl_attribution_types**: List[str] - PnL attribution types to track
   - **Usage**: Defines which PnL attribution types to include in results
   - **Examples**: ["supply_yield", "staking_yield_oracle", "borrow_costs", "funding_pnl"]
   - **Used in**: PnL attribution result generation
 
-- **component_config.results_store.leverage_tracking**: bool - Enable leverage tracking
   - **Usage**: Determines whether to track leverage metrics in results
   - **Used in**: Leverage tracking result generation
 
@@ -85,7 +82,6 @@ Components NEVER receive these as method parameters during runtime.
   - **Examples**: ["binance", "bybit", "okx"]
   - **Used in**: Funding tracking result generation
 
-- **component_config.results_store.dust_tracking_tokens**: List[str] - Tokens to track as dust
   - **Usage**: Defines which tokens to track as dust balances
   - **Examples**: ["EIGEN", "ETHFI", "KING"]
   - **Used in**: Dust tracking result generation

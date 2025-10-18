@@ -117,13 +117,24 @@ def __init__(self, ...):
   - **Used in**: `ml_directional_data_provider.py`, ML strategy components
 
 ### Strategy-Specific Configuration Fields
+- `lending_enabled`: bool - Whether lending operations are enabled for this strategy
+  - **Usage**: Enables AAVE lending operations (ETH → aETH, USDT → aUSDT)
+  - **Required**: Yes for pure lending strategies
+  - **Used in**: Strategy decision logic, order generation
+- `staking_enabled`: bool - Whether staking operations are enabled for this strategy
+  - **Usage**: Enables staking operations (WETH → LST, weETH, wstETH)
+  - **Required**: Yes for staking strategies (ETH Staking Only, ETH Leveraged, USDT Market Neutral)
+  - **Used in**: Strategy decision logic, order generation
+- `basis_trade_enabled`: bool - Whether basis trading operations are enabled for this strategy
+  - **Usage**: Enables delta-neutral basis trading (long spot + short perp)
+  - **Required**: Yes for basis trading strategies (ETH Basis, BTC Basis)
+  - **Used in**: Strategy decision logic, order generation
 - `delta_tolerance`: float - Delta neutrality tolerance (0.0-1.0)
 - `stake_allocation_eth`: float - ETH stake allocation percentage (0.0-1.0)
 - `funding_threshold`: float - Funding rate threshold for basis trading
 - `max_ltv`: float - Maximum loan-to-value ratio (0.0-1.0)
 - `leverage_enabled`: bool - Whether leverage is enabled for this mode
 - `hedge_venues`: List[str] - List of venues used for hedging
-- `hedge_allocation_bybit`: float - Allocation percentage to Bybit for hedging
 - `position_deviation_threshold`: float - Position deviation threshold (0.0-1.0)
 - `rewards_mode`: str - Rewards collection mode
 

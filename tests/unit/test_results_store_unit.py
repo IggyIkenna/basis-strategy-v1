@@ -30,7 +30,7 @@ class TestResultsStore:
         results_store = ResultsStore(config=mock_config, data_provider=mock_data_provider)
         
         backtest_results = {
-            "strategy_mode": "pure_lending",
+            "strategy_mode": "pure_lending_usdt",
             "start_date": "2024-01-01",
             "end_date": "2024-01-31",
             "total_return": 0.05,
@@ -48,7 +48,7 @@ class TestResultsStore:
                 assert result_id is not None
                 mock_file.assert_called_once()
                 written_data = json.loads(mock_file().write.call_args[0][0])
-                assert written_data["strategy_mode"] == "pure_lending"
+                assert written_data["strategy_mode"] == "pure_lending_usdt"
                 assert written_data["total_return"] == 0.05
     
     def test_retrieve_backtest_results(self, mock_config, mock_data_provider):
@@ -101,17 +101,17 @@ class TestResultsStore:
         results_store = ResultsStore(config=mock_config, data_provider=mock_data_provider)
         
         mock_files = [
-            "results/pure_lending_2024-01-01.json",
+            "results/pure_lending_usdt_2024-01-01.json",
             "results/btc_basis_2024-01-02.json",
             "results/eth_basis_2024-01-03.json"
         ]
         
         with patch('os.listdir', return_value=mock_files):
             with patch('os.path.isfile', return_value=True):
-                results = results_store.list_available_results(strategy_mode="pure_lending")
+                results = results_store.list_available_results(strategy_mode="pure_lending_usdt")
                 
                 assert len(results) == 1
-                assert "pure_lending" in results[0]
+                assert "pure_lending_usdt" in results[0]
     
     def test_delete_results(self, mock_config, mock_data_provider):
         """Test deleting results by ID."""

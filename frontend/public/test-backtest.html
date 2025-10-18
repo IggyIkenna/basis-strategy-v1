@@ -374,7 +374,7 @@
                     
                     // Special handling for capital validation errors
                     if (detail.includes('initial_capital') && detail.includes('insufficient')) {
-                        const suggestion = `💡 Try increasing Initial Capital to $50,000+ for leveraged strategies, or select a simpler strategy like "usdt_pure_lending"`;
+                        const suggestion = `💡 Try increasing Initial Capital to $50,000+ for leveraged strategies, or select a simpler strategy like "usdt_pure_lending_usdt"`;
                         throw new Error(`${detail}\n\n${suggestion}`);
                     }
                     

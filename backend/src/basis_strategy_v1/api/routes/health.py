@@ -4,12 +4,15 @@ from fastapi import APIRouter, Request
 from typing import Dict, Any, Optional
 import structlog
 from datetime import datetime
+import asyncio
 
 from ...infrastructure.health.health_checker import get_health_checker
 from ..models.responses import HealthResponse
 
 logger = structlog.get_logger()
 router = APIRouter()
+
+
 
 
 @router.get(

@@ -4,7 +4,7 @@
 Validate P&L calculator unit quality gate by running existing test suite.
 
 ## Quality Gate
-**Quality Gate Script**: `tests/unit/test_pnl_calculator_unit.py`
+**Quality Gate Script**: `tests/unit/test_pnl_monitor_unit.py`
 **Validation**: P&L calculation, attribution P&L, unit tests
 **Status**: ✅ IMPLEMENTED
 
@@ -23,14 +23,14 @@ Validate P&L calculator unit quality gate by running existing test suite.
 - [ ] No regressions introduced
 
 ## Reference
-- Canonical Spec: `docs/specs/04_PNL_CALCULATOR.md`
-- Backend Structure: `core/math/pnl_calculator.py` per TARGET_REPOSITORY_STRUCTURE.md
+- Canonical Spec: `docs/specs/04_pnl_monitor.md`
+- Backend Structure: `core/math/pnl_monitor.py` per TARGET_REPOSITORY_STRUCTURE.md
 - Documentation: `docs/REFERENCE_ARCHITECTURE_CANONICAL.md` Section II
 
 ## Execution
 ```bash
 # Run the quality gate
-python -m pytest tests/unit/test_pnl_calculator_unit.py -v
+python -m pytest tests/unit/test_pnl_monitor_unit.py -v
 
 # Verify via run_quality_gates.py
 python scripts/run_quality_gates.py --category unit

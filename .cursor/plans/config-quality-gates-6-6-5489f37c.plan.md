@@ -51,7 +51,7 @@ Added comprehensive documentation for:
 Components to update in `docs/specs/`:
 
 - `01_POSITION_MONITOR.md`, `02_EXPOSURE_MONITOR.md`, `03_RISK_MONITOR.md`
-- `04_PNL_CALCULATOR.md`, `05_STRATEGY_MANAGER.md`, `06_VENUE_MANAGER.md`
+- `04_pnl_monitor.md`, `05_STRATEGY_MANAGER.md`, `06_VENUE_MANAGER.md`
 - `07_VENUE_INTERFACE_MANAGER.md`, `08_EVENT_LOGGER.md`
 - `10_RECONCILIATION_COMPONENT.md`, `11_POSITION_UPDATE_HANDLER.md`
 
@@ -65,7 +65,7 @@ Add "Config Fields Used" section to each spec with field descriptions.
 
 **Required Fixes**:
 
-1. **pure_lending.yaml**: ✅ FIXED - Set `mode: "pure_lending"`, `lending_enabled: true`, `basis_trade_enabled: false`
+1. **pure_lending_usdt_usdt.yaml**: ✅ FIXED - Set `mode: "pure_lending_usdt"`, `lending_enabled: true`, `basis_trade_enabled: false`
 2. **btc_basis.yaml**: Set `mode: "btc_basis"` (already correct)
 3. **eth_basis.yaml**: Set `mode: "eth_basis"`, `asset: "ETH"`, correct venues
 4. **eth_leveraged.yaml**: Set `mode: "eth_leveraged"`, `staking_enabled: true`, `borrowing_enabled: true`, `leverage_enabled: true`
@@ -129,7 +129,7 @@ python scripts/test_config_implementation_usage_quality_gates.py
 - [x] Add 126 orphaned fields to Pydantic models (ModeConfig, VenueConfig, ShareClassConfig) and update field classifier
 - [x] Add event logger configuration support to documentation and Pydantic models
 - [ ] Add 'Config Fields Used' sections to 10 component specs to document 88 orphaned config fields
-- [x] Fix pure_lending.yaml mode configuration (mode name, lending_enabled, basis_trade_enabled)
+- [x] Fix pure_lending_usdt_usdt.yaml mode configuration (mode name, lending_enabled, basis_trade_enabled)
 - [ ] Fix remaining 8 mode YAML files with correct mode names and configurations
 - [ ] Remove or add to YAMLs 75 orphaned fields (44 documented + 31 YAML fields)
 - [ ] Run all 6 config quality gates and verify 100% passing with 0 orphaned fields

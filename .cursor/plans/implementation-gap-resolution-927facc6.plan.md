@@ -126,7 +126,7 @@ Run the implementation gap quality gate script to get current status:
 
 **File**: `backend/src/basis_strategy_v1/core/execution/execution_manager.py`
 
-**Canonical Methods Required** (from `docs/specs/06_EXECUTION_MANAGER.md`):
+**Canonical Methods Required** (from `docs/specs/06_VENUE_MANAGER.md`):
 
 - `execute_instruction(instruction_block: Dict, timestamp: pd.Timestamp) -> Dict`
 - `get_execution_status(execution_id: str) -> Dict`
@@ -158,7 +158,7 @@ Run the implementation gap quality gate script to get current status:
 **Actions**:
 
 1. Read the file to understand current state
-2. Compare against canonical spec `docs/specs/07_EXECUTION_INTERFACE_MANAGER.md`
+2. Compare against canonical spec `docs/specs/07_VENUE_INTERFACE_MANAGER.md`
 3. Implement missing canonical methods:
 
 - `route_instruction(instruction: Dict) -> ExecutionInterface`
@@ -192,17 +192,17 @@ Run the implementation gap quality gate script to get current status:
 
 **Quality Gate**: Run after completion
 
-### Step 3.3: PnL Calculator Implementation
+### Step 3.3: PnL Monitor Implementation
 
-**File**: `backend/src/basis_strategy_v1/core/components/pnl_calculator.py`
+**File**: `backend/src/basis_strategy_v1/core/components/pnl_monitor.py`
 
 **Status**: File does not exist
 
 **Actions**:
 
 1. Check if PnL logic exists elsewhere
-2. Read canonical spec `docs/specs/04_PNL_CALCULATOR.md`
-3. Create PnL Calculator implementation with canonical methods:
+2. Read canonical spec `docs/specs/04_pnl_monitor.md`
+3. Create PnL Monitor implementation with canonical methods:
 
 - `calculate_pnl(timestamp: pd.Timestamp, position_data: Dict, market_data: Dict) -> Dict`
 - `get_current_pnl() -> Dict`
@@ -281,7 +281,7 @@ Run after all integration point updates:
 
 Run strategy-specific quality gates:
 
-- Pure Lending: `python scripts/test_pure_lending_quality_gates.py`
+- Pure Lending: `python scripts/test_pure_lending_usdt_quality_gates.py`
 - BTC Basis: `python scripts/test_btc_basis_quality_gates.py`
 - Target: 75%+ pass rate
 
@@ -321,7 +321,7 @@ Final validation:
 - [ ] Refactor Execution Manager to use canonical methods (execute_instruction, get_execution_status, update_state) and update all callers
 - [ ] Verify Execution Interface Manager implementation status and implement missing canonical methods if needed
 - [ ] Create Strategy Manager component with canonical methods and integrate with Event Engine
-- [ ] Create PnL Calculator component with canonical methods and integrate with Event Engine
+- [ ] Create PnL Monitor component with canonical methods and integrate with Event Engine
 - [ ] Update Event Engine to use all canonical method names across all component calls
 - [ ] Update Position Update Handler to use canonical method names in tight loop sequence
 - [ ] Run integration alignment quality gates to verify 100% integration consistency

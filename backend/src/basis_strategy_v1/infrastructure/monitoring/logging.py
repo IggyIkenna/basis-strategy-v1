@@ -6,7 +6,7 @@ import sys
 from typing import Any, Dict, Optional
 from datetime import datetime
 
-from ...core.error_codes import get_error_info, ErrorSeverity
+from ...core.errors.error_codes import get_error_description, ERROR_REGISTRY
 
 
 def setup_logging(log_level: str = "INFO", log_format: str = "json"):
@@ -45,7 +45,7 @@ def setup_logging(log_level: str = "INFO", log_format: str = "json"):
     
     # Configure standard logging
     logging.basicConfig(
-        format="%(message)s",
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         stream=sys.stdout,
         level=getattr(logging, log_level.upper())
     )
@@ -103,7 +103,7 @@ def log_structured_error(
     import traceback
     import sys
     
-    error_info = get_error_info(error_code)
+    error_description = get_error_description(error_code)
     error_message = error_info.message if error_info else f'Unknown error code: {error_code}'
     
     log_data = {
@@ -160,7 +160,7 @@ def log_exception_with_stack_trace(
     import traceback
     import sys
     
-    error_info = get_error_info(error_code)
+    error_description = get_error_description(error_code)
     error_message = error_info.message if error_info else f'Unknown error code: {error_code}'
     
     # Get exception information
@@ -229,7 +229,7 @@ def log_component_health(
     }
     
     if error_code:
-        error_info = get_error_info(error_code)
+        error_description = get_error_description(error_code)
         log_data.update({
             'error_code': error_code,
             'error_message': error_info.message if error_info else f'Unknown error code: {error_code}',

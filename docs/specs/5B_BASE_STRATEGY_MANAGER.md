@@ -501,9 +501,7 @@ class BTCBasisStrategy(BaseStrategyManager):
         target_btc_spot = (equity * 0.5) / btc_price
         
         # Calculate target perp short positions across venues
-        hedge_allocation = self.position_calculation.get('hedge_allocation', {})
         target_perp_shorts = {}
-        for venue, allocation in hedge_allocation.items():
             target_perp_shorts[venue] = -target_btc_spot * allocation
         
         return {
@@ -559,9 +557,7 @@ class ETHLeveragedStrategy(BaseStrategyManager):
         target_aave_eth = (equity * 0.5) / eth_price
         
         # Calculate target perp short positions to hedge AAVE
-        hedge_allocation = self.position_calculation.get('hedge_allocation', {})
         target_perp_shorts = {}
-        for venue, allocation in hedge_allocation.items():
             target_perp_shorts[venue] = -target_aave_eth * allocation
         
         return {

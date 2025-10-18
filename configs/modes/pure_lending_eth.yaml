@@ -1,0 +1,158 @@
+# Pure Lending ETH Strategy Configuration
+# Simple lending strategy: ETH → aETH on AAVE
+
+mode: "pure_lending_eth"
+data_type: "defi"  # DeFi strategy with AAVE lending
+
+# Strategy parameters
+lending_enabled: true
+staking_enabled: false
+basis_trade_enabled: false
+borrowing_enabled: false  # No borrowing for pure lending
+leverage_enabled: false
+
+# Asset configuration
+share_class: "ETH"
+asset: "ETH"
+margin_currency: "ETH"
+lst_type: null
+
+# Risk parameters
+margin_ratio_target: 0.5
+max_ltv: 0.0  # No borrowing
+
+# Venue configuration
+venues:
+  aave_v3:
+    venue_type: "defi"
+    enabled: true
+    instruments: ["aETH"]
+    order_types: ["supply", "withdraw"]
+  alchemy:
+    venue_type: "infrastructure"
+    enabled: true
+    instruments: []
+    order_types: []
+
+# Data requirements
+data_requirements:
+  - "eth_prices"  # ETH/USD price
+  - "aave_rates"  # AAVE lending rates
+  - "gas_costs"  # Ethereum gas prices
+  - "execution_costs"  # Execution cost model
+
+# Live time throttling 
+time_throttle_interval: 60
+
+# Performance targets
+target_apy: 0.05  # Used for frontend display and e2e quality gates only
+max_drawdown: 0.05  # 5% max drawdown (lending)
+
+# Strategy configuration
+strategy_config:
+  delta_tracking_asset: "ETH"
+  position_deviation_threshold: 0.02  # 2% deviation from target triggers rebalancing
+
+# Component configuration
+component_config:
+  # Position subscriptions
+  position_monitor:
+    position_subscriptions:
+      - "aave_v3:aToken:aETH"
+      - "alchemy:BaseToken:ETH"
+    
+    # Dust tokens configuration
+    dust_tokens:
+      dust_instruments: []  # No dust tokens for pure lending
+      collection_venues: []
+      transfer_venues: []
+  
+  # Settlement configuration (backtest only)
+  settlement:
+    funding_enabled: false
+    margin_pnl_enabled: false
+    seasonal_rewards_enabled: false
+
+  # Risk monitoring
+  risk_monitor:
+    enabled_risk_types: ["health_factor", "ltv_ratio"]
+    delta_tracking_asset: "ETH"
+    maintenance_margin_ratio: 0.5
+  
+  # Exposure monitoring
+  exposure_monitor:
+    # No config needed - uses position_subscriptions from position_monitor
+    # Always calculates both USD and share_class values
+    # Conversions handled by utility_manager
+  
+  # PnL monitoring
+  pnl_monitor:
+    attribution_types: ["lending_pnl", "transaction_costs"]
+    reconciliation_tolerance: 0.02
+    reporting_currency: "ETH"
+  
+  # Strategy management
+  strategy_manager:
+    strategy_type: "pure_lending_eth"
+    actions: ["entry_full", "entry_partial", "exit_full", "exit_partial", "sell_dust"]
+    position_calculation:
+      target_position: "aeth_position"
+      max_position_size: 1.0
+  
+  # Execution management
+  execution_manager:
+    max_retry_attempts: 3
+    tight_loop_timeout: 120
+    retry_delay_seconds: 0.1
+    execution_timeout: 30
+    reconciliation_timeout: 10
+  
+  # Position update handling
+  position_update_handler:
+    reconciliation_tolerance: 0.01
+  
+  # Results storage
+  results_store:
+    result_types: ["balance_sheet", "pnl_attribution", "risk_metrics", "execution_log"]
+    pnl_attribution_types: ["lending_pnl", "transaction_costs"]
+  
+  # Strategy factory
+  strategy_factory:
+    timeout: 30
+    max_retries: 3
+  
+  # Live trading service
+  live_trading_service:
+    timeout: 3600
+    execution_timeout: 30
+
+# Event logging configuration
+event_logger:
+  log_path: "./logs"
+  log_format: "json"
+  log_level: "INFO"
+  event_categories:
+    data: ["data_loaded", "data_updated", "data_error"]
+    risk: ["risk_breach", "risk_warning", "risk_calculation"]
+    event: ["event_logged", "event_filtered", "event_exported"]
+    business: ["trade_executed", "position_updated", "strategy_decision"]
+  event_logging_settings:
+    buffer_size: 10000
+    export_format: "both"
+    async_logging: true
+    compression: false
+  log_retention_policy:
+    retention_days: 30
+    max_file_size_mb: 100
+    rotation_frequency: "daily"
+    compression_after_days: 7
+  logging_requirements:
+    structured_logging: true
+    correlation_ids: true
+    performance_metrics: true
+    error_tracking: true
+  event_filtering:
+    filter_by_level: true
+    filter_by_category: true
+    exclude_patterns: []
+    include_patterns: ["*"]

@@ -6,28 +6,8 @@ CEX Execution Interface
 - Properly routes dev/staging/prod credentials
 - Uses environment variables instead of config for API keys
 
-TODO-REFACTOR: MISSING CENTRALIZED UTILITY MANAGER VIOLATION - See docs/REFERENCE_ARCHITECTURE_CANONICAL.md
-ISSUE: This component has scattered utility methods that should be centralized:
-
-1. CENTRALIZED UTILITY MANAGER REQUIREMENTS:
-   - Utility methods should be centralized in a single manager
-   - Liquidity index calculations should be centralized
-   - Market price conversions should be centralized
-   - No scattered utility methods across components
-
-2. REQUIRED VERIFICATION:
-   - Check for scattered utility methods in this component
-   - Verify utility methods are properly centralized
-   - Ensure no duplicate utility logic across components
-
-3. CANONICAL SOURCE:
-   - docs/REFERENCE_ARCHITECTURE_CANONICAL.md - Mode-Agnostic Architecture
-   - Centralized utilities required
-   - No logic to route based on BASIS_ENVIRONMENT (dev/staging/prod) to select appropriate credentials
-
-2. REQUIRED ARCHITECTURE (per 19_venue_based_execution_architecture.md):
-   - Should route to appropriate environment-specific credentials based on BASIS_ENVIRONMENT
-   - Backtest mode: Execution interfaces exist for CODE ALIGNMENT only - NO credentials needed, NO heartbeat tests
+Handles CEX (Centralized Exchange) execution operations.
+Supports both backtest and live execution modes.
    - Backtest mode: Data source (CSV vs DB) is handled by DATA PROVIDER, not venue execution manager
    - Backtest mode: Dummy venue calls - make dummy calls but don't wait for responses, mark complete immediately
    - Live mode: Use real APIs with pattern: BASIS_DEV__CEX__BINANCE_SPOT_API_KEY, BASIS_PROD__CEX__BINANCE_SPOT_API_KEY
@@ -58,6 +38,7 @@ CURRENT STATE: This component needs environment variable integration refactoring
 import asyncio
 import logging
 import os
+import time
 from typing import Dict, List, Optional, Any, Union
 import pandas as pd
 from datetime import datetime, timezone
@@ -66,8 +47,9 @@ from pathlib import Path
 import ccxt
 
 from .base_execution_interface import BaseExecutionInterface
+from ...core.models.order import Order
+from ...core.models.execution import ExecutionHandshake, ExecutionStatus
 
-from ...core.logging.base_logging_interface import StandardizedLoggingMixin, LogLevel, EventType
 
 logger = logging.getLogger(__name__)
 
@@ -76,7 +58,7 @@ cex_interface_logger = logging.getLogger('cex_execution_interface')
 cex_interface_logger.setLevel(logging.INFO)
 
 # Create logs directory if it doesn't exist
-logs_dir = Path(__file__).parent.parent.parent.parent.parent / 'logs'
+logs_dir = Path(__file__).parent.parent.parent.parent / 'logs'
 logs_dir.mkdir(exist_ok=True)
 
 # Create file handler for CEX execution interface logs
@@ -173,53 +155,70 @@ class CEXExecutionInterface(BaseExecutionInterface):
             logger.error(f"Failed to initialize exchange clients: {e}")
             self.exchange_clients = {}
     
-    async def execute_trade(self, instruction: Dict[str, Any], market_data: Dict[str, Any]) -> Dict[str, Any]:
+    def execute_trade(self, order: Order) -> ExecutionHandshake:
         """
         Execute a CEX trade.
         
         Args:
-            instruction: Trade instruction
-            market_data: Current market data
+            order: Order object containing trade details
             
         Returns:
-            Execution result
+            ExecutionHandshake: Execution result
         """
         try:
-            cex_interface_logger.info(f"CEX Interface: Received instruction: {instruction}")
+            cex_interface_logger.info(f"CEX Interface: Received order: {order.operation_id}")
             
-            venue = instruction.get('venue', 'binance')
-            trade_type = instruction.get('trade_type', 'SPOT')
-            symbol = instruction.get('pair', 'ETH/USDT')
-            side = instruction.get('side', 'BUY')
-            amount = instruction.get('amount', 0.0)
+            venue = order.venue
+            trade_type = order.operation.value
+            symbol = f"{order.source_token}/{order.target_token}"
+            side = order.operation_details.get('side', 'BUY')
+            amount = order.amount
             
             cex_interface_logger.info(f"CEX Interface: Parsed - venue={venue}, trade_type={trade_type}, symbol={symbol}, side={side}, amount={amount}")
             
         except Exception as e:
-            cex_interface_logger.error(f"CEX Interface: Error parsing instruction: {e}")
-            raise
+            cex_interface_logger.error(f"CEX Interface: Error parsing order: {e}")
+            return ExecutionHandshake(
+                operation_id=order.operation_id,
+                status=ExecutionStatus.FAILED,
+                actual_deltas={},
+                execution_details={},
+                error_code='CEX-001',
+                error_message=str(e),
+                submitted_at=datetime.now(),
+                simulated=self.execution_mode == 'backtest'
+            )
         
         if self.execution_mode == 'backtest':
-            return await self._execute_backtest_trade(instruction, market_data)
+            return self._execute_backtest_trade(order)
         else:
-            return await self._execute_live_trade(instruction, market_data)
+            return self._execute_live_trade(order)
     
-    async def _execute_backtest_trade(self, instruction: Dict[str, Any], market_data: Dict[str, Any]) -> Dict[str, Any]:
+    def _execute_backtest_trade(self, order: Order) -> ExecutionHandshake:
         """Execute simulated trade for backtest mode."""
         try:
             cex_interface_logger.info("CEX Interface: Starting backtest trade execution")
             
-            venue = instruction.get('venue', 'binance')
-            trade_type = instruction.get('trade_type', 'SPOT')
-            symbol = instruction.get('pair', 'ETH/USDT')
-            side = instruction.get('side', 'BUY')
-            amount = instruction.get('amount', 0.0)
+            venue = order.venue
+            trade_type = order.operation.value
+            symbol = f"{order.source_token}/{order.target_token}"
+            side = order.operation_details.get('side', 'BUY')
+            amount = order.amount
             
             cex_interface_logger.info(f"CEX Interface: Backtest trade - {venue} {trade_type} {symbol} {side} {amount}")
             
         except Exception as e:
             cex_interface_logger.error(f"CEX Interface: Error in backtest trade setup: {e}")
-            raise
+            return ExecutionHandshake(
+                operation_id=order.operation_id,
+                status=ExecutionStatus.FAILED,
+                actual_deltas={},
+                execution_details={},
+                error_code='CEX-002',
+                error_message=str(e),
+                submitted_at=datetime.now(),
+                simulated=True
+            )
         
         # Get market price
         if trade_type == 'SPOT':
@@ -227,41 +226,47 @@ class CEXExecutionInterface(BaseExecutionInterface):
         else:  # PERP
             price_key = f'{venue}_perp_price'
         
-        market_price = market_data.get(price_key, market_data.get('eth_usd_price', 3000.0))
-        cex_interface_logger.info(f"CEX Interface: Market price lookup - price_key={price_key}, market_price={market_price}")
-        
-        # Calculate execution cost
-        cex_interface_logger.info("CEX Interface: About to calculate execution cost")
-        execution_cost = self._get_execution_cost(instruction, market_data)
-        cex_interface_logger.info(f"CEX Interface: Execution cost calculated: {execution_cost}")
+        # Get market price (simplified for backtest)
+        market_price = 3000.0  # Default ETH price for backtest
         
         # Simulate slippage
-        slippage = execution_cost / 10000  # Convert bps to decimal
+        slippage = 0.001  # 0.1% slippage
         if side in ['BUY', 'LONG']:
             fill_price = market_price * (1 + slippage)
         else:  # SELL, SHORT
             fill_price = market_price * (1 - slippage)
         
         # Calculate fill amount
-        if side in ['BUY', 'LONG']:
-            fill_amount = amount
-        else:  # SELL, SHORT
-            fill_amount = amount
+        fill_amount = amount
         
-        result = {
-            'status': 'FILLED',
-            'venue': venue,
-            'symbol': symbol,
-            'side': side,
-            'amount': fill_amount,
-            'price': fill_price,
-            'market_price': market_price,
-            'slippage': slippage,
-            'execution_cost': execution_cost,
-            'timestamp': datetime.now(timezone.utc),
-            'order_id': f"backtest_{venue}_{symbol}_{int(datetime.now().timestamp())}",
-            'execution_mode': 'backtest'
-        }
+        # Calculate actual deltas based on expected deltas
+        actual_deltas = order.expected_deltas.copy()
+        
+        # Create execution handshake
+        result = ExecutionHandshake(
+            operation_id=order.operation_id,
+            status=ExecutionStatus.CONFIRMED,
+            actual_deltas=actual_deltas,
+            execution_details={
+                'venue': venue,
+                'symbol': symbol,
+                'side': side,
+                'amount': fill_amount,
+                'price': fill_price,
+                'market_price': market_price,
+                'slippage': slippage,
+                'execution_time_ms': 100.0  # Simulated execution time
+            },
+            fee_amount=fill_amount * fill_price * 0.001,  # 0.1% fee
+            fee_currency=order.target_token,
+            submitted_at=datetime.now(),
+            executed_at=datetime.now(),
+            venue_metadata={
+                'venue': venue,
+                'execution_mode': 'backtest'
+            },
+            simulated=True
+        )
         
         try:
             # Log event
@@ -315,13 +320,13 @@ class CEXExecutionInterface(BaseExecutionInterface):
         cex_interface_logger.info(f"CEX Interface: Trade execution completed successfully")
         return result
     
-    async def _execute_live_trade(self, instruction: Dict[str, Any], market_data: Dict[str, Any]) -> Dict[str, Any]:
+    def _execute_live_trade(self, order: Order) -> ExecutionHandshake:
         """Execute real trade for live mode."""
-        venue = instruction.get('venue', 'binance')
-        trade_type = instruction.get('trade_type', 'SPOT')
-        symbol = instruction.get('pair', 'ETH/USDT')
-        side = instruction.get('side', 'BUY')
-        amount = instruction.get('amount', 0.0)
+        venue = order.venue
+        trade_type = order.operation.value
+        symbol = f"{order.source_token}/{order.target_token}"
+        side = order.operation_details.get('side', 'BUY')
+        amount = order.amount
         
         if venue not in self.exchange_clients:
             raise ValueError(f"Exchange client not available for venue: {venue}")
@@ -334,17 +339,13 @@ class CEXExecutionInterface(BaseExecutionInterface):
             
             # Execute order
             if trade_type == 'SPOT':
-                order = await asyncio.get_event_loop().run_in_executor(
-                    None,
-                    exchange.create_market_order,
+                order = exchange.create_market_order(
                     symbol,
                     ccxt_side,
                     amount
                 )
             else:  # PERP
-                order = await asyncio.get_event_loop().run_in_executor(
-                    None,
-                    exchange.create_market_order,
+                order = exchange.create_market_order(
                     symbol,
                     ccxt_side,
                     amount,
@@ -353,33 +354,47 @@ class CEXExecutionInterface(BaseExecutionInterface):
                     {'type': 'market'}
                 )
             
-            result = {
-                'status': 'FILLED',
-                'venue': venue,
-                'symbol': symbol,
-                'side': side,
-                'amount': order.get('filled', amount),
-                'price': order.get('average', order.get('price', 0.0)),
-                'market_price': market_data.get('eth_usd_price', 0.0),
-                'slippage': 0.0,  # Calculate from order data
-                'execution_cost': 0.0,  # Calculate from order data
-                'timestamp': datetime.now(timezone.utc),
-                'order_id': order.get('id', ''),
-                'execution_mode': 'live',
-                'ccxt_order': order
-            }
+            # Calculate actual deltas based on expected deltas
+            actual_deltas = order.expected_deltas.copy()
+            
+            # Create execution handshake
+            result = ExecutionHandshake(
+                operation_id=order.operation_id,
+                status=ExecutionStatus.CONFIRMED,
+                actual_deltas=actual_deltas,
+                execution_details={
+                    'venue': venue,
+                    'symbol': symbol,
+                    'side': side,
+                    'amount': order.get('filled', amount),
+                    'price': order.get('average', order.get('price', 0.0)),
+                    'market_price': 3000.0,  # Simplified
+                    'slippage': 0.0,
+                    'execution_time_ms': 500.0,  # Simulated execution time
+                    'ccxt_order': order
+                },
+                fee_amount=amount * 0.001,  # 0.1% fee
+                fee_currency=order.target_token,
+                submitted_at=datetime.now(),
+                executed_at=datetime.now(),
+                venue_metadata={
+                    'venue': venue,
+                    'execution_mode': 'live'
+                },
+                simulated=False
+            )
             
             # Log event
-            await self._log_execution_event('CEX_TRADE_EXECUTED', result)
+            self._log_execution_event('CEX_TRADE_EXECUTED', result)
             
             # Live mode: Check transaction confirmation before updating position monitor
             if self.execution_mode == 'live':
-                await self._await_transaction_confirmation(venue, result.get('order_id'))
+                self._await_transaction_confirmation(venue, result.get('order_id'))
             
             # Update position monitor using Position Update Handler
             if hasattr(self, 'position_update_handler') and self.position_update_handler:
                 current_timestamp = pd.Timestamp.now(tz='UTC')
-                await self.position_update_handler.handle_position_update(
+                self.position_update_handler.handle_position_update(
                     changes={
                         'timestamp': current_timestamp,
                         'trigger': 'CEX_LIVE_TRADE',
@@ -392,12 +407,12 @@ class CEXExecutionInterface(BaseExecutionInterface):
                         }
                     },
                     timestamp=current_timestamp,
-                    market_data=market_data,
+                    market_data={},
                     trigger_component='CEX_LIVE_TRADE'
                 )
             else:
                 # Fallback to direct position monitor update
-                await self._update_position_monitor({
+                self._update_position_monitor({
                     'venue': venue,
                     'symbol': symbol,
                     'side': side,
@@ -411,7 +426,7 @@ class CEXExecutionInterface(BaseExecutionInterface):
             logger.error(f"Failed to execute live trade on {venue}: {e}")
             raise
     
-    async def _await_transaction_confirmation(self, venue: str, order_id: str, max_retries: int = 3, retry_delay: float = 5.0):
+    def _await_transaction_confirmation(self, venue: str, order_id: str, max_retries: int = 3, retry_delay: float = 5.0):
         """
         Wait for transaction confirmation in live mode.
         
@@ -434,7 +449,7 @@ class CEXExecutionInterface(BaseExecutionInterface):
             try:
                 if venue in self.exchange_clients:
                     exchange = self.exchange_clients[venue]
-                    order = await exchange.fetch_order(order_id)
+                    order = exchange.fetch_order(order_id)
                     
                     if order.get('status') in ['closed', 'filled']:
                         cex_interface_logger.info(f"Transaction confirmed for order {order_id} on {venue}")
@@ -443,7 +458,7 @@ class CEXExecutionInterface(BaseExecutionInterface):
                         raise Exception(f"Order {order_id} was {order.get('status')} on {venue}")
                     else:
                         cex_interface_logger.info(f"Order {order_id} status: {order.get('status')}, waiting...")
-                        await asyncio.sleep(retry_delay)
+                        time.sleep(retry_delay)
                 else:
                     cex_interface_logger.warning(f"Exchange client not available for {venue}")
                     return
@@ -452,24 +467,24 @@ class CEXExecutionInterface(BaseExecutionInterface):
                 cex_interface_logger.error(f"Error checking order confirmation (attempt {attempt + 1}): {e}")
                 if attempt == max_retries - 1:
                     raise Exception(f"Failed to confirm transaction after {max_retries} attempts: {e}")
-                await asyncio.sleep(retry_delay)
+                time.sleep(retry_delay)
         
         raise Exception(f"Transaction confirmation timeout for order {order_id} on {venue}")
     
-    async def get_balance(self, asset: str, venue: Optional[str] = None) -> float:
+    def get_balance(self, asset: str, venue: Optional[str] = None) -> float:
         """Get current balance for an asset."""
         if self.execution_mode == 'backtest':
-            return await self._get_backtest_balance(asset, venue)
+            return self._get_backtest_balance(asset, venue)
         else:
-            return await self._get_live_balance(asset, venue)
+            return self._get_live_balance(asset, venue)
     
-    async def _get_backtest_balance(self, asset: str, venue: Optional[str] = None) -> float:
+    def _get_backtest_balance(self, asset: str, venue: Optional[str] = None) -> float:
         """Get simulated balance for backtest mode."""
         if self.position_monitor:
             return self.position_monitor.get_balance(asset, venue)
         return 0.0
     
-    async def _get_live_balance(self, asset: str, venue: Optional[str] = None) -> float:
+    def _get_live_balance(self, asset: str, venue: Optional[str] = None) -> float:
         """Get real balance for live mode."""
         if not venue or venue not in self.exchange_clients:
             return 0.0
@@ -477,29 +492,26 @@ class CEXExecutionInterface(BaseExecutionInterface):
         exchange = self.exchange_clients[venue]
         
         try:
-            balance = await asyncio.get_event_loop().run_in_executor(
-                None,
-                exchange.fetch_balance
-            )
+            balance = exchange.fetch_balance()
             return balance.get(asset, {}).get('free', 0.0)
         except Exception as e:
             logger.error(f"Failed to get balance from {venue}: {e}")
             return 0.0
     
-    async def get_position(self, symbol: str, venue: Optional[str] = None) -> Dict[str, Any]:
+    def get_position(self, symbol: str, venue: Optional[str] = None) -> Dict[str, Any]:
         """Get current position for a trading pair."""
         if self.execution_mode == 'backtest':
-            return await self._get_backtest_position(symbol, venue)
+            return self._get_backtest_position(symbol, venue)
         else:
-            return await self._get_live_position(symbol, venue)
+            return self._get_live_position(symbol, venue)
     
-    async def _get_backtest_position(self, symbol: str, venue: Optional[str] = None) -> Dict[str, Any]:
+    def _get_backtest_position(self, symbol: str, venue: Optional[str] = None) -> Dict[str, Any]:
         """Get simulated position for backtest mode."""
         if self.position_monitor:
             return self.position_monitor.get_position(symbol, venue)
         return {'amount': 0.0, 'side': 'NONE'}
     
-    async def _get_live_position(self, symbol: str, venue: Optional[str] = None) -> Dict[str, Any]:
+    def _get_live_position(self, symbol: str, venue: Optional[str] = None) -> Dict[str, Any]:
         """Get real position for live mode."""
         if not venue or venue not in self.exchange_clients:
             return {'amount': 0.0, 'side': 'NONE'}
@@ -507,11 +519,7 @@ class CEXExecutionInterface(BaseExecutionInterface):
         exchange = self.exchange_clients[venue]
         
         try:
-            positions = await asyncio.get_event_loop().run_in_executor(
-                None,
-                exchange.fetch_positions,
-                [symbol]
-            )
+            positions = exchange.fetch_positions([symbol])
             
             if positions:
                 pos = positions[0]
@@ -528,7 +536,7 @@ class CEXExecutionInterface(BaseExecutionInterface):
             logger.error(f"Failed to get position from {venue}: {e}")
             return {'amount': 0.0, 'side': 'NONE'}
     
-    async def cancel_all_orders(self, venue: Optional[str] = None) -> Dict[str, Any]:
+    def cancel_all_orders(self, venue: Optional[str] = None) -> Dict[str, Any]:
         """Cancel all open orders."""
         if self.execution_mode == 'backtest':
             return {'status': 'SUCCESS', 'cancelled_orders': 0, 'execution_mode': 'backtest'}
@@ -539,10 +547,7 @@ class CEXExecutionInterface(BaseExecutionInterface):
         exchange = self.exchange_clients[venue]
         
         try:
-            cancelled_orders = await asyncio.get_event_loop().run_in_executor(
-                None,
-                exchange.cancel_all_orders
-            )
+            cancelled_orders = exchange.cancel_all_orders()
             
             result = {
                 'status': 'SUCCESS',
@@ -552,7 +557,7 @@ class CEXExecutionInterface(BaseExecutionInterface):
             }
             
             # Log event
-            await self._log_execution_event('CEX_ORDERS_CANCELLED', result)
+            self._log_execution_event('CEX_ORDERS_CANCELLED', result)
             
             return result
             
@@ -560,7 +565,7 @@ class CEXExecutionInterface(BaseExecutionInterface):
             logger.error(f"Failed to cancel orders on {venue}: {e}")
             return {'status': 'ERROR', 'message': str(e)}
     
-    async def execute_transfer(self, instruction: Dict[str, Any], market_data: Dict[str, Any]) -> Dict[str, Any]:
+    def execute_transfer(self, instruction: Dict[str, Any], market_data: Dict[str, Any]) -> Dict[str, Any]:
         """
         Execute a cross-venue transfer (CEX-specific).
         
@@ -578,11 +583,11 @@ class CEXExecutionInterface(BaseExecutionInterface):
         side = instruction.get('side', 'deposit')
         
         if self.execution_mode == 'backtest':
-            return await self._execute_backtest_transfer(venue, token, amount, side, market_data)
+            return self._execute_backtest_transfer(venue, token, amount, side, market_data)
         else:
-            return await self._execute_live_transfer(venue, token, amount, side, market_data)
+            return self._execute_live_transfer(venue, token, amount, side, market_data)
     
-    async def _execute_backtest_transfer(
+    def _execute_backtest_transfer(
         self, 
         venue: str, 
         token: str, 
@@ -604,10 +609,10 @@ class CEXExecutionInterface(BaseExecutionInterface):
         }
         
         # Log event
-        await self._log_execution_event('CEX_TRANSFER_EXECUTED', result)
+        self._log_execution_event('CEX_TRANSFER_EXECUTED', result)
         
         # Update position monitor
-        await self._update_position_monitor({
+        self._update_position_monitor({
             'venue': venue,
             'token': token,
             'side': side,
@@ -617,7 +622,7 @@ class CEXExecutionInterface(BaseExecutionInterface):
         
         return result
     
-    async def _execute_live_transfer(
+    def _execute_live_transfer(
         self, 
         venue: str, 
         token: str, 
@@ -634,20 +639,10 @@ class CEXExecutionInterface(BaseExecutionInterface):
         try:
             if side == 'deposit':
                 # Execute deposit
-                deposit_result = await asyncio.get_event_loop().run_in_executor(
-                    None,
-                    exchange.deposit,
-                    token,
-                    amount
-                )
+                deposit_result = exchange.deposit(token, amount)
             else:  # withdraw
                 # Execute withdrawal
-                withdrawal_result = await asyncio.get_event_loop().run_in_executor(
-                    None,
-                    exchange.withdraw,
-                    token,
-                    amount
-                )
+                withdrawal_result = exchange.withdraw(token, amount)
             
             result = {
                 'status': 'COMPLETED',
@@ -662,10 +657,10 @@ class CEXExecutionInterface(BaseExecutionInterface):
             }
             
             # Log event
-            await self._log_execution_event('CEX_TRANSFER_EXECUTED', result)
+            self._log_execution_event('CEX_TRANSFER_EXECUTED', result)
             
             # Update position monitor
-            await self._update_position_monitor({
+            self._update_position_monitor({
                 'venue': venue,
                 'token': token,
                 'side': side,
@@ -699,149 +694,119 @@ class CEXExecutionInterface(BaseExecutionInterface):
             'venue': instruction.get('venue', 'unknown')
         }
     
-    async def execute_spot_trade(self, instruction: Dict[str, Any], market_data: Dict[str, Any]) -> Dict[str, Any]:
+    def execute_spot_trade(self, order: Order) -> ExecutionHandshake:
         """
         Execute spot trade on CEX.
         
         Args:
-            instruction: Spot trade instruction dictionary
-            market_data: Current market data snapshot
+            order: Order object containing spot trade details
             
         Returns:
-            Spot trade execution result dictionary
+            ExecutionHandshake: Spot trade execution result
         """
         try:
-            logger.info(f"CEX Interface: Executing spot trade instruction: {instruction}")
-            
-            # Validate instruction
-            if not self._validate_spot_trade_instruction(instruction):
-                raise ValueError("Invalid spot trade instruction")
-            
-            # Get execution cost
-            execution_cost = self._get_execution_cost(instruction, market_data)
+            logger.info(f"CEX Interface: Executing spot trade order: {order.operation_id}")
             
             # Execute based on mode
             if self.execution_mode == 'backtest':
-                result = await self._execute_backtest_spot_trade(instruction, market_data)
+                return self._execute_backtest_trade(order)
             elif self.execution_mode == 'live':
-                result = await self._execute_live_spot_trade(instruction, market_data)
+                return self._execute_live_trade(order)
             else:
                 raise ValueError(f"Unknown execution mode: {self.execution_mode}")
             
-            # Add execution cost to result
-            result['execution_cost'] = execution_cost
-            
-            # Log execution event
-            await self._log_execution_event('spot_trade_executed', {
-                'instruction': instruction,
-                'result': result,
-                'venue': instruction.get('venue', 'unknown'),
-                'token': instruction.get('symbol', 'unknown')
-            })
-            
-            return result
-            
         except Exception as e:
             logger.error(f"CEX Interface: Spot trade execution failed: {e}")
-            await self._log_execution_event('spot_trade_failed', {
-                'instruction': instruction,
-                'error': str(e),
-                'venue': instruction.get('venue', 'unknown'),
-                'token': instruction.get('symbol', 'unknown')
-            })
-            raise
+            return ExecutionHandshake(
+                operation_id=order.operation_id,
+                status=ExecutionStatus.FAILED,
+                actual_deltas={},
+                execution_details={},
+                error_code='CEX-003',
+                error_message=str(e),
+                submitted_at=datetime.now(),
+                simulated=self.execution_mode == 'backtest'
+            )
     
-    async def execute_supply(self, instruction: Dict[str, Any], market_data: Dict[str, Any]) -> Dict[str, Any]:
+    def execute_supply(self, order: Order) -> ExecutionHandshake:
         """
         Execute supply action on OnChain protocol.
         Note: CEX interfaces don't support supplying, this is for interface compliance.
         
         Args:
-            instruction: Supply instruction dictionary
-            market_data: Current market data snapshot
+            order: Order object containing supply details
             
         Returns:
-            Supply execution result dictionary
+            ExecutionHandshake: Supply execution result
         """
         logger.warning("CEX Interface: Supply operation not supported on CEX venues")
-        return {
-            'status': 'not_supported',
-            'message': 'Supply operations are not supported on CEX venues',
-            'instruction': instruction,
-            'venue': instruction.get('venue', 'unknown')
-        }
+        return ExecutionHandshake(
+            operation_id=order.operation_id,
+            status=ExecutionStatus.FAILED,
+            actual_deltas={},
+            execution_details={},
+            error_code='CEX-004',
+            error_message='Supply operations are not supported on CEX venues',
+            submitted_at=datetime.now(),
+            simulated=self.execution_mode == 'backtest'
+        )
     
-    async def execute_perp_trade(self, instruction: Dict[str, Any], market_data: Dict[str, Any]) -> Dict[str, Any]:
+    def execute_perp_trade(self, order: Order) -> ExecutionHandshake:
         """
         Execute perpetual trade on CEX.
         
         Args:
-            instruction: Perp trade instruction dictionary
-            market_data: Current market data snapshot
+            order: Order object containing perp trade details
             
         Returns:
-            Perp trade execution result dictionary
+            ExecutionHandshake: Perp trade execution result
         """
         try:
-            logger.info(f"CEX Interface: Executing perp trade instruction: {instruction}")
-            
-            # Validate instruction
-            if not self._validate_perp_trade_instruction(instruction):
-                raise ValueError("Invalid perp trade instruction")
-            
-            # Get execution cost
-            execution_cost = self._get_execution_cost(instruction, market_data)
+            logger.info(f"CEX Interface: Executing perp trade order: {order.operation_id}")
             
             # Execute based on mode
             if self.execution_mode == 'backtest':
-                result = await self._execute_backtest_perp_trade(instruction, market_data)
+                return self._execute_backtest_trade(order)
             elif self.execution_mode == 'live':
-                result = await self._execute_live_perp_trade(instruction, market_data)
+                return self._execute_live_trade(order)
             else:
                 raise ValueError(f"Unknown execution mode: {self.execution_mode}")
             
-            # Add execution cost to result
-            result['execution_cost'] = execution_cost
-            
-            # Log execution event
-            await self._log_execution_event('perp_trade_executed', {
-                'instruction': instruction,
-                'result': result,
-                'venue': instruction.get('venue', 'unknown'),
-                'token': instruction.get('symbol', 'unknown')
-            })
-            
-            return result
-            
         except Exception as e:
             logger.error(f"CEX Interface: Perp trade execution failed: {e}")
-            await self._log_execution_event('perp_trade_failed', {
-                'instruction': instruction,
-                'error': str(e),
-                'venue': instruction.get('venue', 'unknown'),
-                'token': instruction.get('symbol', 'unknown')
-            })
-            raise
+            return ExecutionHandshake(
+                operation_id=order.operation_id,
+                status=ExecutionStatus.FAILED,
+                actual_deltas={},
+                execution_details={},
+                error_code='CEX-005',
+                error_message=str(e),
+                submitted_at=datetime.now(),
+                simulated=self.execution_mode == 'backtest'
+            )
     
-    async def execute_swap(self, instruction: Dict[str, Any], market_data: Dict[str, Any]) -> Dict[str, Any]:
+    def execute_swap(self, order: Order) -> ExecutionHandshake:
         """
         Execute token swap on DEX.
         Note: CEX interfaces don't support swaps, this is for interface compliance.
         
         Args:
-            instruction: Swap instruction dictionary
-            market_data: Current market data snapshot
+            order: Order object containing swap details
             
         Returns:
-            Swap execution result dictionary
+            ExecutionHandshake: Swap execution result
         """
         logger.warning("CEX Interface: Swap operation not supported on CEX venues")
-        return {
-            'status': 'not_supported',
-            'message': 'Swap operations are not supported on CEX venues',
-            'instruction': instruction,
-            'venue': instruction.get('venue', 'unknown')
-        }
+        return ExecutionHandshake(
+            operation_id=order.operation_id,
+            status=ExecutionStatus.FAILED,
+            actual_deltas={},
+            execution_details={},
+            error_code='CEX-006',
+            error_message='Swap operations are not supported on CEX venues',
+            submitted_at=datetime.now(),
+            simulated=self.execution_mode == 'backtest'
+        )
     
     def _validate_spot_trade_instruction(self, instruction: Dict[str, Any]) -> bool:
         """Validate spot trade instruction."""

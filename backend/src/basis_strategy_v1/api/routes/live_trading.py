@@ -40,7 +40,7 @@ async def start_live_trading(
     # TODO: [WORKFLOW_STRATEGY_SELECTION] - Strategy mode selection via API parameter
     # Current Issue: Strategy mode is selected via strategy_name parameter in LiveTradingRequest
     # Required Changes:
-    #   1. Validate strategy_name against available strategies in MODES.md
+    #   1. Validate strategy_name against available strategies in STRATEGY_MODES.md
     #   2. Route to appropriate venue clients based on strategy requirements
     #   3. Initialize venue clients based on environment configuration (dev/staging/prod)
     #   4. Validate venue credentials for live trading mode

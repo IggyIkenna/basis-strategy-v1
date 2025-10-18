@@ -31,14 +31,14 @@ class TestEventLogger:
         with patch('backend.src.basis_strategy_v1.infrastructure.logging.event_logger.logger') as mock_logger:
             event_logger.log_strategy_event(
                 event_type="position_opened",
-                strategy_mode="pure_lending",
+                strategy_mode="pure_lending_usdt",
                 details={"position_size": 1000.0, "asset": "USDT"}
             )
             
             mock_logger.info.assert_called_once()
             call_args = mock_logger.info.call_args[0][0]
             assert "position_opened" in call_args
-            assert "pure_lending" in call_args
+            assert "pure_lending_usdt" in call_args
             assert "1000.0" in call_args
     
     def test_log_error_event(self, mock_config, mock_data_provider, mock_utility_manager):

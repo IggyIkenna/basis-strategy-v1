@@ -1,13 +1,16 @@
 """
 Execution Module
 
-Provides the new two-component execution architecture:
-1. WalletTransferExecutor - Simple wallet-to-venue transfers
-2. SmartContractExecutor - Complex smart contract operations (via interfaces)
+Provides the new execution architecture:
+1. ExecutionManager - Processes orders and routes via VenueInterfaceManager
+2. VenueInterfaceManager - Routes orders to execution interfaces
+3. PositionUpdateHandler - Orchestrates tight loop reconciliation
 """
 
-from .wallet_transfer_executor import WalletTransferExecutor
+from .execution_manager import ExecutionManager
+from .venue_interface_manager import VenueInterfaceManager
 
 __all__ = [
-    'WalletTransferExecutor'
+    'ExecutionManager',
+    'VenueInterfaceManager'
 ]

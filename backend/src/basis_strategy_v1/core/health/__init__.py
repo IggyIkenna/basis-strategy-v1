@@ -18,6 +18,10 @@ from .component_health import (
     DataProviderHealthChecker,
     RiskMonitorHealthChecker,
     EventLoggerHealthChecker,
+    ExposureMonitorHealthChecker,
+    PnLCalculatorHealthChecker,
+    StrategyManagerHealthChecker,
+    ExecutionManagerHealthChecker,
     SystemHealthAggregator,
     system_health_aggregator
 )
@@ -32,6 +36,10 @@ __all__ = [
     "DataProviderHealthChecker",
     "RiskMonitorHealthChecker",
     "EventLoggerHealthChecker",
+    "ExposureMonitorHealthChecker",
+    "PnLCalculatorHealthChecker",
+    "StrategyManagerHealthChecker",
+    "ExecutionManagerHealthChecker",
     "SystemHealthAggregator",
     "system_health_aggregator"
 ]

@@ -1,7 +1,7 @@
 """
-Unit tests for Trade model functionality and helper methods.
+Unit tests for ExecutionHandshake model functionality and helper methods.
 
-Tests Trade creation, validation, and position delta extraction.
+Tests ExecutionHandshake creation, validation, and position delta extraction.
 """
 
 import pytest
@@ -9,11 +9,11 @@ from datetime import datetime
 from pydantic import ValidationError
 
 from backend.src.basis_strategy_v1.core.models.order import Order, OrderOperation
-from backend.src.basis_strategy_v1.core.models.trade import Trade, TradeStatus
+from backend.src.basis_strategy_v1.core.models.trade import ExecutionHandshake, ExecutionHandshakeStatus
 
 
-class TestTradeModel:
-    """Test Trade model functionality and helper methods."""
+class TestExecutionHandshakeModel:
+    """Test ExecutionHandshake model functionality and helper methods."""
     
     def test_successful_cex_trade_creation(self):
         """Test creating a successful CEX trade."""
@@ -26,7 +26,7 @@ class TestTradeModel:
             price=45000.0
         )
         
-        trade = Trade.create_successful_trade(
+        trade = ExecutionHandshake.create_successful_trade(
             order=order,
             trade_id='binance_12345',
             executed_amount=0.5,
@@ -38,7 +38,7 @@ class TestTradeModel:
         )
         
         assert trade.order == order
-        assert trade.status == TradeStatus.EXECUTED
+        assert trade.status == ExecutionHandshakeStatus.EXECUTED
         assert trade.trade_id == 'binance_12345'
         assert trade.executed_amount == 0.5
         assert trade.executed_price == 45000.0
@@ -60,14 +60,14 @@ class TestTradeModel:
             amount=10000.0
         )
         
-        trade = Trade.create_failed_trade(
+        trade = ExecutionHandshake.create_failed_trade(
             order=order,
             error_code='INSUFFICIENT_BALANCE',
             error_message='Not enough USDT balance'
         )
         
         assert trade.order == order
-        assert trade.status == TradeStatus.FAILED
+        assert trade.status == ExecutionHandshakeStatus.FAILED
         assert trade.error_code == 'INSUFFICIENT_BALANCE'
         assert trade.error_message == 'Not enough USDT balance'
         assert trade.was_successful() is False
@@ -84,13 +84,13 @@ class TestTradeModel:
             amount=1.0
         )
         
-        trade = Trade.create_pending_trade(
+        trade = ExecutionHandshake.create_pending_trade(
             order=order,
             trade_id='binance_pending_123'
         )
         
         assert trade.order == order
-        assert trade.status == TradeStatus.PENDING
+        assert trade.status == ExecutionHandshakeStatus.PENDING
         assert trade.trade_id == 'binance_pending_123'
         assert trade.was_successful() is False
         assert trade.was_failed() is False
@@ -106,7 +106,7 @@ class TestTradeModel:
             amount=0.5
         )
         
-        trade = Trade.create_successful_trade(
+        trade = ExecutionHandshake.create_successful_trade(
             order=order,
             trade_id='sim_12345',
             executed_amount=0.5,
@@ -129,7 +129,7 @@ class TestTradeModel:
         
         position_deltas = {'USDT': -10000.0, 'aUSDT': 10000.0}
         
-        trade = Trade.create_successful_trade(
+        trade = ExecutionHandshake.create_successful_trade(
             order=order,
             trade_id='aave_123',
             executed_amount=10000.0,
@@ -154,7 +154,7 @@ class TestTradeModel:
             price=45000.0
         )
         
-        trade = Trade.create_successful_trade(
+        trade = ExecutionHandshake.create_successful_trade(
             order=order,
             trade_id='binance_123',
             executed_amount=0.5,
@@ -177,7 +177,7 @@ class TestTradeModel:
             amount=5000.0
         )
         
-        trade = Trade.create_successful_trade(
+        trade = ExecutionHandshake.create_successful_trade(
             order=order,
             trade_id='transfer_123',
             executed_amount=5000.0,
@@ -196,7 +196,7 @@ class TestTradeModel:
             amount=10000.0
         )
         
-        trade = Trade.create_successful_trade(
+        trade = ExecutionHandshake.create_successful_trade(
             order=order,
             trade_id='aave_123',
             executed_amount=10000.0,
@@ -217,7 +217,7 @@ class TestTradeModel:
             price=45000.0
         )
         
-        trade = Trade.create_successful_trade(
+        trade = ExecutionHandshake.create_successful_trade(
             order=order,
             trade_id='binance_123',
             executed_amount=0.5,
@@ -229,7 +229,7 @@ class TestTradeModel:
         summary = trade.get_execution_summary()
         
         assert summary['order_id'] == 'binance_spot_trade_0.5'
-        assert summary['status'] == TradeStatus.EXECUTED
+        assert summary['status'] == ExecutionHandshakeStatus.EXECUTED
         assert summary['executed_amount'] == 0.5
         assert summary['executed_price'] == 45000.0
         assert summary['fee_amount'] == 22.5
@@ -250,7 +250,7 @@ class TestTradeModel:
         )
         
         # Valid successful trade
-        trade = Trade.create_successful_trade(
+        trade = ExecutionHandshake.create_successful_trade(
             order=order,
             trade_id='binance_123',
             executed_amount=0.5,
@@ -261,9 +261,9 @@ class TestTradeModel:
         assert trade.validate_execution() is True
         
         # Invalid successful trade - no executed amount
-        trade_invalid = Trade(
+        trade_invalid = ExecutionHandshake(
             order=order,
-            status=TradeStatus.EXECUTED,
+            status=ExecutionHandshakeStatus.EXECUTED,
             trade_id='binance_123',
             executed_amount=0.0,  # Invalid
             executed_price=45000.0,
@@ -273,9 +273,9 @@ class TestTradeModel:
         assert trade_invalid.validate_execution() is False
         
         # Invalid successful trade - no price for CEX trade
-        trade_no_price = Trade(
+        trade_no_price = ExecutionHandshake(
             order=order,
-            status=TradeStatus.EXECUTED,
+            status=ExecutionHandshakeStatus.EXECUTED,
             trade_id='binance_123',
             executed_amount=0.5,
             executed_price=None,  # Invalid for CEX trade
@@ -285,9 +285,9 @@ class TestTradeModel:
         assert trade_no_price.validate_execution() is False
         
         # Invalid successful trade - no position deltas
-        trade_no_deltas = Trade(
+        trade_no_deltas = ExecutionHandshake(
             order=order,
-            status=TradeStatus.EXECUTED,
+            status=ExecutionHandshakeStatus.EXECUTED,
             trade_id='binance_123',
             executed_amount=0.5,
             executed_price=45000.0,
@@ -306,7 +306,7 @@ class TestTradeModel:
         )
         
         # Valid failed trade
-        trade = Trade.create_failed_trade(
+        trade = ExecutionHandshake.create_failed_trade(
             order=order,
             error_code='INSUFFICIENT_BALANCE',
             error_message='Not enough USDT balance'
@@ -315,9 +315,9 @@ class TestTradeModel:
         assert trade.validate_execution() is True
         
         # Invalid failed trade - no error code
-        trade_no_code = Trade(
+        trade_no_code = ExecutionHandshake(
             order=order,
-            status=TradeStatus.FAILED,
+            status=ExecutionHandshakeStatus.FAILED,
             error_code=None,  # Invalid
             error_message='Not enough USDT balance'
         )
@@ -325,9 +325,9 @@ class TestTradeModel:
         assert trade_no_code.validate_execution() is False
         
         # Invalid failed trade - no error message
-        trade_no_message = Trade(
+        trade_no_message = ExecutionHandshake(
             order=order,
-            status=TradeStatus.FAILED,
+            status=ExecutionHandshakeStatus.FAILED,
             error_code='INSUFFICIENT_BALANCE',
             error_message=None  # Invalid
         )
@@ -351,7 +351,7 @@ class TestTradeModel:
             'binance_order_type': 'LIMIT'
         }
         
-        trade = Trade.create_successful_trade(
+        trade = ExecutionHandshake.create_successful_trade(
             order=order,
             trade_id='binance_123',
             executed_amount=0.5,
@@ -375,9 +375,9 @@ class TestTradeModel:
         submitted_time = datetime(2024, 1, 1, 12, 0, 0)
         executed_time = datetime(2024, 1, 1, 12, 0, 5)
         
-        trade = Trade(
+        trade = ExecutionHandshake(
             order=order,
-            status=TradeStatus.EXECUTED,
+            status=ExecutionHandshakeStatus.EXECUTED,
             trade_id='binance_123',
             executed_amount=0.5,
             executed_price=45000.0,
@@ -389,7 +389,7 @@ class TestTradeModel:
         assert trade.executed_at == executed_time
     
     def test_trade_status_enum(self):
-        """Test all TradeStatus enum values."""
+        """Test all ExecutionHandshakeStatus enum values."""
         order = Order(
             venue='binance',
             operation=OrderOperation.SPOT_TRADE,
@@ -399,10 +399,10 @@ class TestTradeModel:
         )
         
         # Test all status values
-        statuses = [TradeStatus.PENDING, TradeStatus.EXECUTED, TradeStatus.FAILED, TradeStatus.CANCELLED]
+        statuses = [ExecutionHandshakeStatus.PENDING, ExecutionHandshakeStatus.EXECUTED, ExecutionHandshakeStatus.FAILED, ExecutionHandshakeStatus.CANCELLED]
         
         for status in statuses:
-            trade = Trade(
+            trade = ExecutionHandshake(
                 order=order,
                 status=status,
                 trade_id='test_123'
@@ -410,19 +410,19 @@ class TestTradeModel:
             
             assert trade.status == status
             
-            if status == TradeStatus.EXECUTED:
+            if status == ExecutionHandshakeStatus.EXECUTED:
                 assert trade.was_successful() is True
                 assert trade.was_failed() is False
                 assert trade.is_pending() is False
-            elif status == TradeStatus.FAILED:
+            elif status == ExecutionHandshakeStatus.FAILED:
                 assert trade.was_successful() is False
                 assert trade.was_failed() is True
                 assert trade.is_pending() is False
-            elif status == TradeStatus.PENDING:
+            elif status == ExecutionHandshakeStatus.PENDING:
                 assert trade.was_successful() is False
                 assert trade.was_failed() is False
                 assert trade.is_pending() is True
-            elif status == TradeStatus.CANCELLED:
+            elif status == ExecutionHandshakeStatus.CANCELLED:
                 assert trade.was_successful() is False
                 assert trade.was_failed() is False
                 assert trade.is_pending() is False
@@ -438,7 +438,7 @@ class TestTradeModel:
             price=45000.0  # Expected price
         )
         
-        trade = Trade.create_successful_trade(
+        trade = ExecutionHandshake.create_successful_trade(
             order=order,
             trade_id='binance_123',
             executed_amount=0.5,
@@ -459,7 +459,7 @@ class TestTradeModel:
             amount=10000.0
         )
         
-        trade = Trade.create_successful_trade(
+        trade = ExecutionHandshake.create_successful_trade(
             order=order,
             trade_id='aave_tx_123',
             executed_amount=10000.0,

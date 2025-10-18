@@ -62,12 +62,13 @@ class QualityGateValidator:
                 'scripts': [
                     'validate_config_alignment.py',              # Fixed
                     'test_config_spec_yaml_sync_quality_gates.py',  # Updated - simplified spec vs YAML sync
-                    'test_config_usage_sync_quality_gates.py',   # New  
                     'test_config_implementation_usage_quality_gates.py',  # NEW comprehensive usage validator
                     'test_modes_intention_quality_gates.py',     # New
                     'test_config_loading_quality_gates.py',      # New
                     'test_config_access_validation_quality_gates.py',  # NEW - Config access pattern validation
-                    'test_component_signature_validation_quality_gates.py'  # NEW - Component signature validation
+                    'test_component_signature_validation_quality_gates.py',  # NEW - Component signature validation
+                    'test_utility_manager_compliance_quality_gates.py',  # NEW - Utility manager compliance
+                    'quality_gates/validate_position_key_format.py'  # NEW - Position key format validation
                 ],
                 'critical': False
             },
@@ -78,7 +79,7 @@ class QualityGateValidator:
                     'tests/unit/test_position_monitor_unit.py',
                     'tests/unit/test_exposure_monitor_unit.py',
                     'tests/unit/test_risk_monitor_unit.py',
-                    'tests/unit/test_pnl_calculator_unit.py',
+                    'tests/unit/test_pnl_monitor_unit.py',
                     'tests/unit/test_strategy_manager_unit.py',
                     'tests/unit/test_venue_manager_unit.py',
                     'tests/unit/test_data_provider_unit.py',
@@ -105,7 +106,7 @@ class QualityGateValidator:
                     'tests/unit/test_eth_basis_strategy_unit.py',
                     'tests/unit/test_eth_leveraged_strategy_unit.py',
                     'tests/unit/test_eth_staking_only_strategy_unit.py',
-                    'tests/unit/test_pure_lending_strategy_unit.py',
+                    'tests/unit/test_pure_lending_usdt_strategy_unit.py',
                     'tests/unit/test_strategy_factory_unit.py',
                     'tests/unit/test_usdt_market_neutral_strategy_unit.py',
                     'tests/unit/test_usdt_market_neutral_no_leverage_strategy_unit.py',
@@ -185,7 +186,7 @@ class QualityGateValidator:
             'e2e_strategies': {
                 'description': 'E2E Strategy Tests - Full Execution (8 tests)',
                 'scripts': [
-                    'tests/e2e/test_pure_lending_e2e.py',
+                    'tests/e2e/test_pure_lending_usdt_e2e.py',
                     'tests/e2e/test_btc_basis_e2e.py',
                     'tests/e2e/test_eth_basis_e2e.py',
                     'tests/e2e/test_usdt_market_neutral_e2e.py',
@@ -200,7 +201,7 @@ class QualityGateValidator:
             'e2e_quality_gates': {
                 'description': 'E2E Quality Gates Tests (Legacy - 4 tests)',
                 'scripts': [
-                    'tests/e2e/test_pure_lending_quality_gates.py',
+                    'tests/e2e/test_pure_lending_usdt_quality_gates.py',
                     'tests/e2e/test_btc_basis_quality_gates.py',
                     'tests/e2e/test_eth_basis_quality_gates.py',
                     'tests/e2e/test_usdt_market_neutral_quality_gates.py'
@@ -216,11 +217,20 @@ class QualityGateValidator:
                 ],
                 'critical': True
             },
+            'data_architecture': {
+                'description': 'Data Architecture Refactor Validation',
+                'scripts': [
+                    'quality_gates/test_data_architecture.py',
+                    'quality_gates/test_data_provider_validation.py'
+                ],
+                'critical': True
+            },
             'components': {
                 'description': 'Component Communication Architecture Validation',
                 'scripts': [
                     'test_component_data_flow_architecture_quality_gates.py',
-                    'test_consolidate_duplicate_risk_monitors_quality_gates.py'
+                    'test_consolidate_duplicate_risk_monitors_quality_gates.py',
+                    'test_workflow_architecture_quality_gates.py'
                 ],
                 'critical': True
             },
@@ -276,9 +286,17 @@ class QualityGateValidator:
             'strategy_validation': {
                 'description': 'Strategy Action and Config Compliance',
                 'scripts': [
-                    'test_strategy_action_config_quality_gates.py'
+                    'test_strategy_action_config_quality_gates.py',
+                    'quality_gates/validate_strategies.py'
                 ],
                 'critical': False
+            },
+            'position_key_format': {
+                'description': 'Position Key Format Compliance',
+                'scripts': [
+                    'quality_gates/validate_position_key_format.py'
+                ],
+                'critical': True
             }
         }
     
@@ -570,12 +588,12 @@ class QualityGateValidator:
         # Check for specific achievements
         if 'strategy' in all_results:
             strategy_results = all_results['strategy']
-            if 'test_pure_lending_quality_gates.py' in strategy_results:
-                pure_lending = strategy_results['test_pure_lending_quality_gates.py']
-                if pure_lending.get('status') == 'PASS':
+            if 'test_pure_lending_usdt_quality_gates.py' in strategy_results:
+                pure_lending_usdt = strategy_results['test_pure_lending_usdt_quality_gates.py']
+                if pure_lending_usdt.get('status') == 'PASS':
                     print("✅ Pure Lending Strategy: Working with proper USDT yield (3-8% APY)")
-                    if 'metrics' in pure_lending and 'apy_percent' in pure_lending['metrics']:
-                        apy = pure_lending['metrics']['apy_percent']
+                    if 'metrics' in pure_lending_usdt and 'apy_percent' in pure_lending_usdt['metrics']:
+                        apy = pure_lending_usdt['metrics']['apy_percent']
                         print(f"   📊 Validated APY: {apy:.2f}%")
         
         if 'components' in all_results:
@@ -647,7 +665,7 @@ class QualityGateValidator:
             
             # Test 4: Mode-specific config
             print("  Testing mode-specific config...")
-            mode_config = config_manager.get_complete_config(mode='pure_lending')
+            mode_config = config_manager.get_complete_config(mode='pure_lending_usdt')
             
             if mode_config and isinstance(mode_config, dict):
                 phase_1_results['mode_specific_config'] = {
@@ -725,9 +743,9 @@ class QualityGateValidator:
             from basis_strategy_v1.infrastructure.config.config_manager import get_config_manager
             
             config_manager = get_config_manager()
-            # Create test config for pure_lending mode
+            # Create test config for pure_lending_usdt mode
             test_config = {
-                'mode': 'pure_lending',
+                'mode': 'pure_lending_usdt',
                 'data_requirements': ['usdt_prices', 'aave_lending_rates', 'gas_costs', 'execution_costs'],
                 'data_dir': config_manager.get_data_directory()
             }
@@ -922,7 +940,7 @@ class QualityGateValidator:
             response = requests.post(
                 f"{self.api_base_url}/api/v1/backtest/",
                 json={
-                    "strategy_name": "pure_lending",
+                    "strategy_name": "pure_lending_usdt",
                     "start_date": "2024-06-01",
                     "end_date": "2024-06-02",  # 1 day backtest
                     "initial_capital": 100000,
@@ -1186,15 +1204,15 @@ class QualityGateValidator:
         
         return integration_results
     
-    async def validate_pure_lending_strategy(self) -> Dict[str, Any]:
+    async def validate_pure_lending_usdt_strategy(self) -> Dict[str, Any]:
         """Validate pure lending strategy quality gates."""
         print("🎯 Validating Pure Lending Strategy Quality Gates...")
         
-        pure_lending_results = {}
+        pure_lending_usdt_results = {}
         
         try:
             # Run pure lending quality gates script
-            script_path = Path(__file__).parent / "test_pure_lending_quality_gates.py"
+            script_path = Path(__file__).parent / "test_pure_lending_usdt_quality_gates.py"
             
             if script_path.exists():
                 result = subprocess.run([
@@ -1205,7 +1223,7 @@ class QualityGateValidator:
                     # Parse results from output
                     output_lines = result.stdout.split('\n')
                     
-                    pure_lending_passed = False
+                    pure_lending_usdt_passed = False
                     apy_value = None
                     tests_passed = 0
                     tests_total = 0
@@ -1217,7 +1235,7 @@ class QualityGateValidator:
                                 overall_part = line.split("Overall:")[1].strip()
                                 tests_part = overall_part.split("tests passed")[0].strip()
                                 tests_passed, tests_total = map(int, tests_part.split("/"))
-                                pure_lending_passed = tests_passed == tests_total
+                                pure_lending_usdt_passed = tests_passed == tests_total
                             except (ValueError, IndexError):
                                 pass
                         elif "APY:" in line and "%" in line:
@@ -1231,8 +1249,8 @@ class QualityGateValidator:
                     success_threshold = 0.8  # 80% pass rate
                     is_successful = (tests_passed / tests_total) >= success_threshold if tests_total > 0 else False
                     
-                    pure_lending_results['pure_lending_strategy'] = {
-                        'all_passed': pure_lending_passed,
+                    pure_lending_usdt_results['pure_lending_usdt_strategy'] = {
+                        'all_passed': pure_lending_usdt_passed,
                         'tests_passed': tests_passed,
                         'tests_total': tests_total,
                         'apy_percent': apy_value,
@@ -1244,7 +1262,7 @@ class QualityGateValidator:
                         print(f"     📊 APY: {apy_value:.2f}%")
                 
                 else:
-                    pure_lending_results['pure_lending_strategy'] = {
+                    pure_lending_usdt_results['pure_lending_usdt_strategy'] = {
                         'all_passed': False,
                         'status': 'ERROR',
                         'error': result.stderr
@@ -1253,7 +1271,7 @@ class QualityGateValidator:
                     print(f"     ❌ Pure Lending Strategy: Validation failed")
             
             else:
-                pure_lending_results['pure_lending_strategy'] = {
+                pure_lending_usdt_results['pure_lending_usdt_strategy'] = {
                     'all_passed': False,
                     'status': 'ERROR',
                     'error': 'Pure lending quality gates script not found'
@@ -1262,7 +1280,7 @@ class QualityGateValidator:
                 print("     ❌ Pure Lending Strategy: Script not found")
         
         except Exception as e:
-            pure_lending_results['pure_lending_strategy'] = {
+            pure_lending_usdt_results['pure_lending_usdt_strategy'] = {
                 'all_passed': False,
                 'status': 'ERROR',
                 'error': str(e)
@@ -1270,7 +1288,7 @@ class QualityGateValidator:
             
             print(f"     ❌ Pure Lending Strategy: {e}")
         
-        return pure_lending_results
+        return pure_lending_usdt_results
     
     
     
@@ -1285,7 +1303,7 @@ class QualityGateValidator:
         script_categories = {
             'quality_gates': {
                 'scripts': [
-                    'test_pure_lending_quality_gates.py',
+                    'test_pure_lending_usdt_quality_gates.py',
                     'test_btc_basis_quality_gates.py', 
                     'performance_quality_gates.py'
                 ],
@@ -1437,7 +1455,7 @@ print(f'config_keys={list(cm.config_cache.keys())}')
                 """
 from backend.src.basis_strategy_v1.infrastructure.config.config_manager import get_config_manager
 cm = get_config_manager()
-config = cm.get_complete_config(mode='pure_lending')
+config = cm.get_complete_config(mode='pure_lending_usdt')
 print('env_vars_loaded=True')
 print(f'has_data_dir={bool(config.get("data_dir"))}')
 print(f'has_cache_config=True')  # Redis removed, using in-memory cache
@@ -1465,7 +1483,7 @@ cm = get_config_manager()
 modes = cm.get_available_strategies()
 print('yaml_configs_loaded=True')
 print(f'modes_count={len(modes)}')
-print(f'has_pure_lending={"pure_lending" in modes}')
+print(f'has_pure_lending_usdt={"pure_lending_usdt" in modes}')
                 """
             ], capture_output=True, text=True, timeout=30)
             
@@ -1487,7 +1505,7 @@ print(f'has_pure_lending={"pure_lending" in modes}')
                 """
 from backend.src.basis_strategy_v1.infrastructure.config.config_manager import get_config_manager
 cm = get_config_manager()
-config = cm.get_complete_config(mode='pure_lending')
+config = cm.get_complete_config(mode='pure_lending_usdt')
 print('config_validation_passed=True')
 print(f'has_mode={bool(config.get("mode"))}')
 print(f'has_strategy_params={bool(config.get("lending_enabled"))}')
@@ -1534,8 +1552,8 @@ provider = create_data_provider(
     data_dir='data',
     execution_mode='backtest',
     data_mode='csv',
-    config={'mode': 'pure_lending'},
-    mode='pure_lending'
+    config={'mode': 'pure_lending_usdt'},
+    mode='pure_lending_usdt'
 )
 
 # Check if data is NOT loaded at startup
@@ -1579,12 +1597,12 @@ provider = create_data_provider(
     data_dir='data',
     execution_mode='backtest',
     data_mode='csv',
-    config={'mode': 'pure_lending'},
-    mode='pure_lending'
+    config={'mode': 'pure_lending_usdt'},
+    mode='pure_lending_usdt'
 )
 
 # Load data on-demand
-provider.load_data_for_backtest('pure_lending', '2024-06-01', '2024-06-02')
+provider.load_data_for_backtest('pure_lending_usdt', '2024-06-01', '2024-06-02')
 
 # Check if data is now loaded
 if hasattr(provider, '_data_loaded') and provider._data_loaded and len(provider.data) > 0:
@@ -1807,7 +1825,7 @@ print(f'backtest_config_valid={validated_config.backtest is not None}')
         
         return results
     
-    def generate_quality_gate_report(self, health_results: Dict, event_chain_results: Dict, coverage_results: Dict, performance_results: Dict, integration_results: Dict, monitor_results: Dict = None, risk_monitor_results: Dict = None, pure_lending_results: Dict = None, scripts_results: Dict = None):
+    def generate_quality_gate_report(self, health_results: Dict, event_chain_results: Dict, coverage_results: Dict, performance_results: Dict, integration_results: Dict, monitor_results: Dict = None, risk_monitor_results: Dict = None, pure_lending_usdt_results: Dict = None, scripts_results: Dict = None):
         """Generate comprehensive quality gate report."""
         print("\n" + "="*80)
         print("🚦 QUALITY GATES VALIDATION REPORT")
@@ -1924,14 +1942,14 @@ print(f'backtest_config_valid={validated_config.backtest is not None}')
                     risk_monitor_passed += 1
         
         # Pure Lending Strategy Quality Gates
-        pure_lending_passed = 0
-        pure_lending_total = 0
+        pure_lending_usdt_passed = 0
+        pure_lending_usdt_total = 0
         
-        if pure_lending_results:
+        if pure_lending_usdt_results:
             print(f"\n🎯 PURE LENDING STRATEGY QUALITY GATES:")
             print("-" * 80)
             
-            for test_name, result in pure_lending_results.items():
+            for test_name, result in pure_lending_usdt_results.items():
                 status = result.get('status', 'UNKNOWN')
                 apy = result.get('apy_percent')
                 status_display = f"{status:<10}"
@@ -1939,9 +1957,9 @@ print(f'backtest_config_valid={validated_config.backtest is not None}')
                     status_display += f" APY: {apy:.2f}%"
                 print(f"{test_name:<30} {status_display}")
                 
-                pure_lending_total += 1
+                pure_lending_usdt_total += 1
                 if status == 'PASS':
-                    pure_lending_passed += 1
+                    pure_lending_usdt_passed += 1
         
         # Scripts Directory Quality Gates
         scripts_passed = 0
@@ -1985,8 +2003,8 @@ print(f'backtest_config_valid={validated_config.backtest is not None}')
         print(f"\n🎯 OVERALL QUALITY GATES SUMMARY:")
         print("-" * 80)
         
-        total_tests = health_total + event_chain_total + coverage_total + performance_total + integration_total + monitor_total + risk_monitor_total + pure_lending_total + scripts_total
-        total_passed = health_passed + event_chain_passed + coverage_passed + performance_passed + integration_passed + monitor_passed + risk_monitor_passed + pure_lending_passed + scripts_passed
+        total_tests = health_total + event_chain_total + coverage_total + performance_total + integration_total + monitor_total + risk_monitor_total + pure_lending_usdt_total + scripts_total
+        total_passed = health_passed + event_chain_passed + coverage_passed + performance_passed + integration_passed + monitor_passed + risk_monitor_passed + pure_lending_usdt_passed + scripts_passed
         
         print(f"Component Health: {health_passed}/{health_total} tests passed")
         print(f"Event Chain: {event_chain_passed}/{event_chain_total} tests passed")
@@ -1997,8 +2015,8 @@ print(f'backtest_config_valid={validated_config.backtest is not None}')
             print(f"Monitor Quality: {monitor_passed}/{monitor_total} tests passed")
         if risk_monitor_results:
             print(f"Risk Monitor: {risk_monitor_passed}/{risk_monitor_total} tests passed")
-        if pure_lending_results:
-            print(f"Pure Lending Strategy: {pure_lending_passed}/{pure_lending_total} tests passed")
+        if pure_lending_usdt_results:
+            print(f"Pure Lending Strategy: {pure_lending_usdt_passed}/{pure_lending_usdt_total} tests passed")
         if scripts_results:
             print(f"Scripts Directory: {scripts_passed}/{scripts_total} tests passed")
         print(f"Overall: {total_passed}/{total_tests} tests passed ({total_passed/total_tests*100:.1f}%)")
@@ -2026,7 +2044,7 @@ async def main():
     import argparse
     
     parser = argparse.ArgumentParser(description='Quality Gates Validation - Single Entry Point')
-    parser.add_argument('--category', choices=['docs_validation', 'docs', 'health', 'performance', 'configuration', 'integration', 'coverage', 'env_config_sync', 'repo_structure', 'data_loading', 'components', 'strategy_validation'],
+    parser.add_argument('--category', choices=['docs_validation', 'docs', 'health', 'performance', 'configuration', 'integration', 'coverage', 'env_config_sync', 'repo_structure', 'data_loading', 'data_architecture', 'components', 'strategy_validation', 'position_key_format'],
                        help='Run specific category of quality gates')
     parser.add_argument('--docs', action='store_true',
                        help='Run documentation link validation quality gates')
@@ -2108,14 +2126,14 @@ async def main():
         coverage_results = await validator.validate_test_coverage()
         performance_results = await validator.validate_performance()
         integration_results = await validator.validate_integration()
-        pure_lending_results = await validator.validate_pure_lending_strategy()
+        pure_lending_usdt_results = await validator.validate_pure_lending_usdt_strategy()
         scripts_results = await validator.validate_scripts_directory()
         
         # Generate comprehensive report
         success = validator.generate_quality_gate_report(
             health_results, event_chain_results, coverage_results, 
             performance_results, integration_results, None,
-            None, pure_lending_results, scripts_results
+            None, pure_lending_usdt_results, scripts_results
         )
         
         return 0 if success else 1

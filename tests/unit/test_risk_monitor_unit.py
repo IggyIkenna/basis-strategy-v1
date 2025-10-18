@@ -143,7 +143,7 @@ class TestRiskMonitorUnit:
     def test_mode_agnostic_calculations(self, mock_config, mock_data_provider, mock_utility_manager):
         """Test mode-agnostic risk calculations."""
         # Test different modes
-        modes = ['pure_lending', 'btc_basis', 'eth_basis', 'eth_leveraged', 'usdt_market_neutral']
+        modes = ['pure_lending_usdt', 'btc_basis', 'eth_basis', 'eth_leveraged', 'usdt_market_neutral']
         
         for mode in modes:
             test_config = mock_config.copy()
@@ -188,17 +188,17 @@ class TestRiskMonitorUnit:
     def test_risk_monitor_initialization(self, mock_config, mock_data_provider, mock_utility_manager):
         """Test Risk Monitor initialization with different configs."""
         # Test pure lending mode
-        pure_lending_config = mock_config.copy()
-        pure_lending_config['mode'] = 'pure_lending'
-        pure_lending_config['max_drawdown'] = 0.1
+        pure_lending_usdt_config = mock_config.copy()
+        pure_lending_usdt_config['mode'] = 'pure_lending_usdt'
+        pure_lending_usdt_config['max_drawdown'] = 0.1
         
         risk_monitor = RiskMonitor(
-            config=pure_lending_config,
+            config=pure_lending_usdt_config,
             data_provider=mock_data_provider,
             utility_manager=mock_utility_manager
         )
         
-        assert risk_monitor.config['mode'] == 'pure_lending'
+        assert risk_monitor.config['mode'] == 'pure_lending_usdt'
         assert risk_monitor.config['max_drawdown'] == 0.1
         
         # Test leveraged mode

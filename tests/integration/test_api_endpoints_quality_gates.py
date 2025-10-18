@@ -27,7 +27,7 @@ def test_strategy_selection_endpoints():
     base_url = "http://localhost:8001"
     endpoints = [
         "/api/v1/strategies",
-        "/api/v1/strategies/pure_lending",
+        "/api/v1/strategies/pure_lending_usdt",
         "/api/v1/strategies/btc_basis",
         "/api/v1/strategies/eth_basis",
         "/api/v1/strategies/usdt_market_neutral",
@@ -63,7 +63,7 @@ def test_backtest_execution_endpoints():
     # Test start backtest endpoint
     try:
         backtest_request = {
-            "strategy": "pure_lending",
+            "strategy": "pure_lending_usdt",
             "start_date": "2024-01-01",
             "end_date": "2024-01-31",
             "initial_capital": 100000

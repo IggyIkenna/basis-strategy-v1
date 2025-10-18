@@ -369,9 +369,9 @@ call_id = await enqueue_api_call(
 # Get the result
 try:
     result = await get_api_result(call_id, service_name="binance", timeout=15.0)
-    print(f"Price data: {result}")
+    logger.info(f"Price data: {result}")
 except TimeoutError:
-    print("API call timed out")
+    logger.warning("API call timed out")
 except Exception as e:
-    print(f"API call failed: {e}")
+    logger.error(f"API call failed: {e}")
 """

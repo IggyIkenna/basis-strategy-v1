@@ -38,7 +38,7 @@ class SingletonPatternQualityGates:
             "basis_strategy_v1/core/strategies/components/strategy_manager.py",
             "basis_strategy_v1/core/strategies/components/position_update_handler.py",
             "basis_strategy_v1/core/strategies/components/exposure_monitor.py",
-            "basis_strategy_v1/core/math/pnl_calculator.py"
+            "basis_strategy_v1/core/components/pnl_monitor.py"
         ]
         self.engine_files = [
             "basis_strategy_v1/core/event_engine/event_driven_strategy_engine.py"
@@ -149,7 +149,7 @@ class SingletonPatternQualityGates:
                 'self.position_monitor =',
                 'self.exposure_monitor =',
                 'self.risk_monitor =',
-                'self.pnl_calculator =',
+                'self.pnl_monitor =',
                 'self.strategy_manager =',
                 'self.position_update_handler ='
             ]
@@ -344,7 +344,7 @@ class SingletonPatternQualityGates:
             from basis_strategy_v1.core.strategies.components.risk_monitor import RiskMonitor
             from basis_strategy_v1.core.strategies.components.strategy_manager import StrategyManager
             from basis_strategy_v1.core.strategies.components.position_update_handler import PositionUpdateHandler
-            from basis_strategy_v1.core.math.pnl_calculator import PnLCalculator
+            from basis_strategy_v1.core.components.pnl_monitor import PnLCalculator
             
             logger.info("✅ All components imported successfully")
             return True

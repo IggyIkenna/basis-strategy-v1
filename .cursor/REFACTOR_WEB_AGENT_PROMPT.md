@@ -71,7 +71,7 @@ Copy and paste this prompt when setting up your web-based background agent for t
 - **Purpose**: Implement missing canonical methods and components
 - **What it does**: 
   - Creates missing canonical methods based on spec requirements
-  - Implements missing components (Strategy Manager, PnL Calculator, etc.)
+  - Implements missing components (Strategy Manager, PnL Monitor, etc.)
   - Ensures all implementations follow canonical patterns from `02_EXPOSURE_MONITOR` and `03_RISK_MONITOR`
   - Updates integration points to use canonical method names
   - Maintains clean architecture: canonical methods (no underscore), internal methods (with underscore)
@@ -185,7 +185,7 @@ python validate_docs.py
 python scripts/run_quality_gates.py
 
 # Run specific quality gates
-python scripts/test_pure_lending_quality_gates.py
+python scripts/test_pure_lending_usdt_quality_gates.py
 python scripts/test_btc_basis_quality_gates.py
 
 # Check for orphaned tests

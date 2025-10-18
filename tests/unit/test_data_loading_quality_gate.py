@@ -33,7 +33,7 @@ class DataAvailabilityChecker:
         
         # Strategy data requirements
         self.strategy_data_requirements = {
-            'pure_lending': {
+            'pure_lending_usdt': {
                 'protocols': ['aave_v3'],
                 'assets': ['USDT', 'WETH'],
                 'timeframes': ['1h', '1d'],
@@ -429,11 +429,11 @@ class TestDataLoadingQualityGate:
         benchmark_dir = manual_sources_dir / "benchmark_data"
         assert benchmark_dir.exists(), "Benchmark data directory does not exist"
     
-    def test_pure_lending_data_requirements(self):
+    def test_pure_lending_usdt_data_requirements(self):
         """Test data requirements for pure lending strategy."""
         strategy_result = self.data_checker._check_strategy_data_availability(
-            'pure_lending', 
-            self.data_checker.strategy_data_requirements['pure_lending']
+            'pure_lending_usdt', 
+            self.data_checker.strategy_data_requirements['pure_lending_usdt']
         )
         
         assert strategy_result['status'] == 'PASS', f"Pure lending data requirements not met: {strategy_result['missing_data_types']}"

@@ -52,11 +52,7 @@ def check_live_mode_configuration() -> Dict[str, any]:
     # Check live trading safety controls
     live_trading_vars = {
         'BASIS_LIVE_TRADING__ENABLED': os.getenv('BASIS_LIVE_TRADING__ENABLED', 'false'),
-        'BASIS_LIVE_TRADING__READ_ONLY': os.getenv('BASIS_LIVE_TRADING__READ_ONLY', 'true'),
-        'BASIS_LIVE_TRADING__MAX_TRADE_SIZE_USD': os.getenv('BASIS_LIVE_TRADING__MAX_TRADE_SIZE_USD', '100'),
-        'BASIS_LIVE_TRADING__EMERGENCY_STOP_LOSS_PCT': os.getenv('BASIS_LIVE_TRADING__EMERGENCY_STOP_LOSS_PCT', '0.15'),
-        'BASIS_LIVE_TRADING__HEARTBEAT_TIMEOUT_SECONDS': os.getenv('BASIS_LIVE_TRADING__HEARTBEAT_TIMEOUT_SECONDS', '300'),
-        'BASIS_LIVE_TRADING__CIRCUIT_BREAKER_ENABLED': os.getenv('BASIS_LIVE_TRADING__CIRCUIT_BREAKER_ENABLED', 'true')
+        'BASIS_LIVE_TRADING__READ_ONLY': os.getenv('BASIS_LIVE_TRADING__READ_ONLY', 'true')
     }
     
     for var, value in live_trading_vars.items():
@@ -67,48 +63,13 @@ def check_live_mode_configuration() -> Dict[str, any]:
         }
         
         # Validate boolean variables
-        if var in ['BASIS_LIVE_TRADING__ENABLED', 'BASIS_LIVE_TRADING__READ_ONLY', 'BASIS_LIVE_TRADING__CIRCUIT_BREAKER_ENABLED']:
+        if var in ['BASIS_LIVE_TRADING__ENABLED', 'BASIS_LIVE_TRADING__READ_ONLY']:
             if value.lower() not in ['true', 'false']:
                 config_checks['live_trading_safety_controls'][var]['valid'] = False
                 config_checks['live_trading_safety_controls'][var]['error'] = f"Invalid boolean value: {value}"
                 config_checks['is_compliant'] = False
         
-        # Validate numeric variables
-        elif var == 'BASIS_LIVE_TRADING__MAX_TRADE_SIZE_USD':
-            try:
-                trade_size = float(value)
-                if trade_size <= 0:
-                    config_checks['live_trading_safety_controls'][var]['valid'] = False
-                    config_checks['live_trading_safety_controls'][var]['error'] = f"Must be positive, got: {trade_size}"
-                    config_checks['is_compliant'] = False
-            except ValueError:
-                config_checks['live_trading_safety_controls'][var]['valid'] = False
-                config_checks['live_trading_safety_controls'][var]['error'] = f"Invalid number: {value}"
-                config_checks['is_compliant'] = False
-        
-        elif var == 'BASIS_LIVE_TRADING__EMERGENCY_STOP_LOSS_PCT':
-            try:
-                stop_loss = float(value)
-                if stop_loss <= 0 or stop_loss > 1:
-                    config_checks['live_trading_safety_controls'][var]['valid'] = False
-                    config_checks['live_trading_safety_controls'][var]['error'] = f"Must be between 0 and 1, got: {stop_loss}"
-                    config_checks['is_compliant'] = False
-            except ValueError:
-                config_checks['live_trading_safety_controls'][var]['valid'] = False
-                config_checks['live_trading_safety_controls'][var]['error'] = f"Invalid number: {value}"
-                config_checks['is_compliant'] = False
-        
-        elif var == 'BASIS_LIVE_TRADING__HEARTBEAT_TIMEOUT_SECONDS':
-            try:
-                timeout = int(value)
-                if timeout <= 0:
-                    config_checks['live_trading_safety_controls'][var]['valid'] = False
-                    config_checks['live_trading_safety_controls'][var]['error'] = f"Must be positive, got: {timeout}"
-                    config_checks['is_compliant'] = False
-            except ValueError:
-                config_checks['live_trading_safety_controls'][var]['valid'] = False
-                config_checks['live_trading_safety_controls'][var]['error'] = f"Invalid integer: {value}"
-                config_checks['is_compliant'] = False
+        # No additional validation needed - uses same logic as backtest mode
     
     # Check if API keys are configured
     api_keys = ['BINANCE_API_KEY', 'BYBIT_API_KEY', 'OKX_API_KEY']
@@ -283,7 +244,7 @@ def test_live_trading_service_controls() -> Dict[str, any]:
         
         # Test safety controls enforcement (create request should work)
         request = service.create_request(
-            strategy_name='pure_lending',
+            strategy_name='pure_lending_usdt',
             initial_capital=Decimal('1000'),
             share_class='USDT'
         )

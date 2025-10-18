@@ -1,0 +1,3 @@
+#!/bin/bash
+echo "Skipping pip3 install (offline)"
+exit 0

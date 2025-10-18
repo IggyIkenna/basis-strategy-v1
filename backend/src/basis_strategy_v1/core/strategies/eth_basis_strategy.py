@@ -4,17 +4,20 @@ ETH Basis Strategy Implementation
 Implements ETH basis trading strategy with funding rate arbitrage.
 Inherits from BaseStrategyManager and implements the 5 standard actions.
 
-Reference: docs/MODES.md - ETH Basis Strategy Mode
+Reference: docs/STRATEGY_MODES.md - ETH Basis Strategy Mode
 Reference: docs/specs/05_STRATEGY_MANAGER.md - Component specification
 """
 
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional
 import logging
 import pandas as pd
+import uuid
+from pathlib import Path
 
 from .base_strategy_manager import BaseStrategyManager
-from ...core.logging.base_logging_interface import StandardizedLoggingMixin, LogLevel, EventType
 from ...core.models.order import Order, OrderOperation
+from ...core.models.venues import Venue
+from ...core.models.instruments import validate_instrument_key, get_display_name
 
 logger = logging.getLogger(__name__)
 
@@ -30,30 +33,74 @@ class ETHBasisStrategy(BaseStrategyManager):
     - Target APY: 15-25%
     """
     
-    def __init__(self, config: Dict[str, Any], risk_monitor, position_monitor, event_engine):
+    def __init__(self, config: Dict[str, Any], data_provider, exposure_monitor, 
+                 position_monitor, risk_monitor, utility_manager=None, 
+                 correlation_id: str = None, pid: int = None, log_dir: Path = None):
         """
         Initialize ETH basis strategy.
         
         Args:
             config: Strategy configuration
-            risk_monitor: Risk monitor instance
-            position_monitor: Position monitor instance
-            event_engine: Event engine instance
+            data_provider: Data provider instance for market data
+            exposure_monitor: Exposure monitor instance for exposure data
+            position_monitor: Position monitor instance for position data
+            risk_monitor: Risk monitor instance for risk assessment
+            utility_manager: Centralized utility manager for conversion rates
+            correlation_id: Unique correlation ID for this run
+            pid: Process ID
+            log_dir: Log directory path (logs/{correlation_id}/{pid}/)
         """
-        super().__init__(config, risk_monitor, position_monitor, event_engine)
+        super().__init__(config, data_provider, exposure_monitor, position_monitor, risk_monitor, 
+                        utility_manager, correlation_id, pid, log_dir)
         
         # Validate required configuration at startup (fail-fast)
-        required_keys = ['eth_allocation', 'funding_threshold', 'max_leverage']
+        required_keys = ['eth_allocation', 'max_leverage']
         for key in required_keys:
             if key not in config:
                 raise KeyError(f"Missing required configuration: {key}")
         
         # ETH-specific configuration (fail-fast access)
+        self.asset = 'ETH'  # ETH for this strategy
         self.eth_allocation = config['eth_allocation']  # 80% to ETH
-        self.funding_threshold = config['funding_threshold']  # 1% funding rate threshold
         self.max_leverage = config['max_leverage']  # No leverage for basis trading
+        self.share_class = config.get('share_class', 'ETH')  # Share class currency
         
-        logger.info(f"ETHBasisStrategy initialized with {self.eth_allocation*100}% ETH allocation")
+        # Define and validate instrument keys
+        self.entry_instrument = f"{Venue.WALLET.value}:BaseToken:ETH"
+        self.spot_instrument = f"{Venue.BINANCE.value}:BaseToken:ETH"
+        self.perp_instrument = f"{Venue.BINANCE.value}:Perp:ETHUSDT"
+        
+        # Validate instrument keys
+        validate_instrument_key(self.entry_instrument)
+        validate_instrument_key(self.spot_instrument)
+        validate_instrument_key(self.perp_instrument)
+        
+        # Get available instruments from position_monitor config
+        position_config = config.get('component_config', {}).get('position_monitor', {})
+        self.available_instruments = position_config.get('position_subscriptions', [])
+        
+        if not self.available_instruments:
+            raise ValueError(
+                f"{self.__class__.__name__} requires position_subscriptions in config. "
+                "Define all instruments this strategy will use in component_config.position_monitor.position_subscriptions"
+            )
+        
+        # Define required instruments for this strategy
+        required_instruments = [self.entry_instrument, self.spot_instrument, self.perp_instrument]
+        
+        # Validate all required instruments are in available set
+        for instrument in required_instruments:
+            if instrument not in self.available_instruments:
+                raise ValueError(
+                    f"Required instrument {instrument} not in position_subscriptions. "
+                    f"Add to configs/modes/{config.get('mode', 'eth_basis')}.yaml"
+                )
+        
+        self.logger.info(f"ETHBasisStrategy initialized with {self.eth_allocation*100}% ETH allocation")
+        self.logger.info(f"  Available instruments: {len(self.available_instruments)}")
+        self.logger.info(f"  Entry: {get_display_name(self.entry_instrument)}")
+        self.logger.info(f"  Spot: {get_display_name(self.spot_instrument)}")
+        self.logger.info(f"  Perp: {get_display_name(self.perp_instrument)}")
     
     def _get_asset_price(self) -> float:
         """Get current ETH price. In real implementation, this would fetch from data provider."""
@@ -93,16 +140,15 @@ class ETHBasisStrategy(BaseStrategyManager):
                 'total_equity': current_equity
             }
     
-    def make_strategy_decision(
+    def generate_orders(
         self,
         timestamp: pd.Timestamp,
-        trigger_source: str,
-        market_data: Dict,
-        exposure_data: Dict,
-        risk_assessment: Dict
+        exposure: Dict,
+        risk_assessment: Dict,
+        market_data: Dict
     ) -> List[Order]:
         """
-        Make ETH basis strategy decision based on market conditions and risk assessment.
+        Generate orders for ETH basis strategy based on market conditions and risk assessment.
         
         ETH Basis Strategy Logic:
         - Analyze funding rates and basis spreads
@@ -112,20 +158,11 @@ class ETHBasisStrategy(BaseStrategyManager):
         """
         try:
             # Log strategy decision start
-            self.log_component_event(
-                event_type=EventType.BUSINESS_EVENT,
-                message=f"Making ETH basis strategy decision triggered by {trigger_source}",
-                data={
-                    'trigger_source': trigger_source,
-                    'strategy_type': self.__class__.__name__,
-                    'timestamp': str(timestamp)
-                },
-                level=LogLevel.INFO
-            )
+            self.logger.info("Making ETH basis strategy decision")
             
             # Get current equity and positions
-            current_equity = self.get_current_equity(exposure_data)
-            current_positions = exposure_data.get('positions', {})
+            current_equity = self.get_current_equity(exposure)
+            current_positions = exposure.get('positions', {})
             
             # ETH-specific market analysis
             eth_spot_price = market_data.get('prices', {}).get('ETH', 0.0)
@@ -145,7 +182,7 @@ class ETHBasisStrategy(BaseStrategyManager):
                 if self._should_enter_basis_position(eth_funding_rate, eth_spot_price):
                     return self._create_entry_orders(current_equity)
                 else:
-                    return self._create_dust_sell_orders(exposure_data)  # Wait for better opportunity
+                    return self._create_dust_sell_orders(exposure)  # Wait for better opportunity
                     
             elif liquidation_risk > 0.8 or margin_ratio < 0.2:
                 # High risk - exit position
@@ -161,31 +198,30 @@ class ETHBasisStrategy(BaseStrategyManager):
                 
             else:
                 # Maintain current position
-                return self._create_dust_sell_orders(exposure_data)
+                return self._create_dust_sell_orders(exposure)
                 
         except Exception as e:
-            self.log_error(
-                error=e,
-                context={
-                    'method': 'make_strategy_decision',
-                    'trigger_source': trigger_source,
-                    'strategy_type': self.__class__.__name__
-                }
+            self.logger.error(
+                "Failed to generate ETH basis strategy orders",
+                error_code="STRAT-001",
+                exc_info=e,
+                method='generate_orders',
+                strategy_type=self.__class__.__name__
             )
-            logger.error(f"Error in ETH basis strategy decision: {e}")
+            logger.error(f"Error in ETH basis strategy order generation: {e}")
             # Return safe default action
-            return self._create_dust_sell_orders(exposure_data)
+            return self._create_dust_sell_orders(exposure)
     
     def _should_enter_basis_position(self, funding_rate: float, spot_price: float) -> bool:
         """Determine if we should enter an ETH basis position."""
-        # ETH basis strategy logic: enter when funding rate is favorable
-        return abs(funding_rate) > self.funding_threshold and spot_price > 0
+        # ETH basis strategy logic: enter when funding rate is positive (earning funding)
+        # No threshold - take any positive funding opportunity
+        return funding_rate != 0 and spot_price > 0
     
     def _should_rebalance_position(self, funding_rate: float, current_positions: Dict) -> bool:
         """Determine if we should rebalance the ETH basis position."""
-        # Simple rebalancing logic based on funding rate changes
-        # In production, this would be more sophisticated
-        return abs(funding_rate) > self.funding_threshold * 1.5
+        # Rebalance if we have positions and funding rate exists
+        return funding_rate != 0
     
     def _create_entry_orders(self, equity: float) -> List[Order]:
         """
@@ -199,16 +235,7 @@ class ETHBasisStrategy(BaseStrategyManager):
         """
         try:
             # Log order creation
-            self.log_component_event(
-                event_type=EventType.BUSINESS_EVENT,
-                message=f"Creating entry orders with equity={equity}",
-                data={
-                    'action': 'create_entry_orders',
-                    'equity': equity,
-                    'strategy_type': self.__class__.__name__
-                },
-                level=LogLevel.INFO
-            )
+            self.logger.info(f"Creating entry orders with equity={equity}")
             
             # Calculate target position
             target_position = self.calculate_target_position(equity)
@@ -228,8 +255,7 @@ class ETHBasisStrategy(BaseStrategyManager):
                     strategy_intent='eth_basis_entry',
                     strategy_id='eth_basis',
                     metadata={
-                        'eth_allocation': self.eth_allocation,
-                        'funding_threshold': self.funding_threshold
+                        'eth_allocation': self.eth_allocation
                     }
                 ))
             
@@ -255,7 +281,7 @@ class ETHBasisStrategy(BaseStrategyManager):
             return orders
             
         except Exception as e:
-            self.log_error(
+            self.logger.error(
                 error=e,
                 context={
                     'method': '_create_entry_orders',
@@ -277,16 +303,7 @@ class ETHBasisStrategy(BaseStrategyManager):
         """
         try:
             # Log order creation
-            self.log_component_event(
-                event_type=EventType.BUSINESS_EVENT,
-                message=f"Creating rebalance orders with equity_delta={equity_delta}",
-                data={
-                    'action': 'create_rebalance_orders',
-                    'equity_delta': equity_delta,
-                    'strategy_type': self.__class__.__name__
-                },
-                level=LogLevel.INFO
-            )
+            self.logger.info(f"Creating rebalance orders with equity_delta={equity_delta}")
             
             # Calculate proportional allocation
             eth_delta = equity_delta * self.eth_allocation
@@ -334,7 +351,7 @@ class ETHBasisStrategy(BaseStrategyManager):
             return orders
             
         except Exception as e:
-            self.log_error(
+            self.logger.error(
                 error=e,
                 context={
                     'method': '_create_rebalance_orders',
@@ -356,16 +373,7 @@ class ETHBasisStrategy(BaseStrategyManager):
         """
         try:
             # Log order creation
-            self.log_component_event(
-                event_type=EventType.BUSINESS_EVENT,
-                message=f"Creating exit orders with equity={equity}",
-                data={
-                    'action': 'create_exit_orders',
-                    'equity': equity,
-                    'strategy_type': self.__class__.__name__
-                },
-                level=LogLevel.INFO
-            )
+            self.logger.info(f"Creating exit orders with equity={equity}")
             
             # Get current position
             current_position = self.position_monitor.get_current_position()
@@ -426,7 +434,7 @@ class ETHBasisStrategy(BaseStrategyManager):
             return orders
             
         except Exception as e:
-            self.log_error(
+            self.logger.error(
                 error=e,
                 context={
                     'method': '_create_exit_orders',
@@ -436,30 +444,22 @@ class ETHBasisStrategy(BaseStrategyManager):
             logger.error(f"Error creating exit orders: {e}")
             return []
     
-    def _create_dust_sell_orders(self, exposure_data: Dict) -> List[Order]:
+    def _create_dust_sell_orders(self, exposure: Dict) -> List[Order]:
         """
         Create orders for selling dust tokens.
         
         Args:
-            exposure_data: Current exposure data
+            exposure: Current exposure data
             
         Returns:
             List[Order] for selling dust tokens
         """
         try:
             # Log order creation
-            self.log_component_event(
-                event_type=EventType.BUSINESS_EVENT,
-                message="Creating dust sell orders",
-                data={
-                    'action': 'create_dust_sell_orders',
-                    'strategy_type': self.__class__.__name__
-                },
-                level=LogLevel.INFO
-            )
+            self.logger.info("Creating dust sell orders")
             
             # Get current positions
-            current_positions = exposure_data.get('positions', {})
+            current_positions = exposure.get('positions', {})
             orders = []
             
             # Check for dust tokens that need to be sold
@@ -524,11 +524,11 @@ class ETHBasisStrategy(BaseStrategyManager):
             return orders
             
         except Exception as e:
-            self.log_error(
+            self.logger.error(
                 error=e,
                 context={
                     'method': '_create_dust_sell_orders',
-                    'exposure_data': exposure_data
+                    'exposure': exposure
                 }
             )
             logger.error(f"Error creating dust sell orders: {e}")
@@ -549,7 +549,6 @@ class ETHBasisStrategy(BaseStrategyManager):
                 'share_class': self.share_class,
                 'asset': self.asset,
                 'eth_allocation': self.eth_allocation,
-                'funding_threshold': self.funding_threshold,
                 'max_leverage': self.max_leverage,
                 'description': 'ETH funding rate arbitrage with spot/perpetual basis trading'
             }
@@ -563,3 +562,299 @@ class ETHBasisStrategy(BaseStrategyManager):
                 'equity': 0.0,
                 'error': str(e)
             }
+    
+    def _create_entry_full_orders(self, equity: float) -> List[Order]:
+        """Create entry full orders for ETH basis strategy."""
+        try:
+            orders = []
+            
+            # Calculate ETH amount
+            eth_price = self._get_asset_price()
+            eth_amount = equity / eth_price if eth_price > 0 else 0
+            
+            # Create spot buy order
+            operation_id = f"spot_buy_{int(pd.Timestamp.now().timestamp() * 1000000)}"
+            orders.append(Order(
+                operation_id=operation_id,
+                venue=Venue.BINANCE,
+                operation=OrderOperation.SPOT_TRADE,
+                pair='ETHUSDT',
+                side='BUY',
+                amount=eth_amount,
+                order_type='market',
+                source_venue=Venue.WALLET,
+                target_venue=Venue.BINANCE,
+                source_token='USDT',
+                target_token='ETH',
+                expected_deltas={
+                    self.spot_instrument: eth_amount,
+                    f"{Venue.WALLET.value}:BaseToken:USDT": -equity
+                },
+                execution_mode='sequential',
+                strategy_intent='entry_full',
+                strategy_id='eth_basis'
+            ))
+            
+            # Create perp short order
+            operation_id = f"perp_short_{int(pd.Timestamp.now().timestamp() * 1000000)}"
+            orders.append(Order(
+                operation_id=operation_id,
+                venue=Venue.BINANCE,
+                operation=OrderOperation.PERP_TRADE,
+                pair='ETHUSDT',
+                side='SELL',
+                amount=eth_amount,
+                order_type='market',
+                source_venue=Venue.BINANCE,
+                target_venue=Venue.BINANCE,
+                source_token='USDT',
+                target_token='ETH',
+                expected_deltas={
+                    self.perp_instrument: -eth_amount  # Short position
+                },
+                execution_mode='sequential',
+                strategy_intent='entry_full',
+                strategy_id='eth_basis'
+            ))
+            
+            return orders
+            
+        except Exception as e:
+            logger.error(f"Error creating entry full orders: {e}")
+            return []
+    
+    def _create_entry_partial_orders(self, equity_delta: float) -> List[Order]:
+        """Create entry partial orders for ETH basis strategy."""
+        try:
+            orders = []
+            
+            # Calculate ETH amount for partial entry
+            eth_price = self._get_asset_price()
+            eth_amount = equity_delta / eth_price if eth_price > 0 else 0
+            
+            # Create spot buy order
+            operation_id = f"spot_buy_partial_{int(pd.Timestamp.now().timestamp() * 1000000)}"
+            orders.append(Order(
+                operation_id=operation_id,
+                venue=Venue.BINANCE,
+                operation=OrderOperation.SPOT_TRADE,
+                pair='ETHUSDT',
+                side='BUY',
+                amount=eth_amount,
+                order_type='market',
+                source_venue=Venue.WALLET,
+                target_venue=Venue.BINANCE,
+                source_token='USDT',
+                target_token='ETH',
+                expected_deltas={
+                    self.spot_instrument: eth_amount,
+                    f"{Venue.WALLET.value}:BaseToken:USDT": -equity_delta
+                },
+                execution_mode='sequential',
+                strategy_intent='entry_partial',
+                strategy_id='eth_basis'
+            ))
+            
+            # Create perp short order
+            operation_id = f"perp_short_partial_{int(pd.Timestamp.now().timestamp() * 1000000)}"
+            orders.append(Order(
+                operation_id=operation_id,
+                venue=Venue.BINANCE,
+                operation=OrderOperation.PERP_TRADE,
+                pair='ETHUSDT',
+                side='SELL',
+                amount=eth_amount,
+                order_type='market',
+                source_venue=Venue.BINANCE,
+                target_venue=Venue.BINANCE,
+                source_token='USDT',
+                target_token='ETH',
+                expected_deltas={
+                    self.perp_instrument: -eth_amount  # Short position
+                },
+                execution_mode='sequential',
+                strategy_intent='entry_partial',
+                strategy_id='eth_basis'
+            ))
+            
+            return orders
+            
+        except Exception as e:
+            logger.error(f"Error creating entry partial orders: {e}")
+            return []
+    
+    def _create_exit_full_orders(self, equity: float) -> List[Order]:
+        """Create exit full orders for ETH basis strategy."""
+        try:
+            orders = []
+            
+            # Get current positions from position monitor
+            current_positions = self.position_monitor.get_current_position()
+            spot_position = current_positions.get(self.spot_instrument, 0)
+            perp_position = current_positions.get(self.perp_instrument, 0)
+            
+            if spot_position > 0:
+                # Close spot position
+                operation_id = f"spot_sell_{int(pd.Timestamp.now().timestamp() * 1000000)}"
+                orders.append(Order(
+                    operation_id=operation_id,
+                    venue=Venue.BINANCE,
+                    operation=OrderOperation.SPOT_TRADE,
+                    pair='ETHUSDT',
+                    side='SELL',
+                    amount=spot_position,
+                    order_type='market',
+                    source_venue=Venue.BINANCE,
+                    target_venue=Venue.WALLET,
+                    source_token='ETH',
+                    target_token='USDT',
+                    expected_deltas={
+                        self.spot_instrument: -spot_position,
+                        f"{Venue.WALLET.value}:BaseToken:USDT": spot_position * self._get_asset_price()
+                    },
+                    execution_mode='sequential',
+                    strategy_intent='exit_full',
+                    strategy_id='eth_basis'
+                ))
+            
+            if perp_position < 0:  # Short position
+                # Close perp position
+                operation_id = f"perp_buy_{int(pd.Timestamp.now().timestamp() * 1000000)}"
+                orders.append(Order(
+                    operation_id=operation_id,
+                    venue=Venue.BINANCE,
+                    operation=OrderOperation.PERP_TRADE,
+                    pair='ETHUSDT',
+                    side='BUY',
+                    amount=abs(perp_position),
+                    order_type='market',
+                    source_venue=Venue.BINANCE,
+                    target_venue=Venue.BINANCE,
+                    source_token='USDT',
+                    target_token='ETH',
+                    expected_deltas={
+                        self.perp_instrument: abs(perp_position)  # Close short position
+                    },
+                    execution_mode='sequential',
+                    strategy_intent='exit_full',
+                    strategy_id='eth_basis'
+                ))
+            
+            return orders
+            
+        except Exception as e:
+            logger.error(f"Error creating exit full orders: {e}")
+            return []
+    
+    def _create_exit_partial_orders(self, equity_delta: float) -> List[Order]:
+        """Create exit partial orders for ETH basis strategy."""
+        try:
+            orders = []
+            
+            # Calculate partial amount based on equity delta
+            eth_price = self._get_asset_price()
+            eth_amount = equity_delta / eth_price if eth_price > 0 else 0
+            
+            # Get current positions from position monitor
+            current_positions = self.position_monitor.get_current_position()
+            spot_position = current_positions.get(self.spot_instrument, 0)
+            perp_position = current_positions.get(self.perp_instrument, 0)
+            
+            # Calculate partial amounts (proportional to current positions)
+            if spot_position > 0:
+                partial_spot = min(eth_amount, spot_position)
+                operation_id = f"spot_sell_partial_{int(pd.Timestamp.now().timestamp() * 1000000)}"
+                orders.append(Order(
+                    operation_id=operation_id,
+                    venue=Venue.BINANCE,
+                    operation=OrderOperation.SPOT_TRADE,
+                    pair='ETHUSDT',
+                    side='SELL',
+                    amount=partial_spot,
+                    order_type='market',
+                    source_venue=Venue.BINANCE,
+                    target_venue=Venue.WALLET,
+                    source_token='ETH',
+                    target_token='USDT',
+                    expected_deltas={
+                        self.spot_instrument: -partial_spot,
+                        f"{Venue.WALLET.value}:BaseToken:USDT": partial_spot * eth_price
+                    },
+                    execution_mode='sequential',
+                    strategy_intent='exit_partial',
+                    strategy_id='eth_basis'
+                ))
+            
+            if perp_position < 0:  # Short position
+                partial_perp = min(eth_amount, abs(perp_position))
+                operation_id = f"perp_buy_partial_{int(pd.Timestamp.now().timestamp() * 1000000)}"
+                orders.append(Order(
+                    operation_id=operation_id,
+                    venue=Venue.BINANCE,
+                    operation=OrderOperation.PERP_TRADE,
+                    pair='ETHUSDT',
+                    side='BUY',
+                    amount=partial_perp,
+                    order_type='market',
+                    source_venue=Venue.BINANCE,
+                    target_venue=Venue.BINANCE,
+                    source_token='USDT',
+                    target_token='ETH',
+                    expected_deltas={
+                        self.perp_instrument: partial_perp  # Close partial short position
+                    },
+                    execution_mode='sequential',
+                    strategy_intent='exit_partial',
+                    strategy_id='eth_basis'
+                ))
+            
+            return orders
+            
+        except Exception as e:
+            logger.error(f"Error creating exit partial orders: {e}")
+            return []
+    
+    def _create_dust_sell_orders(self, dust_tokens: Dict[str, float]) -> List[Order]:
+        """Create dust sell orders for ETH basis strategy."""
+        try:
+            orders = []
+            
+            for token, amount in dust_tokens.items():
+                if amount <= 0:
+                    continue
+                
+                if token == 'ETH':
+                    # ETH is the target asset, no action needed
+                    continue
+                elif token == 'USDT':
+                    # USDT is the share class, no action needed
+                    continue
+                else:
+                    # Sell other dust tokens for USDT
+                    operation_id = f"dust_sell_{token}_{int(pd.Timestamp.now().timestamp() * 1000000)}"
+                    orders.append(Order(
+                        operation_id=operation_id,
+                        venue=Venue.BINANCE,
+                        operation=OrderOperation.SPOT_TRADE,
+                        pair=f'{token.upper()}/USDT',
+                        side='SELL',
+                        amount=amount,
+                        order_type='market',
+                        source_venue=Venue.WALLET,
+                        target_venue=Venue.WALLET,
+                        source_token=token,
+                        target_token='USDT',
+                        expected_deltas={
+                            f"{Venue.WALLET.value}:BaseToken:{token}": -amount,
+                            f"{Venue.WALLET.value}:BaseToken:USDT": amount  # Simplified 1:1
+                        },
+                        execution_mode='sequential',
+                        strategy_intent='dust_sell',
+                        strategy_id='eth_basis'
+                    ))
+            
+            return orders
+            
+        except Exception as e:
+            logger.error(f"Error creating dust sell orders: {e}")
+            return []

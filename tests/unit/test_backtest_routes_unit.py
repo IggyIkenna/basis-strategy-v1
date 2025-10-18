@@ -63,7 +63,7 @@ class TestBacktestRoutesUnit:
         service.list_backtests.return_value = [
             {
                 "id": "test-backtest-1",
-                "strategy": "pure_lending",
+                "strategy": "pure_lending_usdt",
                 "status": "completed",
                 "created_at": "2024-05-12T00:00:00Z"
             },
@@ -92,7 +92,7 @@ class TestBacktestRoutesUnit:
         
         service.get_backtest_results.return_value = {
             "id": "test-backtest-1",
-            "strategy": "pure_lending",
+            "strategy": "pure_lending_usdt",
             "performance": {
                 "total_return": 0.05,
                 "annualized_return": 0.12,
@@ -160,7 +160,7 @@ class TestBacktestRoutesUnit:
         
         # Use a strategy that doesn't require complex configuration
         backtest_request = {
-            "strategy_name": "pure_lending",
+            "strategy_name": "pure_lending_usdt",
             "initial_capital": 100000.0,
             "start_date": "2024-05-12T00:00:00Z",
             "end_date": "2024-05-19T00:00:00Z",
@@ -199,7 +199,7 @@ class TestBacktestRoutesUnit:
         mock_get_service.return_value = mock_service
         
         backtest_request = {
-            "strategy_name": "pure_lending",
+            "strategy_name": "pure_lending_usdt",
             "initial_capital": 100000.0,
             "start_date": "2024-05-12T00:00:00Z",
             "end_date": "2024-05-19T00:00:00Z",
@@ -305,13 +305,13 @@ class TestBacktestRoutesUnit:
         """Test BacktestRequest model validation."""
         # Valid request
         request = BacktestRequest(
-            strategy_name="pure_lending",
+            strategy_name="pure_lending_usdt",
             initial_capital=100000.0,
             start_date="2024-05-12T00:00:00Z",
             end_date="2024-05-19T00:00:00Z",
             share_class="USDT"
         )
-        assert request.strategy_name == "pure_lending"
+        assert request.strategy_name == "pure_lending_usdt"
         assert request.initial_capital == 100000.0
         # Pydantic converts string dates to datetime objects
         assert request.start_date is not None
@@ -339,11 +339,11 @@ class TestBacktestRoutesUnit:
         """Test BacktestResponse model validation."""
         response = BacktestResponse(
             request_id="test-backtest-1",
-            strategy_name="pure_lending",
+            strategy_name="pure_lending_usdt",
             status="pending"
         )
         assert response.request_id == "test-backtest-1"
-        assert response.strategy_name == "pure_lending"
+        assert response.strategy_name == "pure_lending_usdt"
         assert response.status == "pending"
     
     def test_backtest_status_response_model(self):
@@ -363,7 +363,7 @@ class TestBacktestRoutesUnit:
         """Test BacktestResultResponse model validation."""
         response = BacktestResultResponse(
             request_id="test-backtest-1",
-            strategy_name="pure_lending",
+            strategy_name="pure_lending_usdt",
             start_date="2024-05-12T00:00:00Z",
             end_date="2024-05-19T00:00:00Z",
             initial_capital=100000.0,
@@ -376,7 +376,7 @@ class TestBacktestRoutesUnit:
             total_fees=150.0
         )
         assert response.request_id == "test-backtest-1"
-        assert response.strategy_name == "pure_lending"
+        assert response.strategy_name == "pure_lending_usdt"
         # Pydantic converts to Decimal, so compare with Decimal
         from decimal import Decimal
         assert response.total_return == Decimal('0.05')
@@ -426,6 +426,6 @@ class TestBacktestRoutesUnit:
     def test_backtest_routes_filtering(self, client):
         """Test that list endpoint supports filtering parameters."""
         # Test with filtering parameters
-        response = client.get("/list?strategy=pure_lending&status=completed")
+        response = client.get("/list?strategy=pure_lending_usdt&status=completed")
         # Should not return 404 even if filtering is not implemented
         assert response.status_code in [200, 422, 500]

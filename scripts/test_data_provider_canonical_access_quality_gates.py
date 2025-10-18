@@ -395,7 +395,7 @@ class DataProviderCanonicalAccessQualityGates:
             # Test CSV mode
             provider = create_data_provider(
                 execution_mode='backtest',
-                config={'mode': 'pure_lending', 'data_requirements': ['aave_lending_rates', 'aave_indexes']}, 
+                config={'mode': 'pure_lending_usdt', 'data_requirements': ['aave_lending_rates', 'aave_indexes']}, 
                 data_dir='data',
             )
             
@@ -412,7 +412,7 @@ class DataProviderCanonicalAccessQualityGates:
                 create_data_provider(
                     execution_mode='backtest',
                     data_mode='db',
-                    config={'mode': 'pure_lending', 'data_requirements': ['aave_lending_rates', 'aave_indexes']}, 
+                    config={'mode': 'pure_lending_usdt', 'data_requirements': ['aave_lending_rates', 'aave_indexes']}, 
                     data_dir='data',
                 )
                 logger.error("Expected NotImplementedError for db mode")
@@ -423,7 +423,7 @@ class DataProviderCanonicalAccessQualityGates:
             # Test live mode
             provider_live = create_data_provider(
                 execution_mode='live',
-                config={'mode': 'pure_lending', 'data_requirements': ['aave_lending_rates', 'aave_indexes']}, 
+                config={'mode': 'pure_lending_usdt', 'data_requirements': ['aave_lending_rates', 'aave_indexes']}, 
                 data_dir='data',
             )
             
@@ -452,12 +452,12 @@ class DataProviderCanonicalAccessQualityGates:
             
             # Load the full configuration
             config_loader = ConfigLoader()
-            mode_config = config_loader.get_mode_config('pure_lending')
+            mode_config = config_loader.get_mode_config('pure_lending_usdt')
             
             # Convert Pydantic model to dict for the data provider
             config_dict = mode_config.model_dump()
             
-            # Test pure_lending mode
+            # Test pure_lending_usdt mode
             provider = create_data_provider(
                 execution_mode='backtest',
                 config=config_dict, 
@@ -472,7 +472,7 @@ class DataProviderCanonicalAccessQualityGates:
                 return False
             
             if len(provider.data) == 0:
-                logger.error("No data loaded for pure_lending mode")
+                logger.error("No data loaded for pure_lending_usdt mode")
                 return False
             
             # Test that data is accessible
@@ -508,7 +508,7 @@ class DataProviderCanonicalAccessQualityGates:
             
             # Load the full configuration
             config_loader = ConfigLoader()
-            mode_config = config_loader.get_mode_config('pure_lending')
+            mode_config = config_loader.get_mode_config('pure_lending_usdt')
             config_dict = mode_config.model_dump()
             
             provider = create_data_provider(
@@ -567,7 +567,7 @@ class DataProviderCanonicalAccessQualityGates:
             # Create uninitialized provider
             provider = create_data_provider(
                 execution_mode='backtest',
-                config={'mode': 'pure_lending', 'data_requirements': ['aave_lending_rates', 'aave_indexes']}, 
+                config={'mode': 'pure_lending_usdt', 'data_requirements': ['aave_lending_rates', 'aave_indexes']}, 
                 data_dir='data',
             )
             
@@ -619,7 +619,7 @@ class DataProviderCanonicalAccessQualityGates:
             try:
                 provider = create_data_provider(
                     execution_mode='backtest',
-                    config={'mode': 'pure_lending', 'data_requirements': ['aave_lending_rates', 'aave_indexes']}, 
+                    config={'mode': 'pure_lending_usdt', 'data_requirements': ['aave_lending_rates', 'aave_indexes']}, 
                     data_dir='data',
                 )
                 if hasattr(provider, '_data_loaded') and provider._data_loaded:
@@ -650,7 +650,7 @@ class DataProviderCanonicalAccessQualityGates:
             
             provider = create_data_provider(
                 execution_mode='backtest',
-                config={'mode': 'pure_lending', 'data_requirements': ['aave_lending_rates', 'aave_indexes']}, 
+                config={'mode': 'pure_lending_usdt', 'data_requirements': ['aave_lending_rates', 'aave_indexes']}, 
                 data_dir='data',
             )
             

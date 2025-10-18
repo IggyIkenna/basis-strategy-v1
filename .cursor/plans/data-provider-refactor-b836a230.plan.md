@@ -174,7 +174,7 @@ Refactor data provider to separate data source mode (csv vs db) from execution m
 - Update backtest workflow to explain on-demand data loading
 - Document date range validation behavior
 
-**File: `docs/specs/17_HEALTH_ERROR_SYSTEMS.md`**
+**File: `docs/specs/HEALTH_ERROR_SYSTEMS.md`**
 
 - Update data provider health checks documentation
 - Add error codes for date range validation failures
@@ -191,7 +191,7 @@ Refactor data provider to separate data source mode (csv vs db) from execution m
 
 - Update Phase 2 validation: `validate_phase_2_gates()`
 - Remove startup data loading validation
-- Add: Test data loading for ALL strategy modes (pure_lending, btc_basis, eth_leveraged, usdt_market_neutral)
+- Add: Test data loading for ALL strategy modes (pure_lending_usdt, btc_basis, eth_leveraged, usdt_market_neutral)
 - Add: Validate each mode can load data within `BASIS_DATA_START_DATE` to `BASIS_DATA_END_DATE`
 - Add: Test date range validation (reject out-of-range requests)
 - Add: Validate `BASIS_DATA_MODE` environment variable
@@ -212,7 +212,7 @@ Refactor data provider to separate data source mode (csv vs db) from execution m
 - [ ] Update health check system: Modify DataProviderHealthChecker and unified_health_manager.py to handle uninitialized data provider state, add BASIS_DATA_MODE validation
 - [ ] Update docs/specs/09_DATA_PROVIDER.md: Document BASIS_DATA_MODE, remove startup_mode references, add on-demand loading section, update factory pattern docs
 - [ ] Update REFERENCE_ARCHITECTURE_CANONICAL.md, REFERENCE_ARCHITECTURE_CANONICAL.md, USER_GUIDE.md, DEPLOYMENT_GUIDE.md: Add BASIS_DATA_MODE documentation, clarify separation from execution mode
-- [ ] Update docs/specs/17_HEALTH_ERROR_SYSTEMS.md: Document data provider health checks for uninitialized state, add error codes for date validation failures
+- [ ] Update docs/specs/HEALTH_ERROR_SYSTEMS.md: Document data provider health checks for uninitialized state, add error codes for date validation failures
 - [ ] Update scripts/run_quality_gates.py Phase 2: Test data loading for ALL modes, validate date range rejection, test BASIS_DATA_MODE validation, ensure no startup loading
 - [ ] Create scripts/test_data_provider_refactor_quality_gates.py: Comprehensive tests for new architecture including env validation, on-demand loading, date validation, health checks
 - [ ] Grep and fix all references: Search for startup_mode, update health checks, fix get_data_provider() calls, ensure no conflicts in backend/ and docs/

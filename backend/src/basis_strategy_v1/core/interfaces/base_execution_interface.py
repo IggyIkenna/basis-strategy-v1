@@ -11,7 +11,8 @@ import pandas as pd
 from datetime import datetime, timezone
 import logging
 
-from ...core.logging.base_logging_interface import StandardizedLoggingMixin, LogLevel, EventType
+from ...core.models.order import Order
+from ...core.models.execution import ExecutionHandshake
 
 logger = logging.getLogger(__name__)
 
@@ -103,21 +104,20 @@ class BaseExecutionInterface(ABC):
         return all(field in operation for field in required_fields)
     
     @abstractmethod
-    async def execute_trade(self, instruction: Dict[str, Any], market_data: Dict[str, Any]) -> Dict[str, Any]:
+    def execute_trade(self, order: Order) -> ExecutionHandshake:
         """
-        Execute a trade instruction.
+        Execute a trade order.
         
         Args:
-            instruction: Trade instruction dictionary
-            market_data: Current market data snapshot
+            order: Order object containing trade details
             
         Returns:
-            Execution result dictionary
+            ExecutionHandshake: Execution result
         """
         pass
     
     @abstractmethod
-    async def get_balance(self, asset: str, venue: Optional[str] = None) -> float:
+    def get_balance(self, asset: str, venue: Optional[str] = None) -> float:
         """
         Get current balance for an asset.
         
@@ -131,7 +131,7 @@ class BaseExecutionInterface(ABC):
         pass
     
     @abstractmethod
-    async def get_position(self, symbol: str, venue: Optional[str] = None) -> Dict[str, Any]:
+    def get_position(self, symbol: str, venue: Optional[str] = None) -> Dict[str, Any]:
         """
         Get current position for a trading pair.
         
@@ -145,7 +145,7 @@ class BaseExecutionInterface(ABC):
         pass
     
     @abstractmethod
-    async def cancel_all_orders(self, venue: Optional[str] = None) -> Dict[str, Any]:
+    def cancel_all_orders(self, venue: Optional[str] = None) -> Dict[str, Any]:
         """
         Cancel all open orders.
         
@@ -158,86 +158,80 @@ class BaseExecutionInterface(ABC):
         pass
     
     @abstractmethod
-    async def execute_transfer(self, instruction: Dict[str, Any], market_data: Dict[str, Any]) -> Dict[str, Any]:
+    def execute_transfer(self, order: Order) -> ExecutionHandshake:
         """
         Execute a cross-venue transfer.
         
         Args:
-            instruction: Transfer instruction dictionary
-            market_data: Current market data snapshot
+            order: Order object containing transfer details
             
         Returns:
-            Transfer execution result dictionary
+            ExecutionHandshake: Transfer execution result
         """
         pass
     
     @abstractmethod
-    async def execute_borrow(self, instruction: Dict[str, Any], market_data: Dict[str, Any]) -> Dict[str, Any]:
+    def execute_borrow(self, order: Order) -> ExecutionHandshake:
         """
         Execute borrow action on OnChain protocol.
         
         Args:
-            instruction: Borrow instruction dictionary
-            market_data: Current market data snapshot
+            order: Order object containing borrow details
             
         Returns:
-            Borrow execution result dictionary
+            ExecutionHandshake: Borrow execution result
         """
         pass
     
     @abstractmethod
-    async def execute_spot_trade(self, instruction: Dict[str, Any], market_data: Dict[str, Any]) -> Dict[str, Any]:
+    def execute_spot_trade(self, order: Order) -> ExecutionHandshake:
         """
         Execute spot trade on CEX.
         
         Args:
-            instruction: Spot trade instruction dictionary
-            market_data: Current market data snapshot
+            order: Order object containing spot trade details
             
         Returns:
-            Spot trade execution result dictionary
+            ExecutionHandshake: Spot trade execution result
         """
         pass
     
     @abstractmethod
-    async def execute_supply(self, instruction: Dict[str, Any], market_data: Dict[str, Any]) -> Dict[str, Any]:
+    def execute_supply(self, order: Order) -> ExecutionHandshake:
         """
         Execute supply action on OnChain protocol.
         
         Args:
-            instruction: Supply instruction dictionary
-            market_data: Current market data snapshot
+            order: Order object containing supply details
             
         Returns:
-            Supply execution result dictionary
+            ExecutionHandshake: Supply execution result
         """
         pass
     
     @abstractmethod
-    async def execute_perp_trade(self, instruction: Dict[str, Any], market_data: Dict[str, Any]) -> Dict[str, Any]:
+    def execute_perp_trade(self, order: Order) -> ExecutionHandshake:
         """
         Execute perpetual trade on CEX.
         
         Args:
-            instruction: Perp trade instruction dictionary
-            market_data: Current market data snapshot
+            order: Order object containing perp trade details
             
         Returns:
-            Perp trade execution result dictionary
+            ExecutionHandshake: Perp trade execution result
         """
         pass
     
     @abstractmethod
-    async def execute_swap(self, instruction: Dict[str, Any], market_data: Dict[str, Any]) -> Dict[str, Any]:
+    def execute_swap(self, order: Order) -> ExecutionHandshake:
         """
         Execute token swap on DEX.
         
         Args:
-            instruction: Swap instruction dictionary
-            market_data: Current market data snapshot
+            order: Order object containing swap details
             
         Returns:
-            Swap execution result dictionary
+            ExecutionHandshake: Swap execution result
         """
         pass
     
@@ -311,10 +305,10 @@ class BaseExecutionInterface(ABC):
         from .venue_interface_factory import VenueInterfaceFactory
         return VenueInterfaceFactory.create_venue_position_interface(venue, execution_mode, config)
     
-    async def _log_execution_event(self, event_type: str, details: Dict[str, Any]):
+    def _log_execution_event(self, event_type: str, details: Dict[str, Any]):
         """Log execution event."""
         if self.event_logger:
-            await self.event_logger.log_event(
+            self.event_logger.log_event(
                 event_type=event_type,
                 details=details,
                 timestamp=datetime.now(timezone.utc),

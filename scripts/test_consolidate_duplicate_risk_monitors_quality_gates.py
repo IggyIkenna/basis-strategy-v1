@@ -25,7 +25,7 @@ def find_component_files(backend_dir: str = "backend/src/basis_strategy_v1/") ->
         'execution_managers': [],
         'data_providers': [],
         'event_loggers': [],
-        'pnl_calculators': [],
+        'pnl_monitors': [],
         'utility_managers': [],
         'config_managers': [],
         'health_monitors': [],
@@ -74,8 +74,8 @@ def find_component_files(backend_dir: str = "backend/src/basis_strategy_v1/") ->
                         components['data_providers'].append(file_path)
                     elif 'event_logger' in file.lower():
                         components['event_loggers'].append(file_path)
-                    elif 'pnl_calculator' in file.lower():
-                        components['pnl_calculators'].append(file_path)
+                    elif 'pnl_monitor' in file.lower():
+                        components['pnl_monitors'].append(file_path)
                     elif 'utility_manager' in file.lower():
                         components['utility_managers'].append(file_path)
                     elif 'config_manager' in file.lower():
@@ -178,7 +178,7 @@ def check_architecture_compliance(components: Dict[str, List[str]]) -> Dict[str,
             'execution_managers': 0,  # Not implemented yet - see IMPLEMENTATION_GAP_REPORT.md
             'data_providers': 7,  # One per strategy mode
             'event_loggers': 1,
-            'pnl_calculators': 1,
+            'pnl_monitors': 1,
             'utility_managers': 1,
             'config_managers': 1,
             'health_monitors': 1,

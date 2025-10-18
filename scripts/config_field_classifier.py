@@ -83,11 +83,11 @@ class ConfigFieldClassifier:
             'component_config': {
                 'description': 'Component-specific configuration with fixed component keys',
                 'fields': [
-                    'risk_monitor', 'exposure_monitor', 'pnl_calculator', 
+                    'risk_monitor', 'exposure_monitor', 'pnl_monitor', 
                     'strategy_manager', 'execution_manager', 'results_store', 'strategy_factory',
                     'position_monitor',
                     # Add wildcards for each component
-                    'component_config.risk_monitor.*', 'component_config.exposure_monitor.*', 'component_config.pnl_calculator.*',
+                    'component_config.risk_monitor.*', 'component_config.exposure_monitor.*', 'component_config.pnl_monitor.*',
                     'component_config.strategy_manager.*', 'component_config.execution_manager.*', 'component_config.results_store.*', 'component_config.strategy_factory.*',
                     'component_config.position_monitor.*',
                     # Risk monitor fields
@@ -104,9 +104,9 @@ class ConfigFieldClassifier:
                     'component_config.exposure_monitor.conversion_methods.EIGEN', 'component_config.exposure_monitor.conversion_methods.ETHFI',
                     'component_config.exposure_monitor.conversion_methods.variableDebtWETH', 'component_config.exposure_monitor.conversion_methods.BTC_PERP',
                     'component_config.exposure_monitor.conversion_methods.ETH_PERP',
-                    # PnL calculator fields
-                    'component_config.pnl_calculator.attribution_types', 'component_config.pnl_calculator.reporting_currency',
-                    'component_config.pnl_calculator.reconciliation_tolerance',
+                    # PnL Monitor fields
+                    'component_config.pnl_monitor.attribution_types', 'component_config.pnl_monitor.reporting_currency',
+                    'component_config.pnl_monitor.reconciliation_tolerance',
                     # Strategy manager fields
                     'component_config.strategy_manager.strategy_type', 'component_config.strategy_manager.actions',
                     'component_config.strategy_manager.rebalancing_triggers', 'component_config.strategy_manager.position_calculation',

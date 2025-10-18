@@ -283,11 +283,9 @@ component_config:
 
 ### Venue Configuration
 - **venues.etherfi.venue_type**: str - Venue type ('defi')
-- **venues.etherfi.enabled**: bool - Whether EtherFi is enabled
 - **venues.etherfi.instruments**: List[str] - Available instruments
 - **venues.etherfi.order_types**: List[str] - Available order types
 - **venues.alchemy.venue_type**: str - Venue type ('defi')
-- **venues.alchemy.enabled**: bool - Whether Alchemy is enabled
 - **venues.alchemy.instruments**: List[str] - Available instruments
 - **venues.alchemy.order_types**: List[str] - Available order types
 

@@ -66,8 +66,10 @@ create_directories() {
 load_environment() {
     echo -e "${BLUE}🔧 Loading environment variables...${NC}"
     
-    # Preserve BASIS_ENVIRONMENT if it was set before loading env.unified
+    # Preserve important environment variables if they were set before loading env.unified
     local original_environment=${BASIS_ENVIRONMENT:-}
+    local original_skip_quality_gates=${SKIP_QUALITY_GATES:-}
+    local original_skip_frontend=${SKIP_FRONTEND:-}
     
     # Load base environment from env.unified
     if [ -f "env.unified" ]; then
@@ -80,7 +82,7 @@ load_environment() {
         return 1
     fi
     
-    # Restore original BASIS_ENVIRONMENT if it was set
+    # Restore original environment if it was set
     if [ -n "$original_environment" ]; then
         export BASIS_ENVIRONMENT="$original_environment"
     fi
@@ -124,6 +126,14 @@ load_environment() {
             echo -e "${YELLOW}⚠️ Unknown environment: $environment, using base configuration${NC}"
             ;;
     esac
+    
+    # Restore command-line variables if they were set (after all file loading)
+    if [ -n "$original_skip_quality_gates" ]; then
+        export SKIP_QUALITY_GATES="$original_skip_quality_gates"
+    fi
+    if [ -n "$original_skip_frontend" ]; then
+        export SKIP_FRONTEND="$original_skip_frontend"
+    fi
     
     # Validate required environment variables
     local required_vars=(
@@ -171,6 +181,12 @@ load_environment() {
 
 # Function to run quality gates
 run_quality_gates() {
+    # Check if quality gates should be skipped
+    if [ "${SKIP_QUALITY_GATES:-false}" = "true" ]; then
+        echo -e "${YELLOW}⚠️  Skipping quality gates (SKIP_QUALITY_GATES=true)${NC}"
+        return 0
+    fi
+    
     echo -e "${BLUE}🚦 Running critical quality gates...${NC}"
     
     # Run configuration validation
@@ -222,12 +238,6 @@ run_quality_gates() {
 start_backend() {
     echo -e "${BLUE}🚀 Starting backend...${NC}"
     
-    # Load environment variables
-    if ! load_environment; then
-        echo -e "${RED}❌ Failed to load environment variables${NC}"
-        return 1
-    fi
-    
     # Create required directories
     create_directories
     
@@ -257,7 +267,16 @@ start_backend() {
     mkdir -p backend/logs
     
     # Start with timeout handling (using background process)
-    python3 -m uvicorn backend.src.basis_strategy_v1.api.main:app --host 0.0.0.0 --port $BACKEND_PORT --reload > backend/logs/api.log 2>&1 &
+    local reload_flag=""
+    if [ "${BASIS_HOT_RELOAD:-false}" = "true" ]; then
+        reload_flag="--reload"
+        echo -e "${BLUE}🔥 Hot reload enabled${NC}"
+    else
+        echo -e "${BLUE}❄️ Hot reload disabled${NC}"
+    fi
+    
+    export PYTHONPATH=backend/src
+    python3 -m uvicorn backend.src.basis_strategy_v1.api.main:app --host 0.0.0.0 --port $BACKEND_PORT $reload_flag > backend/logs/api.log 2>&1 &
     BACKEND_PID=$!
     
     # Wait for backend to start with timeout
@@ -298,6 +317,13 @@ start_backend() {
 start_frontend() {
     echo -e "${BLUE}⚛️ Starting frontend...${NC}"
     
+    # Install frontend dependencies first
+    npm_install_dependencies
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}❌ Failed to install frontend dependencies. Aborting frontend startup.${NC}"
+        return 1
+    fi
+    
     cd frontend
     
     # Load nvm if available
@@ -335,9 +361,14 @@ start_frontend() {
     cd ..
 }
 
-# Function to start backtest mode
-start_backtest() {
-    echo -e "${BLUE}🧪 Starting backtest mode...${NC}"
+# Function to start dev mode
+start_dev() {
+    echo -e "${BLUE}🏗️ Starting dev mode...${NC}"
+    
+    # Clean up any existing uvicorn processes
+    echo -e "${BLUE}🧹 Cleaning up existing processes...${NC}"
+    pkill -f uvicorn 2>/dev/null || true
+    sleep 2
     
     # Load environment variables
     if ! load_environment; then
@@ -345,9 +376,9 @@ start_backtest() {
         return 1
     fi
     
-    # Force backtest mode (override env file setting)
-    export BASIS_EXECUTION_MODE=backtest
-    echo -e "${BLUE}🔧 Forcing BASIS_EXECUTION_MODE=backtest (overriding env file)${NC}"
+    # Set environment to dev if not already set
+    export BASIS_ENVIRONMENT=dev
+    echo -e "${BLUE}🏗️ Environment: dev${NC}"
     
     # Create required directories
     create_directories
@@ -364,10 +395,31 @@ start_backtest() {
     
     # Redis removed - using in-memory cache only
     
-    # Start backend in backtest mode
-    echo -e "${BLUE}🚀 Starting backend in backtest mode...${NC}"
+    # Check if port is already in use with timeout
+    echo -e "${BLUE}🔍 Checking if port $BACKEND_PORT is available...${NC}"
+    if port_in_use $BACKEND_PORT; then
+        echo -e "${YELLOW}⚠️ Port $BACKEND_PORT is already in use${NC}"
+        echo -e "${BLUE}🔄 Attempting to find available port...${NC}"
+        
+        # Find next available port
+        BACKEND_PORT=$(find_available_port $BACKEND_PORT)
+        echo -e "${GREEN}✅ Using port $BACKEND_PORT instead${NC}"
+    fi
+    
+    # Start backend in dev mode
+    echo -e "${BLUE}🚀 Starting backend in dev mode...${NC}"
     mkdir -p backend/logs
-    nohup python3 -m uvicorn backend.src.basis_strategy_v1.api.main:app --host 0.0.0.0 --port $BACKEND_PORT --reload > backend/logs/api.log 2>&1 &
+    
+    local reload_flag=""
+    if [ "${BASIS_HOT_RELOAD:-false}" = "true" ]; then
+        reload_flag="--reload"
+        echo -e "${BLUE}🔥 Hot reload enabled${NC}"
+    else
+        echo -e "${BLUE}❄️ Hot reload disabled${NC}"
+    fi
+    
+    export PYTHONPATH=backend/src
+    nohup python3 -m uvicorn backend.src.basis_strategy_v1.api.main:app --host 0.0.0.0 --port $BACKEND_PORT $reload_flag > backend/logs/api.log 2>&1 &
     BACKEND_PID=$!
     
     # Wait for backend to start
@@ -376,8 +428,8 @@ start_backtest() {
     
     # Test backend health
     if curl -s --connect-timeout 3 --max-time 5 http://localhost:$BACKEND_PORT/health/ >/dev/null 2>&1; then
-        echo -e "${GREEN}✅ Backend started successfully in backtest mode on port $BACKEND_PORT (PID: $BACKEND_PID)${NC}"
-        echo -e "${BLUE}📊 Backtest API available at: http://localhost:$BACKEND_PORT/backtest/${NC}"
+        echo -e "${GREEN}✅ Backend started successfully in dev mode on port $BACKEND_PORT (PID: $BACKEND_PID)${NC}"
+        echo -e "${BLUE}📊 API available at: http://localhost:$BACKEND_PORT/api/v1/${NC}"
         
         # Start health monitor
         start_health_monitor
@@ -394,7 +446,11 @@ stop_all() {
     # Stop health monitor first
     stop_health_monitor
     
-    # Stop backend
+    # Stop all uvicorn processes (not just the stored PID)
+    echo -e "${BLUE}🛑 Stopping all uvicorn processes...${NC}"
+    pkill -f uvicorn 2>/dev/null || true
+    
+    # Also stop the specific backend PID if it exists
     if [ ! -z "$BACKEND_PID" ]; then
         echo -e "${BLUE}🛑 Stopping backend (PID: $BACKEND_PID)...${NC}"
         kill $BACKEND_PID 2>/dev/null || true
@@ -516,12 +572,103 @@ pip_install_dependencies() {
     echo -e "${GREEN}✅ Dependencies pip installed${NC}"
 }
 
+# Function to validate node/npm availability
+validate_node_npm() {
+    echo -e "${BLUE}🔍 Validating Node.js and npm availability...${NC}"
+    
+    # Check if node is available
+    if ! command -v node &> /dev/null; then
+        echo -e "${RED}❌ Node.js is not installed or not in PATH${NC}"
+        echo -e "${YELLOW}💡 To install Node.js:${NC}"
+        echo -e "${YELLOW}   - macOS: brew install node${NC}"
+        echo -e "${YELLOW}   - Ubuntu/Debian: sudo apt install nodejs npm${NC}"
+        echo -e "${YELLOW}   - Or visit: https://nodejs.org/${NC}"
+        return 1
+    fi
+    
+    # Check if npm is available
+    if ! command -v npm &> /dev/null; then
+        echo -e "${RED}❌ npm is not installed or not in PATH${NC}"
+        echo -e "${YELLOW}💡 npm usually comes with Node.js. Try reinstalling Node.js${NC}"
+        return 1
+    fi
+    
+    # Get versions
+    local node_version=$(node --version 2>/dev/null || echo "unknown")
+    local npm_version=$(npm --version 2>/dev/null || echo "unknown")
+    
+    echo -e "${GREEN}✅ Node.js: $node_version${NC}"
+    echo -e "${GREEN}✅ npm: $npm_version${NC}"
+    return 0
+}
+
+# Function to npm install frontend dependencies
+npm_install_dependencies() {
+    echo -e "${BLUE}🔧 Installing frontend dependencies...${NC}"
+    
+    # Validate node/npm first
+    if ! validate_node_npm; then
+        echo -e "${RED}❌ Node.js/npm validation failed. Cannot install frontend dependencies.${NC}"
+        return 1
+    fi
+    
+    # Check if frontend directory exists
+    if [ ! -d "frontend" ]; then
+        echo -e "${RED}❌ Frontend directory not found${NC}"
+        return 1
+    fi
+    
+    # Change to frontend directory
+    cd frontend
+    
+    # Load nvm if available
+    if [ -d "$HOME/.nvm" ]; then
+        export NVM_DIR="$HOME/.nvm"
+        [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+        nvm use --lts 2>/dev/null || true
+    fi
+    
+    # Check if node_modules exists and if package.json is newer
+    local should_install=false
+    
+    if [ ! -d "node_modules" ]; then
+        echo -e "${BLUE}📦 node_modules not found, installing dependencies...${NC}"
+        should_install=true
+    elif [ "package.json" -nt "node_modules" ]; then
+        echo -e "${BLUE}📦 package.json is newer than node_modules, reinstalling dependencies...${NC}"
+        should_install=true
+    else
+        echo -e "${GREEN}✅ Frontend dependencies already up to date${NC}"
+    fi
+    
+    if [ "$should_install" = true ]; then
+        echo -e "${BLUE}📦 Running npm install...${NC}"
+        if npm install; then
+            echo -e "${GREEN}✅ Frontend dependencies installed successfully${NC}"
+        else
+            echo -e "${RED}❌ Failed to install frontend dependencies${NC}"
+            cd ..
+            return 1
+        fi
+    fi
+    
+    # Return to root directory
+    cd ..
+    return 0
+}
+
 # Function to start health monitor
 start_health_monitor() {
     echo -e "${BLUE}🏥 Starting health monitor...${NC}"
     
     if [ -z "$HEALTH_CHECK_INTERVAL" ]; then
         echo -e "${YELLOW}⚠️ HEALTH_CHECK_INTERVAL not set, skipping health monitor${NC}"
+        return 0
+    fi
+    
+    # Check if health monitor is already running
+    if pgrep -f health_monitor.sh >/dev/null; then
+        echo -e "${YELLOW}⚠️ Health monitor already running, skipping${NC}"
         return 0
     fi
     
@@ -539,13 +686,14 @@ start_health_monitor() {
 
 # Function to stop health monitor
 stop_health_monitor() {
+    echo -e "${BLUE}🛑 Stopping all health monitor processes...${NC}"
+    pkill -f health_monitor.sh 2>/dev/null || true
+    
     if [ -f "logs/health_monitor.pid" ]; then
-        local pid=$(cat logs/health_monitor.pid)
-        echo -e "${BLUE}🛑 Stopping health monitor (PID: $pid)...${NC}"
-        kill $pid 2>/dev/null || true
         rm logs/health_monitor.pid
-        echo -e "${GREEN}✅ Health monitor stopped${NC}"
     fi
+    
+    echo -e "${GREEN}✅ Health monitor stopped${NC}"
 }
 
 # Function to show help
@@ -558,7 +706,7 @@ show_help() {
     echo -e "  ${BLUE}start${NC}        Start backend and frontend (uses env file BASIS_EXECUTION_MODE)"
     echo -e "  ${BLUE}stop${NC}         Stop all services"
     echo -e "  ${BLUE}restart${NC}      Restart all services"
-    echo -e "  ${BLUE}backtest${NC}     Force backtest mode (backend only, overrides env file)"
+    echo -e "  ${BLUE}dev${NC}          Start in dev mode (backend only, uses env.dev overrides)"
     echo -e "  ${BLUE}backend${NC}      Start backend only (uses env file BASIS_EXECUTION_MODE)"
     echo -e "  ${BLUE}status${NC}       Show service status"
     echo -e "  ${BLUE}logs${NC}         Show logs [backend|frontend|all]"
@@ -567,14 +715,18 @@ show_help() {
     echo -e "  ${BLUE}help${NC}         Show this help message"
     echo ""
     echo -e "${GREEN}Environment Variables:${NC}"
-    echo -e "  ${BLUE}BASIS_API_PORT${NC}     Backend port (default: 8001)"
+    echo -e "  ${BLUE}BASIS_API_PORT${NC}         Backend port (default: 8001)"
     echo -e "  ${BLUE}BASIS_DEPLOYMENT_MODE${NC}  Deployment mode (local|docker)"
+    echo -e "  ${BLUE}SKIP_QUALITY_GATES${NC}     Skip quality gate validation (true|false, default: false)"
+    echo -e "  ${BLUE}SKIP_FRONTEND${NC}          Skip frontend startup (true|false, default: false)"
     echo ""
     echo -e "${GREEN}Examples:${NC}"
-    echo -e "  ${BLUE}$0 env dev${NC}         # Set development environment"
+    echo -e "  ${BLUE}$0 env dev${NC}                      # Set development environment"
+    echo -e "  ${BLUE}SKIP_QUALITY_GATES=true $0 dev${NC}     # Start dev mode without quality gates"
+    echo -e "  ${BLUE}SKIP_FRONTEND=true $0 start${NC}        # Start backend only (skip frontend)"
     echo -e "  ${BLUE}$0 env prod${NC}        # Set production environment"
     echo -e "  ${BLUE}$0 start${NC}           # Start all services"
-    echo -e "  ${BLUE}$0 backtest${NC}        # Start in backtest mode"
+    echo -e "  ${BLUE}$0 dev${NC}             # Start in dev mode"
     echo -e "  ${BLUE}$0 logs backend${NC}    # Show backend logs"
     echo -e "  ${BLUE}$0 status${NC}          # Check service status"
 }
@@ -582,8 +734,18 @@ show_help() {
 # Main script logic
 case "${1:-help}" in
     "start")
+        # Load environment variables first
+        if ! load_environment; then
+            echo -e "${RED}❌ Failed to load environment variables${NC}"
+            exit 1
+        fi
+        
         start_backend
-        start_frontend
+        if [ "${SKIP_FRONTEND:-false}" != "true" ]; then
+            start_frontend
+        else
+            echo -e "${YELLOW}⚠️ Skipping frontend startup (SKIP_FRONTEND=true)${NC}"
+        fi
         ;;
     "stop")
         stop_all
@@ -591,8 +753,8 @@ case "${1:-help}" in
     "restart")
         restart_all
         ;;
-    "backtest")
-        start_backtest
+    "dev")
+        start_dev
         ;;
     "status")
         show_status

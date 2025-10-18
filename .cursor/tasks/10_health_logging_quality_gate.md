@@ -25,7 +25,7 @@ Validate health and logging quality gate by running existing test suite.
 ## Reference
 - Canonical Spec: `docs/REFERENCE_ARCHITECTURE_CANONICAL.md` Section 6.1
 - Backend Structure: `infrastructure/health/`, `infrastructure/logging/` per TARGET_REPOSITORY_STRUCTURE.md
-- Documentation: `docs/specs/17_HEALTH_ERROR_SYSTEMS.md`
+- Documentation: `docs/specs/HEALTH_ERROR_SYSTEMS.md`
 
 ## Execution
 ```bash

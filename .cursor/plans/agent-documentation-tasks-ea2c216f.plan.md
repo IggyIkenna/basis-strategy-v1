@@ -17,7 +17,7 @@ Systematically implement all 18 tasks across 4 categories to resolve quality gat
 **Actions**:
 
 - Add ML prediction query to strategy manager spec (`docs/specs/05_STRATEGY_MANAGER.md`)
-- Document health check data provider patterns in health system spec (`docs/specs/17_HEALTH_ERROR_SYSTEMS.md`)
+- Document health check data provider patterns in health system spec (`docs/specs/HEALTH_ERROR_SYSTEMS.md`)
 
 ## Phase 2: Event Logging Patterns (Tasks 2.1, 2.2)
 

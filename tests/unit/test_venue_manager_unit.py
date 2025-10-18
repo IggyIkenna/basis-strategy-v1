@@ -2,154 +2,184 @@
 Unit Tests for Venue Manager Component
 
 Tests Venue Manager in isolation with mocked dependencies.
-Focuses on instruction routing, reconciliation, and error handling.
+Focuses on Order processing, reconciliation, and error handling.
 """
 
 import pytest
 import pandas as pd
-import asyncio
 from unittest.mock import Mock, patch
 
 # Import the component under test
-from basis_strategy_v1.core.execution.venue_manager import VenueManager
+from basis_strategy_v1.core.execution.execution_manager import ExecutionManager
+from basis_strategy_v1.core.models.order import Order
 
 
-class TestVenueManagerUnit:
+class TestExecutionManagerUnit:
     """Unit tests for Venue Manager component."""
     
-    def test_instruction_routing_to_correct_interface(self, mock_config, mock_data_provider, mock_utility_manager, mock_execution_interfaces):
-        """Test instruction routing to correct interface."""
+    def test_order_routing_to_correct_interface(self, mock_config, mock_data_provider, mock_utility_manager, mock_execution_interfaces):
+        """Test Order routing to correct interface."""
         # Arrange
         mock_config['venues'] = {
             'binance': {'enabled': True, 'type': 'cex'},
             'ethereum': {'enabled': True, 'type': 'onchain'}
         }
 
-        execution_manager = VenueManager(
+        mock_venue_interface_manager = Mock()
+        mock_venue_interface_manager.route_to_venue.return_value = {'success': True, 'trade_id': 'test_trade'}
+
+        execution_manager = ExecutionManager(
             execution_mode='backtest',
             config=mock_config,
-            position_monitor=Mock()
+            venue_interface_manager=mock_venue_interface_manager,
+            position_update_handler=Mock()
         )
 
-        # Act - Test CEX instruction routing
-        cex_instruction = {
-            'action': 'cex_trade',
-            'venue': 'binance',
-            'asset': 'BTC',
-            'size': 0.1,
-            'order_type': 'market',
-            'timestamp': pd.Timestamp('2024-05-12 00:00:00')
-        }
+        # Act - Test CEX Order routing
+        cex_order = Order(
+            order_id='test_cex_order',
+            action_type='buy',
+            asset='BTC',
+            size=0.1,
+            venue='binance',
+            order_type='market',
+            timestamp=pd.Timestamp('2024-05-12 00:00:00')
+        )
 
-        # Use execute_venue_instructions with single instruction
-        result = execution_manager.execute_venue_instructions(pd.Timestamp.now(), [cex_instruction])
+        result = execution_manager.process_orders(pd.Timestamp.now(), [cex_order])
         
         # Assert - Should route to CEX interface
-        assert isinstance(result, dict)
-        assert 'success' in result
-        assert 'results' in result
+        assert isinstance(result, list)
+        assert len(result) == 1
+        assert result[0]['success'] == True
         
-        # Act - Test onchain instruction routing
-        onchain_instruction = {
-            'action': 'wallet_transfer',
-            'venue': 'ethereum',
-            'asset': 'ETH',
-            'size': 1.0,
-            'order_type': 'market',
-            'timestamp': pd.Timestamp('2024-05-12 00:00:00')
-        }
-
-        result = execution_manager.execute_venue_instructions(pd.Timestamp.now()([onchain_instruction])
-        
-        # Assert - Should route to onchain interface
-        assert isinstance(result, dict)
-        assert 'success' in result
-        assert 'results' in result
-    
-    def test_sequential_execution(self, mock_config, mock_data_provider, mock_utility_manager, mock_execution_interfaces, mock_strategy_instructions):
-        """Test sequential execution (one at a time)."""
-        # Arrange
-        execution_manager = VenueManager(
-            execution_mode='backtest',
-            config=mock_config,
-            position_monitor=Mock()
+        # Act - Test onchain Order routing
+        onchain_order = Order(
+            order_id='test_onchain_order',
+            action_type='transfer',
+            asset='ETH',
+            size=1.0,
+            venue='ethereum',
+            order_type='market',
+            timestamp=pd.Timestamp('2024-05-12 00:00:00')
         )
 
-        # Act - Execute multiple instructions sequentially
-        result = execution_manager.execute_venue_instructions(pd.Timestamp.now()(mock_strategy_instructions)
+        result = execution_manager.process_orders(pd.Timestamp.now(), [onchain_order])
+        
+        # Assert - Should route to onchain interface
+        assert isinstance(result, list)
+        assert len(result) == 1
+        assert result[0]['success'] == True
+    
+    def test_sequential_execution(self, mock_config, mock_data_provider, mock_utility_manager, mock_execution_interfaces):
+        """Test sequential execution (one at a time)."""
+        # Arrange
+        mock_venue_interface_manager = Mock()
+        mock_venue_interface_manager.route_to_venue.return_value = {'success': True, 'trade_id': 'test_trade'}
+        
+        mock_position_update_handler = Mock()
+        mock_position_update_handler.update_state.return_value = {'success': True}
+
+        execution_manager = ExecutionManager(
+            execution_mode='backtest',
+            config=mock_config,
+            venue_interface_manager=mock_venue_interface_manager,
+            position_update_handler=mock_position_update_handler
+        )
+
+        # Create test orders
+        orders = [
+            Order(order_id='order1', action_type='buy', asset='BTC', size=0.1, venue='binance', order_type='market', timestamp=pd.Timestamp.now()),
+            Order(order_id='order2', action_type='sell', asset='ETH', size=1.0, venue='ethereum', order_type='market', timestamp=pd.Timestamp.now())
+        ]
+
+        # Act - Execute multiple orders sequentially
+        result = execution_manager.process_orders(pd.Timestamp.now(), orders)
         
         # Assert - Should execute sequentially
-        assert isinstance(result, dict)
-        assert 'success' in result
-        assert 'results' in result
-        assert len(result['results']) == len(mock_strategy_instructions)
+        assert isinstance(result, list)
+        assert len(result) == len(orders)
         
-        # Each instruction should be executed one at a time
-        for instruction_result in result['results']:
-            assert isinstance(instruction_result, dict)
-            assert 'success' in instruction_result
+        # Each order should be executed one at a time
+        for order_result in result:
+            assert isinstance(order_result, dict)
+            assert 'success' in order_result
+            assert order_result['success'] == True
         
         # Verify that interfaces were called in sequence
-        # (This would be verified by checking call order in real implementation)
+        assert mock_venue_interface_manager.route_to_venue.call_count == len(orders)
+        assert mock_position_update_handler.update_state.call_count == len(orders)
     
     def test_position_reconciliation_after_execution(self, mock_config, mock_data_provider, mock_utility_manager, mock_execution_interfaces):
         """Test position reconciliation after execution."""
         # Arrange
-        mock_position_monitor = Mock()
-        mock_position_monitor.get_snapshot.return_value = {
-            'wallet': {'BTC': 0.1, 'USDT': 5000.0},
-            'cex_accounts': {'binance': {'BTC': 0.1, 'USDT': 5000.0}},
-            'perp_positions': {}
-        }
+        mock_venue_interface_manager = Mock()
+        mock_venue_interface_manager.route_to_venue.return_value = {'success': True, 'trade_id': 'test_trade'}
+        
+        mock_position_update_handler = Mock()
+        mock_position_update_handler.update_state.return_value = {'success': True}
 
-        execution_manager = VenueManager(
+        execution_manager = ExecutionManager(
             execution_mode='backtest',
             config=mock_config,
-            position_monitor=mock_position_monitor
+            venue_interface_manager=mock_venue_interface_manager,
+            position_update_handler=mock_position_update_handler
         )
         
         # Act
-        instruction = {
-            'action': 'cex_trade',
-            'venue': 'binance',
-            'asset': 'BTC',
-            'size': 0.1,
-            'order_type': 'market',
-            'timestamp': pd.Timestamp('2024-05-12 00:00:00')
-        }
+        order = Order(
+            order_id='test_order',
+            action_type='buy',
+            asset='BTC',
+            size=0.1,
+            venue='binance',
+            order_type='market',
+            timestamp=pd.Timestamp('2024-05-12 00:00:00')
+        )
         
-        result = execution_manager.execute_venue_instructions(pd.Timestamp.now()([instruction])
+        result = execution_manager.process_orders(pd.Timestamp.now(), [order])
         
         # Assert - Should reconcile position after execution
-        assert isinstance(result, dict)
-        assert 'success' in result
-        assert 'results' in result
+        assert isinstance(result, list)
+        assert len(result) == 1
+        assert result[0]['success'] == True
+        
+        # Verify reconciliation was called
+        mock_position_update_handler.update_state.assert_called_once()
     
     def test_error_handling_and_retry_logic(self, mock_config, mock_data_provider, mock_utility_manager, mock_execution_interfaces):
         """Test error handling and retry logic."""
         # Arrange
-        execution_manager = VenueManager(
+        mock_venue_interface_manager = Mock()
+        mock_venue_interface_manager.route_to_venue.return_value = {'success': False, 'error': 'Execution failed'}
+        
+        mock_position_update_handler = Mock()
+        mock_position_update_handler.update_state.return_value = {'success': False}
+
+        execution_manager = ExecutionManager(
             execution_mode='backtest',
             config=mock_config,
-            position_monitor=Mock()
+            venue_interface_manager=mock_venue_interface_manager,
+            position_update_handler=mock_position_update_handler
         )
 
         # Act
-        instruction = {
-            'action': 'cex_trade',
-            'venue': 'binance',
-            'asset': 'BTC',
-            'size': 0.1,
-            'order_type': 'market',
-            'timestamp': pd.Timestamp('2024-05-12 00:00:00')
-        }
+        order = Order(
+            order_id='test_order',
+            action_type='buy',
+            asset='BTC',
+            size=0.1,
+            venue='binance',
+            order_type='market',
+            timestamp=pd.Timestamp('2024-05-12 00:00:00')
+        )
 
-        result = execution_manager.execute_venue_instructions(pd.Timestamp.now()([instruction])
+        result = execution_manager.process_orders(pd.Timestamp.now(), [order])
         
         # Assert - Should handle errors gracefully
-        assert isinstance(result, dict)
-        assert 'success' in result
-        assert 'results' in result
+        assert isinstance(result, list)
+        assert len(result) == 1
+        assert result[0]['success'] == False
         
         # Should have attempted retry (implementation dependent)
         # The exact retry logic would be tested in integration tests
@@ -159,84 +189,107 @@ class TestVenueManagerUnit:
         # Arrange
         mock_config['execution_mode'] = 'live'
         
-        # Mock onchain interface to return transaction hash
-        mock_execution_interfaces['onchain'].execute_order.return_value = {
-            'status': 'confirmed',
+        # Mock venue interface manager to return transaction hash
+        mock_venue_interface_manager = Mock()
+        mock_venue_interface_manager.route_to_venue.return_value = {
+            'success': True,
+            'trade_id': 'test_trade',
             'tx_hash': '0x1234567890abcdef',
             'gas_used': 100000,
             'gas_cost': 5.0,
             'confirmation_time': 30.0
         }
         
-        execution_manager = VenueManager(
-            execution_mode='backtest',
+        mock_position_update_handler = Mock()
+        mock_position_update_handler.update_state.return_value = {'success': True}
+        
+        execution_manager = ExecutionManager(
+            execution_mode='live',
             config=mock_config,
-            position_monitor=Mock()
+            venue_interface_manager=mock_venue_interface_manager,
+            position_update_handler=mock_position_update_handler
         )
         
         # Act
-        instruction = {
-            'action': 'wallet_transfer',
-            'venue': 'ethereum',
-            'asset': 'ETH',
-            'size': 1.0,
-            'order_type': 'market',
-            'timestamp': pd.Timestamp('2024-05-12 00:00:00')
-        }
+        order = Order(
+            order_id='test_order',
+            action_type='transfer',
+            asset='ETH',
+            size=1.0,
+            venue='ethereum',
+            order_type='market',
+            timestamp=pd.Timestamp('2024-05-12 00:00:00')
+        )
         
-        result = execution_manager.execute_venue_instructions(pd.Timestamp.now()([instruction])
+        result = execution_manager.process_orders(pd.Timestamp.now(), [order])
         
         # Assert - Should handle transaction confirmation
-        assert isinstance(result, dict)
-        assert 'success' in result
-        assert 'results' in result
+        assert isinstance(result, list)
+        assert len(result) == 1
+        assert result[0]['success'] == True
     
     def test_execution_cost_tracking(self, mock_config, mock_data_provider, mock_utility_manager, mock_execution_interfaces):
         """Test execution cost tracking."""
         # Arrange
-        execution_manager = VenueManager(
+        mock_venue_interface_manager = Mock()
+        mock_venue_interface_manager.route_to_venue.return_value = {
+            'success': True, 
+            'trade_id': 'test_trade',
+            'execution_cost': 0.001,
+            'gas_cost': 5.0
+        }
+        
+        mock_position_update_handler = Mock()
+        mock_position_update_handler.update_state.return_value = {'success': True}
+        
+        execution_manager = ExecutionManager(
             execution_mode='backtest',
             config=mock_config,
-            position_monitor=Mock()
+            venue_interface_manager=mock_venue_interface_manager,
+            position_update_handler=mock_position_update_handler
         )
         
-        # Act - Execute multiple instructions
-        instructions = [
-            {
-                'action': 'cex_trade',
-                'venue': 'binance',
-                'asset': 'BTC',
-                'size': 0.1,
-                'order_type': 'market',
-                'timestamp': pd.Timestamp('2024-05-12 00:00:00')
-            },
-            {
-                'action': 'wallet_transfer',
-                'venue': 'ethereum',
-                'asset': 'ETH',
-                'size': 1.0,
-                'order_type': 'market',
-                'timestamp': pd.Timestamp('2024-05-12 00:01:00')
-            }
+        # Act - Execute multiple orders
+        orders = [
+            Order(
+                order_id='order1',
+                action_type='buy',
+                asset='BTC',
+                size=0.1,
+                venue='binance',
+                order_type='market',
+                timestamp=pd.Timestamp('2024-05-12 00:00:00')
+            ),
+            Order(
+                order_id='order2',
+                action_type='transfer',
+                asset='ETH',
+                size=1.0,
+                venue='ethereum',
+                order_type='market',
+                timestamp=pd.Timestamp('2024-05-12 00:01:00')
+            )
         ]
         
-        result = execution_manager.execute_venue_instructions(pd.Timestamp.now()(instructions)
+        result = execution_manager.process_orders(pd.Timestamp.now(), orders)
         
         # Assert - Should track execution costs
-        assert isinstance(result, dict)
-        assert 'success' in result
-        assert 'results' in result
+        assert isinstance(result, list)
+        assert len(result) == len(orders)
+        for order_result in result:
+            assert order_result['success'] == True
     
     def test_execution_manager_initialization(self, mock_config, mock_data_provider, mock_utility_manager, mock_execution_interfaces):
-        """Test Execution Manager initialization with different configs."""
+        """Test Venue Manager initialization with different configs."""
         # Test backtest mode
         backtest_config = mock_config.copy()
         backtest_config['execution_mode'] = 'backtest'
         
-        execution_manager = VenueManager(
+        execution_manager = ExecutionManager(
             execution_mode='backtest',
             config=backtest_config,
-            position_monitor=Mock()
+            venue_interface_manager=Mock(),
+            position_update_handler=Mock()
         )
         
         assert execution_manager.execution_mode == 'backtest'
@@ -245,123 +298,138 @@ class TestVenueManagerUnit:
         live_config = mock_config.copy()
         live_config['execution_mode'] = 'live'
         
-        execution_manager = VenueManager(
+        execution_manager = ExecutionManager(
             execution_mode='live',
             config=live_config,
-            position_monitor=Mock()
+            venue_interface_manager=Mock(),
+            position_update_handler=Mock()
         )
         
         assert execution_manager.execution_mode == 'live'
     
     def test_execution_manager_error_handling(self, mock_config, mock_data_provider, mock_utility_manager, mock_execution_interfaces):
-        """Test Execution Manager error handling."""
-        # Arrange - Mock execution interfaces to raise exceptions
-        mock_execution_interfaces['cex'].execute_order.side_effect = Exception("CEX error")
-        mock_execution_interfaces['onchain'].execute_order.side_effect = Exception("Onchain error")
+        """Test Venue Manager error handling."""
+        # Arrange - Mock venue interface manager to raise exceptions
+        mock_venue_interface_manager = Mock()
+        mock_venue_interface_manager.route_to_venue.side_effect = Exception("Execution error")
         
-        execution_manager = VenueManager(
+        mock_position_update_handler = Mock()
+        mock_position_update_handler.update_state.return_value = {'success': False}
+        
+        execution_manager = ExecutionManager(
             execution_mode='backtest',
             config=mock_config,
-            position_monitor=Mock()
+            venue_interface_manager=mock_venue_interface_manager,
+            position_update_handler=mock_position_update_handler
         )
         
         # Act & Assert - Should handle errors gracefully
-        instruction = {
-            'action': 'cex_trade',
-            'venue': 'binance',
-            'asset': 'BTC',
-            'size': 0.1,
-            'order_type': 'market',
-            'timestamp': pd.Timestamp('2024-05-12 00:00:00')
-        }
-        
-        result = execution_manager.execute_venue_instructions(pd.Timestamp.now()([instruction])
-        
-        # Should return result structure
-        assert isinstance(result, dict)
-        assert 'success' in result
-        assert 'results' in result
-    
-    def test_execution_manager_performance(self, mock_config, mock_data_provider, mock_utility_manager, mock_execution_interfaces):
-        """Test Execution Manager performance with multiple instructions."""
-        # Arrange
-        execution_manager = VenueManager(
-            execution_mode='backtest',
-            config=mock_config,
-            position_monitor=Mock()
+        order = Order(
+            order_id='test_order',
+            action_type='buy',
+            asset='BTC',
+            size=0.1,
+            venue='binance',
+            order_type='market',
+            timestamp=pd.Timestamp('2024-05-12 00:00:00')
         )
         
-        # Act - Execute multiple instructions
+        result = execution_manager.process_orders(pd.Timestamp.now(), [order])
+        
+        # Should return result structure
+        assert isinstance(result, list)
+        assert len(result) == 1
+        assert result[0]['success'] == False
+    
+    def test_execution_manager_performance(self, mock_config, mock_data_provider, mock_utility_manager, mock_execution_interfaces):
+        """Test Venue Manager performance with multiple orders."""
+        # Arrange
+        mock_venue_interface_manager = Mock()
+        mock_venue_interface_manager.route_to_venue.return_value = {'success': True, 'trade_id': 'test_trade'}
+        
+        mock_position_update_handler = Mock()
+        mock_position_update_handler.update_state.return_value = {'success': True}
+        
+        execution_manager = ExecutionManager(
+            execution_mode='backtest',
+            config=mock_config,
+            venue_interface_manager=mock_venue_interface_manager,
+            position_update_handler=mock_position_update_handler
+        )
+        
+        # Act - Execute multiple orders
         import time
         start_time = time.time()
         
-        instructions = []
+        orders = []
         for i in range(10):
-            instruction = {
-                'action': 'cex_trade',
-                'venue': 'binance',
-                'asset': 'BTC',
-                'size': 0.1,
-                'order_type': 'market',
-                'timestamp': pd.Timestamp('2024-05-12 00:00:00') + pd.Timedelta(minutes=i)
-            }
-            instructions.append(instruction)
+            order = Order(
+                order_id=f'order_{i}',
+                action_type='buy',
+                asset='BTC',
+                size=0.1,
+                venue='binance',
+                order_type='market',
+                timestamp=pd.Timestamp('2024-05-12 00:00:00') + pd.Timedelta(minutes=i)
+            )
+            orders.append(order)
         
-        result = execution_manager.execute_venue_instructions(pd.Timestamp.now()(instructions)
+        result = execution_manager.process_orders(pd.Timestamp.now(), orders)
         
         end_time = time.time()
         
         # Assert - Should complete within reasonable time
         execution_time = end_time - start_time
         assert execution_time < 5.0  # Should complete within 5 seconds
-        assert isinstance(result, dict)
-        assert 'success' in result
-        assert 'results' in result
+        assert isinstance(result, list)
+        assert len(result) == len(orders)
     
     def test_execution_manager_edge_cases(self, mock_config, mock_data_provider, mock_utility_manager, mock_execution_interfaces):
-        """Test Execution Manager edge cases."""
-        execution_manager = VenueManager(
+        """Test Venue Manager edge cases."""
+        mock_venue_interface_manager = Mock()
+        mock_venue_interface_manager.route_to_venue.return_value = {'success': True, 'trade_id': 'test_trade'}
+        
+        mock_position_update_handler = Mock()
+        mock_position_update_handler.update_state.return_value = {'success': True}
+        
+        execution_manager = ExecutionManager(
             execution_mode='backtest',
             config=mock_config,
-            position_monitor=Mock()
+            venue_interface_manager=mock_venue_interface_manager,
+            position_update_handler=mock_position_update_handler
         )
         
-        # Test empty instruction
-        empty_instruction = {}
-        try:
-            result = execution_manager.execute_instruction(empty_instruction)
-            assert isinstance(result, dict)
-        except Exception as e:
-            # Expected behavior for invalid instruction
-            assert isinstance(e, Exception)
+        # Test empty orders list
+        result = execution_manager.process_orders(pd.Timestamp.now(), [])
+        assert isinstance(result, list)
+        assert len(result) == 0
         
-        # Test instruction with missing fields
-        incomplete_instruction = {
-            'action': 'open_position',
-            'venue': 'binance'
-            # Missing required fields
-        }
+        # Test order with missing fields
+        incomplete_order = Order(
+            order_id='incomplete_order',
+            action_type='buy',
+            asset='BTC',
+            size=0.1,
+            venue='binance',
+            order_type='market',
+            timestamp=pd.Timestamp('2024-05-12 00:00:00')
+        )
         
-        try:
-            result = execution_manager.execute_instruction(incomplete_instruction)
-            assert isinstance(result, dict)
-        except Exception as e:
-            # Expected behavior for incomplete instruction
-            assert isinstance(e, Exception)
+        result = execution_manager.process_orders(pd.Timestamp.now(), [incomplete_order])
+        assert isinstance(result, list)
+        assert len(result) == 1
         
-        # Test instruction with invalid venue
-        invalid_venue_instruction = {
-            'action': 'open_position',
-            'venue': 'nonexistent_venue',
-            'asset': 'BTC',
-            'size': 0.1,
-            'order_type': 'market',
-            'timestamp': pd.Timestamp('2024-05-12 00:00:00')
-        }
+        # Test order with invalid venue
+        invalid_venue_order = Order(
+            order_id='invalid_venue_order',
+            action_type='buy',
+            asset='BTC',
+            size=0.1,
+            venue='nonexistent_venue',
+            order_type='market',
+            timestamp=pd.Timestamp('2024-05-12 00:00:00')
+        )
         
-        try:
-            result = execution_manager.execute_instruction(invalid_venue_instruction)
-            assert isinstance(result, dict)
-        except Exception as e:
-            # Expected behavior for invalid venue
-            assert isinstance(e, Exception)
+        result = execution_manager.process_orders(pd.Timestamp.now(), [invalid_venue_order])
+        assert isinstance(result, list)
+        assert len(result) == 1

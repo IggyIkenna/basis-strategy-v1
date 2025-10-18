@@ -17,7 +17,6 @@ results/
 # Archives and logs
 *.tar.gz
 logs/
-backend/logs/
 # Health monitor logs and PID files
 logs/health_monitor.log
 logs/health_monitor.pid

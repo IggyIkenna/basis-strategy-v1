@@ -11,11 +11,12 @@ Reference: docs/specs/12_EVENT_LOGGER.md - Mode-agnostic event logging
 from typing import Dict, List, Any, Optional
 import logging
 import pandas as pd
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import json
 import os
+from pathlib import Path
 
-from ..logging.structured_logger import get_structured_logger
+from .structured_logger import StructuredLogger
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +29,7 @@ class EventLogger:
             cls._instance = super().__new__(cls)
         return cls._instance
     
-    def __init__(self, config: Dict[str, Any], data_provider, utility_manager):
+    def __init__(self, config: Dict[str, Any], data_provider, utility_manager, correlation_id: str = None):
         """
         Initialize event logger.
         
@@ -36,6 +37,7 @@ class EventLogger:
             config: Strategy configuration
             data_provider: Data provider instance
             utility_manager: Centralized utility manager
+            correlation_id: Correlation ID for request tracking
         """
         self.config = config
         self.data_provider = data_provider
@@ -43,18 +45,37 @@ class EventLogger:
         self.health_status = "healthy"
         self.error_count = 0
         
+        # Generate correlation ID if not provided
+        if correlation_id is None:
+            import uuid
+            correlation_id = str(uuid.uuid4())
+        self.correlation_id = correlation_id
+        
         # Initialize structured logger
-        self.structured_logger = get_structured_logger('event_logger')
+        self.structured_logger = StructuredLogger(
+            component_name='event_logger',
+            correlation_id=correlation_id,
+            pid=os.getpid(),
+            log_dir=Path("logs/default/0"),
+            engine=None
+        )
         
         # Event tracking
         self.event_history = []
         self.logged_events = {}
+        
+        # Domain-specific event files
+        self.domain_event_files = {}
         
         # Logging configuration (optional with fail-fast)
         if 'log_path' in config:
             self.log_path = config['log_path']
         else:
             self.log_path = './logs'  # Default only if not specified
+            
+        # Ensure events directory exists
+        self.events_dir = os.path.join(self.log_path, 'events')
+        os.makedirs(self.events_dir, exist_ok=True)
             
         if 'log_format' in config:
             self.log_format = config['log_format']
@@ -611,7 +632,7 @@ class EventLogger:
         
         return events
     
-    # Standardized Logging Methods (per 17_HEALTH_ERROR_SYSTEMS.md and 08_EVENT_LOGGER.md)
+    # Standardized Logging Methods (per HEALTH_ERROR_SYSTEMS.md and 08_EVENT_LOGGER.md)
     
     def log_structured_event(self, timestamp: pd.Timestamp, event_type: str, level: str, message: str, component_name: str, data: Optional[Dict[str, Any]] = None, correlation_id: Optional[str] = None) -> None:
         """Log a structured event with standardized format."""
@@ -632,24 +653,6 @@ class EventLogger:
         except Exception as e:
             logger.error(f"Failed to log structured event: {e}")
     
-    def log_component_event(self, event_type: str, message: str, data: Optional[Dict[str, Any]] = None, level: str = 'INFO') -> None:
-        """Log a component-specific event with automatic timestamp and component name."""
-        try:
-            timestamp = pd.Timestamp.now(tz='UTC')
-            event_data = {
-                'timestamp': timestamp,
-                'event_type': event_type,
-                'level': level,
-                'message': message,
-                'component_name': 'EventLogger',
-                'data': data or {}
-            }
-            
-            self.structured_logger.log_component_event(event_data)
-            self.event_history.append(event_data)
-            
-        except Exception as e:
-            logger.error(f"Failed to log component event: {e}")
     
     def log_performance_metric(self, metric_name: str, value: float, unit: str, data: Optional[Dict[str, Any]] = None) -> None:
         """Log a performance metric."""
@@ -719,20 +722,75 @@ class EventLogger:
             logger.error(f"Failed to log warning: {e}")
     
     def log_event(self, timestamp: pd.Timestamp, event_type: str, component: str, data: Dict) -> None:
-        """Log an event with global ordering."""
+        """Log an event with global ordering and domain-specific files."""
         try:
             event_data = {
                 'timestamp': timestamp,
                 'event_type': event_type,
                 'component': component,
-                'data': data
+                'data': data,
+                'correlation_id': self.correlation_id
             }
             
-            self.structured_logger.log_event(event_data)
+            # Extract message from data or use event_type as message
+            message = data.get('message', f"Event: {event_type}")
+            level = data.get('level', 'INFO')
+            metadata = data.get('metadata', data)
+            
+            self.structured_logger.log_event(
+                level=level,
+                message=message,
+                event_type=event_type,
+                metadata=metadata,
+                timestamp=timestamp.isoformat()
+            )
             self.event_history.append(event_data)
+            
+            # Log to domain-specific file
+            self._log_to_domain_file(component, event_data)
             
         except Exception as e:
             logger.error(f"Failed to log event: {e}")
+    
+    def _log_to_domain_file(self, component: str, event_data: Dict) -> None:
+        """Log event to component-specific JSONL file."""
+        try:
+            # Create component-specific filename
+            filename = f"{component}_events.jsonl"
+            filepath = os.path.join(self.events_dir, filename)
+            
+            # Ensure file exists and append event
+            with open(filepath, 'a') as f:
+                f.write(json.dumps(event_data, default=str) + '\n')
+                
+        except Exception as e:
+            logger.error(f"Failed to log to domain file for {component}: {e}")
+    
+    def log_domain_event(self, timestamp: pd.Timestamp, event_type: str, component: str, 
+                        domain_data: Dict, message: str = None) -> None:
+        """Log a domain-specific event with enhanced data structure."""
+        try:
+            # Create comprehensive event data
+            event_data = {
+                'timestamp': timestamp.isoformat(),
+                'event_type': event_type,
+                'component': component,
+                'correlation_id': self.correlation_id,
+                'message': message or f"{component}: {event_type}",
+                'domain_data': domain_data,
+                'global_order': len(self.event_history) + 1
+            }
+            
+            # Log to domain-specific file
+            self._log_to_domain_file(component, event_data)
+            
+            # Also add to general event history
+            self.event_history.append(event_data)
+            
+            logger.info(f"Logged domain event: {event_type} for {component}")
+            
+        except Exception as e:
+            logger.error(f"Failed to log domain event: {e}")
     
     def update_state(self, timestamp: pd.Timestamp, trigger_source: str, **kwargs) -> None:
         """

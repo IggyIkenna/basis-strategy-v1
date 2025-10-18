@@ -11,7 +11,6 @@ This component is **naturally mode-specific** because position calculation logic
 - Inherits from BaseStrategyManager
 - Each mode has specific subclass (PureLendingStrategyManager, BTCBasisStrategyManager, etc.)
 - Factory pattern for creation (StrategyManagerFactory)
-- Config still drives parameters (hedge_allocation, rebalancing_triggers, etc.)
 
 See: 5A_STRATEGY_FACTORY.md for factory pattern, CODE_STRUCTURE_PATTERNS.md section 5, ADR-052
 
@@ -92,7 +91,6 @@ strategy_manager:
   position_calculation:
     target_position: "btc_spot_long"
     hedge_position: "btc_perp_short"
-    hedge_allocation: {"binance": 0.4, "bybit": 0.3, "okx": 0.3}
 ```
 
 **ETH Leveraged Mode**:
@@ -206,21 +204,17 @@ def __init__(self, ...):
   - **Usage**: Defines actions available to the strategy
   - **Examples**: ["entry_full", "entry_partial", "exit_partial", "exit_full"]
   - **Used in**: Strategy execution and action planning
-- **component_config.strategy_manager.rebalancing_triggers**: List[str] - Rebalancing trigger conditions
   - **Usage**: Defines conditions that trigger position rebalancing
   - **Examples**: ["deposit", "withdrawal", "delta_drift"]
   - **Used in**: Strategy rebalancing logic
 - **component_config.strategy_manager.position_calculation**: Dict - Position calculation configuration
   - **Usage**: Defines how positions are calculated and managed
-- **component_config.strategy_manager.position_calculation.hedge_allocation.binance**: float - Hedge allocation to Binance
   - **Usage**: Defines proportion of hedge allocated to Binance venue
   - **Examples**: 0.4 (40% of hedge on Binance)
   - **Used in**: Execution manager venue routing for hedging
-- **component_config.strategy_manager.position_calculation.hedge_allocation.bybit**: float - Hedge allocation to Bybit
   - **Usage**: Defines proportion of hedge allocated to Bybit venue
   - **Examples**: 0.3 (30% of hedge on Bybit)
   - **Used in**: Execution manager venue routing for hedging
-- **component_config.strategy_manager.position_calculation.hedge_allocation.okx**: float - Hedge allocation to OKX
   - **Usage**: Defines proportion of hedge allocated to OKX venue
   - **Examples**: 0.3 (30% of hedge on OKX)
   - **Used in**: Execution manager venue routing for hedging
@@ -240,7 +234,6 @@ def __init__(self, ...):
 - **component_config.strategy_manager.position_calculation.leverage_ratio**: float - Leverage ratio for positions
   - **Usage**: Defines leverage multiplier for position sizing
   - **Used in**: Position sizing and risk management
-- **component_config.strategy_manager.position_calculation.hedge_allocation**: Dict[str, float] - Hedge allocation by venue
   - **Usage**: Defines hedge allocation percentages across venues
   - **Used in**: Risk management and hedging execution
 
@@ -285,7 +278,6 @@ def __init__(self, ...):
   - **Required**: Yes
   - **Used in**: `eth_basis_strategy.py:51`, `btc_basis_strategy.py:51`
 
-- `hedge_allocation`: float - Hedge allocation percentage
   - **Usage**: Used in leveraged strategy initialization to set hedge allocation
   - **Required**: Yes
   - **Used in**: `eth_leveraged_strategy.py:53`
@@ -377,7 +369,6 @@ component_config:
     position_calculation:
       target_position: "aave_usdt_supply"  # Mode-specific position calculation
       max_position: "equity"
-      hedge_allocation:  # For basis strategies
         binance: 0.4
         bybit: 0.3
         okx: 0.3
@@ -655,9 +646,7 @@ class BTCBasisStrategy(BaseStrategyManager):
         target_btc_spot = (equity * 0.5) / btc_price
         
         # Calculate target perp short positions across venues
-        hedge_allocation = self.position_calculation.get('hedge_allocation', {})
         target_perp_shorts = {}
-        for venue, allocation in hedge_allocation.items():
             target_perp_shorts[venue] = -target_btc_spot * allocation
         
         return {
@@ -713,9 +702,7 @@ class USDTMarketNeutralStrategy(BaseStrategyManager):
         target_aave_eth = (equity * 0.5) / eth_price
         
         # Calculate target perp short positions to hedge AAVE
-        hedge_allocation = self.position_calculation.get('hedge_allocation', {})
         target_perp_shorts = {}
-        for venue, allocation in hedge_allocation.items():
             target_perp_shorts[venue] = -target_aave_eth * allocation
         
         return {
@@ -781,7 +768,6 @@ The following config fields are required in `component_config.strategy_manager`:
 | `actions` | List[str] | Available strategy actions | All modes |
 | `rebalancing_triggers` | List[str] | Rebalancing trigger conditions | All modes |
 | `position_calculation` | Dict | Position calculation configuration | All modes |
-| `hedge_allocation` | Dict | Hedge venue allocation (nested in position_calculation) | Basis strategies |
 
 **Implementation**: These fields are documented in the YAML examples above and should be added to mode YAML files in `configs/modes/*.yaml`
 
@@ -1798,7 +1784,6 @@ class StrategyManager:
                 'target_delta_eth': 0,
                 'initial_eth_to_stake': eth_to_stake,
                 'target_perp_short_total': -eth_to_stake,
-                'hedge_allocation': self.config['strategy']['hedge_allocation'],
                 'eth_price': eth_price,
                 'gas_price': market_data['gas_price_gwei'],
                 'funding_rates': market_data['perp_funding_rates'],
@@ -1960,7 +1945,6 @@ desired_position = {
     'aave_ltv': 0.91,
     'target_delta_eth': 0,                    # Market-neutral
     'target_perp_short_total': -aave_net_eth, # Hedge AAVE position
-    'hedge_allocation': {'binance': 0.33, 'bybit': 0.33, 'okx': 0.34},
     'rebalancing_trigger': 'ltv_drift or delta_drift or margin_low'
 }
 ```
@@ -2388,7 +2372,6 @@ def test_mode_determines_hedging():
   - **Request Isolation Pattern**: Fresh instances per backtest/live request
   - **Synchronous Component Execution**: Internal methods are synchronous, async only for I/O operations
   - **Mode-Aware Behavior**: Uses BASIS_EXECUTION_MODE for conditional logic
-  - **Config-Driven Parameters**: Uses config parameters (share_class, asset, lst_type, hedge_allocation) instead of hardcoded mode logic
 
 ### **Implementation Status**
 - **High Priority**:

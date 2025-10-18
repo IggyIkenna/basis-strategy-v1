@@ -17,7 +17,7 @@ def find_component_specs(specs_dir: str = "docs/specs/") -> List[str]:
     specs = []
     # Exclude architecture docs and frontend spec from component validation
     excluded_specs = {
-        '17_HEALTH_ERROR_SYSTEMS.md',  # Architecture doc, moved to docs/ root
+        'HEALTH_ERROR_SYSTEMS.md',  # Architecture doc, moved to docs/ root
         '12_FRONTEND_SPEC.md'          # Frontend gets separate treatment
     }
     
@@ -165,7 +165,7 @@ def extract_implementation_methods(impl_file: str, spec_file: str = None) -> Dic
             ]
             methods.extend(standardized_methods)
         
-        # All components should have these health/logging methods per 17_HEALTH_ERROR_SYSTEMS.md and 08_EVENT_LOGGER.md
+        # All components should have these health/logging methods per HEALTH_ERROR_SYSTEMS.md and 08_EVENT_LOGGER.md
         required_health_logging_methods = [
             'log_structured_event',
             'log_component_event', 
@@ -304,7 +304,7 @@ def check_canonical_compliance(spec_file: str, impl_file: str) -> Dict[str, any]
         # Note: Singleton components (Position Monitor, Exposure Monitor, Risk Monitor) don't need factories
         if 'ComponentFactory' in content or 'create_' in content or 'factory' in content:
             compliance_checks['has_component_factory'] = True
-        elif any(singleton in impl_file.lower() for singleton in ['position_monitor', 'exposure_monitor', 'risk_monitor', 'execution_manager', 'strategy_manager', 'pnl_calculator']):
+        elif any(singleton in impl_file.lower() for singleton in ['position_monitor', 'exposure_monitor', 'risk_monitor', 'execution_manager', 'strategy_manager', 'pnl_monitor']):
             # Singleton components don't need ComponentFactory pattern
             compliance_checks['has_component_factory'] = True
         
@@ -366,7 +366,7 @@ def generate_gap_report(specs: List[str], implementations: List[str]) -> Dict[st
             'positionmonitor': 'position_monitor.py',
             'exposuremonitor': 'exposure_monitor.py', 
             'riskmonitor': 'risk_monitor.py',
-            'pnlcalculator': 'pnl_calculator.py',
+            'pnlcalculator': 'pnl_monitor.py',
             'strategymanager': 'strategy_manager.py',
             'venuemanager': 'venue_manager.py',
             'eventlogger': 'event_logger.py',

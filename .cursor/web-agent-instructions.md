@@ -77,7 +77,7 @@ python validate_docs.py
 python scripts/run_quality_gates.py
 
 # Run specific quality gates
-python scripts/test_pure_lending_quality_gates.py
+python scripts/test_pure_lending_usdt_quality_gates.py
 python scripts/test_btc_basis_quality_gates.py
 ```
 

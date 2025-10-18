@@ -2,6 +2,12 @@
 venue: "uniswap"
 type: "infrastructure"
 
+# Canonical instruments available on this venue
+canonical_instruments:
+  - "uniswap:BaseToken:ETH"
+  - "uniswap:BaseToken:USDT"
+  - "uniswap:BaseToken:WETH"
+
 # Protocol Configuration
 network: "ethereum"
 version: "v3"

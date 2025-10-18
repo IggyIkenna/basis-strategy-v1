@@ -23,7 +23,10 @@ class TestPositionMonitorUnit:
         position_monitor = PositionMonitor(
             config=mock_config,
             data_provider=mock_data_provider,
-            utility_manager=mock_utility_manager
+            utility_manager=mock_utility_manager,
+            venue_interface_factory=Mock(),
+            execution_mode='backtest',
+            initial_capital=10000
         )
         
         # Act
@@ -55,7 +58,10 @@ class TestPositionMonitorUnit:
         position_monitor = PositionMonitor(
             config=mock_config,
             data_provider=mock_data_provider,
-            utility_manager=mock_utility_manager
+            utility_manager=mock_utility_manager,
+            venue_interface_factory=Mock(),
+            execution_mode='backtest',
+            initial_capital=10000
         )
         
         # Act - Get initial snapshot
@@ -72,7 +78,7 @@ class TestPositionMonitorUnit:
     def test_aave_conversion_ausdt_to_usdt(self, mock_config, mock_data_provider, mock_utility_manager):
         """Test AAVE conversion (aUSDT → USDT using liquidity_index)."""
         # Arrange
-        mock_config['mode'] = 'pure_lending'
+        mock_config['mode'] = 'pure_lending_usdt'
         mock_config['asset'] = 'USDT'
         
         # Mock AAVE liquidity index
@@ -81,7 +87,10 @@ class TestPositionMonitorUnit:
         position_monitor = PositionMonitor(
             config=mock_config,
             data_provider=mock_data_provider,
-            utility_manager=mock_utility_manager
+            utility_manager=mock_utility_manager,
+            venue_interface_factory=Mock(),
+            execution_mode='backtest',
+            initial_capital=10000
         )
         
         # Act
@@ -110,7 +119,10 @@ class TestPositionMonitorUnit:
         position_monitor = PositionMonitor(
             config=mock_config,
             data_provider=mock_data_provider,
-            utility_manager=mock_utility_manager
+            utility_manager=mock_utility_manager,
+            venue_interface_factory=Mock(),
+            execution_mode='backtest',
+            initial_capital=10000
         )
         
         # Act
@@ -131,7 +143,10 @@ class TestPositionMonitorUnit:
         position_monitor = PositionMonitor(
             config=mock_config,
             data_provider=mock_data_provider,
-            utility_manager=mock_utility_manager
+            utility_manager=mock_utility_manager,
+            venue_interface_factory=Mock(),
+            execution_mode='backtest',
+            initial_capital=10000
         )
         
         # Act
@@ -182,7 +197,10 @@ class TestPositionMonitorUnit:
         position_monitor = PositionMonitor(
             config=mock_config,
             data_provider=mock_data_provider,
-            utility_manager=mock_utility_manager
+            utility_manager=mock_utility_manager,
+            venue_interface_factory=Mock(),
+            execution_mode='backtest',
+            initial_capital=10000
         )
         
         # Act - Should not raise exception
@@ -202,17 +220,20 @@ class TestPositionMonitorUnit:
     def test_position_monitor_initialization(self, mock_config, mock_data_provider, mock_utility_manager):
         """Test Position Monitor initialization with different configs."""
         # Test pure lending mode
-        pure_lending_config = mock_config.copy()
-        pure_lending_config['mode'] = 'pure_lending'
-        pure_lending_config['asset'] = 'USDT'
+        pure_lending_usdt_config = mock_config.copy()
+        pure_lending_usdt_config['mode'] = 'pure_lending_usdt'
+        pure_lending_usdt_config['asset'] = 'USDT'
         
         position_monitor = PositionMonitor(
-            config=pure_lending_config,
+            config=pure_lending_usdt_config,
             data_provider=mock_data_provider,
-            utility_manager=mock_utility_manager
+            utility_manager=mock_utility_manager,
+            venue_interface_factory=Mock(),
+            execution_mode='backtest',
+            initial_capital=10000
         )
         
-        assert position_monitor.config['mode'] == 'pure_lending'
+        assert position_monitor.config['mode'] == 'pure_lending_usdt'
         assert position_monitor.config['asset'] == 'USDT'
         
         # Test BTC basis mode
@@ -223,7 +244,10 @@ class TestPositionMonitorUnit:
         position_monitor = PositionMonitor(
             config=btc_basis_config,
             data_provider=mock_data_provider,
-            utility_manager=mock_utility_manager
+            utility_manager=mock_utility_manager,
+            venue_interface_factory=Mock(),
+            execution_mode='backtest',
+            initial_capital=10000
         )
         
         assert position_monitor.config['mode'] == 'btc_basis'
@@ -237,7 +261,10 @@ class TestPositionMonitorUnit:
         position_monitor = PositionMonitor(
             config=mock_config,
             data_provider=mock_data_provider,
-            utility_manager=mock_utility_manager
+            utility_manager=mock_utility_manager,
+            venue_interface_factory=Mock(),
+            execution_mode='backtest',
+            initial_capital=10000
         )
         
         # Act
@@ -259,7 +286,10 @@ class TestPositionMonitorUnit:
         position_monitor = PositionMonitor(
             config=mock_config,
             data_provider=mock_data_provider,
-            utility_manager=mock_utility_manager
+            utility_manager=mock_utility_manager,
+            venue_interface_factory=Mock(),
+            execution_mode='backtest',
+            initial_capital=10000
         )
         
         # Act & Assert - Should handle errors gracefully

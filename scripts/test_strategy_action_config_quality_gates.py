@@ -10,7 +10,7 @@ This quality gate ensures that:
 2. Strategy implementations match their configuration requirements
 3. No missing action methods that would cause runtime failures
 
-Reference: docs/COMPONENT_SPEC_TEMPLATE.md - Event Logging Requirements
+Reference: docs/COMPONENT_SPECS_INDEX.md - Component Specification Template section
 Reference: docs/specs/5B_BASE_STRATEGY_MANAGER.md - Base Strategy Manager
 """
 
@@ -100,15 +100,15 @@ def main():
     
     # Strategy-to-Config Mapping
     STRATEGY_CONFIG_MAPPING = {
-        'pure_lending_strategy.py': 'pure_lending.yaml',
+        'pure_lending_usdt_strategy.py': 'pure_lending_usdt_usdt.yaml',
         'btc_basis_strategy.py': 'btc_basis.yaml',
         'eth_basis_strategy.py': 'eth_basis.yaml',
         'eth_staking_only_strategy.py': 'eth_staking_only.yaml',
         'eth_leveraged_strategy.py': 'eth_leveraged.yaml',
         'usdt_market_neutral_no_leverage_strategy.py': 'usdt_market_neutral_no_leverage.yaml',
         'usdt_market_neutral_strategy.py': 'usdt_market_neutral.yaml',
-        'ml_btc_directional_strategy.py': 'ml_btc_directional.yaml',
-        'ml_usdt_directional_strategy.py': 'ml_usdt_directional.yaml',
+        'ml_btc_directional_usdt_margin_strategy.py': 'ml_btc_directional_usdt_margin.yaml',
+        'ml_usdt_directional_usdt_margin_strategy.py': 'ml_usdt_directional_usdt_margin.yaml',
     }
     
     strategies_dir = project_root / "backend" / "src" / "basis_strategy_v1" / "core" / "strategies"

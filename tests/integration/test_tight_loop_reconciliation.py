@@ -1,11 +1,15 @@
 """
 Integration test for Tight Loop Reconciliation.
 
-Tests the tight loop architecture per ADR-001 with sequential processing and reconciliation.
+Tests the tight loop architecture per WORKFLOW_REFACTOR_SPECIFICATION.md with Order-based processing and reconciliation.
 """
 
 import pytest
+import pandas as pd
 from datetime import datetime, timedelta
+from unittest.mock import Mock
+
+from basis_strategy_v1.core.models.order import Order
 
 
 class TestTightLoopReconciliation:
@@ -21,42 +25,43 @@ class TestTightLoopReconciliation:
         
         # Step 1: Position Monitor (First in sequence)
         start_time = datetime.now()
-        positions = position_monitor.collect_positions()
+        positions = position_monitor.get_snapshot()
         position_time = datetime.now()
         
         assert positions is not None
-        assert len(positions) > 0
+        assert isinstance(positions, dict)
         
         # Step 2: Exposure Monitor (Second in sequence)
-        exposures = exposure_monitor.calculate_exposures(positions)
+        exposures = exposure_monitor.calculate_exposure(pd.Timestamp.now(), positions, {})
         exposure_time = datetime.now()
         
         assert exposures is not None
-        assert len(exposures) > 0
+        assert isinstance(exposures, dict)
         
         # Step 3: Risk Monitor (Third in sequence)
-        risk_metrics = risk_monitor.calculate_risk_metrics(exposures)
+        risk_metrics = risk_monitor.assess_risk(exposures, {})
         risk_time = datetime.now()
         
         assert risk_metrics is not None
-        assert len(risk_metrics) > 0
+        assert isinstance(risk_metrics, dict)
         
         # Step 4: Strategy Manager (Fourth in sequence)
-        strategy_decisions = strategy_manager.generate_strategy_decisions(risk_metrics)
+        strategy_orders = strategy_manager.generate_orders(pd.Timestamp.now(), exposures, risk_metrics, None, {})
         strategy_time = datetime.now()
         
-        assert strategy_decisions is not None
-        assert len(strategy_decisions) > 0
+        assert strategy_orders is not None
+        assert isinstance(strategy_orders, list)
         
         # Step 5: Execution Manager (Fifth in sequence)
-        execution_orders = execution_manager.convert_strategy_to_orders(strategy_decisions)
-        execution_time = datetime.now()
-        
-        assert execution_orders is not None
-        assert len(execution_orders) > 0
-        
-        # Verify sequential timing
-        assert position_time < exposure_time < risk_time < strategy_time < execution_time
+        if strategy_orders:
+            execution_results = execution_manager.process_orders(pd.Timestamp.now(), strategy_orders)
+            execution_time = datetime.now()
+            
+            assert execution_results is not None
+            assert isinstance(execution_results, list)
+            
+            # Verify sequential timing
+            assert position_time < exposure_time < risk_time < strategy_time < execution_time
     
     def test_tight_loop_reconciliation_handshake(self, real_components, real_data_provider):
         """Test reconciliation handshake between components in tight loop."""

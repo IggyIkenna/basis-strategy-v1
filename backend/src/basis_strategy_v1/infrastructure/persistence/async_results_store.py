@@ -22,11 +22,14 @@ Ordering Guarantees:
 import asyncio
 import json
 import os
+import uuid
 from pathlib import Path
 from typing import Dict, Any, Optional, List
 import pandas as pd
 from datetime import datetime
 import logging
+
+from ...infrastructure.logging.structured_logger import StructuredLogger
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +50,7 @@ class AsyncResultsStore:
     - Same implementation for backtest and live modes
     """
     
-    def __init__(self, results_dir: str, execution_mode: str, utility_manager=None):
+    def __init__(self, results_dir: str, execution_mode: str, utility_manager=None, pnl_monitor=None):
         """
         Initialize AsyncResultsStore.
         
@@ -55,25 +58,67 @@ class AsyncResultsStore:
             results_dir: Directory to store results
             execution_mode: 'backtest' or 'live'
             utility_manager: Centralized utility manager for config-driven operations
+            pnl_monitor: PnL Monitor instance for read-only access
         """
         self.results_dir = Path(results_dir)
         self.execution_mode = execution_mode
         self.utility_manager = utility_manager
+        self.pnl_monitor = pnl_monitor
         self.health_status = "healthy"
         self.error_count = 0
         self.queue = asyncio.Queue()
         self.worker_task: Optional[asyncio.Task] = None
         self.is_running = False
         
+        # Get position subscriptions from utility manager config
+        if utility_manager and hasattr(utility_manager, 'config'):
+            position_config = utility_manager.config.get('component_config', {}).get('position_monitor', {})
+            self.position_subscriptions = position_config.get('position_subscriptions', [])
+        else:
+            self.position_subscriptions = []
+        
+        logger.info(f"ResultsStore subscribed to {len(self.position_subscriptions)} positions")
+        
+        # Initialize JSONL logger
+        self.structured_logger = StructuredLogger(
+            component_name='ResultsStore',
+            correlation_id=str(uuid.uuid4().hex),
+            pid=os.getpid(),
+            log_dir=Path("logs/default/0"),
+            engine=None
+        )
+        
         # Create results directory if needed
         self.results_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Log initialization
+        self.structured_logger.info(
+            f"AsyncResultsStore initialized: {results_dir}, mode: {execution_mode}",
+            event_type="component_initialization",
+            metadata={
+                'execution_mode': execution_mode,
+                'config_hash': hash(str(results_dir)),
+                'results_dir': str(results_dir),
+                'queue_size': self.queue.maxsize,
+                'component_type': 'ResultsStore'
+            }
+        )
         
         logger.info(f"AsyncResultsStore initialized: {results_dir}, mode: {execution_mode}")
     
     def _handle_error(self, error: Exception, context: str = "") -> None:
         """Handle errors with structured error handling."""
         self.error_count += 1
-        error_code = f"RS_ERROR_{self.error_count:04d}"
+        
+        # Use specification-compliant error codes
+        if "storage" in context.lower() or "write" in context.lower():
+            error_code = "RST-001"  # Storage Failed
+        elif "queue" in context.lower():
+            error_code = "RST-002"  # Queue Full
+        elif "timeout" in context.lower():
+            error_code = "RST-003"  # Write Timeout
+        else:
+            error_code = "RST-001"  # Default to Storage Failed
         
         logger.error(f"Results Store error {error_code}: {str(error)}", extra={
             'error_code': error_code,
@@ -216,6 +261,19 @@ class AsyncResultsStore:
             'timestamp': timestamp,
             'data': data
         })
+        
+        # Log state update
+        self.structured_logger.info(
+            f"Timestep result queued: {request_id}",
+            event_type="timestep_result_queued",
+            metadata={
+                'request_id': request_id,
+                'timestamp': timestamp.isoformat(),
+                'data_size': len(str(data)),
+                'queue_size': self.queue.qsize()
+            }
+        )
+        
         logger.debug(f"Queued timestep result: {request_id}, {timestamp}")
     
     async def save_final_result(self, request_id: str, data: Dict[str, Any]):
@@ -253,6 +311,12 @@ class AsyncResultsStore:
         request_id = item['request_id']
         timestamp = item['timestamp']
         data = item['data']
+        
+        # Add P&L data if available
+        if self.pnl_monitor:
+            latest_pnl = self.pnl_monitor.get_latest_pnl()
+            if latest_pnl:
+                data['pnl'] = latest_pnl
         
         # Create request directory
         request_dir = self.results_dir / request_id / 'timesteps'
@@ -317,7 +381,7 @@ class AsyncResultsStore:
         """Check if worker is running."""
         return self.is_running and self.worker_task is not None and not self.worker_task.done()
     
-    # Standardized Logging Methods (per 17_HEALTH_ERROR_SYSTEMS.md and 08_EVENT_LOGGER.md)
+    # Standardized Logging Methods (per HEALTH_ERROR_SYSTEMS.md and 08_EVENT_LOGGER.md)
     
     def log_structured_event(self, timestamp: pd.Timestamp, event_type: str, level: str, message: str, component_name: str, data: Optional[Dict[str, Any]] = None, correlation_id: Optional[str] = None) -> None:
         """Log a structured event with standardized format."""
@@ -343,20 +407,6 @@ class AsyncResultsStore:
         except Exception as e:
             logger.error(f"Failed to log structured event: {e}")
     
-    def log_component_event(self, event_type: str, message: str, data: Optional[Dict[str, Any]] = None, level: str = 'INFO') -> None:
-        """Log a component-specific event with automatic timestamp and component name."""
-        try:
-            timestamp = pd.Timestamp.now(tz='UTC')
-            
-            # Use utility_manager for config-driven operations if available
-            if self.utility_manager and event_type == 'config_driven':
-                # Get share class from config via utility_manager
-                share_class = self.utility_manager.get_share_class_from_mode('default')
-                logger.info(f"AsyncResultsStore: Using share class {share_class} from config")
-            
-            self.log_structured_event(timestamp, event_type, level, message, 'AsyncResultsStore', data)
-        except Exception as e:
-            logger.error(f"Failed to log component event: {e}")
     
     def log_performance_metric(self, metric_name: str, value: float, unit: str, data: Optional[Dict[str, Any]] = None) -> None:
         """Log a performance metric."""

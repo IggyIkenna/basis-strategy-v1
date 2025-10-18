@@ -11,25 +11,25 @@ Basis Strategy Core Module
 
 ### 1. Centralized Utility Manager (Task 15)
 - File: backend/src/basis_strategy_v1/core/utilities/utility_manager.py
-- Reference: docs/REFERENCE_ARCHITECTURE_CANONICAL.md - Mode-Specific PnL Calculator
+- Reference: docs/REFERENCE_ARCHITECTURE_CANONICAL.md - Mode-Specific PnL Monitor
 - Purpose: Centralize all utility methods (liquidity index, market prices, conversions)
 - Status: NOT IMPLEMENTED
 
 ### 2. Equity Tracking System (Equity Tracking Task)
 - File: backend/src/basis_strategy_v1/core/equity/equity_calculator.py
-- Reference: docs/specs/04_PNL_CALCULATOR.md - Equity Tracking
+- Reference: docs/specs/04_pnl_monitor.md - Equity Tracking
 - Purpose: Track equity across all venues in share class currency
 - Status: NOT IMPLEMENTED
 
 ### 3. Dust Management System (Dust Management Task)
 - File: backend/src/basis_strategy_v1/core/dust/dust_manager.py
-- Reference: docs/specs/04_PNL_CALCULATOR.md - Dust Management
+- Reference: docs/specs/04_pnl_monitor.md - Dust Management
 - Purpose: Detect and convert dust tokens to share class currency
 - Status: NOT IMPLEMENTED
 
 ### 4. Reserve Management System (Reserve Management Task)
 - File: backend/src/basis_strategy_v1/core/reserves/reserve_manager.py
-- Reference: docs/specs/04_PNL_CALCULATOR.md - Reserve Management
+- Reference: docs/specs/04_pnl_monitor.md - Reserve Management
 - Purpose: Manage withdrawal reserves for fast client redemptions
 - Status: NOT IMPLEMENTED
 

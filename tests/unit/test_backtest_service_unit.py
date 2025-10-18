@@ -18,14 +18,14 @@ class TestBacktestRequest:
     def test_initialization(self):
         """Test BacktestRequest initialization."""
         request = BacktestRequest(
-            strategy_name='pure_lending',
+            strategy_name='pure_lending_usdt',
             start_date=datetime(2024, 1, 1, tzinfo=timezone.utc),
             end_date=datetime(2024, 1, 31, tzinfo=timezone.utc),
             initial_capital=Decimal('10000.0'),
             share_class='USDT'
         )
         
-        assert request.strategy_name == 'pure_lending'
+        assert request.strategy_name == 'pure_lending_usdt'
         assert request.start_date == datetime(2024, 1, 1, tzinfo=timezone.utc)
         assert request.end_date == datetime(2024, 1, 31, tzinfo=timezone.utc)
         assert request.initial_capital == Decimal('10000.0')
@@ -37,7 +37,7 @@ class TestBacktestRequest:
     def test_validation_success(self):
         """Test successful request validation."""
         request = BacktestRequest(
-            strategy_name='pure_lending',
+            strategy_name='pure_lending_usdt',
             start_date=datetime(2024, 1, 1, tzinfo=timezone.utc),
             end_date=datetime(2024, 1, 31, tzinfo=timezone.utc),
             initial_capital=Decimal('10000.0'),
@@ -64,7 +64,7 @@ class TestBacktestRequest:
     def test_validation_invalid_date_range(self):
         """Test validation with invalid date range."""
         request = BacktestRequest(
-            strategy_name='pure_lending',
+            strategy_name='pure_lending_usdt',
             start_date=datetime(2024, 1, 31, tzinfo=timezone.utc),
             end_date=datetime(2024, 1, 1, tzinfo=timezone.utc),  # End before start
             initial_capital=Decimal('10000.0'),
@@ -78,7 +78,7 @@ class TestBacktestRequest:
     def test_validation_invalid_capital(self):
         """Test validation with invalid capital."""
         request = BacktestRequest(
-            strategy_name='pure_lending',
+            strategy_name='pure_lending_usdt',
             start_date=datetime(2024, 1, 1, tzinfo=timezone.utc),
             end_date=datetime(2024, 1, 31, tzinfo=timezone.utc),
             initial_capital=Decimal('0.0'),  # Zero capital
@@ -92,7 +92,7 @@ class TestBacktestRequest:
     def test_validation_missing_share_class(self):
         """Test validation with missing share class."""
         request = BacktestRequest(
-            strategy_name='pure_lending',
+            strategy_name='pure_lending_usdt',
             start_date=datetime(2024, 1, 1, tzinfo=timezone.utc),
             end_date=datetime(2024, 1, 31, tzinfo=timezone.utc),
             initial_capital=Decimal('10000.0'),
@@ -138,7 +138,7 @@ class TestBacktestService:
     def test_create_backtest_config(self, mock_backtest_service):
         """Test backtest configuration creation."""
         request = BacktestRequest(
-            strategy_name='pure_lending',
+            strategy_name='pure_lending_usdt',
             start_date=datetime(2024, 1, 1, tzinfo=timezone.utc),
             end_date=datetime(2024, 1, 31, tzinfo=timezone.utc),
             initial_capital=Decimal('10000.0'),
@@ -147,7 +147,7 @@ class TestBacktestService:
         
         config = mock_backtest_service._create_backtest_config(request)
         
-        assert config['strategy_name'] == 'pure_lending'
+        assert config['strategy_name'] == 'pure_lending_usdt'
         assert config['start_date'] == datetime(2024, 1, 1, tzinfo=timezone.utc)
         assert config['end_date'] == datetime(2024, 1, 31, tzinfo=timezone.utc)
         assert config['initial_capital'] == Decimal('10000.0')
@@ -157,7 +157,7 @@ class TestBacktestService:
     def test_create_backtest_config_with_overrides(self, mock_backtest_service):
         """Test backtest configuration creation with overrides."""
         request = BacktestRequest(
-            strategy_name='pure_lending',
+            strategy_name='pure_lending_usdt',
             start_date=datetime(2024, 1, 1, tzinfo=timezone.utc),
             end_date=datetime(2024, 1, 31, tzinfo=timezone.utc),
             initial_capital=Decimal('10000.0'),
@@ -167,13 +167,13 @@ class TestBacktestService:
         
         config = mock_backtest_service._create_backtest_config(request)
         
-        assert config['strategy_name'] == 'pure_lending'
+        assert config['strategy_name'] == 'pure_lending_usdt'
         assert config['risk_tolerance'] == 'high'  # Override applied
     
     def test_validate_backtest_request_success(self, mock_backtest_service):
         """Test successful backtest request validation."""
         request = BacktestRequest(
-            strategy_name='pure_lending',
+            strategy_name='pure_lending_usdt',
             start_date=datetime(2024, 1, 1, tzinfo=timezone.utc),
             end_date=datetime(2024, 1, 31, tzinfo=timezone.utc),
             initial_capital=Decimal('10000.0'),
@@ -199,7 +199,7 @@ class TestBacktestService:
     def test_initialize_strategy_engine(self, mock_backtest_service):
         """Test strategy engine initialization."""
         config = {
-            'strategy_name': 'pure_lending',
+            'strategy_name': 'pure_lending_usdt',
             'start_date': datetime(2024, 1, 1, tzinfo=timezone.utc),
             'end_date': datetime(2024, 1, 31, tzinfo=timezone.utc),
             'initial_capital': Decimal('10000.0'),
@@ -219,7 +219,7 @@ class TestBacktestService:
     def test_execute_backtest_success(self, mock_backtest_service):
         """Test successful backtest execution."""
         request = BacktestRequest(
-            strategy_name='pure_lending',
+            strategy_name='pure_lending_usdt',
             start_date=datetime(2024, 1, 1, tzinfo=timezone.utc),
             end_date=datetime(2024, 1, 31, tzinfo=timezone.utc),
             initial_capital=Decimal('10000.0'),
@@ -265,7 +265,7 @@ class TestBacktestService:
     def test_execute_backtest_engine_failure(self, mock_backtest_service):
         """Test backtest execution with engine failure."""
         request = BacktestRequest(
-            strategy_name='pure_lending',
+            strategy_name='pure_lending_usdt',
             start_date=datetime(2024, 1, 1, tzinfo=timezone.utc),
             end_date=datetime(2024, 1, 31, tzinfo=timezone.utc),
             initial_capital=Decimal('10000.0'),
@@ -401,7 +401,7 @@ class TestBacktestService:
     def test_edge_case_very_short_backtest(self, mock_backtest_service):
         """Test edge case with very short backtest period."""
         request = BacktestRequest(
-            strategy_name='pure_lending',
+            strategy_name='pure_lending_usdt',
             start_date=datetime(2024, 1, 1, tzinfo=timezone.utc),
             end_date=datetime(2024, 1, 2, tzinfo=timezone.utc),  # 1 day
             initial_capital=Decimal('10000.0'),
@@ -422,7 +422,7 @@ class TestBacktestService:
     def test_edge_case_very_long_backtest(self, mock_backtest_service):
         """Test edge case with very long backtest period."""
         request = BacktestRequest(
-            strategy_name='pure_lending',
+            strategy_name='pure_lending_usdt',
             start_date=datetime(2020, 1, 1, tzinfo=timezone.utc),
             end_date=datetime(2024, 12, 31, tzinfo=timezone.utc),  # 5 years
             initial_capital=Decimal('10000.0'),
@@ -443,7 +443,7 @@ class TestBacktestService:
     def test_edge_case_zero_capital(self, mock_backtest_service):
         """Test edge case with zero initial capital."""
         request = BacktestRequest(
-            strategy_name='pure_lending',
+            strategy_name='pure_lending_usdt',
             start_date=datetime(2024, 1, 1, tzinfo=timezone.utc),
             end_date=datetime(2024, 1, 31, tzinfo=timezone.utc),
             initial_capital=Decimal('0.0'),  # Zero capital

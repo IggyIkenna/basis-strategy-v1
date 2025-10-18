@@ -1,0 +1,224 @@
+{
+    "project": "Basis Strategy Trading Framework",
+    "task": "Fix Remaining Strategy Tests",
+    "last_updated": "2024-12-19",
+    "test_status": {
+        "total_tests": 170,
+        "passing": 141,
+        "failing": 29,
+        "pass_rate": 83.0,
+        "coverage": 64.0,
+        "target_coverage": 80.0
+    },
+    "progress": {
+        "initial_failed": 56,
+        "current_failed": 29,
+        "tests_fixed": 27,
+        "improvement_rate": 48.2
+    },
+    "failed_tests_by_file": {
+        "test_eth_leveraged_strategy_unit.py": {
+            "failures": 2,
+            "issues": [
+                "test_create_exit_partial_orders - assert 0 >= 3",
+                "test_create_dust_sell_orders - AttributeError: 'NoneType' object has no attribute 'venue'"
+            ],
+            "priority": "high"
+        },
+        "test_eth_staking_only_strategy_unit.py": {
+            "failures": 1,
+            "issues": [
+                "test_create_dust_sell_orders - StopIteration"
+            ],
+            "priority": "medium"
+        },
+        "test_ml_btc_directional_btc_margin_strategy_unit.py": {
+            "failures": 2,
+            "issues": [
+                "test_create_exit_full_orders - assert 0 == 1",
+                "test_create_exit_partial_orders - assert 0 == 1"
+            ],
+            "priority": "high"
+        },
+        "test_ml_btc_directional_usdt_margin_strategy_unit.py": {
+            "failures": 2,
+            "issues": [
+                "test_create_exit_full_orders - assert 0 == 1",
+                "test_create_exit_partial_orders - assert 0 == 1"
+            ],
+            "priority": "high"
+        },
+        "test_pure_lending_eth_strategy_unit.py": {
+            "failures": 3,
+            "issues": [
+                "test_generate_orders_entry_full - AssertionError: assert [] == [<Mock id='...'>]",
+                "test_create_exit_full_orders - assert 0 == 1",
+                "test_get_asset_price_error_handling - AssertionError: assert 2 == 0"
+            ],
+            "priority": "high"
+        },
+        "test_pure_lending_usdt_strategy_unit.py": {
+            "failures": 2,
+            "issues": [
+                "test_create_exit_full_orders - assert 0 == 1",
+                "test_get_asset_price_error_handling - AssertionError: assert 2 == 0"
+            ],
+            "priority": "high"
+        },
+        "test_usdt_eth_staking_hedged_leveraged_strategy_unit.py": {
+            "failures": 8,
+            "issues": [
+                "test_generate_orders_entry_full - AttributeError: 'USDTETHStakingHedgedLeveragedStrategy' object has no attribute 'log_error'",
+                "test_create_entry_full_orders - AssertionError: assert 'etherfi' == 'weETH'",
+                "test_create_entry_partial_orders - assert 0 >= 4",
+                "test_create_exit_full_orders - assert 0 >= 3",
+                "test_create_exit_partial_orders - assert 0 >= 3",
+                "test_create_dust_sell_orders - assert 0 == 2",
+                "test_calculate_target_position - AssertionError: assert 'weeth_balance' in {...}",
+                "test_order_operation_id_format - AssertionError: assert 'supply' == 'usdt'",
+                "test_get_asset_price_error_handling - AssertionError: assert 1 == 0"
+            ],
+            "priority": "high"
+        },
+        "test_usdt_eth_staking_hedged_simple_strategy_unit.py": {
+            "failures": 9,
+            "issues": [
+                "test_generate_orders_entry_full - AssertionError: expected call not found",
+                "test_create_entry_full_orders - AssertionError: assert 1.6666666666666667 == (10000.0 / 3000.0)",
+                "test_create_entry_partial_orders - assert 1 == 2",
+                "test_create_exit_full_orders - assert 0 == 2",
+                "test_create_exit_partial_orders - assert 0 == 2",
+                "test_create_dust_sell_orders - assert 0 == 2",
+                "test_calculate_target_position - AssertionError: assert 'weeth_balance' in {...}",
+                "test_order_operation_id_format - AssertionError: assert 'buy' == 'usdt'",
+                "test_get_asset_price_error_handling - AssertionError: assert 1 == 0"
+            ],
+            "priority": "high"
+        }
+    },
+    "common_issue_patterns": {
+        "exit_order_count_mismatches": {
+            "count": 12,
+            "pattern": "assert 0 == 1 or assert 0 >= N",
+            "root_cause": "Missing position mocking in exit order tests",
+            "fix": "Mock strategy.position_monitor.get_current_position.return_value"
+        },
+        "dust_sell_order_issues": {
+            "count": 3,
+            "pattern": "StopIteration or AttributeError: 'NoneType' object has no attribute 'venue'",
+            "root_cause": "_create_dust_sell_orders method not creating expected orders",
+            "fix": "Investigate and fix dust sell order creation logic"
+        },
+        "target_position_key_mismatches": {
+            "count": 4,
+            "pattern": "AssertionError: assert 'expected_key' in {...}",
+            "root_cause": "Test expects different keys than what calculate_target_position returns",
+            "fix": "Update test assertions to match actual return keys"
+        },
+        "operation_id_format_issues": {
+            "count": 3,
+            "pattern": "AssertionError: assert 'expected' == 'actual'",
+            "root_cause": "Test expects different operation ID format than actual",
+            "fix": "Update test assertions to match actual operation ID format"
+        },
+        "generate_orders_issues": {
+            "count": 2,
+            "pattern": "AssertionError: assert [] == [<Mock id='...'>]",
+            "root_cause": "generate_orders method not calling expected internal methods",
+            "fix": "Mock internal methods or adjust test expectations"
+        },
+        "log_error_method_issues": {
+            "count": 1,
+            "pattern": "AttributeError: 'Strategy' object has no attribute 'log_error'",
+            "root_cause": "Strategy calls self.log_error() but method doesn't exist",
+            "fix": "Replace with self.logger.error()"
+        }
+    },
+    "strategy_types": {
+        "eth_leveraged": {
+            "file": "test_eth_leveraged_strategy_unit.py",
+            "failures": 2,
+            "status": "mostly_fixed"
+        },
+        "eth_staking_only": {
+            "file": "test_eth_staking_only_strategy_unit.py",
+            "failures": 1,
+            "status": "mostly_fixed"
+        },
+        "ml_btc_directional_btc_margin": {
+            "file": "test_ml_btc_directional_btc_margin_strategy_unit.py",
+            "failures": 2,
+            "status": "mostly_fixed"
+        },
+        "ml_btc_directional_usdt_margin": {
+            "file": "test_ml_btc_directional_usdt_margin_strategy_unit.py",
+            "failures": 2,
+            "status": "mostly_fixed"
+        },
+        "pure_lending_eth": {
+            "file": "test_pure_lending_eth_strategy_unit.py",
+            "failures": 3,
+            "status": "partially_fixed"
+        },
+        "pure_lending_usdt": {
+            "file": "test_pure_lending_usdt_strategy_unit.py",
+            "failures": 2,
+            "status": "partially_fixed"
+        },
+        "usdt_eth_staking_hedged_leveraged": {
+            "file": "test_usdt_eth_staking_hedged_leveraged_strategy_unit.py",
+            "failures": 8,
+            "status": "needs_work"
+        },
+        "usdt_eth_staking_hedged_simple": {
+            "file": "test_usdt_eth_staking_hedged_simple_strategy_unit.py",
+            "failures": 9,
+            "status": "needs_work"
+        }
+    },
+    "fix_priorities": [
+        {
+            "priority": 1,
+            "pattern": "exit_order_count_mismatches",
+            "files": [
+                "test_ml_btc_directional_*_strategy_unit.py",
+                "test_pure_lending_*_strategy_unit.py"
+            ],
+            "effort": "low",
+            "impact": "high"
+        },
+        {
+            "priority": 2,
+            "pattern": "dust_sell_order_issues",
+            "files": [
+                "test_eth_leveraged_strategy_unit.py",
+                "test_eth_staking_only_strategy_unit.py"
+            ],
+            "effort": "medium",
+            "impact": "medium"
+        },
+        {
+            "priority": 3,
+            "pattern": "hedged_strategy_issues",
+            "files": [
+                "test_usdt_eth_staking_hedged_*_strategy_unit.py"
+            ],
+            "effort": "high",
+            "impact": "high"
+        }
+    ],
+    "commands": {
+        "run_all_tests": "python -m pytest tests/unit/strategies/ --cov=backend/src/basis_strategy_v1/core/strategies --cov-report=term-missing --tb=no -q",
+        "run_specific_file": "python -m pytest tests/unit/strategies/{filename} -v",
+        "run_specific_test": "python -m pytest tests/unit/strategies/{filename}::{test_class}::{test_method} -v",
+        "check_coverage": "python -m pytest tests/unit/strategies/ --cov=backend/src/basis_strategy_v1/core/strategies --cov-report=term-missing"
+    },
+    "file_locations": {
+        "test_files": "tests/unit/strategies/",
+        "strategy_implementations": "backend/src/basis_strategy_v1/core/strategies/",
+        "order_models": "backend/src/basis_strategy_v1/core/models/order.py",
+        "base_strategy": "backend/src/basis_strategy_v1/core/strategies/base_strategy_manager.py",
+        "strategy_specs": "docs/STRATEGY_MODES.md",
+        "refactor_plan": ".cursor/plans/complete-strategy-architecture-refactor-ee7dbf9c.plan.md"
+    }
+}

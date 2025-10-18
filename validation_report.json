@@ -52,9 +52,9 @@
         "has_target_apy": true,
         "has_max_drawdown": true
       },
-      "pure_lending": {
+      "pure_lending_usdt": {
         "status": "loaded",
-        "mode": "pure_lending",
+        "mode": "pure_lending_usdt",
         "share_class": "USDT",
         "data_requirements": [
           "usdt_prices",
@@ -227,7 +227,7 @@
       }
     },
     "data_loading": {
-      "pure_lending": {
+      "pure_lending_usdt": {
         "status": "error",
         "error": "DataProvider.__init__() got an unexpected keyword argument 'execution_mode'"
       },
@@ -247,7 +247,7 @@
   },
   "integration_tests": {
     "engine_tests": {
-      "pure_lending": {
+      "pure_lending_usdt": {
         "status": "error",
         "error": "EventDrivenStrategyEngine.__init__() missing 4 required positional arguments: 'execution_mode', 'data_provider', 'initial_capital', and 'share_class'"
       },
@@ -263,11 +263,11 @@
   },
   "errors": [
     "Base config not found: configs/local.json",
-    "Data loading failed for pure_lending: DataProvider.__init__() got an unexpected keyword argument 'execution_mode'",
+    "Data loading failed for pure_lending_usdt: DataProvider.__init__() got an unexpected keyword argument 'execution_mode'",
     "Data loading failed for btc_basis: DataProvider.__init__() got an unexpected keyword argument 'execution_mode'",
     "Data loading failed for eth_leveraged: DataProvider.__init__() got an unexpected keyword argument 'execution_mode'",
     "Data loading failed for usdt_market_neutral: DataProvider.__init__() got an unexpected keyword argument 'execution_mode'",
-    "Engine initialization failed for pure_lending: EventDrivenStrategyEngine.__init__() missing 4 required positional arguments: 'execution_mode', 'data_provider', 'initial_capital', and 'share_class'",
+    "Engine initialization failed for pure_lending_usdt: EventDrivenStrategyEngine.__init__() missing 4 required positional arguments: 'execution_mode', 'data_provider', 'initial_capital', and 'share_class'",
     "Engine initialization failed for btc_basis: EventDrivenStrategyEngine.__init__() missing 4 required positional arguments: 'execution_mode', 'data_provider', 'initial_capital', and 'share_class'",
     "Engine initialization failed for eth_leveraged: EventDrivenStrategyEngine.__init__() missing 4 required positional arguments: 'execution_mode', 'data_provider', 'initial_capital', and 'share_class'"
   ],

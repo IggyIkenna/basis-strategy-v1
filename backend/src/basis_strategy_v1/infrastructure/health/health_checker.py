@@ -11,6 +11,7 @@ Reference: docs/ARCHITECTURAL_DECISION_RECORDS.md - ADR-008 (Health System Unifi
 import os
 import time
 import psutil
+import structlog
 from datetime import datetime, timedelta
 from typing import Dict, List, Any, Optional
 from dataclasses import dataclass
@@ -124,14 +125,14 @@ class DataProviderHealthCheck(ComponentHealthCheck):
         
         # Check if data directory exists and is accessible
         data_dir = os.getenv('BASIS_DATA_DIR', 'data')
-        # Debug logging - use print for immediate visibility
-        print(f"DEBUG: Data provider health check - BASIS_DATA_DIR: {os.getenv('BASIS_DATA_DIR')}, data_dir: {data_dir}")
-        print(f"DEBUG: Current working directory: {os.getcwd()}")
-        print(f"DEBUG: All BASIS_ env vars: {[k for k in os.environ.keys() if k.startswith('BASIS_')]}")
+        # Debug logging
+        logger.debug(f"Data provider health check - BASIS_DATA_DIR: {os.getenv('BASIS_DATA_DIR')}, data_dir: {data_dir}")
+        logger.debug(f"Current working directory: {os.getcwd()}")
+        logger.debug(f"All BASIS_ env vars: {[k for k in os.environ.keys() if k.startswith('BASIS_')]}")
         # Resolve relative paths to absolute paths
         if not os.path.isabs(data_dir):
             data_dir = os.path.abspath(data_dir)
-        print(f"DEBUG: Resolved data_dir: {data_dir}, exists: {os.path.exists(data_dir)}")
+        logger.debug(f"Resolved data_dir: {data_dir}, exists: {os.path.exists(data_dir)}")
         
         if not os.path.exists(data_dir):
             return 'unhealthy', f'Data directory not found: {data_dir}', details

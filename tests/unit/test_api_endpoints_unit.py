@@ -105,7 +105,7 @@ class TestAPIEndpoints:
         from backend.src.basis_strategy_v1.api.main import app
         
         with TestClient(app) as client:
-            response = client.get("/api/v1/strategies/pure_lending/parameters")
+            response = client.get("/api/v1/strategies/pure_lending_usdt/parameters")
             
             assert response.status_code == 200
             data = response.json()
@@ -118,7 +118,7 @@ class TestAPIEndpoints:
         from backend.src.basis_strategy_v1.api.main import app
         
         backtest_request = {
-            "strategy_name": "pure_lending",
+            "strategy_name": "pure_lending_usdt",
             "start_date": "2024-01-01",
             "end_date": "2024-01-31",
             "initial_capital": 100000.0,
@@ -274,7 +274,7 @@ class TestAPIEndpoints:
             
             # Test missing required fields
             incomplete_request = {
-                "strategy_name": "pure_lending"
+                "strategy_name": "pure_lending_usdt"
                 # Missing required fields
             }
             

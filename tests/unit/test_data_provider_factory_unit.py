@@ -48,7 +48,7 @@ class MockETHBasisDataProvider(MockBaseDataProvider):
 class MockPureLendingDataProvider(MockBaseDataProvider):
     def __init__(self, data_dir: str, mode: str = 'backtest'):
         super().__init__(data_dir, mode)
-        self.provider_type = 'pure_lending'
+        self.provider_type = 'pure_lending_usdt'
 
 class MockETHLeveragedDataProvider(MockBaseDataProvider):
     def __init__(self, data_dir: str, mode: str = 'backtest'):
@@ -98,7 +98,7 @@ class MockDataProviderFactory:
         'live': MockLiveDataProvider,
         'btc_basis': MockBTCBasisDataProvider,
         'eth_basis': MockETHBasisDataProvider,
-        'pure_lending': MockPureLendingDataProvider,
+        'pure_lending_usdt': MockPureLendingDataProvider,
         'eth_leveraged': MockETHLeveragedDataProvider,
         'eth_staking_only': MockETHStakingOnlyDataProvider,
         'usdt_market_neutral': MockUSDTMarketNeutralDataProvider,
@@ -222,16 +222,16 @@ class TestDataProviderFactory:
         assert provider.data_dir == mock_data_dir
         assert provider.mode == 'backtest'
 
-    def test_create_pure_lending_data_provider(self, mock_data_dir):
+    def test_create_pure_lending_usdt_data_provider(self, mock_data_dir):
         """Test creating pure lending data provider."""
         provider = MockDataProviderFactory.create_data_provider(
-            provider_type='pure_lending',
+            provider_type='pure_lending_usdt',
             data_dir=mock_data_dir,
             mode='backtest'
         )
         
         assert isinstance(provider, MockPureLendingDataProvider)
-        assert provider.provider_type == 'pure_lending'
+        assert provider.provider_type == 'pure_lending_usdt'
         assert provider.data_dir == mock_data_dir
         assert provider.mode == 'backtest'
 
@@ -327,7 +327,7 @@ class TestDataProviderFactory:
         supported_types = MockDataProviderFactory.get_supported_provider_types()
         
         expected_types = [
-            'historical', 'live', 'btc_basis', 'eth_basis', 'pure_lending',
+            'historical', 'live', 'btc_basis', 'eth_basis', 'pure_lending_usdt',
             'eth_leveraged', 'eth_staking_only', 'usdt_market_neutral',
             'usdt_market_neutral_no_leverage', 'ml_directional',
             'config_driven_historical'
@@ -344,7 +344,7 @@ class TestDataProviderFactory:
         assert MockDataProviderFactory.is_provider_type_supported('live') is True
         assert MockDataProviderFactory.is_provider_type_supported('btc_basis') is True
         assert MockDataProviderFactory.is_provider_type_supported('eth_basis') is True
-        assert MockDataProviderFactory.is_provider_type_supported('pure_lending') is True
+        assert MockDataProviderFactory.is_provider_type_supported('pure_lending_usdt') is True
         assert MockDataProviderFactory.is_provider_type_supported('eth_leveraged') is True
         assert MockDataProviderFactory.is_provider_type_supported('eth_staking_only') is True
         assert MockDataProviderFactory.is_provider_type_supported('usdt_market_neutral') is True
@@ -460,7 +460,7 @@ class TestDataProviderFactory:
             'live',
             'btc_basis',
             'eth_basis',
-            'pure_lending',
+            'pure_lending_usdt',
             'eth_leveraged',
             'eth_staking_only',
             'usdt_market_neutral',

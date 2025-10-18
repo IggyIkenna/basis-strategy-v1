@@ -1,7 +1,7 @@
 {
   "initial_margin_requirement": 0.05,
-  "maintenance_margin_requirement": 0.01,
-  "liquidation_threshold": 0.10,
+  "maintenance_margin_requirement": 0.1,
+  "liquidation_threshold": 0.05,
   "max_leverage": 20,
   "margin_call_threshold": 0.15,
   "funding_rate_interval_hours": 8,

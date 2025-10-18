@@ -22,7 +22,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "backend" / "src"))
 
 from basis_strategy_v1.core.strategies.strategy_factory import StrategyFactory, create_strategy
 from basis_strategy_v1.core.strategies.base_strategy_manager import BaseStrategyManager, StrategyAction
-from basis_strategy_v1.core.strategies.pure_lending_strategy import PureLendingStrategy
+from basis_strategy_v1.core.strategies.pure_lending_usdt_strategy import PureLendingStrategy
 from basis_strategy_v1.core.strategies.components.strategy_manager import StrategyManager
 
 # Configure logging
@@ -150,17 +150,17 @@ class StrategyManagerRefactorQualityGates:
                 return False
             
             # Test mode support checking
-            is_pure_lending_supported = StrategyFactory.is_mode_supported('pure_lending')
-            if isinstance(is_pure_lending_supported, bool):
-                self.log_test_result("Mode Support Checking", True, f"Pure lending supported: {is_pure_lending_supported}")
+            is_pure_lending_usdt_supported = StrategyFactory.is_mode_supported('pure_lending_usdt')
+            if isinstance(is_pure_lending_usdt_supported, bool):
+                self.log_test_result("Mode Support Checking", True, f"Pure lending supported: {is_pure_lending_usdt_supported}")
             else:
                 self.log_test_result("Mode Support Checking", False, "Invalid mode support result")
                 return False
             
             # Test strategy creation
-            config = {'mode': 'pure_lending', 'share_class': 'USDT', 'asset': 'USDT'}
+            config = {'mode': 'pure_lending_usdt', 'share_class': 'USDT', 'asset': 'USDT'}
             strategy = StrategyFactory.create_strategy(
-                mode='pure_lending',
+                mode='pure_lending_usdt',
                 config=config,
                 risk_monitor=None,
                 position_monitor=None,
@@ -193,14 +193,14 @@ class StrategyManagerRefactorQualityGates:
             self.log_test_result("Strategy Factory", False, f"Exception: {e}")
             return False
     
-    def test_pure_lending_strategy(self) -> bool:
+    def test_pure_lending_usdt_strategy(self) -> bool:
         """Test pure lending strategy implementation."""
         print("\n🔍 Testing Pure Lending Strategy...")
         
         try:
             # Create strategy instance
             config = {
-                'mode': 'pure_lending',
+                'mode': 'pure_lending_usdt',
                 'share_class': 'USDT',
                 'asset': 'USDT',
                 'lending_enabled': True,
@@ -324,7 +324,7 @@ class StrategyManagerRefactorQualityGates:
         try:
             # Create strategy manager
             config = {
-                'mode': 'pure_lending',
+                'mode': 'pure_lending_usdt',
                 'share_class': 'USDT',
                 'asset': 'USDT'
             }
@@ -361,7 +361,7 @@ class StrategyManagerRefactorQualityGates:
         tests = [
             self.test_base_strategy_manager,
             self.test_strategy_factory,
-            self.test_pure_lending_strategy,
+            self.test_pure_lending_usdt_strategy,
             self.test_strategy_action_model,
             self.test_strategy_manager_integration
         ]

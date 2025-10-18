@@ -11,7 +11,7 @@ from pathlib import Path
 STANDARDIZED_LOGGING_METHODS = """
 ## Standardized Logging Methods
 
-**Note**: These methods are defined in the [Health & Error Systems](17_HEALTH_ERROR_SYSTEMS.md) spec and should be implemented by all components for consistent logging patterns.
+**Note**: These methods are defined in the [Health & Error Systems](HEALTH_ERROR_SYSTEMS.md) spec and should be implemented by all components for consistent logging patterns.
 
 ### log_structured_event(timestamp, event_type, level, message, component_name, data=None, correlation_id=None)
 Log a structured event with standardized format.

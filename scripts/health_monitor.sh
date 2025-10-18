@@ -12,10 +12,24 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Configuration
-HEALTH_ENDPOINT=${HEALTH_CHECK_ENDPOINT:-/health}
+HEALTH_ENDPOINT=${HEALTH_CHECK_ENDPOINT:-/health/}
 BACKEND_PORT=${BASIS_API_PORT:-8001}
 MAX_RETRIES=3
 RETRY_COUNT=0
+
+# Function to find the actual backend port
+find_backend_port() {
+    # Look for uvicorn processes and extract the port, preferring the newest (highest PID)
+    local port=$(ps aux | grep uvicorn | grep -v grep | grep -o '\--port [0-9]*' | awk '{print $2}' | tail -1)
+    if [ -n "$port" ]; then
+        echo "$port"
+    else
+        echo "$BACKEND_PORT"  # Fallback to configured port
+    fi
+}
+
+# Update backend port to actual running port
+BACKEND_PORT=$(find_backend_port)
 
 # Logging
 LOG_FILE="logs/health_monitor.log"
@@ -52,23 +66,131 @@ check_health() {
     fi
 }
 
-# Function to restart services
+# Function to restart services on the same port
 restart_services() {
-    log "🔄 Restarting services (attempt $((RETRY_COUNT + 1))/$MAX_RETRIES)"
+    log "🔄 Restarting backend on port $BACKEND_PORT (attempt $((RETRY_COUNT + 1))/$MAX_RETRIES)"
     
     # Get the directory where this script is located
     local script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
     local project_root="$(dirname "$script_dir")"
     
-    # Change to project root and restart
+    # Change to project root
     cd "$project_root"
     
-    if ./platform.sh restart; then
-        log "✅ Services restarted successfully"
+    # Kill all uvicorn processes to ensure clean restart
+    log "🛑 Stopping all backend processes..."
+    pkill -f uvicorn 2>/dev/null || true
+    
+    # Also kill any python processes using the port
+    local port_pid=$(lsof -ti :$BACKEND_PORT 2>/dev/null || true)
+    if [ -n "$port_pid" ]; then
+        log "🛑 Killing process $port_pid using port $BACKEND_PORT..."
+        kill -9 $port_pid 2>/dev/null || true
+    fi
+    
+    # Wait for port to be free
+    log "⏳ Waiting for port $BACKEND_PORT to be free..."
+    local port_wait=0
+    while [ $port_wait -lt 10 ]; do
+        if ! lsof -i :$BACKEND_PORT >/dev/null 2>&1; then
+            break
+        fi
+        sleep 1
+        port_wait=$((port_wait + 1))
+    done
+    
+    # Start backend on the same port
+    log "🚀 Starting backend on port $BACKEND_PORT..."
+    mkdir -p backend/logs
+    
+    # Load environment variables before starting backend (matching platform.sh exactly)
+    log "🔧 Loading environment variables for restart..."
+    
+    # Preserve BASIS_ENVIRONMENT if it was set before loading env.unified
+    local original_environment=${BASIS_ENVIRONMENT:-}
+    
+    # Load base environment from env.unified
+    if [ -f "env.unified" ]; then
+        log "📋 Loading base environment from env.unified..."
+        set -a
+        source env.unified
+        set +a
+    else
+        log "❌ env.unified not found"
+        return 1
+    fi
+    
+    # Restore original BASIS_ENVIRONMENT if it was set
+    if [ -n "$original_environment" ]; then
+        export BASIS_ENVIRONMENT="$original_environment"
+    fi
+    
+    # Load environment-specific override file
+    local environment=${BASIS_ENVIRONMENT:-dev}
+    log "🏗️ Environment: $environment"
+    
+    case $environment in
+        "dev")
+            if [ -f ".env.dev" ]; then
+                log "📋 Loading local overrides from .env.dev..."
+                set -a
+                source .env.dev
+                set +a
+            else
+                log "⚠️ .env.dev not found, using base configuration"
+            fi
+            ;;
+        "staging")
+            if [ -f ".env.staging" ]; then
+                log "📋 Loading staging overrides from .env.staging..."
+                set -a
+                source .env.staging
+                set +a
+            else
+                log "⚠️ .env.staging not found, using base configuration"
+            fi
+            ;;
+        "prod")
+            if [ -f ".env.production" ]; then
+                log "📋 Loading production overrides from .env.production..."
+                set -a
+                source .env.production
+                set +a
+            else
+                log "⚠️ .env.production not found, using base configuration"
+            fi
+            ;;
+        *)
+            log "⚠️ Unknown environment: $environment, using base configuration"
+            ;;
+    esac
+    
+    # Note: We don't override BASIS_EXECUTION_MODE here - let the environment files control it
+    # This allows the health monitor to restart in the same mode the platform was originally started
+    
+    # Start backend with same environment variables
+    local reload_flag=""
+    if [ "${BASIS_HOT_RELOAD:-false}" = "true" ]; then
+        reload_flag="--reload"
+        log "🔥 Hot reload enabled"
+    else
+        log "❄️ Hot reload disabled"
+    fi
+    
+    nohup python3 -m uvicorn backend.src.basis_strategy_v1.api.main:app --host 0.0.0.0 --port $BACKEND_PORT $reload_flag > backend/logs/api.log 2>&1 &
+    local backend_pid=$!
+    
+    # Wait for backend to start
+    log "⏳ Waiting for backend to start..."
+    sleep 5
+    
+    # Check if backend is healthy
+    if curl -s --connect-timeout 3 --max-time 5 http://localhost:$BACKEND_PORT$HEALTH_ENDPOINT >/dev/null 2>&1; then
+        log "✅ Backend restarted successfully on port $BACKEND_PORT (PID: $backend_pid)"
         RETRY_COUNT=0  # Reset retry count on success
         return 0
     else
-        log "❌ Service restart failed"
+        log "❌ Backend restart failed - health check failed"
         RETRY_COUNT=$((RETRY_COUNT + 1))
         return 1
     fi
@@ -97,6 +219,10 @@ main() {
     local interval_seconds
     interval_seconds=$(parse_interval "$HEALTH_CHECK_INTERVAL")
     log "  - Check Interval (seconds): $interval_seconds"
+    
+    # Wait longer for initial startup before starting health checks
+    log "⏳ Waiting 30 seconds for backend to fully start up..."
+    sleep 30
     
     # Main monitoring loop
     while true; do

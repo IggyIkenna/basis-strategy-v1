@@ -17,7 +17,7 @@ interface ReviewStepProps {
 export function ReviewStep({ config, onComplete }: ReviewStepProps) {
   const getModeDisplayName = (mode: string) => {
     const modeNames: Record<string, string> = {
-      pure_lending: 'Pure Lending',
+      pure_lending_usdt: 'Pure Lending',
       btc_basis: 'BTC Basis Trading',
       usdt_market_neutral: 'USDT Market Neutral',
       eth_leveraged: 'ETH Leveraged'
@@ -27,7 +27,7 @@ export function ReviewStep({ config, onComplete }: ReviewStepProps) {
 
   const getRiskLevel = (mode: string) => {
     const riskLevels: Record<string, { level: string; color: string; description: string }> = {
-      pure_lending: { level: 'Low', color: 'text-green-600 bg-green-100', description: 'Conservative strategy with minimal risk' },
+      pure_lending_usdt: { level: 'Low', color: 'text-green-600 bg-green-100', description: 'Conservative strategy with minimal risk' },
       btc_basis: { level: 'Medium', color: 'text-yellow-600 bg-yellow-100', description: 'Moderate risk with basis trading' },
       usdt_market_neutral: { level: 'Medium', color: 'text-yellow-600 bg-yellow-100', description: 'Balanced risk-return profile' },
       eth_leveraged: { level: 'High', color: 'text-red-600 bg-red-100', description: 'High risk with leveraged positions' }
@@ -37,7 +37,7 @@ export function ReviewStep({ config, onComplete }: ReviewStepProps) {
 
   const getEstimatedAPY = (mode: string) => {
     const apyEstimates: Record<string, string> = {
-      pure_lending: '8-12%',
+      pure_lending_usdt: '8-12%',
       btc_basis: '15-25%',
       usdt_market_neutral: '12-18%',
       eth_leveraged: '20-35%'

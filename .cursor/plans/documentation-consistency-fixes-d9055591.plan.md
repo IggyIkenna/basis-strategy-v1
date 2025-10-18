@@ -47,7 +47,7 @@ Each of the 11 main components gets its own event log file:
 logs/events/position_monitor_events.jsonl
 logs/events/exposure_monitor_events.jsonl
 logs/events/risk_monitor_events.jsonl
-logs/events/pnl_calculator_events.jsonl
+logs/events/pnl_monitor_events.jsonl
 logs/events/strategy_manager_events.jsonl
 logs/events/execution_manager_events.jsonl
 logs/events/execution_interface_manager_events.jsonl
@@ -120,7 +120,7 @@ def _health_check(self) -> Dict:
 - **degraded**: Minor errors, slower processing, retries succeeding
 - **unhealthy**: Critical errors, failed retries → 503 response → alert → restart
 
-**Reference**: `docs/specs/17_HEALTH_ERROR_SYSTEMS.md`
+**Reference**: `docs/specs/HEALTH_ERROR_SYSTEMS.md`
 
 ---
 
@@ -180,7 +180,7 @@ def __init__(self, ...):
 From `self.config` (strategy mode slice):
 
 #### Universal Config (All Components)
-- `mode`: str - e.g., 'eth_basis', 'pure_lending'
+- `mode`: str - e.g., 'eth_basis', 'pure_lending_usdt'
 - `share_class`: str - 'usdt_stable' | 'eth_directional'
 - `initial_capital`: float - Starting capital
 
@@ -260,7 +260,7 @@ def update_state(self, timestamp: pd.Timestamp, trigger_source: str):
 1. `logs/events/position_monitor_events.jsonl`
 2. `logs/events/exposure_monitor_events.jsonl`
 3. `logs/events/risk_monitor_events.jsonl`
-4. `logs/events/pnl_calculator_events.jsonl`
+4. `logs/events/pnl_monitor_events.jsonl`
 5. `logs/events/strategy_manager_events.jsonl`
 6. `logs/events/execution_manager_events.jsonl`
 7. `logs/events/execution_interface_manager_events.jsonl`
@@ -477,7 +477,7 @@ def _health_check(self) -> Dict:
 5. Monitoring system alerts operators
 6. Auto-restart triggered (if configured)
 
-**Reference**: `docs/specs/17_HEALTH_ERROR_SYSTEMS.md`
+**Reference**: `docs/specs/HEALTH_ERROR_SYSTEMS.md`
 
 ````
 
@@ -617,7 +617,7 @@ Math Utilities, Health/Error, Frontend, Configuration
 
 - [ ] Create 3 new architecture pattern docs (REFERENCE_ARCHITECTURE.md, SHARED_CLOCK_PATTERN.md, REQUEST_ISOLATION_PATTERN.md)
 - [ ] Create 2 new component specs (10_RECONCILIATION_COMPONENT.md, 11_POSITION_UPDATE_HANDLER.md)
-- [ ] Restructure 4 execution layer docs (05_STRATEGY_MANAGER, 06_EXECUTION_MANAGER new, 07_EXECUTION_INTERFACE_MANAGER new, 08_EXECUTION_INTERFACES new), delete old 06/07
+- [ ] Restructure 4 execution layer docs (05_STRATEGY_MANAGER, 06_VENUE_MANAGER new, 07_VENUE_INTERFACE_MANAGER new, 08_EXECUTION_INTERFACES new), delete old 06/07
 - [ ] Update 9 existing component specs with reference-based architecture, shared clock, no async, standardized update_state signature
 - [ ] Update 5 high-level architecture docs (ARCHITECTURAL_DECISIONS, TIGHT_LOOP_ARCHITECTURE, WORKFLOW_GUIDE, CONFIGURATION, DEVIATIONS_AND_CORRECTIONS)
 - [ ] Final pass: remove contradictions, add cross-references, standardize terminology, validate all 11 components follow same structure

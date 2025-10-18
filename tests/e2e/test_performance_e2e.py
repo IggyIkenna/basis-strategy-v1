@@ -52,7 +52,7 @@ class PerformanceValidator:
                 response = requests.post(
                     f"{self.api_base_url}/api/v1/backtest/submit",
                     json={
-                        "strategy": "pure_lending",
+                        "strategy": "pure_lending_usdt",
                         "start_date": test_case["start_date"],
                         "end_date": test_case["end_date"]
                     },

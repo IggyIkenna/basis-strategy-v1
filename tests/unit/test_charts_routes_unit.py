@@ -67,18 +67,18 @@ class TestChartsRoutes:
         with patch('basis_strategy_v1.api.routes.charts.get_backtest_service', return_value=mock_backtest_service):
             # Mock the service response
             mock_backtest_service.get_result.return_value = {
-                "strategy_name": "pure_lending",
+                "strategy_name": "pure_lending_usdt",
                 "status": "completed"
             }
             
             # Mock file system to return existing charts
             mock_chart_file = Mock()
-            mock_chart_file.stem = "test_id_pure_lending_equity_curve"
-            mock_chart_file.name = "test_id_pure_lending_equity_curve.html"
+            mock_chart_file.stem = "test_id_pure_lending_usdt_equity_curve"
+            mock_chart_file.name = "test_id_pure_lending_usdt_equity_curve.html"
             mock_chart_file.is_dir = lambda: False
             
             mock_dir = Mock()
-            mock_dir.name = "test_id_pure_lending"
+            mock_dir.name = "test_id_pure_lending_usdt"
             mock_dir.is_dir = lambda: True
             mock_dir.iterdir = lambda: [mock_chart_file]
             
@@ -116,7 +116,7 @@ class TestChartsRoutes:
         """Test successful chart retrieval."""
         with patch('basis_strategy_v1.api.routes.charts.get_backtest_service', return_value=mock_backtest_service):
             mock_backtest_service.get_result.return_value = {
-                "strategy_name": "pure_lending",
+                "strategy_name": "pure_lending_usdt",
                 "status": "completed"
             }
             
@@ -141,7 +141,7 @@ class TestChartsRoutes:
         """Test chart retrieval when chart is not found."""
         with patch('basis_strategy_v1.api.routes.charts.get_backtest_service', return_value=mock_backtest_service):
             mock_backtest_service.get_result.return_value = {
-                "strategy_name": "pure_lending",
+                "strategy_name": "pure_lending_usdt",
                 "status": "completed"
             }
             
@@ -164,7 +164,7 @@ class TestChartsRoutes:
         """Test successful dashboard retrieval."""
         with patch('basis_strategy_v1.api.routes.charts.get_backtest_service', return_value=mock_backtest_service):
             mock_backtest_service.get_result.return_value = {
-                "strategy_name": "pure_lending",
+                "strategy_name": "pure_lending_usdt",
                 "status": "completed"
             }
             
@@ -182,7 +182,7 @@ class TestChartsRoutes:
         """Test dashboard retrieval when dashboard is not found."""
         with patch('basis_strategy_v1.api.routes.charts.get_backtest_service', return_value=mock_backtest_service):
             mock_backtest_service.get_result.return_value = {
-                "strategy_name": "pure_lending",
+                "strategy_name": "pure_lending_usdt",
                 "status": "completed"
             }
             
@@ -205,7 +205,7 @@ class TestChartsRoutes:
         """Test that chart paths are checked in the correct priority order."""
         with patch('basis_strategy_v1.api.routes.charts.get_backtest_service', return_value=mock_backtest_service):
             mock_backtest_service.get_result.return_value = {
-                "strategy_name": "pure_lending",
+                "strategy_name": "pure_lending_usdt",
                 "status": "completed"
             }
             
@@ -222,7 +222,7 @@ class TestChartsRoutes:
         """Test that glob search is used as a fallback when direct paths fail."""
         with patch('basis_strategy_v1.api.routes.charts.get_backtest_service', return_value=mock_backtest_service):
             mock_backtest_service.get_result.return_value = {
-                "strategy_name": "pure_lending",
+                "strategy_name": "pure_lending_usdt",
                 "status": "completed"
             }
             
@@ -239,7 +239,7 @@ class TestChartsRoutes:
         """Test that legacy chart paths are checked."""
         with patch('basis_strategy_v1.api.routes.charts.get_backtest_service', return_value=mock_backtest_service):
             mock_backtest_service.get_result.return_value = {
-                "strategy_name": "pure_lending",
+                "strategy_name": "pure_lending_usdt",
                 "status": "completed"
             }
             
@@ -256,7 +256,7 @@ class TestChartsRoutes:
         """Test handling of chart file reading errors."""
         with patch('basis_strategy_v1.api.routes.charts.get_backtest_service', return_value=mock_backtest_service):
             mock_backtest_service.get_result.return_value = {
-                "strategy_name": "pure_lending",
+                "strategy_name": "pure_lending_usdt",
                 "status": "completed"
             }
             
@@ -275,13 +275,13 @@ class TestChartsRoutes:
             
             # Mock directory structure to infer strategy name
             mock_dir = Mock()
-            mock_dir.name = "test_id_pure_lending"
+            mock_dir.name = "test_id_pure_lending_usdt"
             mock_dir.is_dir = lambda: True
             
             with patch('pathlib.Path.exists', return_value=True), \
                  patch('pathlib.Path.iterdir', return_value=[mock_dir]), \
                  patch('pathlib.Path.glob', return_value=[
-                     Mock(stem="test_id_pure_lending_equity_curve")
+                     Mock(stem="test_id_pure_lending_usdt_equity_curve")
                  ]):
                 
                 response = test_client.get("/api/v1/results/test_id/charts")
@@ -293,7 +293,7 @@ class TestChartsRoutes:
         """Test that default charts are returned when no specific charts are found."""
         with patch('basis_strategy_v1.api.routes.charts.get_backtest_service', return_value=mock_backtest_service):
             mock_backtest_service.get_result.return_value = {
-                "strategy_name": "pure_lending",
+                "strategy_name": "pure_lending_usdt",
                 "status": "completed"
             }
             
@@ -322,7 +322,7 @@ class TestChartsRoutes:
         
         with patch('basis_strategy_v1.api.routes.charts.get_backtest_service', return_value=mock_backtest_service):
             mock_backtest_service.get_result.return_value = {
-                "strategy_name": "pure_lending",
+                "strategy_name": "pure_lending_usdt",
                 "status": "completed"
             }
             
@@ -337,7 +337,7 @@ class TestChartsRoutes:
         """Test that correlation ID is properly handled in requests."""
         with patch('basis_strategy_v1.api.routes.charts.get_backtest_service', return_value=mock_backtest_service):
             mock_backtest_service.get_result.return_value = {
-                "strategy_name": "pure_lending",
+                "strategy_name": "pure_lending_usdt",
                 "status": "completed"
             }
             
@@ -362,7 +362,7 @@ class TestChartsRoutes:
         """Test that proper content type headers are set for chart responses."""
         with patch('basis_strategy_v1.api.routes.charts.get_backtest_service', return_value=mock_backtest_service):
             mock_backtest_service.get_result.return_value = {
-                "strategy_name": "pure_lending",
+                "strategy_name": "pure_lending_usdt",
                 "status": "completed"
             }
             
@@ -377,7 +377,7 @@ class TestChartsRoutes:
         """Test that chart content is properly encoded as UTF-8."""
         with patch('basis_strategy_v1.api.routes.charts.get_backtest_service', return_value=mock_backtest_service):
             mock_backtest_service.get_result.return_value = {
-                "strategy_name": "pure_lending",
+                "strategy_name": "pure_lending_usdt",
                 "status": "completed"
             }
             

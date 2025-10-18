@@ -19,7 +19,7 @@ def test_all_modes_have_venues():
     """Test that all mode configs have venues: sections."""
     print("🔍 Testing all modes have venues sections...")
     
-    modes_dir = Path("configs/modes")
+    modes_dir = Path(__file__).parent.parent / "configs" / "modes"
     if not modes_dir.exists():
         print("❌ configs/modes directory not found")
         return False
@@ -47,9 +47,21 @@ def test_venue_structure_standardized():
     """Test that all venues use standardized structure."""
     print("🔍 Testing venue structure standardization...")
     
-    modes_dir = Path("configs/modes")
-    required_fields = ['venue_type', 'enabled', 'instruments', 'order_types']
+    modes_dir = Path(__file__).parent.parent / "configs" / "modes"
+    venues_dir = Path(__file__).parent.parent / "configs" / "venues"
+    required_fields = ['enabled', 'instruments', 'order_types']  # Removed venue_type
     issues = []
+    
+    # Load venue configs to get venue types
+    venue_types = {}
+    for venue_file in venues_dir.glob("*.yaml"):
+        try:
+            with open(venue_file) as f:
+                venue_config = yaml.safe_load(f)
+                venue_name = venue_file.stem
+                venue_types[venue_name] = venue_config.get('type')
+        except Exception as e:
+            issues.append(f"Failed to load venue config {venue_file}: {e}")
     
     for yaml_file in modes_dir.glob("*.yaml"):
         try:
@@ -66,10 +78,14 @@ def test_venue_structure_standardized():
                     if field not in venue_config:
                         issues.append(f"{yaml_file.stem}: {venue_name} missing {field}")
                         
-                # Check venue_type is valid
-                venue_type = venue_config.get('venue_type')
-                if venue_type not in ['cex', 'defi', 'infrastructure']:
-                    issues.append(f"{yaml_file.stem}: {venue_name} invalid venue_type: {venue_type}")
+                # Check venue exists in venue configs
+                if venue_name not in venue_types:
+                    issues.append(f"{yaml_file.stem}: {venue_name} not found in venue configs")
+                else:
+                    # Validate venue type from venue config
+                    venue_type = venue_types[venue_name]
+                    if venue_type not in ['cex', 'defi', 'infrastructure']:
+                        issues.append(f"{yaml_file.stem}: {venue_name} invalid venue_type in venue config: {venue_type}")
                     
                 # Check instruments is list
                 instruments = venue_config.get('instruments')
@@ -96,7 +112,7 @@ def test_venue_structure_standardized():
     return True
 
 def test_api_returns_all_strategies():
-    """Test that API returns all 9 strategies."""
+    """Test that API returns all 10 strategies."""
     print("🔍 Testing API returns all strategies...")
     
     try:
@@ -121,8 +137,8 @@ def test_api_returns_all_strategies():
             return False
             
         total = response.get('data', {}).get('total', 0)
-        if total != 9:
-            print(f"❌ Expected 9 strategies, got {total}")
+        if total != 10:
+            print(f"❌ Expected 10 strategies, got {total}")
             return False
             
         print(f"✅ API returns all {total} strategies")
@@ -153,7 +169,7 @@ def test_venue_types_match_config():
             return False
     
     # Check mode configs use correct venue types
-    modes_dir = Path("configs/modes")
+    modes_dir = Path(__file__).parent.parent / "configs" / "modes"
     mismatches = []
     
     for yaml_file in modes_dir.glob("*.yaml"):

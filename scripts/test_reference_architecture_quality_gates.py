@@ -40,7 +40,7 @@ class ReferenceArchitectureQualityGates:
             "basis_strategy_v1/core/strategies/base_strategy_manager.py",
             "basis_strategy_v1/core/components/position_update_handler.py",
             "basis_strategy_v1/core/components/exposure_monitor.py",
-            "basis_strategy_v1/core/math/pnl_calculator.py"
+            "basis_strategy_v1/core/components/pnl_monitor.py"
         ]
         self.engine_files = [
             "basis_strategy_v1/core/event_engine/event_driven_strategy_engine.py"
@@ -346,7 +346,7 @@ class ReferenceArchitectureQualityGates:
             from basis_strategy_v1.core.components.risk_monitor import RiskMonitor
             from basis_strategy_v1.core.strategies.base_strategy_manager import BaseStrategyManager
             from basis_strategy_v1.core.components.position_update_handler import PositionUpdateHandler
-            from basis_strategy_v1.core.math.pnl_calculator import PnLCalculator
+            from basis_strategy_v1.core.components.pnl_monitor import PnLCalculator
             
             logger.info("✅ All components imported successfully")
             return True

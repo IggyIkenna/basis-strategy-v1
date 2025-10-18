@@ -1,0 +1,11 @@
+{
+    "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbiIsImV4cCI6MTcwNTQwMDAwMH0.mock-jwt-token",
+    "token_type": "bearer",
+    "expires_in": 1800,
+    "user": {
+        "username": "admin",
+        "email": "admin@example.com",
+        "role": "admin",
+        "authenticated": true
+    }
+}

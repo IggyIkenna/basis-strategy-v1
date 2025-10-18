@@ -4,7 +4,7 @@
 Validate pure lending E2E quality gate by running existing test suite.
 
 ## Quality Gate
-**Quality Gate Script**: `tests/e2e/test_pure_lending_e2e.py`
+**Quality Gate Script**: `tests/e2e/test_pure_lending_usdt_e2e.py`
 **Validation**: Pure lending strategy execution, yield calculation, component integration, E2E tests
 **Status**: ✅ IMPLEMENTED
 
@@ -24,13 +24,13 @@ Validate pure lending E2E quality gate by running existing test suite.
 
 ## Reference
 - Canonical Spec: `docs/MODES.md` (Pure lending mode)
-- Backend Structure: `core/strategies/pure_lending_strategy.py` per TARGET_REPOSITORY_STRUCTURE.md
+- Backend Structure: `core/strategies/pure_lending_usdt_strategy.py` per TARGET_REPOSITORY_STRUCTURE.md
 - Documentation: `docs/REFERENCE_ARCHITECTURE_CANONICAL.md`
 
 ## Execution
 ```bash
 # Run the quality gate
-python -m pytest tests/e2e/test_pure_lending_e2e.py -v
+python -m pytest tests/e2e/test_pure_lending_usdt_e2e.py -v
 
 # Verify via run_quality_gates.py
 python scripts/run_quality_gates.py --category e2e_strategies

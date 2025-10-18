@@ -13,7 +13,6 @@ import pandas as pd
 from typing import Dict, Any, List, Optional
 from .base_execution_interface import BaseExecutionInterface
 
-from ...core.logging.base_logging_interface import StandardizedLoggingMixin, LogLevel, EventType
 
 logger = logging.getLogger(__name__)
 
@@ -44,14 +43,14 @@ class DEXExecutionInterface(BaseExecutionInterface):
     - Live mode: Executes real trades on DEX protocols
     """
     
-    def __init__(self, execution_mode: str, config: Dict[str, Any], protocol: str = 'uniswap'):
+    def __init__(self, execution_mode: str, config: Dict[str, Any], venue: str = 'uniswap'):
         """
         Initialize DEX execution interface.
         
         Args:
             execution_mode: 'backtest' or 'live'
             config: Configuration dictionary
-            protocol: DEX protocol ('uniswap', 'curve', etc.)
+            venue: DEX protocol ('uniswap', 'curve', etc.)
         """
         super().__init__(execution_mode, config)
         self.protocol = protocol
@@ -101,7 +100,7 @@ class DEXExecutionInterface(BaseExecutionInterface):
             elif self.protocol == 'balancer':
                 self._initialize_balancer_client()
             else:
-                raise ValueError(f"Unsupported DEX protocol: {self.protocol}")
+                raise ValueError(f"Unsupported DEX venue: {self.protocol}")
             
             logger.info(f"Initialized {self.protocol} client for live mode")
         

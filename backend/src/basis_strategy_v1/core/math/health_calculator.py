@@ -4,7 +4,6 @@ from decimal import Decimal
 from typing import Dict, List, Optional
 import logging
 
-from ...core.logging.base_logging_interface import StandardizedLoggingMixin, LogLevel, EventType
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +20,7 @@ ERROR_CODES = {
 }
 
 
-class HealthCalculator(StandardizedLoggingMixin):
+class HealthCalculator:
     """Pure health calculation functions - no side effects or I/O."""
     
     @staticmethod

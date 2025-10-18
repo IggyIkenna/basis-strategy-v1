@@ -1,0 +1,203 @@
+# USDT ETH Staking Hedged Leveraged Strategy Configuration
+# USDT share class with ETH leveraged staking + ETH perp short hedge
+
+mode: "usdt_eth_staking_hedged_leveraged"
+data_type: "defi"  # DeFi strategy with AAVE and staking
+
+# Strategy parameters
+lending_enabled: false
+staking_enabled: true
+basis_trade_enabled: false
+borrowing_enabled: true  # Enable borrowing for leverage
+leverage_enabled: true
+enable_market_impact: true
+
+# Asset configuration
+share_class: "USDT"
+asset: "ETH"
+margin_currency: "USDT"
+lst_type: "weETH"  # EtherFi weETH
+
+# Position allocation
+stake_allocation_percentage: 0.5  # 50% for staking, 50% for hedging
+
+# Risk parameters
+margin_ratio_target: 0.5
+max_ltv: 0.75  # Maximum loan-to-value ratio for borrowing
+target_ltv: 0.65  # Target LTV for leveraged staking
+
+# Venue configuration
+venues:
+  aave_v3:
+    venue_type: "defi"
+    instruments: ["aWETH", "debtWETH"]
+    order_types: ["supply", "borrow", "repay", "withdraw"]
+  etherfi:
+    venue_type: "defi"
+    instruments: ["weETH"]
+    order_types: ["stake", "unstake"]
+  binance:
+    venue_type: "cex"
+    instruments: ["ETH-PERP"]
+    order_types: ["market", "limit"]
+  bybit:
+    venue_type: "cex"
+    instruments: ["ETH-PERP"]
+    order_types: ["market", "limit"]
+  okx:
+    venue_type: "cex"
+    instruments: ["ETH-PERP"]
+    order_types: ["market", "limit"]
+  alchemy:
+    venue_type: "infrastructure"
+    instruments: []
+    order_types: []
+
+# Data requirements
+data_requirements:
+  - "eth_prices"  # ETH/USD price
+  - "eth_futures"  # ETH perpetual prices
+  - "aave_rates"  # AAVE lending/borrowing rates
+  - "staking_rates"  # EtherFi staking rates
+  - "funding_rates"  # Perpetual funding rates
+  - "gas_costs"  # Ethereum gas prices
+  - "execution_costs"  # Execution cost model
+
+# Live time throttling 
+time_throttle_interval: 60
+
+# Performance targets
+target_apy: 0.08  # Used for frontend display and e2e quality gates only
+max_drawdown: 0.15  # 15% max drawdown (leveraged staking)
+
+# Strategy configuration
+strategy_config:
+  delta_tracking_asset: "ETH"
+  position_deviation_threshold: 0.02  # 2% deviation from target triggers rebalancing
+  target_ltv: 0.65  # Target LTV for leveraged staking
+
+# Component configuration
+component_config:
+  # Position subscriptions
+  position_monitor:
+    position_subscriptions:
+      - "wallet:BaseToken:USDT"
+      - "aave_v3:aToken:aWETH"
+      - "aave_v3:debtToken:debtWETH"
+      - "etherfi:LST:weETH"
+      - "binance:BaseToken:USDT"
+      - "binance:Perp:ETHUSDT"
+      - "bybit:BaseToken:USDT"
+      - "bybit:Perp:ETHUSDT"
+      - "okx:BaseToken:USDT"
+      - "okx:Perp:ETHUSDT"
+      - "alchemy:BaseToken:ETH"
+    
+    # Dust tokens configuration
+    dust_tokens:
+      dust_instruments: 
+        - "wallet:BaseToken:EIGEN"
+        - "wallet:BaseToken:ETHFI"
+        - "binance:BaseToken:EIGEN"
+        - "binance:BaseToken:ETHFI"
+      collection_venues: ["etherfi", "binance"]
+      transfer_venues: ["binance"]  # Convert to USDT
+  
+  # Settlement configuration (backtest only)
+  settlement:
+    funding_enabled: true
+    margin_pnl_enabled: true
+    seasonal_rewards_enabled: true
+    seasonal_rewards_frequency: "weekly"  # Mondays at midnight UTC (e.g., EigenLayer)
+
+  # Risk monitoring
+  risk_monitor:
+    enabled_risk_types: ["health_factor", "ltv_ratio", "liquidation_threshold"]
+    delta_tracking_asset: "ETH"
+    maintenance_margin_ratio: 0.15
+    risk_limits:
+      max_stake_spread_move: 0.0225  # 2.25% max spread move for LST/ETH peg (for AAVE eMode)
+  
+  # Exposure monitoring
+  exposure_monitor:
+    # No config needed - uses position_subscriptions from position_monitor
+    # Always calculates both USD and share_class values
+    # Conversions handled by utility_manager
+  
+  # PnL monitoring
+  pnl_monitor:
+    attribution_types: ["staking_pnl", "borrowing_costs", "transaction_costs", "funding_pnl"]
+    reconciliation_tolerance: 0.02
+    reporting_currency: "USDT"
+  
+  # Strategy management
+  strategy_manager:
+    strategy_type: "usdt_eth_staking_hedged_leveraged"
+    actions: ["entry_full", "entry_partial", "exit_full", "exit_partial", "sell_dust"]
+    position_calculation:
+      target_position: "weeth_position"
+      max_position_size: 1.0
+      target_ltv: 0.65
+      hedge_allocation:
+        binance: 0.4
+        bybit: 0.3
+        okx: 0.3
+  
+  # Execution management
+  execution_manager:
+    max_retry_attempts: 3
+    tight_loop_timeout: 120
+    retry_delay_seconds: 0.1
+    execution_timeout: 30
+    reconciliation_timeout: 10
+  
+  # Position update handling
+  position_update_handler:
+    reconciliation_tolerance: 0.01
+  
+  # Results storage
+  results_store:
+    result_types: ["balance_sheet", "pnl_attribution", "risk_metrics", "execution_log"]
+    funding_tracking_venues: ["binance", "bybit", "okx"]
+    leverage_tracking: true
+  
+  # Strategy factory
+  strategy_factory:
+    timeout: 30
+    max_retries: 3
+  
+  # Live trading service
+  live_trading_service:
+    timeout: 3600
+    execution_timeout: 30
+
+# Event logging configuration
+event_logger:
+  log_path: "./logs"
+  log_format: "json"
+  log_level: "INFO"
+  event_categories:
+    data: ["data_loaded", "data_updated", "data_error"]
+    risk: ["risk_breach", "risk_warning", "risk_calculation"]
+    event: ["event_logged", "event_filtered", "event_exported"]
+    business: ["trade_executed", "position_updated", "strategy_decision"]
+  event_logging_settings:
+    buffer_size: 10000
+    export_format: "both"
+    async_logging: true
+    compression: false
+  log_retention_policy:
+    retention_days: 30
+    max_file_size_mb: 100
+    rotation_frequency: "daily"
+    compression_after_days: 7
+  logging_requirements:
+    structured_logging: true
+    correlation_ids: true
+    performance_metrics: true
+    error_tracking: true
+  event_filtering:
+    filter_by_level: true
+    filter_by_category: true
+    exclude_patterns: []
+    include_patterns: ["*"]

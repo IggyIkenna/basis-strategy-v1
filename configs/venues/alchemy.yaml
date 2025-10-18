@@ -2,5 +2,14 @@
 venue: "alchemy"
 type: "infrastructure"
 
+# Canonical instruments available on this venue
+canonical_instruments:
+  - "wallet:BaseToken:ETH"
+  - "wallet:BaseToken:USDT"
+  - "wallet:BaseToken:BTC"
+  - "wallet:BaseToken:WETH"
+  - "wallet:BaseToken:EIGEN"
+  - "wallet:BaseToken:ETHFI"
+
 # Service type
 service: "rpc_provider"

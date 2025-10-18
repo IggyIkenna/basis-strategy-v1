@@ -513,7 +513,6 @@ Get asset from mode configuration.
 ### get_lst_type_from_mode(mode: str) -> Optional[str]
 Get LST type from mode configuration.
 
-### get_hedge_allocation_from_mode(mode: str) -> Optional[float]
 Get hedge allocation from mode configuration.
 
 ### calculate_total_usdt_balance(balances: Dict[str, float], timestamp: pd.Timestamp) -> float

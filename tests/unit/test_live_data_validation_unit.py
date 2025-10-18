@@ -66,7 +66,7 @@ async def main():
     print()
     
     # Test modes that have data requirements
-    modes_to_test = ['pure_lending', 'btc_basis', 'eth_leveraged', 'usdt_market_neutral']
+    modes_to_test = ['pure_lending_usdt', 'btc_basis', 'eth_leveraged', 'usdt_market_neutral']
     
     passed = 0
     total = len(modes_to_test)

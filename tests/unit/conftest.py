@@ -21,7 +21,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent / 'backend' / 'src'))
 def mock_config():
     """Minimal config with all required fields for component initialization."""
     return {
-        'mode': 'pure_lending',
+        'mode': 'pure_lending_usdt',
         'share_class': 'USDT',
         'asset': 'USDT',
         'initial_capital': 100000.0,

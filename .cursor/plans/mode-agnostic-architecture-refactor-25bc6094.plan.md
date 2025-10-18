@@ -41,7 +41,7 @@ Implement comprehensive mode-agnostic architecture refactor to eliminate mode-sp
 - Update "Configuration Parameters" sections with mode-agnostic config examples
 - Add "Data Requirements" section showing config-driven data subscription
 - Update code examples to show config-driven logic instead of mode checks
-- Specifically update: 02_EXPOSURE_MONITOR.md, 03_RISK_MONITOR.md, 04_PNL_CALCULATOR.md, 05_STRATEGY_MANAGER.md, 06_EXECUTION_MANAGER.md, 09_DATA_PROVIDER.md
+- Specifically update: 02_EXPOSURE_MONITOR.md, 03_RISK_MONITOR.md, 04_pnl_monitor.md, 05_STRATEGY_MANAGER.md, 06_VENUE_MANAGER.md, 09_DATA_PROVIDER.md
 
 ### Update Workflow and API Documentation
 
@@ -65,7 +65,7 @@ Implement comprehensive mode-agnostic architecture refactor to eliminate mode-sp
 
 For each of the 7 files in `configs/modes/`:
 
-- `pure_lending.yaml` - Add data_requirements and component_config sections
+- `pure_lending_usdt_usdt.yaml` - Add data_requirements and component_config sections
 - `btc_basis.yaml` - Add data_requirements and component_config sections
 - `eth_basis.yaml` - Add data_requirements and component_config sections
 - `eth_leveraged.yaml` - Add data_requirements and component_config sections
@@ -80,7 +80,7 @@ data_requirements: [...]
 component_config:
   risk_monitor: {...}
   exposure_monitor: {...}
-  pnl_calculator: {...}
+  pnl_monitor: {...}
   strategy_manager: {...}
   execution_manager: {...}
   results_store: {...}
@@ -117,7 +117,7 @@ Create `backend/src/basis_strategy_v1/infrastructure/data/base_data_provider.py`
 
 Create new files in `backend/src/basis_strategy_v1/infrastructure/data/`:
 
-- `pure_lending_data_provider.py` - Implement PureLendingDataProvider
+- `pure_lending_usdt_data_provider.py` - Implement PureLendingDataProvider
 - `btc_basis_data_provider.py` - Implement BTCBasisDataProvider
 - `eth_basis_data_provider.py` - Implement ETHBasisDataProvider  
 - `eth_leveraged_data_provider.py` - Implement ETHLeveragedDataProvider
@@ -166,9 +166,9 @@ Update `backend/src/basis_strategy_v1/core/strategies/components/exposure_monito
 - Update _calculate_asset_exposure() to use conversion_methods
 - Add graceful handling for missing conversion data
 
-### Refactor PnL Calculator
+### Refactor PnL Monitor
 
-Update `backend/src/basis_strategy_v1/core/math/pnl_calculator.py`:
+Update `backend/src/basis_strategy_v1/core/math/pnl_monitor.py`:
 
 - Extract pnl_config from config in **init**
 - Store attribution_types, reporting_currency, reconciliation_tolerance from config
@@ -213,7 +213,7 @@ Update `backend/src/basis_strategy_v1/core/results/results_store.py`:
 Create `backend/src/basis_strategy_v1/core/strategies/component_factory.py`:
 
 - Add ComponentFactory class with config validation
-- Add create_risk_monitor(), create_exposure_monitor(), create_pnl_calculator() factory methods
+- Add create_risk_monitor(), create_exposure_monitor(), create_pnl_monitor() factory methods
 - Add create_strategy_manager(), create_execution_manager(), create_results_store() factory methods
 - Add create_all() method to create all components
 - Add comprehensive error messages for missing config
@@ -261,7 +261,7 @@ Update all `tests/unit/components/*.py`:
 - Create config fixtures in tests/unit/components/conftest.py
 - Update test_risk_monitor.py: Add config fixtures, test enabled_risk_types, test missing config handling
 - Update test_exposure_monitor.py: Add config fixtures, test track_assets, test conversion_methods
-- Update test_pnl_calculator.py: Add config fixtures, test attribution_types, test graceful zero returns
+- Update test_pnl_monitor.py: Add config fixtures, test attribution_types, test graceful zero returns
 - Update test_strategy_manager.py: Add config fixtures, test strategy_type
 - Update test_execution_manager.py: Add config fixtures, test action_mapping
 - Add config override tests to all component tests
@@ -280,7 +280,7 @@ Update `tests/integration/*.py`:
 
 Update all 7 E2E test files in `tests/e2e/`:
 
-- test_pure_lending.py, test_btc_basis.py, test_eth_basis.py, test_eth_leveraged.py
+- test_pure_lending_usdt.py, test_btc_basis.py, test_eth_basis.py, test_eth_leveraged.py
 - test_eth_staking_only.py, test_usdt_market_neutral_no_leverage.py, test_usdt_market_neutral.py
 - Verify config-driven data subscriptions work correctly
 - Verify config-driven component behavior works correctly
@@ -324,8 +324,8 @@ Update all `scripts/test_*_quality_gates.py`:
 
 - test_risk_monitor_quality_gates.py - Add enabled_risk_types config tests
 - test_exposure_monitor_quality_gates.py - Add track_assets config tests
-- test_pnl_calculator_quality_gates.py - Add attribution_types config tests
-- test_pure_lending_quality_gates.py - Update for config-driven validation
+- test_pnl_monitor_quality_gates.py - Add attribution_types config tests
+- test_pure_lending_usdt_quality_gates.py - Update for config-driven validation
 - test_btc_basis_quality_gates.py - Update for config-driven validation
 - test_eth_basis_quality_gates.py - Update for config-driven validation
 - test_usdt_market_neutral_quality_gates.py - Update for config-driven validation

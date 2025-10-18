@@ -1,0 +1,47 @@
+{
+    "strategy_id": "live-strategy-001",
+    "strategy_name": "usdt_pure_lending_usdt",
+    "status": "running",
+    "started_at": "2024-01-15T09:00:00Z",
+    "uptime_seconds": 3600,
+    "current_capital": 100000,
+    "current_value": 100125.50,
+    "unrealized_pnl": 125.50,
+    "realized_pnl": 0,
+    "total_fees_paid": 12.50,
+    "active_positions": [
+        {
+            "venue": "aave_v3",
+            "position_type": "lending",
+            "symbol": "USDT",
+            "amount": 50000,
+            "rate": 0.045,
+            "unrealized_pnl": 62.75
+        },
+        {
+            "venue": "morpho",
+            "position_type": "lending",
+            "symbol": "USDT",
+            "amount": 30000,
+            "rate": 0.042,
+            "unrealized_pnl": 37.50
+        },
+        {
+            "venue": "compound",
+            "position_type": "lending",
+            "symbol": "USDT",
+            "amount": 20000,
+            "rate": 0.038,
+            "unrealized_pnl": 25.25
+        }
+    ],
+    "risk_metrics": {
+        "current_drawdown": 0.0012,
+        "max_drawdown": 0.0185,
+        "var_95": 0.0085,
+        "health_factor": 1.85,
+        "leverage_ratio": 1.0
+    },
+    "last_update": "2024-01-15T10:00:00Z",
+    "next_rebalance": "2024-01-15T12:00:00Z"
+}

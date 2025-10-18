@@ -41,7 +41,7 @@ The configuration quality gates have been successfully refactored to measure **r
 
 **Specific Missing Fields**:
 - `usdt_market_neutral.yaml`: Missing `staking_enabled: true`, `borrowing_enabled: true`, `aave_v3` venue
-- `pure_lending.yaml`: Missing `aave_v3` venue, has forbidden venues (binance, bybit, okx)
+- `pure_lending_usdt_usdt.yaml`: Missing `aave_v3` venue, has forbidden venues (binance, bybit, okx)
 - `eth_leveraged.yaml`: Missing `staking_enabled: true`, `borrowing_enabled: true`, `leverage_enabled: true`, `etherfi` venue, `aave_v3` venue
 - `eth_staking_only.yaml`: Missing `staking_enabled: true`, `etherfi` venue
 - `usdt_market_neutral_no_leverage.yaml`: Missing `staking_enabled: true`, `aave_v3` venue
@@ -79,7 +79,7 @@ The configuration quality gates have been successfully refactored to measure **r
 
 #### Task 1.1: Fix Mode Names in All YAML Files
 **Status**: PENDING
-**Files to Update**: All mode YAML files except `btc_basis.yaml` and `pure_lending.yaml`
+**Files to Update**: All mode YAML files except `btc_basis.yaml` and `pure_lending_usdt_usdt.yaml`
 
 **Required Changes**:
 1. **eth_basis.yaml**: Change `mode: "btc_basis"` → `mode: "eth_basis"`
@@ -105,7 +105,7 @@ venues:
     enabled: true
 ```
 
-**pure_lending.yaml**:
+**pure_lending_usdt_usdt.yaml**:
 ```yaml
 venues:
   aave_v3:
@@ -181,7 +181,7 @@ ml_config:
 - `venues.aave_v3` - AAVE v3 venue configuration
 - `venues.aave_v3.enabled` - AAVE v3 venue enabled flag
 - `venues.aave_v3.instruments` - AAVE v3 trading instruments
-- `component_config.pnl_calculator.reconciliation_tolerance` - PnL reconciliation tolerance
+- `component_config.pnl_monitor.reconciliation_tolerance` - PnL reconciliation tolerance
 - `component_config.strategy_manager.strategy_type` - Strategy type configuration
 - `event_logger.logging_requirements.correlation_ids` - Event logger correlation IDs
 - `event_logger.event_logging_settings.buffer_size` - Event logger buffer size
@@ -269,7 +269,7 @@ ml_config:
 
 **Other Missing Fields to Add** (from quality gate warnings):
 - `event_logger` - Add to all mode YAML files
-- `component_config.pnl_calculator.reconciliation_tolerance` - Add to appropriate modes
+- `component_config.pnl_monitor.reconciliation_tolerance` - Add to appropriate modes
 - `component_config.strategy_manager.strategy_type` - Add to appropriate modes
 - `venues.bybit.enabled` - Add to modes that use Bybit
 - `venues.okx.enabled` - Add to modes that use OKX
@@ -295,7 +295,7 @@ ml_config:
 - `01_POSITION_MONITOR.md`
 - `02_EXPOSURE_MONITOR.md`
 - `03_RISK_MONITOR.md`
-- `04_PNL_CALCULATOR.md`
+- `04_pnl_monitor.md`
 - `05_STRATEGY_MANAGER.md`
 - `06_VENUE_MANAGER.md`
 - `07_VENUE_INTERFACE_MANAGER.md`

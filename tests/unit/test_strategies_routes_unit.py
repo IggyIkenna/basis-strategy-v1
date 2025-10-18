@@ -62,7 +62,7 @@ class TestStrategiesRoutes:
     def mock_mode_config(self):
         """Mock mode configuration."""
         return {
-            "mode": "pure_lending",
+            "mode": "pure_lending_usdt",
             "description": "Pure lending strategy",
             "target_apy": 0.08,
             "max_drawdown": 0.15,
@@ -75,7 +75,7 @@ class TestStrategiesRoutes:
 
     def test_list_strategies_success(self, client, mock_strategy_config):
         """Test successful strategies listing."""
-        with patch('basis_strategy_v1.api.routes.strategies.get_available_strategies', return_value=["pure_lending", "btc_basis"]):
+        with patch('basis_strategy_v1.api.routes.strategies.get_available_strategies', return_value=["pure_lending_usdt", "btc_basis"]):
             with patch('basis_strategy_v1.api.routes.strategies.load_merged_strategy_config') as mock_load:
                 mock_load.return_value = mock_strategy_config
                 response = client.get("/strategies/")
@@ -85,16 +85,16 @@ class TestStrategiesRoutes:
                 assert data["success"] is True
                 assert len(data["data"]["strategies"]) == 2
                 assert data["data"]["total"] == 2
-                assert data["data"]["strategies"][0]["name"] == "pure_lending"
+                assert data["data"]["strategies"][0]["name"] == "pure_lending_usdt"
                 assert data["data"]["strategies"][0]["share_class"] == "USDT"
 
     def test_list_strategies_with_filters(self, client, mock_strategy_config):
         """Test strategies listing with filters."""
-        with patch('basis_strategy_v1.api.routes.strategies.get_available_strategies', return_value=["pure_lending", "eth_basis"]):
+        with patch('basis_strategy_v1.api.routes.strategies.get_available_strategies', return_value=["pure_lending_usdt", "eth_basis"]):
             with patch('basis_strategy_v1.api.routes.strategies.load_merged_strategy_config') as mock_load:
                 # First strategy matches filter, second doesn't
                 mock_load.side_effect = [
-                    mock_strategy_config,  # pure_lending - USDT
+                    mock_strategy_config,  # pure_lending_usdt - USDT
                     {**mock_strategy_config, "strategy": {**mock_strategy_config["strategy"], "share_class": "ETH"}}  # eth_basis - ETH
                 ]
                 response = client.get("/strategies/?share_class=USDT")
@@ -118,7 +118,7 @@ class TestStrategiesRoutes:
 
     def test_list_strategies_config_load_error(self, client):
         """Test strategies listing when config loading fails."""
-        with patch('basis_strategy_v1.api.routes.strategies.get_available_strategies', return_value=["pure_lending"]):
+        with patch('basis_strategy_v1.api.routes.strategies.get_available_strategies', return_value=["pure_lending_usdt"]):
             with patch('basis_strategy_v1.api.routes.strategies.load_merged_strategy_config', return_value=None):
                 response = client.get("/strategies/")
                 
@@ -135,7 +135,7 @@ class TestStrategiesRoutes:
         """Test successful strategy parameters retrieval."""
         with patch('basis_strategy_v1.api.routes.strategies.validate_strategy_name'):
             with patch('basis_strategy_v1.api.routes.strategies.load_merged_strategy_config', return_value=mock_strategy_config):
-                response = client.get("/strategies/pure_lending/parameters")
+                response = client.get("/strategies/pure_lending_usdt/parameters")
                 
                 assert response.status_code == 200
                 data = response.json()
@@ -168,12 +168,12 @@ class TestStrategiesRoutes:
         """Test successful strategy details retrieval."""
         with patch('basis_strategy_v1.api.routes.strategies.validate_strategy_name'):
             with patch('basis_strategy_v1.api.routes.strategies.load_merged_strategy_config', return_value=mock_strategy_config):
-                response = client.get("/strategies/pure_lending")
+                response = client.get("/strategies/pure_lending_usdt")
                 
                 assert response.status_code == 200
                 data = response.json()
                 assert data["success"] is True
-                assert data["data"]["name"] == "pure_lending"
+                assert data["data"]["name"] == "pure_lending_usdt"
                 assert data["data"]["share_class"] == "USDT"
                 assert data["data"]["risk_level"] == "low"
                 assert "lending" in data["data"]["parameters"]["strategy_type"]
@@ -201,12 +201,12 @@ class TestStrategiesRoutes:
         """Test successful merged config retrieval."""
         with patch('basis_strategy_v1.api.routes.strategies.validate_strategy_name'):
             with patch('basis_strategy_v1.api.routes.strategies.load_merged_strategy_config', return_value=mock_strategy_config):
-                response = client.get("/strategies/pure_lending/config/merged?start_date=2024-01-01&end_date=2024-12-31&initial_capital=20000&share_class=ETH")
+                response = client.get("/strategies/pure_lending_usdt/config/merged?start_date=2024-01-01&end_date=2024-12-31&initial_capital=20000&share_class=ETH")
                 
                 assert response.status_code == 200
                 data = response.json()
                 assert data["success"] is True
-                assert data["data"]["strategy_name"] == "pure_lending"
+                assert data["data"]["strategy_name"] == "pure_lending_usdt"
                 assert "config_json" in data["data"]
                 assert "config_yaml" in data["data"]
                 assert data["data"]["config_json"]["backtest"]["initial_capital"] == 20000.0
@@ -229,12 +229,12 @@ class TestStrategiesRoutes:
             mock_config_file.open.return_value.__enter__.return_value.read.return_value = yaml.dump(mock_mode_config)
             mock_path.return_value = mock_config_file
             
-            response = client.get("/strategies/modes/pure_lending")
+            response = client.get("/strategies/modes/pure_lending_usdt")
             
             assert response.status_code == 200
             data = response.json()
             assert data["success"] is True
-            assert data["data"]["mode"] == "pure_lending"
+            assert data["data"]["mode"] == "pure_lending_usdt"
             assert data["data"]["target_apy"] == 0.08
             assert data["data"]["max_drawdown"] == 0.15
             assert data["data"]["share_class"] == "USDT"
@@ -259,7 +259,7 @@ class TestStrategiesRoutes:
             mock_modes_dir = Mock()
             mock_modes_dir.exists.return_value = True
             mock_yaml_file = Mock()
-            mock_yaml_file.stem = "pure_lending"
+            mock_yaml_file.stem = "pure_lending_usdt"
             mock_yaml_file.open.return_value.__enter__.return_value.read.return_value = yaml.dump(mock_mode_config)
             mock_modes_dir.glob.return_value = [mock_yaml_file]
             mock_path.return_value = mock_modes_dir
@@ -271,7 +271,7 @@ class TestStrategiesRoutes:
             assert data["success"] is True
             assert len(data["data"]["modes"]) == 1
             assert data["data"]["total"] == 1
-            assert data["data"]["modes"][0]["mode"] == "pure_lending"
+            assert data["data"]["modes"][0]["mode"] == "pure_lending_usdt"
 
     def test_list_modes_with_filter(self, client, mock_mode_config):
         """Test modes listing with share class filter."""
@@ -279,7 +279,7 @@ class TestStrategiesRoutes:
             mock_modes_dir = Mock()
             mock_modes_dir.exists.return_value = True
             mock_yaml_file = Mock()
-            mock_yaml_file.stem = "pure_lending"
+            mock_yaml_file.stem = "pure_lending_usdt"
             mock_yaml_file.open.return_value.__enter__.return_value.read.return_value = yaml.dump(mock_mode_config)
             mock_modes_dir.glob.return_value = [mock_yaml_file]
             mock_path.return_value = mock_modes_dir
@@ -306,7 +306,7 @@ class TestStrategiesRoutes:
 
     def test_correlation_id_handling(self, client, mock_strategy_config):
         """Test that correlation IDs are properly handled."""
-        with patch('basis_strategy_v1.api.routes.strategies.get_available_strategies', return_value=["pure_lending"]):
+        with patch('basis_strategy_v1.api.routes.strategies.get_available_strategies', return_value=["pure_lending_usdt"]):
             with patch('basis_strategy_v1.api.routes.strategies.load_merged_strategy_config', return_value=mock_strategy_config):
                 response = client.get("/strategies/")
                 

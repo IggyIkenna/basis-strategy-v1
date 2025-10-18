@@ -12,7 +12,7 @@ import sys
 from pathlib import Path
 from typing import List, Tuple, Dict, Set
 
-# 19-Section Standard Format for Component Specs (from COMPONENT_SPEC_TEMPLATE.md)
+# 18-Section Standard Format for Component Specs (from COMPONENT_SPECS_INDEX.md template)
 REQUIRED_SECTIONS = [
     "Purpose",
     "📚 **Canonical Sources**",  # NEW section name

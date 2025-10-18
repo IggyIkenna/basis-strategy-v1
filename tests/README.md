@@ -38,7 +38,7 @@ tests/
 │   ├── test_position_monitor_unit.py
 │   ├── test_exposure_monitor_unit.py
 │   ├── test_risk_monitor_unit.py
-│   ├── test_pnl_calculator_unit.py
+│   ├── test_pnl_monitor_unit.py
 │   ├── test_strategy_manager_unit.py
 │   ├── test_execution_manager_unit.py
 │   ├── test_data_provider_unit.py
@@ -65,7 +65,7 @@ tests/
 │   ├── test_eth_basis_strategy_unit.py
 │   ├── test_eth_leveraged_strategy_unit.py
 │   ├── test_eth_staking_only_strategy_unit.py
-│   ├── test_pure_lending_strategy_unit.py
+│   ├── test_pure_lending_usdt_strategy_unit.py
 │   ├── test_strategy_factory_unit.py
 │   ├── test_usdt_market_neutral_strategy_unit.py
 │   ├── test_usdt_market_neutral_no_leverage_strategy_unit.py
@@ -81,7 +81,7 @@ tests/
 │   ├── test_historical_data_provider_unit.py
 │   ├── test_live_data_provider_unit.py
 │   ├── test_ml_directional_data_provider_unit.py
-│   ├── test_pure_lending_data_provider_unit.py
+│   ├── test_pure_lending_usdt_data_provider_unit.py
 │   ├── test_usdt_market_neutral_data_provider_unit.py
 │   ├── test_usdt_market_neutral_no_leverage_data_provider_unit.py
 │   ├── # Core Math unit tests (4 tests)
@@ -114,7 +114,7 @@ tests/
 │   ├── test_tight_loop_reconciliation.py
 │   └── test_repo_structure_integration.py
 └── e2e/                          # 12 strategy execution tests (8 *_e2e.py + 4 *_quality_gates.py)
-    ├── test_pure_lending_e2e.py
+    ├── test_pure_lending_usdt_e2e.py
     ├── test_btc_basis_e2e.py
     ├── test_eth_basis_e2e.py
     ├── test_usdt_market_neutral_e2e.py
@@ -122,7 +122,7 @@ tests/
     ├── test_eth_leveraged_staking_e2e.py
     ├── test_usdt_market_neutral_no_leverage_e2e.py
     ├── test_performance_e2e.py
-    ├── test_pure_lending_quality_gates.py
+    ├── test_pure_lending_usdt_quality_gates.py
     ├── test_btc_basis_quality_gates.py
     ├── test_eth_basis_quality_gates.py
     ├── test_usdt_market_neutral_quality_gates.py

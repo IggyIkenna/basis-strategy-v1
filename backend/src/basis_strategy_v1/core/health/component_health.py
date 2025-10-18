@@ -16,9 +16,8 @@ from enum import Enum
 from dataclasses import dataclass
 import pandas as pd
 
-from ..error_codes import get_error_info, ErrorSeverity
+from ..errors.error_codes import get_error_description, ERROR_REGISTRY
 
-from ...core.logging.base_logging_interface import StandardizedLoggingMixin, LogLevel, EventType
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +32,7 @@ class HealthStatus(Enum):
 
 
 @dataclass
-class ComponentHealthReport(StandardizedLoggingMixin):
+class ComponentHealthReport:
     """Health report for a single component."""
     component_name: str
     status: HealthStatus
@@ -53,7 +52,7 @@ class ComponentHealthReport(StandardizedLoggingMixin):
             self.dependencies = []
 
 
-class ComponentHealthChecker(StandardizedLoggingMixin):
+class ComponentHealthChecker:
     """Base class for component health checking."""
     
     def __init__(self, component_name: str):
@@ -119,8 +118,8 @@ class ComponentHealthChecker(StandardizedLoggingMixin):
     
     def _log_structured_error(self, error_code: str, message: str, context: Dict[str, Any] = None):
         """Log structured error with error code and context."""
-        error_info = get_error_info(error_code)
-        error_message = error_info.message if error_info else f'Unknown error code: {error_code}'
+        error_description = get_error_description(error_code)
+        error_message = error_description
         
         log_data = {
             'error_code': error_code,
@@ -429,7 +428,161 @@ class EventLoggerHealthChecker(ComponentHealthChecker):
         return "EVENT-003", "Event Logger readiness check failed"
 
 
-class SystemHealthAggregator(StandardizedLoggingMixin):
+class ExposureMonitorHealthChecker(ComponentHealthChecker):
+    """Health checker for Exposure Monitor."""
+    
+    def __init__(self, exposure_monitor):
+        super().__init__("exposure_monitor")
+        self.exposure_monitor = exposure_monitor
+    
+    def _perform_readiness_checks(self) -> Dict[str, bool]:
+        """Check Exposure Monitor readiness."""
+        checks = {}
+        
+        try:
+            checks["initialized"] = hasattr(self.exposure_monitor, 'config')
+            checks["config_available"] = bool(self.exposure_monitor.config)
+            
+        except Exception as e:
+            logger.error(f"Exposure Monitor readiness check failed: {e}")
+            checks["error"] = False
+        
+        return checks
+    
+    def _get_component_metrics(self) -> Dict[str, Any]:
+        """Get Exposure Monitor metrics."""
+        try:
+            return {
+                "has_config": hasattr(self.exposure_monitor, 'config'),
+                "has_data_provider": hasattr(self.exposure_monitor, 'data_provider')
+            }
+        except:
+            return {"error": "Could not get metrics"}
+    
+    def _get_error_info(self) -> tuple[Optional[str], Optional[str]]:
+        """Get Exposure Monitor error information."""
+        if not hasattr(self.exposure_monitor, 'config'):
+            return "EXP-001", "Exposure Monitor not initialized"
+        return "EXP-003", "Exposure Monitor readiness check failed"
+
+
+class PnLCalculatorHealthChecker(ComponentHealthChecker):
+    """Health checker for PnL Monitor."""
+    
+    def __init__(self, pnl_monitor):
+        super().__init__("pnl_monitor")
+        self.pnl_monitor = pnl_monitor
+    
+    def _perform_readiness_checks(self) -> Dict[str, bool]:
+        """Check PnL Monitor readiness."""
+        checks = {}
+        
+        try:
+            checks["initialized"] = hasattr(self.pnl_monitor, 'config')
+            checks["config_available"] = bool(self.pnl_monitor.config)
+            
+        except Exception as e:
+            logger.error(f"PnL Monitor readiness check failed: {e}")
+            checks["error"] = False
+        
+        return checks
+    
+    def _get_component_metrics(self) -> Dict[str, Any]:
+        """Get PnL Monitor metrics."""
+        try:
+            return {
+                "has_config": hasattr(self.pnl_monitor, 'config'),
+                "share_class": getattr(self.pnl_monitor, 'share_class', 'unknown'),
+                "initial_capital": getattr(self.pnl_monitor, 'initial_capital', 0)
+            }
+        except:
+            return {"error": "Could not get metrics"}
+    
+    def _get_error_info(self) -> tuple[Optional[str], Optional[str]]:
+        """Get PnL Monitor error information."""
+        if not hasattr(self.pnl_monitor, 'config'):
+            return "PNL-001", "PnL Monitor not initialized"
+        return "PNL-003", "PnL Monitor readiness check failed"
+
+
+class StrategyManagerHealthChecker(ComponentHealthChecker):
+    """Health checker for Strategy Manager."""
+    
+    def __init__(self, strategy_manager):
+        super().__init__("strategy_manager")
+        self.strategy_manager = strategy_manager
+    
+    def _perform_readiness_checks(self) -> Dict[str, bool]:
+        """Check Strategy Manager readiness."""
+        checks = {}
+        
+        try:
+            checks["initialized"] = hasattr(self.strategy_manager, 'config')
+            checks["config_available"] = bool(self.strategy_manager.config)
+            
+        except Exception as e:
+            logger.error(f"Strategy Manager readiness check failed: {e}")
+            checks["error"] = False
+        
+        return checks
+    
+    def _get_component_metrics(self) -> Dict[str, Any]:
+        """Get Strategy Manager metrics."""
+        try:
+            return {
+                "has_config": hasattr(self.strategy_manager, 'config'),
+                "mode": getattr(self.strategy_manager, 'mode', 'unknown')
+            }
+        except:
+            return {"error": "Could not get metrics"}
+    
+    def _get_error_info(self) -> tuple[Optional[str], Optional[str]]:
+        """Get Strategy Manager error information."""
+        if not hasattr(self.strategy_manager, 'config'):
+            return "STRAT-001", "Strategy Manager not initialized"
+        return "STRAT-003", "Strategy Manager readiness check failed"
+
+
+class ExecutionManagerHealthChecker(ComponentHealthChecker):
+    """Health checker for Execution Manager."""
+    
+    def __init__(self, venue_manager):
+        super().__init__("venue_manager")
+        self.venue_manager = venue_manager
+    
+    def _perform_readiness_checks(self) -> Dict[str, bool]:
+        """Check Venue Manager readiness."""
+        checks = {}
+        
+        try:
+            checks["initialized"] = hasattr(self.venue_manager, 'config')
+            checks["config_available"] = bool(self.venue_manager.config)
+            checks["has_venue_interface_manager"] = hasattr(self.venue_manager, 'venue_interface_manager')
+            
+        except Exception as e:
+            logger.error(f"Venue Manager readiness check failed: {e}")
+            checks["error"] = False
+        
+        return checks
+    
+    def _get_component_metrics(self) -> Dict[str, Any]:
+        """Get Venue Manager metrics."""
+        try:
+            return {
+                "has_config": hasattr(self.venue_manager, 'config'),
+                "execution_mode": getattr(self.venue_manager, 'execution_mode', 'unknown')
+            }
+        except:
+            return {"error": "Could not get metrics"}
+    
+    def _get_error_info(self) -> tuple[Optional[str], Optional[str]]:
+        """Get Venue Manager error information."""
+        if not hasattr(self.venue_manager, 'config'):
+            return "VENUE-001", "Venue Manager not initialized"
+        return "VENUE-003", "Venue Manager readiness check failed"
+
+
+class SystemHealthAggregator:
     """Aggregates health reports from all components."""
     
     def __init__(self):
@@ -441,8 +594,70 @@ class SystemHealthAggregator(StandardizedLoggingMixin):
         self.component_checkers[component_name] = health_checker
         logger.info(f"Registered health checker for {component_name}")
     
-    async def get_system_health(self) -> Dict[str, Any]:
-        """Get aggregated system health report."""
+    async def check_basic_health(self) -> Dict[str, Any]:
+        """
+        Fast basic health check (< 50ms target).
+        Returns only overall status without detailed component information.
+        """
+        timestamp = datetime.now(timezone.utc)
+        overall_status = HealthStatus.HEALTHY
+        
+        # Quick check: if we have no registered components, we're not ready
+        if not self.component_checkers:
+            return {
+                "status": HealthStatus.NOT_READY.value,
+                "timestamp": timestamp.isoformat(),
+                "service": "basis-strategy-v1",
+                "summary": {
+                    "total_components": 0,
+                    "healthy_components": 0
+                }
+            }
+        
+        # Fast pass: just count statuses without detailed checks
+        healthy_count = 0
+        unhealthy_count = 0
+        
+        for component_name, checker in self.component_checkers.items():
+            try:
+                # Use cached status if available (fast)
+                if checker.last_health_check:
+                    status = checker.last_health_check.status
+                else:
+                    # First time - do quick check
+                    report = checker.check_health()
+                    status = report.status
+                
+                if status == HealthStatus.HEALTHY:
+                    healthy_count += 1
+                elif status == HealthStatus.UNHEALTHY:
+                    unhealthy_count += 1
+                    overall_status = HealthStatus.UNHEALTHY
+                elif status in [HealthStatus.NOT_READY, HealthStatus.UNKNOWN]:
+                    if overall_status == HealthStatus.HEALTHY:
+                        overall_status = status
+                        
+            except Exception as e:
+                logger.error(f"Fast health check failed for {component_name}: {e}")
+                unhealthy_count += 1
+                overall_status = HealthStatus.UNHEALTHY
+        
+        return {
+            "status": overall_status.value,
+            "timestamp": timestamp.isoformat(),
+            "service": "basis-strategy-v1",
+            "summary": {
+                "total_components": len(self.component_checkers),
+                "healthy_components": healthy_count,
+                "unhealthy_components": unhealthy_count
+            }
+        }
+    
+    async def check_detailed_health(self) -> Dict[str, Any]:
+        """
+        Comprehensive detailed health check (~200ms target).
+        Returns full component information with readiness checks and metrics.
+        """
         timestamp = datetime.now(timezone.utc)
         component_reports = {}
         overall_status = HealthStatus.HEALTHY
@@ -450,7 +665,7 @@ class SystemHealthAggregator(StandardizedLoggingMixin):
         # Check all registered components
         for component_name, checker in self.component_checkers.items():
             try:
-                report = await checker.check_health()
+                report = checker.check_health()
                 component_reports[component_name] = {
                     "status": report.status.value,
                     "timestamp": report.timestamp.isoformat(),
@@ -486,6 +701,7 @@ class SystemHealthAggregator(StandardizedLoggingMixin):
         aggregated_report = {
             "status": overall_status.value,
             "timestamp": timestamp.isoformat(),
+            "service": "basis-strategy-v1",
             "components": component_reports,
             "summary": {
                 "total_components": len(self.component_checkers),
@@ -498,6 +714,10 @@ class SystemHealthAggregator(StandardizedLoggingMixin):
         
         self.last_aggregated_report = aggregated_report
         return aggregated_report
+    
+    async def get_system_health(self) -> Dict[str, Any]:
+        """Alias for check_detailed_health() for backward compatibility."""
+        return await self.check_detailed_health()
     
 
 

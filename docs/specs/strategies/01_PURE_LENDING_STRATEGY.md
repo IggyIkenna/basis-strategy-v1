@@ -345,7 +345,6 @@ component_config:
 
 ### Venue Configuration
 - **venues.aave_v3.venue_type**: str - Venue type ('defi')
-- **venues.aave_v3.enabled**: bool - Whether AAVE v3 is enabled
 - **venues.aave_v3.instruments**: List[str] - Available instruments
 - **venues.aave_v3.order_types**: List[str] - Available order types
 

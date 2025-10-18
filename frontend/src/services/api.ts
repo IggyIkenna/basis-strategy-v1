@@ -1,31 +1,29 @@
 // Centralized API client with retry logic and error handling
 
-import { 
-  ApiResponse, 
-  ApiError, 
-  LoginRequest, 
-  LoginResponse, 
-  User,
+import {
   BacktestConfig,
   BacktestResponse,
-  BacktestStatus,
   BacktestResult,
-  ResultSummary,
+  BacktestStatus,
+  CapitalResponse,
+  ChartsResponse,
+  DepositRequest,
+  DetailedHealthStatus,
   EventLogResponse,
+  HealthStatus,
+  LivePerformance,
   LiveTradingConfig,
   LiveTradingResponse,
   LiveTradingStatus,
-  LivePerformance,
-  Strategy,
+  LoginRequest,
+  LoginResponse,
   Mode,
-  HealthStatus,
-  DetailedHealthStatus,
-  DepositRequest,
-  WithdrawRequest,
-  CapitalResponse,
   PositionSnapshot,
   PositionUpdate,
-  ChartsResponse
+  ResultSummary,
+  Strategy,
+  User,
+  WithdrawRequest
 } from '../types';
 
 class ApiClient {
@@ -48,7 +46,7 @@ class ApiClient {
     retryCount: number = 0
   ): Promise<T> {
     const token = await this.getAuthToken();
-    
+
     const config: RequestInit = {
       ...options,
       headers: {
@@ -60,14 +58,14 @@ class ApiClient {
 
     try {
       const response = await fetch(`${this.baseUrl}${endpoint}`, config);
-      
+
       if (!response.ok) {
         if (response.status === 503 && retryCount < this.maxRetries) {
           // Retry on 503 errors
           await this.delay(this.retryDelay * Math.pow(2, retryCount));
           return this.makeRequest<T>(endpoint, options, retryCount + 1);
         }
-        
+
         const errorData = await response.json().catch(() => ({}));
         throw new ApiError({
           message: errorData.message || `HTTP ${response.status}: ${response.statusText}`,
@@ -82,13 +80,13 @@ class ApiClient {
       if (error instanceof ApiError) {
         throw error;
       }
-      
+
       // Network error - retry if possible
       if (retryCount < this.maxRetries) {
         await this.delay(this.retryDelay * Math.pow(2, retryCount));
         return this.makeRequest<T>(endpoint, options, retryCount + 1);
       }
-      
+
       throw new ApiError({
         message: 'Network error - please check your connection',
         status: 0,
@@ -159,11 +157,11 @@ class ApiClient {
         Authorization: `Bearer ${await this.getAuthToken()}`,
       },
     });
-    
+
     if (!response.ok) {
       throw new Error('Failed to download result');
     }
-    
+
     return response.blob();
   }
 
@@ -263,15 +261,15 @@ class ApiClient {
 
 // Mock API client for development/testing
 export class MockApiClient extends ApiClient {
-  private mockDelay: number = 500; // Simulate network delay
+  private mockDelayMs: number = 500; // Simulate network delay
 
   private async mockDelay(): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, this.mockDelay));
+    return new Promise(resolve => setTimeout(resolve, this.mockDelayMs));
   }
 
   async login(request: LoginRequest): Promise<LoginResponse> {
     await this.mockDelay();
-    
+
     if (request.username === 'admin' && request.password === 'admin123') {
       return {
         access_token: 'mock-jwt-token-' + Date.now(),
@@ -279,7 +277,7 @@ export class MockApiClient extends ApiClient {
         expires_in: 1800
       };
     }
-    
+
     throw new ApiError({
       message: 'Invalid credentials',
       status: 401
@@ -425,9 +423,12 @@ export class MockApiClient extends ApiClient {
   }
 }
 
+// Import mock API service
+import MockApiService from '../mocks/mockApi';
+
 // Export the appropriate client based on environment variable
-export const apiClient = import.meta.env.VITE_API_MODE === 'mock'
-  ? new MockApiClient()
+export const apiClient = import.meta.env.VITE_USE_MOCK_API === 'true'
+  ? new MockApiService()
   : new ApiClient();
 
 export default apiClient;

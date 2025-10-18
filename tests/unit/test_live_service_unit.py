@@ -18,12 +18,12 @@ class TestLiveTradingRequest:
     def test_initialization(self):
         """Test LiveTradingRequest initialization."""
         request = LiveTradingRequest(
-            strategy_name='pure_lending',
+            strategy_name='pure_lending_usdt',
             initial_capital=Decimal('10000.0'),
             share_class='USDT'
         )
         
-        assert request.strategy_name == 'pure_lending'
+        assert request.strategy_name == 'pure_lending_usdt'
         assert request.initial_capital == Decimal('10000.0')
         assert request.share_class == 'USDT'
         assert request.config_overrides == {}
@@ -33,7 +33,7 @@ class TestLiveTradingRequest:
     def test_validation_success(self):
         """Test successful request validation."""
         request = LiveTradingRequest(
-            strategy_name='pure_lending',
+            strategy_name='pure_lending_usdt',
             initial_capital=Decimal('10000.0'),
             share_class='USDT'
         )
@@ -56,7 +56,7 @@ class TestLiveTradingRequest:
     def test_validation_invalid_capital(self):
         """Test validation with invalid capital."""
         request = LiveTradingRequest(
-            strategy_name='pure_lending',
+            strategy_name='pure_lending_usdt',
             initial_capital=Decimal('0.0'),  # Zero capital
             share_class='USDT'
         )
@@ -68,7 +68,7 @@ class TestLiveTradingRequest:
     def test_validation_missing_share_class(self):
         """Test validation with missing share class."""
         request = LiveTradingRequest(
-            strategy_name='pure_lending',
+            strategy_name='pure_lending_usdt',
             initial_capital=Decimal('10000.0'),
             share_class=''
         )
@@ -110,7 +110,7 @@ class TestLiveTradingService:
     def test_create_live_config(self, mock_live_service):
         """Test live configuration creation."""
         request = LiveTradingRequest(
-            strategy_name='pure_lending',
+            strategy_name='pure_lending_usdt',
             initial_capital=Decimal('10000.0'),
             share_class='USDT'
         )
@@ -118,14 +118,14 @@ class TestLiveTradingService:
         config = mock_live_service._create_live_config(request)
         
         assert config is not None
-        assert config['strategy_name'] == 'pure_lending'
+        assert config['strategy_name'] == 'pure_lending_usdt'
         assert config['initial_capital'] == Decimal('10000.0')
         assert config['share_class'] == 'USDT'
     
     def test_create_live_config_with_overrides(self, mock_live_service):
         """Test live configuration creation with overrides."""
         request = LiveTradingRequest(
-            strategy_name='pure_lending',
+            strategy_name='pure_lending_usdt',
             initial_capital=Decimal('10000.0'),
             share_class='USDT',
             config_overrides={'max_position_size': 5000.0}
@@ -134,13 +134,13 @@ class TestLiveTradingService:
         config = mock_live_service._create_live_config(request)
         
         assert config is not None
-        assert config['strategy_name'] == 'pure_lending'
+        assert config['strategy_name'] == 'pure_lending_usdt'
         assert config['max_position_size'] == 5000.0
     
     def test_validate_live_request_success(self, mock_live_service):
         """Test successful live request validation."""
         request = LiveTradingRequest(
-            strategy_name='pure_lending',
+            strategy_name='pure_lending_usdt',
             initial_capital=Decimal('10000.0'),
             share_class='USDT'
         )
@@ -162,7 +162,7 @@ class TestLiveTradingService:
     def test_initialize_strategy_engine(self, mock_live_service):
         """Test strategy engine initialization."""
         config = {
-            'strategy_name': 'pure_lending',
+            'strategy_name': 'pure_lending_usdt',
             'initial_capital': Decimal('10000.0'),
             'share_class': 'USDT'
         }
@@ -174,7 +174,7 @@ class TestLiveTradingService:
     def test_execute_live_trading_success(self, mock_live_service):
         """Test successful live trading execution."""
         request = LiveTradingRequest(
-            strategy_name='pure_lending',
+            strategy_name='pure_lending_usdt',
             initial_capital=Decimal('10000.0'),
             share_class='USDT'
         )
@@ -183,7 +183,7 @@ class TestLiveTradingService:
         
         assert result is not None
         assert result['status'] == 'success'
-        assert result['strategy_name'] == 'pure_lending'
+        assert result['strategy_name'] == 'pure_lending_usdt'
         assert result['request_id'] == request.request_id
     
     def test_execute_live_trading_validation_failure(self, mock_live_service):
@@ -203,7 +203,7 @@ class TestLiveTradingService:
     def test_execute_live_trading_engine_failure(self, mock_live_service):
         """Test live trading execution with engine failure."""
         request = LiveTradingRequest(
-            strategy_name='pure_lending',
+            strategy_name='pure_lending_usdt',
             initial_capital=Decimal('10000.0'),
             share_class='USDT'
         )
@@ -218,7 +218,7 @@ class TestLiveTradingService:
     def test_monitor_live_trading(self, mock_live_service):
         """Test live trading monitoring."""
         request = LiveTradingRequest(
-            strategy_name='pure_lending',
+            strategy_name='pure_lending_usdt',
             initial_capital=Decimal('10000.0'),
             share_class='USDT'
         )
@@ -232,7 +232,7 @@ class TestLiveTradingService:
     def test_stop_live_trading(self, mock_live_service):
         """Test live trading stop."""
         request = LiveTradingRequest(
-            strategy_name='pure_lending',
+            strategy_name='pure_lending_usdt',
             initial_capital=Decimal('10000.0'),
             share_class='USDT'
         )
@@ -246,7 +246,7 @@ class TestLiveTradingService:
     def test_get_live_trading_status(self, mock_live_service):
         """Test live trading status retrieval."""
         request = LiveTradingRequest(
-            strategy_name='pure_lending',
+            strategy_name='pure_lending_usdt',
             initial_capital=Decimal('10000.0'),
             share_class='USDT'
         )
@@ -266,7 +266,7 @@ class TestLiveTradingService:
     def test_emergency_stop(self, mock_live_service):
         """Test emergency stop functionality."""
         request = LiveTradingRequest(
-            strategy_name='pure_lending',
+            strategy_name='pure_lending_usdt',
             initial_capital=Decimal('10000.0'),
             share_class='USDT'
         )
@@ -280,7 +280,7 @@ class TestLiveTradingService:
     def test_risk_check(self, mock_live_service):
         """Test risk check functionality."""
         request = LiveTradingRequest(
-            strategy_name='pure_lending',
+            strategy_name='pure_lending_usdt',
             initial_capital=Decimal('10000.0'),
             share_class='USDT',
             risk_limits={'max_drawdown': 0.1}
@@ -294,7 +294,7 @@ class TestLiveTradingService:
     def test_risk_check_failure(self, mock_live_service):
         """Test risk check failure."""
         request = LiveTradingRequest(
-            strategy_name='pure_lending',
+            strategy_name='pure_lending_usdt',
             initial_capital=Decimal('1000000.0'),  # Very large amount
             share_class='USDT',
             risk_limits={'max_capital': 100000.0}
@@ -331,7 +331,7 @@ class TestLiveTradingService:
     def test_error_handling_missing_config(self, mock_live_service):
         """Test error handling with missing configuration."""
         request = LiveTradingRequest(
-            strategy_name='pure_lending',
+            strategy_name='pure_lending_usdt',
             initial_capital=Decimal('10000.0'),
             share_class='USDT'
         )
@@ -345,7 +345,7 @@ class TestLiveTradingService:
     def test_edge_case_very_small_capital(self, mock_live_service):
         """Test edge case with very small capital."""
         request = LiveTradingRequest(
-            strategy_name='pure_lending',
+            strategy_name='pure_lending_usdt',
             initial_capital=Decimal('0.01'),
             share_class='USDT'
         )
@@ -358,7 +358,7 @@ class TestLiveTradingService:
     def test_edge_case_very_large_capital(self, mock_live_service):
         """Test edge case with very large capital."""
         request = LiveTradingRequest(
-            strategy_name='pure_lending',
+            strategy_name='pure_lending_usdt',
             initial_capital=Decimal('1000000.0'),
             share_class='USDT'
         )
@@ -371,7 +371,7 @@ class TestLiveTradingService:
     def test_edge_case_special_characters_in_strategy_name(self, mock_live_service):
         """Test edge case with special characters in strategy name."""
         request = LiveTradingRequest(
-            strategy_name='pure_lending_v2.0',
+            strategy_name='pure_lending_usdt_v2.0',
             initial_capital=Decimal('10000.0'),
             share_class='USDT'
         )
@@ -409,7 +409,7 @@ class TestLiveTradingService:
         
         requests = [
             LiveTradingRequest(
-                strategy_name='pure_lending',
+                strategy_name='pure_lending_usdt',
                 initial_capital=Decimal('10000.0'),
                 share_class='USDT'
             ) for _ in range(5)

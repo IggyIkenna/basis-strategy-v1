@@ -73,8 +73,8 @@ Complete architectural refactoring to venue-centric naming and structure. **NO b
 **Objective**: Reorganize specification files to reflect venue-centric architecture
 
 **Files to Rename**:
-- `docs/specs/06_EXECUTION_MANAGER.md` → `06_VENUE_MANAGER.md`
-- `docs/specs/07_EXECUTION_INTERFACE_MANAGER.md` → `07_VENUE_INTERFACE_MANAGER.md`
+- `docs/specs/06_VENUE_MANAGER.md` → `06_VENUE_MANAGER.md`
+- `docs/specs/07_VENUE_INTERFACE_MANAGER.md` → `07_VENUE_INTERFACE_MANAGER.md`
 - `docs/specs/07B_EXECUTION_INTERFACES.md` → `07A_VENUE_INTERFACES.md`
 - `docs/specs/07C_EXECUTION_INTERFACE_FACTORY.md` → `07B_VENUE_INTERFACE_FACTORY.md`
 

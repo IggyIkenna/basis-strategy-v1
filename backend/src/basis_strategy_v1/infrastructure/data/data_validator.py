@@ -54,7 +54,8 @@ class DataValidator:
             'DATA-010': 'Data timestamp not hourly aligned',
             'DATA-011': 'Data contains gaps (missing hours)',
             'DATA-012': 'Data validation failed',
-            'DATA-013': 'Data provider initialization failed'
+            'DATA-013': 'Data provider initialization failed',
+            'DATA-014': 'Data outside backtest date range'
         }
     
     def validate_file_existence(self, file_path: Path) -> None:
@@ -124,8 +125,40 @@ class DataValidator:
                 min_date = min_date.tz_localize('UTC')
                 max_date = max_date.tz_localize('UTC')
             
-            # For development environments, be more lenient with date ranges
-            # Only fail if the data doesn't cover the requested range at all
+            # STRICT VALIDATION: ALL data must be within the backtest date range
+            # Check if any data is outside the allowed range
+            data_before_start = df_timestamps < expected_start
+            data_after_end = df_timestamps > expected_end
+            
+            if data_before_start.any():
+                out_of_range_before = df_timestamps[data_before_start]
+                raise DataProviderError(
+                    'DATA-014',
+                    f"Data contains timestamps before backtest start date in {file_path}. Start date: {expected_start}, Found: {out_of_range_before.min()} to {out_of_range_before.max()}",
+                    {
+                        'file_path': str(file_path),
+                        'expected_start': str(expected_start),
+                        'out_of_range_count': data_before_start.sum(),
+                        'out_of_range_min': str(out_of_range_before.min()),
+                        'out_of_range_max': str(out_of_range_before.max())
+                    }
+                )
+            
+            if data_after_end.any():
+                out_of_range_after = df_timestamps[data_after_end]
+                raise DataProviderError(
+                    'DATA-014',
+                    f"Data contains timestamps after backtest end date in {file_path}. End date: {expected_end}, Found: {out_of_range_after.min()} to {out_of_range_after.max()}",
+                    {
+                        'file_path': str(file_path),
+                        'expected_end': str(expected_end),
+                        'out_of_range_count': data_after_end.sum(),
+                        'out_of_range_min': str(out_of_range_after.min()),
+                        'out_of_range_max': str(out_of_range_after.max())
+                    }
+                )
+            
+            # Also check if data covers the requested range (original DATA-004 logic)
             if max_date < expected_start or min_date > expected_end:
                 raise DataProviderError(
                     'DATA-004',
@@ -147,6 +180,80 @@ class DataValidator:
             raise DataProviderError(
                 'DATA-004',
                 f"Date range validation failed for {file_path}: {e}",
+                {'file_path': str(file_path), 'error': str(e)}
+            )
+    
+    def validate_backtest_date_range(self, df: pd.DataFrame, file_path: Path, start_date: str, end_date: str) -> None:
+        """Validate data is within backtest date range (DATA-014)"""
+        try:
+            # Check if timestamp column exists
+            timestamp_col = None
+            for col in df.columns:
+                if 'timestamp' in col.lower() or 'date' in col.lower() or 'time' in col.lower():
+                    timestamp_col = col
+                    break
+            
+            if not timestamp_col:
+                self.logger.warning(f"No timestamp column found in {file_path}, skipping backtest date range validation")
+                return
+            
+            # Convert timestamps to datetime
+            df_timestamps = pd.to_datetime(df[timestamp_col])
+            min_date = df_timestamps.min()
+            max_date = df_timestamps.max()
+            
+            expected_start = pd.to_datetime(start_date)
+            expected_end = pd.to_datetime(end_date)
+            
+            # Handle timezone comparison - make both timezone-aware or both timezone-naive
+            if min_date.tz is not None and expected_start.tz is None:
+                expected_start = expected_start.tz_localize('UTC')
+                expected_end = expected_end.tz_localize('UTC')
+            elif min_date.tz is None and expected_start.tz is not None:
+                min_date = min_date.tz_localize('UTC')
+                max_date = max_date.tz_localize('UTC')
+            
+            # STRICT VALIDATION: ALL data must be within the backtest date range
+            # Check if any data is outside the allowed range
+            data_before_start = df_timestamps < expected_start
+            data_after_end = df_timestamps > expected_end
+            
+            if data_before_start.any():
+                out_of_range_before = df_timestamps[data_before_start]
+                raise DataProviderError(
+                    'DATA-014',
+                    f"Data contains timestamps before backtest start date in {file_path}. Start date: {expected_start}, Found: {out_of_range_before.min()} to {out_of_range_before.max()}",
+                    {
+                        'file_path': str(file_path),
+                        'expected_start': str(expected_start),
+                        'out_of_range_count': data_before_start.sum(),
+                        'out_of_range_min': str(out_of_range_before.min()),
+                        'out_of_range_max': str(out_of_range_before.max())
+                    }
+                )
+            
+            if data_after_end.any():
+                out_of_range_after = df_timestamps[data_after_end]
+                raise DataProviderError(
+                    'DATA-014',
+                    f"Data contains timestamps after backtest end date in {file_path}. End date: {expected_end}, Found: {out_of_range_after.min()} to {out_of_range_after.max()}",
+                    {
+                        'file_path': str(file_path),
+                        'expected_end': str(expected_end),
+                        'out_of_range_count': data_after_end.sum(),
+                        'out_of_range_min': str(out_of_range_after.min()),
+                        'out_of_range_max': str(out_of_range_after.max())
+                    }
+                )
+            
+            self.logger.debug(f"✅ Backtest date range valid: {file_path} (all data within {expected_start} to {expected_end})")
+            
+        except Exception as e:
+            if isinstance(e, DataProviderError):
+                raise
+            raise DataProviderError(
+                'DATA-014',
+                f"Backtest date range validation failed for {file_path}: {e}",
                 {'file_path': str(file_path), 'error': str(e)}
             )
     
@@ -230,6 +337,12 @@ class DataValidator:
             self.logger.debug(f"No timestamp column found in {file_path}, skipping duplicate validation")
             return
         
+        # Allow duplicates for execution costs (daily lookup tables resampled to hourly)
+        file_path_str = str(file_path).lower()
+        if 'execution_costs' in file_path_str:
+            self.logger.debug(f"✅ Allowing duplicate timestamps for execution costs lookup table: {file_path}")
+            return
+        
         duplicates = df[df.duplicated(subset=[timestamp_col], keep=False)]
         if len(duplicates) > 0:
             duplicate_timestamps = duplicates[timestamp_col].unique()
@@ -286,7 +399,25 @@ class DataValidator:
             file_path_str = str(file_path).lower()
             
             # Determine expected alignment based on data type
-            if 'funding_rates' in file_path_str:
+            if 'ml_data' in file_path_str or 'predictions' in file_path_str:
+                # ML prediction data uses 5-minute intervals
+                # Check if timestamps are aligned to 5-minute intervals
+                non_aligned = timestamps[
+                    (timestamps.dt.minute % 5 != 0) | 
+                    (timestamps.dt.second != 0)
+                ]
+                if len(non_aligned) > 0:
+                    raise DataProviderError(
+                        'DATA-010',
+                        f"Data timestamps not 5-minute aligned in {file_path}: {len(non_aligned)} non-aligned timestamps",
+                        {
+                            'file_path': str(file_path),
+                            'non_aligned_count': len(non_aligned),
+                            'non_aligned_timestamps': non_aligned.tolist()
+                        }
+                    )
+                self.logger.debug(f"✅ Timestamps 5-minute aligned: {file_path}")
+            elif 'funding_rates' in file_path_str:
                 # Funding rates should be aligned to 8-hour intervals (00:00, 08:00, 16:00)
                 # Check if timestamps are aligned to 8-hour intervals
                 non_aligned = timestamps[
@@ -378,10 +509,24 @@ class DataValidator:
             missing_timestamps = set(expected_range) - set(timestamps)
             if missing_timestamps:
                 missing_list = sorted(list(missing_timestamps))
-                # For development environments, be more lenient with data gaps
-                # Only fail if more than 10% of data is missing
                 missing_percentage = len(missing_timestamps) / len(expected_range) * 100
-                if missing_percentage > 10.0:
+                
+                # Special handling for execution costs (daily lookup tables resampled to hourly)
+                file_path_str = str(file_path).lower()
+                if 'execution_costs' in file_path_str:
+                    # Execution costs are daily lookup tables, so gaps are expected
+                    self.logger.debug(f"✅ Allowing gaps for execution costs lookup table: {file_path} ({missing_percentage:.1f}% gaps)")
+                    return
+                
+                # Special handling for known sparse data types
+                if 'seasonal_rewards' in file_path_str or 'staking' in file_path_str:
+                    # Seasonal rewards and staking data are sparse by nature
+                    self.logger.debug(f"✅ Allowing gaps for sparse data: {file_path} ({missing_percentage:.1f}% gaps)")
+                    return
+                
+                # STRICT VALIDATION: 100% data quality required for all other data
+                # Only allow gaps for known sparse data types
+                if missing_percentage > 0.0:
                     raise DataProviderError(
                         'DATA-011',
                         f"Data contains significant gaps in {file_path}: {len(missing_timestamps)} missing {expected_freq} periods ({missing_percentage:.1f}%)",
@@ -410,6 +555,14 @@ class DataValidator:
     def _get_expected_frequency(self, file_path: Path, df: pd.DataFrame) -> str:
         """Determine expected data frequency based on file path and content."""
         file_path_str = str(file_path).lower()
+        
+        # ML prediction data uses 5-minute intervals
+        if 'ml_data' in file_path_str or 'predictions' in file_path_str:
+            return '5T'
+        
+        # Execution costs are daily lookup tables resampled to hourly (allow duplicates)
+        if 'execution_costs' in file_path_str:
+            return 'H'
         
         # Funding rates are updated every 8 hours
         if 'funding_rates' in file_path_str:

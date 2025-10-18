@@ -4,7 +4,7 @@ Unified Health Manager
 Centralized health monitoring and management system for all components.
 Provides health checks, status monitoring, and error handling integration.
 
-Reference: docs/specs/17_HEALTH_ERROR_SYSTEMS.md
+Reference: docs/specs/HEALTH_ERROR_SYSTEMS.md
 Reference: docs/REFERENCE_ARCHITECTURE_CANONICAL.md - Health System Architecture
 """
 
@@ -17,9 +17,8 @@ from enum import Enum
 import threading
 import time
 
-from ..error_codes.exceptions import ComponentError, HealthError
+from ..errors.error_codes import ComponentError
 
-from ...core.logging.base_logging_interface import StandardizedLoggingMixin, LogLevel, EventType
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +32,7 @@ class HealthStatus(Enum):
 
 
 @dataclass
-class ComponentHealth(StandardizedLoggingMixin):
+class ComponentHealth:
     """Component health information."""
     component_name: str
     status: HealthStatus
@@ -44,7 +43,7 @@ class ComponentHealth(StandardizedLoggingMixin):
     last_error: Optional[str] = None
 
 
-class UnifiedHealthManager(StandardizedLoggingMixin):
+class UnifiedHealthManager:
     """Unified health management system for all components."""
     
     _instance = None
@@ -166,10 +165,12 @@ class UnifiedHealthManager(StandardizedLoggingMixin):
     def check_component_health(self, component_name: str) -> ComponentHealth:
         """Check health for a specific component."""
         if component_name not in self._components:
-            raise HealthError(
-                'HEALTH-003',
+            raise ComponentError(
+                error_code='HEALTH-003',
                 message=f'Component not registered: {component_name}',
-                component_name=component_name
+                component='UnifiedHealthManager',
+                severity='HIGH',
+                details={'component_name': component_name}
             )
         
         try:

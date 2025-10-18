@@ -20,7 +20,7 @@ class BacktestRequest(BaseModel):
     strategy_name: str = Field(
         ...,
         description="Name of the strategy to backtest",
-        examples=["usdt_market_neutral", "eth_leveraged", "pure_lending", "eth_basis", "btc_basis", "eth_staking_only", "usdt_market_neutral_no_leverage"]
+        examples=["usdt_market_neutral", "eth_leveraged", "pure_lending_usdt", "eth_basis", "btc_basis", "eth_staking_only", "usdt_market_neutral_no_leverage"]
     )
     
     start_date: datetime = Field(
@@ -49,7 +49,7 @@ class BacktestRequest(BaseModel):
     
     config_overrides: Optional[Dict[str, Any]] = Field(
         default=None,
-        description="Optional configuration overrides. Can override component_config, target_apy, max_drawdown, and other strategy parameters. Examples: component_config.risk_monitor.risk_limits, component_config.pnl_calculator.reconciliation_tolerance, target_apy, max_drawdown"
+        description="Optional configuration overrides. Can override component_config, target_apy, max_drawdown, and other strategy parameters. Examples: component_config.risk_monitor.risk_limits, component_config.pnl_monitor.reconciliation_tolerance, target_apy, max_drawdown"
     )
     
     debug_mode: bool = Field(
@@ -94,7 +94,7 @@ class BacktestRequest(BaseModel):
                                 "target_ltv": 0.85
                             }
                         },
-                        "pnl_calculator": {
+                        "pnl_monitor": {
                             "reconciliation_tolerance": 0.01
                         },
                         "strategy_manager": {
@@ -121,7 +121,7 @@ class LiveTradingRequest(BaseModel):
     strategy_name: str = Field(
         ...,
         description="Strategy to run live",
-        examples=["usdt_market_neutral", "eth_leveraged", "pure_lending", "eth_basis", "btc_basis", "eth_staking_only"]
+        examples=["usdt_market_neutral", "eth_leveraged", "pure_lending_usdt", "eth_basis", "btc_basis", "eth_staking_only"]
     )
     
     share_class: ShareClass = Field(

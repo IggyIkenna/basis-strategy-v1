@@ -11,6 +11,7 @@ Single source of truth for all configuration operations:
 import os
 import yaml
 import json
+import uuid
 from pathlib import Path
 from typing import Dict, List, Any, Optional, Tuple
 from functools import lru_cache
@@ -22,8 +23,10 @@ from .models import (
     validate_mode_config, validate_venue_config, validate_share_class_config,
     validate_complete_configuration, ConfigurationSet, ConfigurationValidationError
 )
-from ...core.logging.base_logging_interface import StandardizedLoggingMixin, LogLevel, EventType
+from .config_validator import ValidationResult
+from .constants import _BASE_DIR, get_environment
 from ...core.errors.component_error import ComponentError
+import structlog
 # Health check functions removed - now handled by unified health manager
 # from ..monitoring.logging import log_structured_error
 
@@ -42,7 +45,7 @@ ERROR_CODES = {
 }
 
 
-class ConfigManager(StandardizedLoggingMixin):
+class ConfigManager:
     """Unified configuration manager with fail-fast policy.
     
     TODO-REFACTOR: ENVIRONMENT VARIABLE INTEGRATION VIOLATION - See docs/VENUE_ARCHITECTURE.md
@@ -85,6 +88,9 @@ class ConfigManager(StandardizedLoggingMixin):
         self.config_cache: Dict[str, Any] = {}
         self._validation_result: Optional[ValidationResult] = None
         
+        # Initialize structured logger
+        self.structured_logger = structlog.get_logger()
+        
         # Health integration
         self.health_status = {
             'status': 'healthy',
@@ -92,6 +98,19 @@ class ConfigManager(StandardizedLoggingMixin):
             'error_count': 0,
             'success_count': 0
         }
+        
+        # Initialize configuration loading
+        self._initialize_config()
+        
+        # Log initialization
+        self.structured_logger.info(
+            'ConfigManager initialized',
+            event_type='component_initialization',
+            execution_mode=os.getenv('BASIS_EXECUTION_MODE', 'backtest'),
+            config_hash=hash(str(self.config_cache)),
+            config_cache_size=len(self.config_cache),
+            component_type='ConfigManager'
+        )
     
     def check_component_health(self) -> Dict[str, Any]:
         """Check component health status."""
@@ -105,9 +124,9 @@ class ConfigManager(StandardizedLoggingMixin):
     
     def _initialize_config(self):
         """Initialize configuration loading and validation."""
-        # Load and validate configuration
-        self._load_all_config()
-        self._validate_config()
+        # Load and validate configuration using public methods
+        self.load_config()
+        self.validate_config()
         
         # Config manager health now handled by unified health manager
     
@@ -211,8 +230,8 @@ class ConfigManager(StandardizedLoggingMixin):
             self._handle_error('CONFIG-MGR-007', f"Failed to create component {component_type}: {e}")
             return None
     
-    def _load_all_config(self):
-        """Load all configuration files and environment variables."""
+    def load_config(self):
+        """Load all configuration files and environment variables. Public method for intentional config loading."""
         logger.info("🔄 Loading configuration...")
         
         # Load base configuration
@@ -338,21 +357,12 @@ class ConfigManager(StandardizedLoggingMixin):
         # Integer validation
         if var_name in ['BASIS_API_PORT', 'HTTP_PORT', 'HTTPS_PORT', 'DATA_LOAD_TIMEOUT', 'DATA_CACHE_SIZE', 
                        'STRATEGY_MANAGER_TIMEOUT', 'STRATEGY_MANAGER_MAX_RETRIES', 'STRATEGY_FACTORY_TIMEOUT', 
-                       'STRATEGY_FACTORY_MAX_RETRIES', 'BASIS_LIVE_TRADING__HEARTBEAT_TIMEOUT_SECONDS']:
+                       'STRATEGY_FACTORY_MAX_RETRIES']:
             try:
                 int(value)
             except ValueError:
                 logger.error(f"CONFIG-MGR-004: Invalid integer value for {var_name}: {value}")
                 raise ValueError(f"Invalid integer value for {var_name}: {value}")
-            return value
-        
-        # Float validation
-        if var_name in ['BASIS_LIVE_TRADING__MAX_TRADE_SIZE_USD', 'BASIS_LIVE_TRADING__EMERGENCY_STOP_LOSS_PCT']:
-            try:
-                float(value)
-            except ValueError:
-                logger.error(f"CONFIG-MGR-004: Invalid float value for {var_name}: {value}")
-                raise ValueError(f"Invalid float value for {var_name}: {value}")
             return value
         
         # Enum validation
@@ -424,7 +434,16 @@ class ConfigManager(StandardizedLoggingMixin):
                 raise ValueError(f"Empty CORS origins for {var_name}")
             return value
         
-        # Default: return as-is
+        # Float validation for specific variables that should be floats
+        if var_name in ['BASIS_API_TIMEOUT', 'BASIS_DATA_TIMEOUT', 'BASIS_STRATEGY_TIMEOUT']:
+            try:
+                float(value)
+            except ValueError:
+                logger.error(f"CONFIG-MGR-004: Invalid float value for {var_name}: {value}")
+                raise ValueError(f"Invalid float value for {var_name}: {value}")
+            return value
+        
+        # Default: return as-is (most environment variables are strings)
         return value
     
     def get_execution_mode(self) -> str:
@@ -461,7 +480,8 @@ class ConfigManager(StandardizedLoggingMixin):
         enable_caching = config_settings.get('enable_caching', True)
         cache_ttl = config_settings.get('cache_ttl', 300)
         
-        config = self.config_cache['base'].copy()
+        # Start with base config (empty dict if no base config exists)
+        config = self.config_cache.get('base', {}).copy()
         
         if mode:
             if mode not in self.config_cache['modes']:
@@ -512,7 +532,7 @@ class ConfigManager(StandardizedLoggingMixin):
                 f"Available strategies: {available_strategies}"
             )
     
-    def _validate_config(self):
+    def validate_config(self):
         """Validate the loaded configuration with cross-reference validation."""
         logger.info("🔍 Validating loaded configuration...")
         
@@ -540,7 +560,7 @@ class ConfigManager(StandardizedLoggingMixin):
         """Check if configuration is healthy."""
         return 'base' in self.config_cache and self.config_cache.get('env') is not None
     
-    # Standardized Logging Methods (per 17_HEALTH_ERROR_SYSTEMS.md and 08_EVENT_LOGGER.md)
+    # Standardized Logging Methods (per HEALTH_ERROR_SYSTEMS.md and 08_EVENT_LOGGER.md)
     
     def log_structured_event(self, timestamp: pd.Timestamp, event_type: str, level: str, message: str, component_name: str, data: Optional[Dict[str, Any]] = None, correlation_id: Optional[str] = None) -> None:
         """Log a structured event with standardized format."""
@@ -566,13 +586,6 @@ class ConfigManager(StandardizedLoggingMixin):
         except Exception as e:
             logger.error(f"Failed to log structured event: {e}")
     
-    def log_component_event(self, event_type: str, message: str, data: Optional[Dict[str, Any]] = None, level: str = 'INFO') -> None:
-        """Log a component-specific event with automatic timestamp and component name."""
-        try:
-            timestamp = pd.Timestamp.now(tz='UTC')
-            self.log_structured_event(timestamp, event_type, level, message, 'ConfigManager', data)
-        except Exception as e:
-            logger.error(f"Failed to log component event: {e}")
     
     def log_performance_metric(self, metric_name: str, value: float, unit: str, data: Optional[Dict[str, Any]] = None) -> None:
         """Log a performance metric."""
@@ -722,6 +735,15 @@ class ConfigManager(StandardizedLoggingMixin):
 # Global config manager instance
 _config_manager: Optional[ConfigManager] = None
 
+def initialize_config_manager() -> ConfigManager:
+    """Initialize the global configuration manager instance."""
+    global _config_manager
+    
+    if _config_manager is None:
+        _config_manager = ConfigManager()
+    
+    return _config_manager
+
 def get_config_manager() -> ConfigManager:
     """Get the global configuration manager instance."""
     global _config_manager
@@ -732,17 +754,6 @@ def get_config_manager() -> ConfigManager:
     return _config_manager
 
 
-# Compatibility functions for existing imports
-def get_settings() -> Dict[str, Any]:
-    """Get complete settings (compatibility function)."""
-    cm = get_config_manager()
-    return cm.get_complete_config()
-
-
-def get_environment() -> str:
-    """Get current environment (compatibility function)."""
-    cm = get_config_manager()
-    return cm.config_cache['env']['BASIS_ENVIRONMENT']
 
 
 def load_mode_config(mode: str) -> Dict[str, Any]:
@@ -798,4 +809,3 @@ def validate_strategy_name(strategy_name: str) -> None:
 
 
 # Constants for compatibility
-_BASE_DIR = Path(__file__).parent.parent.parent.parent.parent.parent

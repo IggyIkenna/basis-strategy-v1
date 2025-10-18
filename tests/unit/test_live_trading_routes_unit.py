@@ -57,7 +57,7 @@ class TestLiveTradingRoutes:
         service.get_status.return_value = {
             "request_id": "test-request-123",
             "status": "running",
-            "strategy_name": "pure_lending",
+            "strategy_name": "pure_lending_usdt",
             "started_at": "2024-01-01T12:00:00Z",
             "uptime_seconds": 1800,
             "active_positions": 2,
@@ -81,7 +81,7 @@ class TestLiveTradingRoutes:
         service.get_all_running_strategies.return_value = [
             {
                 "request_id": "test-request-123",
-                "strategy_name": "pure_lending",
+                "strategy_name": "pure_lending_usdt",
                 "status": "running",
                 "started_at": "2024-01-01T12:00:00Z"
             }
@@ -100,7 +100,7 @@ class TestLiveTradingRoutes:
         mock_get_service.return_value = mock_live_trading_service
         
         request_data = {
-            "strategy_name": "pure_lending",
+            "strategy_name": "pure_lending_usdt",
             "initial_capital": 1000.0,
             "share_class": "USDT",
             "config_overrides": {}
@@ -113,7 +113,7 @@ class TestLiveTradingRoutes:
         assert "data" in data
         assert data["data"]["request_id"] == "test-request-123"
         assert data["data"]["status"] == "started"
-        assert data["data"]["strategy_name"] == "pure_lending"
+        assert data["data"]["strategy_name"] == "pure_lending_usdt"
 
     @patch('basis_strategy_v1.api.dependencies.get_live_trading_service')
     def test_start_trading_service_error(self, mock_get_service, app, test_client, mock_live_trading_service):
@@ -122,7 +122,7 @@ class TestLiveTradingRoutes:
         mock_get_service.return_value = mock_live_trading_service
         
         request_data = {
-            "strategy_name": "pure_lending",
+            "strategy_name": "pure_lending_usdt",
             "initial_capital": 1000.0,
             "share_class": "USDT",
             "config_overrides": {}
@@ -141,7 +141,7 @@ class TestLiveTradingRoutes:
         
         # Missing required fields
         request_data = {
-            "strategy_name": "pure_lending"
+            "strategy_name": "pure_lending_usdt"
             # Missing initial_capital and share_class
         }
         
@@ -183,7 +183,7 @@ class TestLiveTradingRoutes:
         assert "data" in data
         assert data["data"]["request_id"] == "test-request-123"
         assert data["data"]["status"] == "running"
-        assert data["data"]["strategy_name"] == "pure_lending"
+        assert data["data"]["strategy_name"] == "pure_lending_usdt"
         assert "uptime_seconds" in data["data"]
         assert "active_positions" in data["data"]
         assert "total_trades" in data["data"]
@@ -297,7 +297,7 @@ class TestLiveTradingRoutes:
         mock_get_service.return_value = mock_live_trading_service
         
         request_data = {
-            "strategy_name": "pure_lending",
+            "strategy_name": "pure_lending_usdt",
             "initial_capital": 1000.0,
             "share_class": "USDT",
             "config_overrides": {}
@@ -325,7 +325,7 @@ class TestLiveTradingRoutes:
         mock_get_service.return_value = mock_live_trading_service
         
         request_data = {
-            "strategy_name": "pure_lending",
+            "strategy_name": "pure_lending_usdt",
             "initial_capital": 1000.0,
             "share_class": "USDT",
             "config_overrides": {}
@@ -360,7 +360,7 @@ class TestLiveTradingRoutes:
         mock_get_service.return_value = mock_live_trading_service
         
         request_data = {
-            "strategy_name": "pure_lending",
+            "strategy_name": "pure_lending_usdt",
             "initial_capital": 1000.0,
             "share_class": "USDT",
             "config_overrides": {}
@@ -379,7 +379,7 @@ class TestLiveTradingRoutes:
         mock_get_service.return_value = mock_live_trading_service
         
         request_data = {
-            "strategy_name": "pure_lending",
+            "strategy_name": "pure_lending_usdt",
             "initial_capital": 1000.0,
             "share_class": "USDT",
             "config_overrides": {}

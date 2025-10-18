@@ -42,6 +42,7 @@ class BaseCurrency(str, Enum):
     """Base currency enumeration."""
     USDT = "USDT"
     ETH = "ETH"
+    BTC = "BTC"
 
 
 class ModeConfig(BaseModel):
@@ -62,8 +63,8 @@ class ModeConfig(BaseModel):
     # Asset configuration
     share_class: str = Field(..., description="Share class (USDT or ETH)")
     asset: str = Field(..., description="Primary asset")
+    margin_currency: Optional[str] = Field(None, description="Margin currency (USDT, ETH, or BTC)")
     lst_type: Optional[str] = Field(None, description="LST type if applicable")
-    rewards_mode: Optional[str] = Field(None, description="Rewards mode")
     position_deviation_threshold: Optional[float] = Field(None, ge=0.0, le=1.0, description="Position deviation threshold")
     
     # Risk parameters
@@ -74,12 +75,11 @@ class ModeConfig(BaseModel):
     # Execution parameters
     time_throttle_interval: Optional[int] = Field(None, ge=1, description="Time throttle interval in seconds")
     
-    # Data requirements
-    data_requirements: List[str] = Field(..., description="Required data types")
+    # Data requirements - removed as part of DATA_ARCHITECTURE_REFACTOR_PLAN.md
+    # CSV mappings are now derived from position_subscriptions in data providers
     
     # Optional fields for specific strategies
     leverage_enabled: Optional[bool] = Field(None, description="Whether leverage is enabled")
-    max_ltv: Optional[float] = Field(None, ge=0.0, le=1.0, description="Maximum loan-to-value ratio")
     liquidation_threshold: Optional[float] = Field(None, ge=0.0, le=1.0, description="Liquidation threshold")
     max_stake_spread_move: Optional[float] = Field(None, ge=0.0, description="Maximum stake spread move")
     
@@ -114,20 +114,19 @@ class ModeConfig(BaseModel):
     ml_feature_importance_threshold: Optional[float] = Field(None, ge=0.0, le=1.0, description="ML feature importance threshold")
     
     # Event logger configuration
-    event_logger: Optional[Dict[str, Any]] = Field(None, description="Event logger configuration")
+    event_logger: Dict[str, Any] = Field(..., description="Event logger configuration")
     
     # Strategy-specific parameters
-    delta_tolerance: Optional[float] = Field(None, ge=0.0, le=1.0, description="Delta neutrality tolerance")
+    # Note: delta_tolerance moved to component_config.risk_monitor (now under risk params)
     dust_delta: Optional[float] = Field(None, ge=0.0, le=1.0, description="Dust delta threshold for small positions")
-    stake_allocation_eth: Optional[float] = Field(None, ge=0.0, le=1.0, description="ETH stake allocation percentage")
-    funding_threshold: Optional[float] = Field(None, ge=0.0, description="Funding rate threshold for basis trading")
+    stake_allocation_percentage: Optional[float] = Field(None, ge=0.0, le=1.0, description="ETH stake allocation percentage")
     
     @field_validator('share_class')
     @classmethod
     def validate_share_class(cls, v):
-        """Validate share class is USDT or ETH."""
-        if v not in ['USDT', 'ETH']:
-            raise ValueError(f"share_class must be 'USDT' or 'ETH', got: {v}")
+        """Validate share class is USDT, ETH, or BTC."""
+        if v not in ['USDT', 'ETH', 'BTC']:
+            raise ValueError(f"share_class must be 'USDT', 'ETH', or 'BTC', got: {v}")
         return v
     
     @field_validator('asset')
@@ -139,13 +138,14 @@ class ModeConfig(BaseModel):
             raise ValueError(f"asset must be one of {valid_assets}, got: {v}")
         return v
     
-    @field_validator('rewards_mode')
+    @field_validator('margin_currency')
     @classmethod
-    def validate_rewards_mode(cls, v):
-        """Validate rewards mode."""
-        valid_modes = ['base_only', 'base_eigen', 'base_eigen_seasonal']
-        if v not in valid_modes:
-            raise ValueError(f"rewards_mode must be one of {valid_modes}, got: {v}")
+    def validate_margin_currency(cls, v):
+        """Validate margin currency is valid."""
+        if v is not None:
+            valid_currencies = ['USDT', 'ETH', 'BTC', 'USDC']
+            if v not in valid_currencies:
+                raise ValueError(f"margin_currency must be one of {valid_currencies}, got: {v}")
         return v
     
     @model_validator(mode='after')
@@ -169,20 +169,22 @@ class ModeConfig(BaseModel):
         if self.borrowing_enabled and not self.max_ltv:
             raise ValueError(f"Mode {self.mode}: borrowing_enabled requires max_ltv")
         
-        # Validate hedge configuration
+        # Validate hedge configuration (LEGACY FIELDS - now in component_config.strategy_manager.position_calculation)
+        # These validations only apply if using legacy hedge_venues/hedge_allocation fields at root level
+        # The preferred location is now component_config.strategy_manager.position_calculation.hedge_allocation
         if self.hedge_venues and not self.hedge_allocation and not any([self.hedge_allocation_binance, self.hedge_allocation_bybit, self.hedge_allocation_okx]):
-            raise ValueError(f"Mode {self.mode}: hedge_venues specified but no hedge_allocation or individual allocation fields")
+            logger.warning(f"Mode {self.mode}: hedge_venues specified but no hedge_allocation. Consider using component_config.strategy_manager.position_calculation.hedge_allocation instead")
         
         if (self.hedge_allocation or any([self.hedge_allocation_binance, self.hedge_allocation_bybit, self.hedge_allocation_okx])) and not self.hedge_venues:
-            raise ValueError(f"Mode {self.mode}: hedge allocation specified but no hedge_venues")
+            logger.warning(f"Mode {self.mode}: hedge allocation specified but no hedge_venues. Consider using component_config.strategy_manager.position_calculation.hedge_allocation instead")
         
-        # Check hedge allocation sums to 1.0
+        # Check hedge allocation sums to 1.0 (legacy field)
         if self.hedge_allocation:
             total_allocation = sum(self.hedge_allocation.values())
             if abs(total_allocation - 1.0) > 0.01:
                 raise ValueError(f"Mode {self.mode}: hedge_allocation sums to {total_allocation}, expected 1.0")
         
-        # Check individual allocation fields sum to 1.0
+        # Check individual allocation fields sum to 1.0 (legacy fields)
         individual_allocations = [self.hedge_allocation_binance, self.hedge_allocation_bybit, self.hedge_allocation_okx]
         if any(individual_allocations):
             total_individual = sum(a for a in individual_allocations if a is not None)
@@ -220,11 +222,14 @@ class ModeConfig(BaseModel):
                 # Market neutral share classes can trade different assets
                 # USDT share class can trade USDT, ETH, BTC for market neutral strategies
                 # ETH share class can trade ETH, BTC for market neutral strategies
+                # BTC share class can trade BTC for market neutral strategies
                 if market_neutral:
                     if self.share_class == 'USDT' and self.asset not in ['USDT', 'ETH', 'BTC']:
                         raise ValueError(f"Mode {self.mode}: USDT market neutral share class should trade USDT, ETH, or BTC, not {self.asset}")
                     elif self.share_class == 'ETH' and self.asset not in ['ETH', 'BTC']:
                         raise ValueError(f"Mode {self.mode}: ETH market neutral share class should trade ETH or BTC, not {self.asset}")
+                    elif self.share_class == 'BTC' and self.asset not in ['BTC']:
+                        raise ValueError(f"Mode {self.mode}: BTC market neutral share class should trade BTC, not {self.asset}")
                         
         except Exception as e:
             # If share class config loading fails, log warning but don't fail validation
@@ -238,12 +243,47 @@ class ModeConfig(BaseModel):
             logger.warning(f"Mode {self.mode}: Very high target_apy {self.target_apy}% (>100%)")
         
         # NEW: Basis trading validation
-        if self.basis_trade_enabled and not self.hedge_venues:
-            raise ValueError(f"Mode {self.mode}: basis_trade_enabled requires hedge_venues")
+        # Check if hedge allocation is defined in component_config.strategy_manager.position_calculation.hedge_allocation
+        hedge_allocation_defined = (
+            self.component_config and 
+            isinstance(self.component_config, dict) and
+            'strategy_manager' in self.component_config and
+            isinstance(self.component_config['strategy_manager'], dict) and
+            'position_calculation' in self.component_config['strategy_manager'] and
+            isinstance(self.component_config['strategy_manager']['position_calculation'], dict) and
+            'hedge_allocation' in self.component_config['strategy_manager']['position_calculation']
+        )
+        
+        # Also check for legacy hedge_venues field or venues with perp instruments for backward compatibility
+        legacy_hedge_defined = self.hedge_venues or (
+            self.venues and any(
+                venue_name in ['binance', 'bybit', 'okx'] and 
+                venue_config.get('instruments') and
+                any('PERP' in str(inst).upper() for inst in venue_config.get('instruments', []))
+                for venue_name, venue_config in self.venues.items()
+            )
+        )
+        
+        hedge_venues_defined = hedge_allocation_defined or legacy_hedge_defined
+        
+        if self.basis_trade_enabled and not hedge_venues_defined:
+            raise ValueError(f"Mode {self.mode}: basis_trade_enabled requires hedge_allocation in component_config.strategy_manager.position_calculation or venues with perpetual instruments")
         
         # NEW: Market neutral validation
-        if 'market_neutral' in self.mode.lower() and not self.hedge_venues:
-            raise ValueError(f"Mode {self.mode}: market_neutral mode requires hedge_venues")
+        if 'market_neutral' in self.mode.lower() and not hedge_venues_defined:
+            raise ValueError(f"Mode {self.mode}: market_neutral mode requires hedge_allocation in component_config.strategy_manager.position_calculation or venues with perpetual instruments")
+        
+        # NEW: Margin currency validation
+        if self.margin_currency:
+            # For ML directional strategies, margin_currency should match share_class for consistency
+            if 'ml_' in self.mode.lower() and 'directional' in self.mode.lower():
+                if self.margin_currency != self.share_class:
+                    # Allow this but log a warning for clarity
+                    logger.warning(f"Mode {self.mode}: ML directional strategy has margin_currency '{self.margin_currency}' different from share_class '{self.share_class}'")
+            
+            # For basis trading, margin_currency should typically be USDT
+            if self.basis_trade_enabled and self.margin_currency != 'USDT':
+                logger.warning(f"Mode {self.mode}: Basis trading typically uses USDT margin, but margin_currency is '{self.margin_currency}'")
         
         return self
 
@@ -264,21 +304,10 @@ class RiskMonitorConfig(BaseModel):
 
 class ExposureMonitorConfig(BaseModel):
     """Exposure monitor configuration model."""
-    
-    exposure_currency: str = Field(..., description="Exposure reporting currency")
-    track_assets: List[str] = Field(..., description="Assets to track")
-    conversion_methods: Dict[str, str] = Field(..., description="Asset conversion methods")
-    
-    # Additional fields used in YAML files
-    USDT: Optional[str] = Field(None, description="USDT conversion method")
-    aWeETH: Optional[str] = Field(None, description="aWeETH conversion method")
-    EIGEN: Optional[str] = Field(None, description="EIGEN conversion method")
-    weETH: Optional[str] = Field(None, description="weETH conversion method")
-    variableDebtWETH: Optional[str] = Field(None, description="variableDebtWETH conversion method")
-
+    pass
 
 class PnLCalculatorConfig(BaseModel):
-    """PnL calculator configuration model."""
+    """PnL Monitor configuration model."""
     
     attribution_types: List[str] = Field(..., description="PnL attribution types")
     reporting_currency: str = Field(..., description="PnL reporting currency")
@@ -301,19 +330,23 @@ class StrategyManagerConfig(BaseModel):
     hedge_allocation: Optional[Dict[str, float]] = Field(None, description="Hedge allocation mapping")
 
 
-class VenueManagerConfig(BaseModel):
-    """Venue manager configuration model."""
+class ExecutionManagerConfig(BaseModel):
+    """Execution manager configuration model.
     
-    supported_actions: List[str] = Field(..., description="Supported venue actions")
-    action_mapping: Dict[str, List[str]] = Field(..., description="Action to venue mapping")
+    Note: Configuration for ExecutionManager component.
+    ExecutionManager uses tight loop architecture and processes orders sequentially.
+    It receives orders from StrategyManager and executes them via VenueInterfaceManager.
+    The following fields are deprecated and maintained for backward compatibility only.
+    """
     
-    # Additional fields used in YAML files
-    entry_full: Optional[List[str]] = Field(None, description="Actions for full entry")
-    exit_full: Optional[List[str]] = Field(None, description="Actions for full exit")
-    entry_partial: Optional[List[str]] = Field(None, description="Actions for partial entry")
-    exit_partial: Optional[List[str]] = Field(None, description="Actions for partial exit")
-    open_perp_short: Optional[List[str]] = Field(None, description="Actions for opening perp short")
-    open_perp_long: Optional[List[str]] = Field(None, description="Actions for opening perp long")
+    # Deprecated fields (maintained for backward compatibility)
+    supported_actions: Optional[List[str]] = Field(None, description="[DEPRECATED] Supported venue actions - not used in tight loop architecture")
+    entry_full: Optional[List[str]] = Field(None, description="[DEPRECATED] Actions for full entry")
+    exit_full: Optional[List[str]] = Field(None, description="[DEPRECATED] Actions for full exit")
+    entry_partial: Optional[List[str]] = Field(None, description="[DEPRECATED] Actions for partial entry")
+    exit_partial: Optional[List[str]] = Field(None, description="[DEPRECATED] Actions for partial exit")
+    open_perp_short: Optional[List[str]] = Field(None, description="[DEPRECATED] Actions for opening perp short")
+    open_perp_long: Optional[List[str]] = Field(None, description="[DEPRECATED] Actions for opening perp long")
 
 
 class ResultsStoreConfig(BaseModel):
@@ -386,8 +419,10 @@ class VenueConfig(BaseModel):
     # Examples and documentation
     example: Optional[Dict[str, Any]] = Field(None, description="Example requests and responses")
     
-    # Additional fields used in YAML files but not in current model
-    venue_type: Optional[str] = Field(None, description="Venue type (cex, defi, infrastructure)")
+    # Required venue fields (used in YAML configs - note: YAML uses 'type' not 'venue_type')
+    type: str = Field(..., description="Venue type (cex, defi, infrastructure)")
+    
+    # Optional venue fields (used in YAML configs)
     instruments: Optional[List[str]] = Field(None, description="Trading instruments available on venue")
     order_types: Optional[List[str]] = Field(None, description="Supported order types on venue")
     min_amount: Optional[float] = Field(None, ge=0.0, description="Minimum trade amount for venue")
@@ -420,7 +455,6 @@ class ShareClassConfig(BaseModel):
     # Core identification
     share_class: str = Field(..., description="Share class name")
     type: ShareClassType = Field(..., description="Share class type")
-    base_currency: BaseCurrency = Field(..., description="Base currency")
     description: Optional[str] = Field(None, description="Share class description")
     
     # Currency configuration
@@ -434,7 +468,7 @@ class ShareClassConfig(BaseModel):
     
     # Strategy support
     supported_strategies: List[str] = Field(..., description="Supported strategy modes")
-    leverage_supported: bool = Field(..., description="Whether leverage is supported")
+    leverage_enabled: bool = Field(..., description="Whether leverage is supported")
     staking_supported: Optional[bool] = Field(None, description="Whether staking is supported")
     basis_trading_supported: Optional[bool] = Field(None, description="Whether basis trading is supported")
     
@@ -449,8 +483,8 @@ class ShareClassConfig(BaseModel):
     @classmethod
     def validate_share_class_name(cls, v):
         """Validate share class name."""
-        if v not in ['USDT', 'ETH']:
-            raise ValueError(f"share_class must be 'USDT' or 'ETH', got: {v}")
+        if v not in ['USDT', 'ETH', 'BTC']:
+            raise ValueError(f"share_class must be 'USDT', 'ETH', or 'BTC', got: {v}")
         return v
     
     @field_validator('supported_strategies')
@@ -458,9 +492,9 @@ class ShareClassConfig(BaseModel):
     def validate_supported_strategies(cls, v):
         """Validate supported strategies."""
         valid_strategies = [
-            'pure_lending', 'btc_basis', 'eth_basis', 'eth_leveraged',
-            'eth_staking_only', 'usdt_market_neutral', 'usdt_market_neutral_no_leverage',
-            'ml_btc_directional', 'ml_usdt_directional'
+            'pure_lending_usdt', 'pure_lending_eth', 'btc_basis', 'eth_basis', 'eth_leveraged',
+            'eth_staking_only', 'usdt_eth_staking_hedged_leveraged', 'usdt_eth_staking_hedged_simple',
+            'ml_btc_directional_usdt_margin', 'ml_btc_directional_btc_margin'
         ]
         for strategy in v:
             if strategy not in valid_strategies:
@@ -511,18 +545,23 @@ class ConfigurationSet(BaseModel):
                 raise ValueError(f"Mode {mode_name}: Strategy not supported by share class '{share_class_name}'. Supported strategies: {share_class_config.supported_strategies}")
             
             # Validate leverage compatibility
-            if mode_config.leverage_enabled and not share_class_config.leverage_supported:
+            if mode_config.leverage_enabled and not share_class_config.leverage_enabled:
                 raise ValueError(f"Mode {mode_name}: Leverage enabled but share class '{share_class_name}' does not support leverage")
             
-            # Validate base currency compatibility
+            # Validate asset currency compatibility
             mode_asset = mode_config.asset
-            share_class_currency = share_class_config.base_currency
+            share_class_currency = share_class_config.share_class
             
             if 'usdt' in mode_name.lower() and share_class_currency != 'USDT':
                 raise ValueError(f"Mode {mode_name}: USDT strategy should use USDT share class, not {share_class_currency}")
             
+            # ETH strategies should use ETH share class, except for market neutral basis strategies
             if 'eth' in mode_name.lower() and share_class_currency != 'ETH':
-                raise ValueError(f"Mode {mode_name}: ETH strategy should use ETH share class, not {share_class_currency}")
+                # Exception: market neutral strategies that use USDT share class
+                if mode_name in ['eth_basis', 'usdt_eth_staking_hedged_leveraged', 'usdt_eth_staking_hedged_simple'] and share_class_currency == 'USDT':
+                    pass  # Allow market neutral ETH strategies to use USDT share class
+                else:
+                    raise ValueError(f"Mode {mode_name}: ETH strategy should use ETH share class, not {share_class_currency}")
         
         return self
 

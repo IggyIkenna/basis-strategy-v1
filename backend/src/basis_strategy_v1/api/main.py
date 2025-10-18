@@ -2,6 +2,8 @@
 
 Creates and configures the FastAPI application according to the service-oriented
 architecture described in ARCHITECTURE.md.
+
+# Test comment for hot reload
 """
 
 from fastapi import FastAPI, Request
@@ -15,113 +17,13 @@ from typing import Optional
 
 from .routes import backtest, strategies, health, results, charts, live_trading, auth, capital, config
 from .middleware.correlation import CorrelationMiddleware
-from ..infrastructure.config.config_manager import get_settings
 from ..infrastructure.config.config_validator import validate_configuration
 from ..infrastructure.monitoring.metrics import setup_metrics
 from ..infrastructure.monitoring.logging import setup_logging
 import os
 import sys
 
-def _validate_live_trading_config():
-    """Validate live trading environment variables."""
-    print("🔍 Validating live trading configuration...")
-    
-    # Check if live trading is enabled
-    live_trading_enabled = os.getenv('BASIS_LIVE_TRADING__ENABLED', 'false').lower() == 'true'
-    if not live_trading_enabled:
-        print("⚠️  WARNING: Live trading is disabled (BASIS_LIVE_TRADING__ENABLED=false)")
-        print("💡 Set BASIS_LIVE_TRADING__ENABLED=true to enable live trading")
-    
-    # Check read-only mode
-    read_only = os.getenv('BASIS_LIVE_TRADING__READ_ONLY', 'true').lower() == 'true'
-    if read_only:
-        print("⚠️  WARNING: Live trading is in read-only mode (BASIS_LIVE_TRADING__READ_ONLY=true)")
-        print("💡 Set BASIS_LIVE_TRADING__READ_ONLY=false for real trading")
-    
-    # Validate numeric values
-    try:
-        max_trade_size = float(os.getenv('BASIS_LIVE_TRADING__MAX_TRADE_SIZE_USD', '100'))
-        if max_trade_size <= 0:
-            print(f"❌ CRITICAL: BASIS_LIVE_TRADING__MAX_TRADE_SIZE_USD must be positive, got: {max_trade_size}")
-            sys.exit(1)
-        print(f"✅ Max trade size: ${max_trade_size}")
-    except ValueError:
-        print(f"❌ CRITICAL: Invalid BASIS_LIVE_TRADING__MAX_TRADE_SIZE_USD: {os.getenv('BASIS_LIVE_TRADING__MAX_TRADE_SIZE_USD', '100')}")
-        sys.exit(1)
-    
-    try:
-        stop_loss_pct = float(os.getenv('BASIS_LIVE_TRADING__EMERGENCY_STOP_LOSS_PCT', '0.15'))
-        if stop_loss_pct <= 0 or stop_loss_pct > 1:
-            print(f"❌ CRITICAL: BASIS_LIVE_TRADING__EMERGENCY_STOP_LOSS_PCT must be between 0 and 1, got: {stop_loss_pct}")
-            sys.exit(1)
-        print(f"✅ Emergency stop loss: {stop_loss_pct:.1%}")
-    except ValueError:
-        print(f"❌ CRITICAL: Invalid BASIS_LIVE_TRADING__EMERGENCY_STOP_LOSS_PCT: {os.getenv('BASIS_LIVE_TRADING__EMERGENCY_STOP_LOSS_PCT', '0.15')}")
-        sys.exit(1)
-    
-    try:
-        heartbeat_timeout = int(os.getenv('BASIS_LIVE_TRADING__HEARTBEAT_TIMEOUT_SECONDS', '300'))
-        if heartbeat_timeout <= 0:
-            print(f"❌ CRITICAL: BASIS_LIVE_TRADING__HEARTBEAT_TIMEOUT_SECONDS must be positive, got: {heartbeat_timeout}")
-            sys.exit(1)
-        print(f"✅ Heartbeat timeout: {heartbeat_timeout}s")
-    except ValueError:
-        print(f"❌ CRITICAL: Invalid BASIS_LIVE_TRADING__HEARTBEAT_TIMEOUT_SECONDS: {os.getenv('BASIS_LIVE_TRADING__HEARTBEAT_TIMEOUT_SECONDS', '300')}")
-        sys.exit(1)
-    
-    circuit_breaker = os.getenv('BASIS_LIVE_TRADING__CIRCUIT_BREAKER_ENABLED', 'true').lower() == 'true'
-    print(f"✅ Circuit breaker: {'enabled' if circuit_breaker else 'disabled'}")
-    
-    print("✅ Live trading configuration validated")
-
-# Early core startup configuration validation - MUST happen before anything else
-def validate_core_startup_config():
-    """Validate core startup configuration before application starts."""
-    # Environment variable validation for quality gates
-    # Status: IMPLEMENTED - Live trading safety controls added
-    
-    core_vars = [
-        'BASIS_ENVIRONMENT',
-        'BASIS_DEPLOYMENT_MODE', 
-        'BASIS_DATA_DIR',
-        'BASIS_RESULTS_DIR',
-        'BASIS_DEBUG',
-        'BASIS_LOG_LEVEL',
-        'BASIS_EXECUTION_MODE',
-        'BASIS_DATA_MODE',
-        'BASIS_DATA_START_DATE',
-        'BASIS_DATA_END_DATE',
-        'BASIS_API_PORT',
-        'BASIS_API_HOST',
-        'DATA_LOAD_TIMEOUT',
-        'DATA_VALIDATION_STRICT',
-        'DATA_CACHE_SIZE',
-        'STRATEGY_MANAGER_TIMEOUT',
-        'STRATEGY_MANAGER_MAX_RETRIES',
-        'STRATEGY_FACTORY_TIMEOUT',
-        'STRATEGY_FACTORY_MAX_RETRIES'
-    ]
-    
-    missing_vars = []
-    for var in core_vars:
-        if not os.getenv(var):
-            missing_vars.append(var)
-    
-    if missing_vars:
-        print(f"❌ CRITICAL: Missing required environment variables: {', '.join(missing_vars)}")
-        print("💡 Make sure to load environment variables from .env.dev or .env.prod")
-        print("💡 Use: source .env.dev or platform.sh start")
-        sys.exit(1)
-    
-    # Validate live trading variables if in live mode
-    execution_mode = os.getenv('BASIS_EXECUTION_MODE', 'backtest')
-    if execution_mode == 'live':
-        _validate_live_trading_config()
-    
-    print(f"✅ Core startup configuration validated for {os.getenv('BASIS_ENVIRONMENT')} environment")
-
-# Validate core startup configuration immediately
-validate_core_startup_config()
+# Removed validate_core_startup_config() - validation now handled by ConfigManager.__init__()
 
 # Setup structured logging
 setup_logging()
@@ -159,7 +61,6 @@ async def lifespan(app: FastAPI):
     try:
         # Phase 4: Load configuration and data at startup using new architecture
         from ..infrastructure.config.config_manager import get_config_manager
-        from .dependencies import get_data_provider
         
         # Initialize config manager (already cached)
         config_manager = get_config_manager()
@@ -202,6 +103,8 @@ def create_application() -> FastAPI:
     api_host = os.getenv('BASIS_API_HOST')
     api_port = int(os.getenv('BASIS_API_PORT'))
     log_level = os.getenv('BASIS_LOG_LEVEL')
+    
+    logger.info(f"Debug mode: {debug_mode}")
     
     app = FastAPI(
         title="Basis Strategy API",
@@ -407,3 +310,4 @@ if __name__ == "__main__":
 
 
 
+# Hot reload test comment - Fri Oct 17 10:49:10 BST 2025

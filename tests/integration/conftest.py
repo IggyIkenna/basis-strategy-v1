@@ -78,7 +78,7 @@ def real_components(real_data_provider):
         from basis_strategy_v1.core.components.position_monitor import PositionMonitor
         from basis_strategy_v1.core.components.exposure_monitor import ExposureMonitor
         from basis_strategy_v1.core.components.risk_monitor import RiskMonitor
-        from basis_strategy_v1.core.math.pnl_calculator import PnLCalculator
+        from basis_strategy_v1.core.components.pnl_monitor import PnLCalculator
         from basis_strategy_v1.core.strategies.strategy_factory import StrategyFactory
         from basis_strategy_v1.core.execution.execution_manager import ExecutionManager
         from basis_strategy_v1.core.utilities.utility_manager import UtilityManager
@@ -89,7 +89,7 @@ def real_components(real_data_provider):
         
         # Create test config
         test_config = {
-            'mode': 'pure_lending',
+            'mode': 'pure_lending_usdt',
             'share_class': 'USDT',
             'asset': 'USDT',
             'initial_capital': 100000.0,
@@ -147,7 +147,7 @@ def real_components(real_data_provider):
             utility_manager=utility_manager
         )
         
-        pnl_calculator = PnLCalculator(
+        pnl_monitor = PnLCalculator(
             config=test_config,
             share_class='USDT',
             initial_capital=100000.0,
@@ -157,7 +157,7 @@ def real_components(real_data_provider):
         
         # Create strategy manager
         strategy_manager = StrategyFactory.create_strategy(
-            mode='pure_lending',
+            mode='pure_lending_usdt',
             config=test_config,
             risk_monitor=risk_monitor,
             position_monitor=position_monitor,
@@ -182,7 +182,7 @@ def real_components(real_data_provider):
             'position_monitor': position_monitor,
             'exposure_monitor': exposure_monitor,
             'risk_monitor': risk_monitor,
-            'pnl_calculator': pnl_calculator,
+            'pnl_monitor': pnl_monitor,
             'strategy_manager': strategy_manager,
             'execution_manager': execution_manager,
             'config_manager': config_manager,
@@ -196,7 +196,7 @@ def real_components(real_data_provider):
             'position_monitor': None,
             'exposure_monitor': None,
             'risk_monitor': None,
-            'pnl_calculator': None,
+            'pnl_monitor': None,
             'strategy_manager': None,
             'execution_manager': None,
             'config_manager': None,
@@ -429,10 +429,10 @@ def test_pnl_result(real_components, test_execution_results):
     if not real_components['available']:
         pytest.skip("Real components not available - skipping integration tests")
     
-    pnl_calculator = real_components['pnl_calculator']
+    pnl_monitor = real_components['pnl_monitor']
     
     try:
-        pnl_result = pnl_calculator.calculate_pnl(
+        pnl_result = pnl_monitor.calculate_pnl(
             current_value=101000.0,
             initial_value=100000.0,
             lending_pnl=1000.0,

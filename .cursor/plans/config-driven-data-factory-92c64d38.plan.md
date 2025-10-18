@@ -15,7 +15,7 @@
 
 ### 1.2 Create PureLendingDataProvider
 
-**File**: `backend/src/basis_strategy_v1/data_provider/pure_lending_data_provider.py`
+**File**: `backend/src/basis_strategy_v1/data_provider/pure_lending_usdt_data_provider.py`
 
 - Extend BaseDataProvider
 - Load USDT prices, AAVE lending rates, gas costs, execution costs
@@ -132,7 +132,7 @@
 - Test all data files exist and are accessible
 - Test data completeness for all required time periods
 - Test data alignment across sources
-- Test strategy mode data requirements (pure_lending, btc_basis, eth_basis, usdt_market_neutral)
+- Test strategy mode data requirements (pure_lending_usdt, btc_basis, eth_basis, usdt_market_neutral)
 
 ### 4.2 Create test_data_provider_factory_quality_gates.py
 
@@ -215,7 +215,7 @@
 
 - [ ] test_data_availability_quality_gates.py passing
 - [ ] test_data_provider_factory_quality_gates.py passing
-- [ ] All strategy modes validated (pure_lending, btc_basis, eth_basis, usdt_market_neutral)
+- [ ] All strategy modes validated (pure_lending_usdt, btc_basis, eth_basis, usdt_market_neutral)
 - [ ] Integration with run_quality_gates.py complete
 
 ### Architecture Compliance

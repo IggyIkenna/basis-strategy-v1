@@ -18,7 +18,7 @@ class MockBaseStrategyManager:
         self.risk_monitor = risk_monitor
         self.position_monitor = position_monitor
         self.event_engine = event_engine
-        self.mode = config.get('mode', 'pure_lending')
+        self.mode = config.get('mode', 'pure_lending_usdt')
         self.share_class = config.get('share_class', 'USDT')
         self.asset = config.get('asset', 'USDT')
 
@@ -233,7 +233,7 @@ class MockPureLendingStrategy(MockBaseStrategyManager):
         try:
             # Create base info directly since super() might not work in mock
             base_info = {
-                'strategy_type': 'pure_lending',
+                'strategy_type': 'pure_lending_usdt',
                 'mode': self.mode,
                 'share_class': self.share_class,
                 'asset': self.asset,
@@ -249,7 +249,7 @@ class MockPureLendingStrategy(MockBaseStrategyManager):
             return base_info
         except Exception as e:
             return {
-                'strategy_type': 'pure_lending',
+                'strategy_type': 'pure_lending_usdt',
                 'mode': self.mode,
                 'share_class': self.share_class,
                 'asset': self.asset,
@@ -266,7 +266,7 @@ class TestPureLendingStrategy:
     def mock_config(self):
         """Mock pure lending strategy configuration."""
         return {
-            'mode': 'pure_lending',
+            'mode': 'pure_lending_usdt',
             'share_class': 'USDT',
             'asset': 'USDT',
             'lending_venues': ['aave', 'morpho'],
@@ -283,7 +283,7 @@ class TestPureLendingStrategy:
         }
 
     @pytest.fixture
-    def pure_lending_strategy(self, mock_config, mock_dependencies):
+    def pure_lending_usdt_strategy(self, mock_config, mock_dependencies):
         """Create pure lending strategy instance."""
         return MockPureLendingStrategy(
             config=mock_config,
@@ -301,7 +301,7 @@ class TestPureLendingStrategy:
             event_engine=mock_dependencies['event_engine']
         )
         
-        assert strategy.mode == 'pure_lending'
+        assert strategy.mode == 'pure_lending_usdt'
         assert strategy.share_class == 'USDT'
         assert strategy.asset == 'USDT'
         assert strategy.lending_venues == ['aave', 'morpho']
@@ -309,7 +309,7 @@ class TestPureLendingStrategy:
     def test_initialization_default_venues(self, mock_dependencies):
         """Test initialization with default lending venues."""
         config_without_venues = {
-            'mode': 'pure_lending',
+            'mode': 'pure_lending_usdt',
             'share_class': 'USDT',
             'asset': 'USDT'
         }
@@ -323,40 +323,40 @@ class TestPureLendingStrategy:
         
         assert strategy.lending_venues == ['aave', 'morpho']  # Default venues
 
-    def test_calculate_target_position_success(self, pure_lending_strategy):
+    def test_calculate_target_position_success(self, pure_lending_usdt_strategy):
         """Test successful target position calculation."""
         current_equity = 100000.0
         
-        target_position = pure_lending_strategy.calculate_target_position(current_equity)
+        target_position = pure_lending_usdt_strategy.calculate_target_position(current_equity)
         
         assert target_position['equity'] == current_equity
         assert target_position['supply'] == current_equity  # Full equity supplied
         assert target_position['borrow'] == 0.0  # No borrowing in pure lending
 
-    def test_calculate_target_position_zero_equity(self, pure_lending_strategy):
+    def test_calculate_target_position_zero_equity(self, pure_lending_usdt_strategy):
         """Test target position calculation with zero equity."""
-        target_position = pure_lending_strategy.calculate_target_position(0.0)
+        target_position = pure_lending_usdt_strategy.calculate_target_position(0.0)
         
         assert target_position['equity'] == 0.0
         assert target_position['supply'] == 0.0
         assert target_position['borrow'] == 0.0
 
-    def test_calculate_target_position_error_handling(self, pure_lending_strategy):
+    def test_calculate_target_position_error_handling(self, pure_lending_usdt_strategy):
         """Test target position calculation error handling."""
         # Test the actual error handling in the method itself
         # The method should catch exceptions and return default values
-        target_position = pure_lending_strategy.calculate_target_position(100000.0)
+        target_position = pure_lending_usdt_strategy.calculate_target_position(100000.0)
         
         # This should work normally since the method has try/catch
         assert target_position['equity'] == 100000.0
         assert target_position['supply'] == 100000.0
         assert target_position['borrow'] == 0.0
 
-    def test_entry_full_success(self, pure_lending_strategy):
+    def test_entry_full_success(self, pure_lending_usdt_strategy):
         """Test successful full entry."""
         equity = 100000.0
         
-        action = pure_lending_strategy.entry_full(equity)
+        action = pure_lending_usdt_strategy.entry_full(equity)
         
         assert action.action_type == 'entry_full'
         assert action.target_amount == equity
@@ -382,11 +382,11 @@ class TestPureLendingStrategy:
             assert borrow_inst['amount'] == 0.0  # No borrowing in pure lending
             assert borrow_inst['currency'] == 'USDT'
 
-    def test_entry_full_error_handling(self, pure_lending_strategy):
+    def test_entry_full_error_handling(self, pure_lending_usdt_strategy):
         """Test entry_full error handling."""
         # Mock calculate_target_position to raise exception
-        with patch.object(pure_lending_strategy, 'calculate_target_position', side_effect=Exception("Position error")):
-            action = pure_lending_strategy.entry_full(100000.0)
+        with patch.object(pure_lending_usdt_strategy, 'calculate_target_position', side_effect=Exception("Position error")):
+            action = pure_lending_usdt_strategy.entry_full(100000.0)
             
             assert action.action_type == 'entry_full'
             assert action.target_amount == 0.0
@@ -394,11 +394,11 @@ class TestPureLendingStrategy:
             assert action.atomic is True
             assert 'error' in action.metadata
 
-    def test_entry_partial_success(self, pure_lending_strategy):
+    def test_entry_partial_success(self, pure_lending_usdt_strategy):
         """Test successful partial entry."""
         equity_delta = 10000.0
         
-        action = pure_lending_strategy.entry_partial(equity_delta)
+        action = pure_lending_usdt_strategy.entry_partial(equity_delta)
         
         assert action.action_type == 'entry_partial'
         assert action.target_amount == equity_delta
@@ -414,17 +414,17 @@ class TestPureLendingStrategy:
             assert inst['amount'] == equity_delta / 2  # Split between 2 venues
             assert inst['currency'] == 'USDT'
 
-    def test_exit_full_success(self, pure_lending_strategy):
+    def test_exit_full_success(self, pure_lending_usdt_strategy):
         """Test successful full exit."""
         # Mock current position
         mock_position = {
             'supply': 100000.0,
             'borrow': 0.0
         }
-        pure_lending_strategy.position_monitor.get_current_position.return_value = mock_position
+        pure_lending_usdt_strategy.position_monitor.get_current_position.return_value = mock_position
         
         equity = 100000.0
-        action = pure_lending_strategy.exit_full(equity)
+        action = pure_lending_usdt_strategy.exit_full(equity)
         
         assert action.action_type == 'exit_full'
         assert action.target_amount == equity
@@ -440,29 +440,29 @@ class TestPureLendingStrategy:
             assert inst['amount'] == 50000.0  # Split between 2 venues
             assert inst['currency'] == 'USDT'
 
-    def test_exit_full_no_position(self, pure_lending_strategy):
+    def test_exit_full_no_position(self, pure_lending_usdt_strategy):
         """Test exit_full with no current position."""
         # Mock empty position
-        pure_lending_strategy.position_monitor.get_current_position.return_value = {}
+        pure_lending_usdt_strategy.position_monitor.get_current_position.return_value = {}
         
-        action = pure_lending_strategy.exit_full(100000.0)
+        action = pure_lending_usdt_strategy.exit_full(100000.0)
         
         assert action.action_type == 'exit_full'
         assert len(action.instructions) == 2  # Still 2 venues, but with 0 amounts
         for inst in action.instructions:
             assert inst['amount'] == 0.0
 
-    def test_exit_partial_success(self, pure_lending_strategy):
+    def test_exit_partial_success(self, pure_lending_usdt_strategy):
         """Test successful partial exit."""
         # Mock current position
         mock_position = {
             'supply': 100000.0,
             'borrow': 0.0
         }
-        pure_lending_strategy.position_monitor.get_current_position.return_value = mock_position
+        pure_lending_usdt_strategy.position_monitor.get_current_position.return_value = mock_position
         
         equity_delta = 20000.0  # 20% reduction
-        action = pure_lending_strategy.exit_partial(equity_delta)
+        action = pure_lending_usdt_strategy.exit_partial(equity_delta)
         
         assert action.action_type == 'exit_partial'
         assert action.target_amount == equity_delta
@@ -479,7 +479,7 @@ class TestPureLendingStrategy:
             assert inst['amount'] == expected_reduction
             assert inst['currency'] == 'USDT'
 
-    def test_sell_dust_success(self, pure_lending_strategy):
+    def test_sell_dust_success(self, pure_lending_usdt_strategy):
         """Test successful dust selling."""
         dust_tokens = {
             'ETH': 1.5,
@@ -487,7 +487,7 @@ class TestPureLendingStrategy:
             'USDT': 50.0  # Same as asset, should be ignored
         }
         
-        action = pure_lending_strategy.sell_dust(dust_tokens)
+        action = pure_lending_usdt_strategy.sell_dust(dust_tokens)
         
         assert action.action_type == 'sell_dust'
         assert action.target_currency == 'USDT'
@@ -503,63 +503,63 @@ class TestPureLendingStrategy:
             assert inst['venue'] == 'binance'
             assert inst['order_type'] == 'market'
 
-    def test_sell_dust_no_dust(self, pure_lending_strategy):
+    def test_sell_dust_no_dust(self, pure_lending_usdt_strategy):
         """Test sell_dust with no dust tokens."""
         dust_tokens = {
             'USDT': 50.0  # Only share class currency
         }
         
-        action = pure_lending_strategy.sell_dust(dust_tokens)
+        action = pure_lending_usdt_strategy.sell_dust(dust_tokens)
         
         assert action.action_type == 'sell_dust'
         assert action.target_amount == 0.0
         assert len(action.instructions) == 0
 
-    def test_get_strategy_info_success(self, pure_lending_strategy):
+    def test_get_strategy_info_success(self, pure_lending_usdt_strategy):
         """Test successful strategy info retrieval."""
-        info = pure_lending_strategy.get_strategy_info()
+        info = pure_lending_usdt_strategy.get_strategy_info()
         
-        assert info['strategy_type'] == 'pure_lending'
-        assert info['mode'] == 'pure_lending'
+        assert info['strategy_type'] == 'pure_lending_usdt'
+        assert info['mode'] == 'pure_lending_usdt'
         assert info['share_class'] == 'USDT'
         assert info['asset'] == 'USDT'
         assert info['lending_venues'] == ['aave', 'morpho']
         assert 'description' in info
 
-    def test_pure_lending_no_borrowing(self, pure_lending_strategy):
+    def test_pure_lending_usdt_no_borrowing(self, pure_lending_usdt_strategy):
         """Test that pure lending strategy never borrows."""
         current_equity = 100000.0
         
-        target_position = pure_lending_strategy.calculate_target_position(current_equity)
+        target_position = pure_lending_usdt_strategy.calculate_target_position(current_equity)
         
         # Pure lending should never have borrowing
         assert target_position['borrow'] == 0.0
         
         # Entry actions should have borrow instructions with 0 amount
-        action = pure_lending_strategy.entry_full(current_equity)
+        action = pure_lending_usdt_strategy.entry_full(current_equity)
         borrow_instructions = [inst for inst in action.instructions if inst['action'] == 'borrow']
         
         for borrow_inst in borrow_instructions:
             assert borrow_inst['amount'] == 0.0
 
-    def test_venue_distribution(self, pure_lending_strategy):
+    def test_venue_distribution(self, pure_lending_usdt_strategy):
         """Test that funds are distributed across lending venues."""
         equity = 100000.0
         
-        action = pure_lending_strategy.entry_full(equity)
+        action = pure_lending_usdt_strategy.entry_full(equity)
         
         # Get supply instructions
         supply_instructions = [inst for inst in action.instructions if inst['action'] == 'supply']
         
         # Verify each venue gets equal share
         for inst in supply_instructions:
-            assert inst['amount'] == equity / len(pure_lending_strategy.lending_venues)
-            assert inst['venue'] in pure_lending_strategy.lending_venues
+            assert inst['amount'] == equity / len(pure_lending_usdt_strategy.lending_venues)
+            assert inst['venue'] in pure_lending_usdt_strategy.lending_venues
 
     def test_custom_lending_venues(self, mock_dependencies):
         """Test strategy with custom lending venues."""
         custom_config = {
-            'mode': 'pure_lending',
+            'mode': 'pure_lending_usdt',
             'share_class': 'USDT',
             'asset': 'USDT',
             'lending_venues': ['compound', 'aave', 'morpho']
@@ -586,7 +586,7 @@ class TestPureLendingStrategy:
     def test_share_class_currency_handling(self, mock_dependencies):
         """Test different share class currency handling."""
         eth_config = {
-            'mode': 'pure_lending',
+            'mode': 'pure_lending_usdt',
             'share_class': 'ETH',
             'asset': 'ETH',
             'lending_venues': ['aave']

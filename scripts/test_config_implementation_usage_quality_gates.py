@@ -29,6 +29,13 @@ from collections import defaultdict
 # Add the backend source to the path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'backend', 'src'))
 
+# Load environment variables for quality gates
+from load_env import load_quality_gates_env
+load_quality_gates_env()
+
+# Import the field classifier
+from config_field_classifier import ConfigFieldClassifier
+
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format='%(levelname)s:%(name)s:%(message)s')
 
@@ -63,6 +70,44 @@ class ConfigImplementationUsageQualityGates:
         self.configs_dir = self.project_root / "configs"
         self.modes_dir = self.configs_dir / "modes"
         self.backend_dir = self.project_root / "backend" / "src" / "basis_strategy_v1"
+        self.field_classifier = ConfigFieldClassifier()
+        
+        # Get all valid config fields from classifier
+        self.all_valid_fields = set()
+        for config_type in ['ModeConfig', 'VenueConfig', 'ShareClassConfig']:
+            fields_by_level = self.field_classifier.get_required_fields_by_level(config_type)
+            for level in ['required_toplevel', 'required_nested', 'fixed_schema_dict']:
+                self.all_valid_fields.update(fields_by_level[level])
+            self.all_valid_fields.update(fields_by_level['dynamic_dict'])
+        
+        # Exclude common terms that are not config fields
+        self.EXCLUDE_TERMS = {
+            # Documentation terms
+            'Default', 'Examples', 'Note', 'Required', 'Usage', 'Validation',
+            'Purpose', 'Status', 'Updated', 'Type', 'Description', 'Reference',
+            # Python keywords and common words
+            'get', 'set', 'dict', 'list', 'str', 'int', 'float', 'bool',
+            'true', 'false', 'none', 'self', 'cls', 'super',
+            # Method calls (not config fields)
+            'get_complete_config()', 'get_complete_config(mode, venue, scenario)',
+            'get_complete_config(mode=mode)', 'get_complete_config(mode=strategy_name)',
+            'get_complete_config(self, mode: str = None, venue: str = None)',
+            'get_complete_config(self, mode: str = None, venue: str = None, scenario: str = None)',
+            # Metadata fields
+            'type', 'venue', 'base_currency', 'example', 'validation', 'venue_type',
+            # Common config access patterns (not fields)
+            'config', 'complete_config', 'backtest', 'environment',
+        }
+        
+        # Top-level parent fields that are meaningless to check (if we have sub-levels, we have the parent)
+        self.TOP_LEVEL_PARENT_FIELDS = {
+            'api_contract', 'auth', 'endpoints', 'event_logger', 'instruments'
+        }
+        
+        # Metadata and documentation fields to exclude from validation
+        self.METADATA_FIELDS = {
+            'type', 'venue', 'base_currency', 'example', 'validation', 'venue_type'
+        }
     
     def extract_config_usage_from_code(self, file_path: Path) -> Set[str]:
         """Extract actual config field usage from Python code."""
@@ -75,7 +120,7 @@ class ConfigImplementationUsageQualityGates:
             logger.warning(f"Could not read {file_path}: {e}")
             return config_fields
         
-        # Patterns for config access
+        # Patterns for config access (excluding get_complete_config which is a method call)
         patterns = [
             r'config\[[\'"]([^\'"]+)[\'"]\]',           # config['field']
             r'config\.get\([\'"]([^\'"]+)[\'"]',        # config.get('field')
@@ -83,13 +128,16 @@ class ConfigImplementationUsageQualityGates:
             r'self\.config\.get\([\'"]([^\'"]+)[\'"]', # self.config.get('field')
             r'mode_config\[[\'"]([^\'"]+)[\'"]\]',      # mode_config['field']
             r'mode_config\.([a-zA-Z_][a-zA-Z0-9_]*)',   # mode_config.field
-            r'config_manager\.get_([a-zA-Z_][a-zA-Z0-9_]*)',  # config_manager.get_field
-            r'get_complete_config\([^)]*\)',            # get_complete_config calls
         ]
         
         for pattern in patterns:
             matches = re.findall(pattern, content)
-            config_fields.update(matches)
+            for match in matches:
+                # Filter out invalid terms and only keep valid config fields
+                if (match and 
+                    match not in self.EXCLUDE_TERMS and
+                    match in self.all_valid_fields):
+                    config_fields.add(match)
         
         return config_fields
     
@@ -120,7 +168,7 @@ class ConfigImplementationUsageQualityGates:
         return component_usage
     
     def extract_documented_config_from_specs(self) -> Dict[str, Set[str]]:
-        """Extract documented config fields from component specs."""
+        """Extract documented config fields from component specs using line-by-line parsing."""
         documented_configs = {}
         
         if not self.specs_dir.exists():
@@ -128,38 +176,42 @@ class ConfigImplementationUsageQualityGates:
             return documented_configs
         
         for spec_file in self.specs_dir.glob("*.md"):
-            if spec_file.name == "19_CONFIGURATION.md":
-                continue  # Skip the main config doc
+            # Include all spec files including 19_CONFIGURATION.md
             
             component_name = spec_file.stem
             config_fields = set()
             
             try:
+                # Line-by-line parsing to avoid picking up random terms
+                in_config_section = False
                 with open(spec_file, 'r', encoding='utf-8') as f:
-                    content = f.read()
-                
-                # Look for "Config Fields Used" section
-                config_section_match = re.search(
-                    r'## Config Fields Used.*?(?=^## [^#]|\Z)', 
-                    content, 
-                    re.DOTALL | re.IGNORECASE | re.MULTILINE
-                )
-                
-                if config_section_match:
-                    config_section = config_section_match.group(0)
-                    
-                    # Extract field names from various formats
-                    field_patterns = [
-                        r'- `([a-zA-Z_][a-zA-Z0-9_]*)`:',  # - `field`: format (most common in specs)
-                        r'\*\*([a-zA-Z_][a-zA-Z0-9_]*)\*\*:',  # **field**: format (data provider spec)
-                        r'`([a-zA-Z_][a-zA-Z0-9_]*)`',     # Backtick wrapped fields
-                        r'config\[[\'"]([^\'"]+)[\'"]',    # config['field'] format
-                        r'([a-zA-Z_][a-zA-Z0-9_]*):',      # field: format
-                    ]
-                    
-                    for pattern in field_patterns:
-                        matches = re.findall(pattern, config_section)
-                        config_fields.update(matches)
+                    for line in f:
+                        # Detect start of Config Fields Used section
+                        if '## Config Fields Used' in line:
+                            in_config_section = True
+                            continue
+                        # Detect end of section (next ## heading, not ###)
+                        elif line.startswith('##') and not line.startswith('###') and in_config_section:
+                            break
+                        # Extract field names from lines with **field_name**: or - `field_name`: Type
+                        elif in_config_section and ':' in line:
+                            # Try **field_name**: format first
+                            match = re.search(r'\*\*([a-zA-Z_][a-zA-Z0-9_.]*)\*\*:', line)
+                            if match:
+                                field = match.group(1)
+                            else:
+                                # Try - `field_name`: Type format
+                                match = re.search(r'- `([a-zA-Z_][a-zA-Z0-9_.]*)`:', line)
+                                if match:
+                                    field = match.group(1)
+                                else:
+                                    continue
+                            
+                            # Only add if it's a valid config field
+                            if (field and 
+                                field in self.all_valid_fields and
+                                field not in self.EXCLUDE_TERMS):
+                                config_fields.add(field)
                 
                 if config_fields:
                     documented_configs[component_name] = config_fields
@@ -184,32 +236,44 @@ class ConfigImplementationUsageQualityGates:
                     config_data = yaml.safe_load(f)
                 
                 # Extract all field paths from nested dictionary
-                yaml_fields.update(self._extract_nested_fields(config_data))
+                if config_data:
+                    self._extract_yaml_fields(config_data, "", yaml_fields)
                 
             except Exception as e:
                 logger.warning(f"Could not read {yaml_file}: {e}")
         
         return yaml_fields
     
-    def _extract_nested_fields(self, data: Dict[str, Any], prefix: str = "") -> Set[str]:
-        """Extract all field paths from nested dictionary without creating duplicates."""
-        fields = set()
-        
-        for key, value in data.items():
-            field_path = f"{prefix}.{key}" if prefix else key
-            fields.add(field_path)
-            
-            if isinstance(value, dict):
-                # Recurse into nested dicts
-                fields.update(self._extract_nested_fields(value, field_path))
-            elif isinstance(value, list) and value:
-                # For lists, check if first item is dict
-                if isinstance(value[0], dict):
-                    # Extract fields from first dict item as pattern
-                    list_fields = self._extract_nested_fields(value[0], field_path)
-                    fields.update(list_fields)
-        
-        return fields
+    def _extract_yaml_fields(self, data: Any, prefix: str, fields: Set[str]):
+        """Recursively extract field paths from YAML data with filtering."""
+        if isinstance(data, dict):
+            for key, value in data.items():
+                field_path = f"{prefix}.{key}" if prefix else key
+                
+                # Process top-level parent fields - extract their children
+                if field_path in self.TOP_LEVEL_PARENT_FIELDS:
+                    # Process children but don't add the parent field itself
+                    if isinstance(value, (dict, list)):
+                        self._extract_yaml_fields(value, field_path, fields)
+                    continue
+                
+                # Skip metadata and documentation fields
+                if key in self.METADATA_FIELDS:
+                    continue
+                    
+                # Only add if it's a valid config field
+                if (field_path in self.all_valid_fields and 
+                    field_path not in self.EXCLUDE_TERMS):
+                    fields.add(field_path)
+                    
+                # Recursively process nested structures
+                if isinstance(value, (dict, list)):
+                    self._extract_yaml_fields(value, field_path, fields)
+                    
+        elif isinstance(data, list):
+            for i, item in enumerate(data):
+                if isinstance(item, (dict, list)):
+                    self._extract_yaml_fields(item, prefix, fields)
     
     def validate_code_to_spec_coverage(self) -> Dict[str, Any]:
         """Validate that all config used in code is documented in specs."""

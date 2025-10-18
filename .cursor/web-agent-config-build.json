@@ -85,13 +85,13 @@
     },
     "day_4": {
       "focus": "Strategy Mode Validation - Simple to Complex",
-      "tasks": ["15_pure_lending_quality_gates", "16_btc_basis_quality_gates", "17_eth_basis_quality_gates"],
+      "tasks": ["15_pure_lending_usdt_quality_gates", "16_btc_basis_quality_gates", "17_eth_basis_quality_gates"],
       "duration": "12-16 hours",
       "success_criteria": "3 strategy modes E2E passing, APY fixed (3-8% not 1166%)"
     },
     "day_5": {
       "focus": "Complex Modes & Component Unit Tests",
-      "tasks": ["18_usdt_market_neutral_quality_gates", "19_position_monitor_unit_tests", "20_exposure_monitor_unit_tests", "21_risk_monitor_unit_tests", "22_strategy_manager_unit_tests", "23_pnl_calculator_unit_tests"],
+      "tasks": ["18_usdt_market_neutral_quality_gates", "19_position_monitor_unit_tests", "20_exposure_monitor_unit_tests", "21_risk_monitor_unit_tests", "22_strategy_manager_unit_tests", "23_pnl_monitor_unit_tests"],
       "duration": "12-16 hours",
       "success_criteria": "Complex strategy working, 80% unit test coverage achieved"
     },

@@ -202,6 +202,50 @@ python scripts/orchestrators/fetch_cex_data.py --start-date 2024-09-01 --end-dat
 
 ---
 
+## 🔑 **Data Key Format Standards**
+
+### Uppercase Convention
+All data keys use uppercase format matching instrument definitions:
+- Asset symbols: `BTC`, `ETH`, `USDT`, `weETH`, `wstETH`, `EIGEN`, `ETHFI`
+- AAVE tokens: `aUSDT`, `aWETH`, `debtWETH`
+- Venue-specific: `BTC_binance`, `ETH_bybit`, `BTC_okx`
+
+### Conversion Rate Format: BASE/QUOTE
+All conversion rates follow `BASE/QUOTE` format where:
+- **BASE** (left): Asset being priced
+- **QUOTE** (right): Currency it's priced in
+- **Reading**: "How much QUOTE per 1 unit of BASE"
+
+Examples:
+- `BTC/USD`: USD price per 1 BTC (e.g., 50000 = $50k per BTC)
+- `weETH/ETH`: ETH amount per 1 weETH (e.g., 1.05 = 1.05 ETH per weETH)
+- `EIGEN/USD`: USD price per 1 EIGEN (e.g., 3.50 = $3.50 per EIGEN)
+
+### Oracle Price Keys
+Oracle prices stored with explicit pair format:
+- `weETH/ETH`: weETH to ETH conversion from AAVE oracle
+- `weETH/USD`: weETH to USD conversion from AAVE oracle
+- `wstETH/ETH`: wstETH to ETH conversion from AAVE oracle
+- `wstETH/USD`: wstETH to USD conversion from AAVE oracle
+
+### Data Provider Key Structure
+```python
+data = {
+    'market_data': {
+        'prices': {asset: price},           # Asset prices in USD
+        'funding_rates': {asset_venue: rate} # Funding rates per venue
+    },
+    'protocol_data': {
+        'perp_prices': {asset_venue: price},     # Perp prices per venue
+        'aave_indexes': {token: index},          # AAVE supply/borrow indexes
+        'oracle_prices': {pair: rate},           # Conversion rates (BASE/QUOTE)
+        'staking_rewards': {protocol_token: apy} # Staking APYs
+    }
+}
+```
+
+---
+
 ## 📊 **Data Completeness**
 
 **Current Coverage**: 2024-01-01 to 2025-09-18 (626 days)

@@ -10,7 +10,7 @@ from pathlib import Path
 from datetime import datetime
 import structlog
 
-from ..infrastructure.config.config_manager import get_settings, ConfigManager
+from ..infrastructure.config.config_manager import ConfigManager
 from ..infrastructure.data.data_provider_factory import create_data_provider
 from ..core.event_engine.event_driven_strategy_engine import EventDrivenStrategyEngine
 
@@ -51,17 +51,11 @@ def get_backtest_service():
         return BacktestService()
 
     except (ImportError, TypeError) as e:
-        logger.warning(
-            "BacktestService not yet implemented, returning stub",
+        logger.error(
+            "BacktestService failed to initialize",
             error=str(e)
         )
-        # Return stub implementation until service is built
-        return StubBacktestService(
-            data_provider=get_data_provider(),
-            execution_engine=get_execution_engine(),
-            metrics_calculator=get_metrics_calculator(),
-            config=get_settings()  # Use cached function directly
-        )
+        raise DependencyError(f"BacktestService initialization failed: {e}")
 
 
 @lru_cache()
@@ -159,49 +153,6 @@ def get_data_provider(mode: str = None, start_date: str = None, end_date: str = 
         return StubDataProvider(data_dir=cm.get_data_directory() if 'cm' in locals() else './data', mode=mode or "stub")
 
 
-def get_execution_engine():
-    """Get execution engine instance."""
-    try:
-        # Use the real backtest execution engine following clean architecture
-        # Note: Removed @lru_cache() to ensure fresh instances for each backtest
-        return EventDrivenStrategyEngine(config=get_settings())
-
-    except Exception as e:
-        logger.error(
-            "EventDrivenStrategyEngine failed to initialize",
-            error=str(e))
-        # No fallback - execution engine is critical infrastructure
-        # If it fails, we need to fix the config/dependencies, not fall back
-        raise DependencyError(
-            f"EventDrivenStrategyEngine initialization failed: {e}")
-
-
-@lru_cache()
-def get_metrics_calculator():
-    """Get metrics calculator instance."""
-    try:
-        # Import here to avoid circular dependencies
-        from ..core.math.metrics_calculator import MetricsCalculator
-        return MetricsCalculator()
-
-    except (ImportError, TypeError) as e:
-        logger.warning(
-            "MetricsCalculator not available, using stub",
-            error=str(e))
-        return StubMetricsCalculator()
-
-
-@lru_cache()
-def get_result_store():
-    """Get result store instance."""
-    try:
-        # Import here to avoid circular dependencies
-        from ..infrastructure.persistence.result_store import ResultStore
-        return ResultStore()
-
-    except (ImportError, TypeError) as e:
-        logger.warning("ResultStore not available, using stub", error=str(e))
-        return StubResultStore()
 
 
 # Filesystem-only mode: disable external result store and return None.
@@ -324,55 +275,6 @@ async def get_unified_health_manager():
 # routes/strategies.py
 
 
-# Stub implementations for development - gracefully handle all parameters
-class StubBacktestService:
-    """Stub backtest service for development."""
-
-    def __init__(self, **kwargs):
-        # Accept any parameters during initialization
-        self.config = kwargs.get('config', {})
-        self.data_provider = kwargs.get('data_provider')
-        self.execution_engine = kwargs.get('execution_engine')
-        self.metrics_calculator = kwargs.get('metrics_calculator')
-        self.result_store = kwargs.get('result_store')
-
-    def create_request(self, **kwargs):
-        return {"id": "stub-request", **kwargs}
-
-    async def run_backtest(self, request):
-        return "stub-backtest-id"
-
-    async def get_status(self, request_id):
-        if request_id == "stub-backtest-id":
-            return {
-                "status": "completed",
-                "progress": 1.0,
-                "started_at": datetime.now(),
-                "completed_at": datetime.now()}
-        return {"status": "not_found"}
-
-    async def get_result(self, request_id):
-        if request_id == "stub-backtest-id":
-            return {
-                "request_id": request_id,
-                "strategy_name": "usdt_pure_lending",
-                "start_date": datetime.now(),
-                "end_date": datetime.now(),
-                "initial_capital": 100000,
-                "final_value": 105000,
-                "total_return": 0.05,
-                "annualized_return": 0.60,
-                "sharpe_ratio": 2.1,
-                "max_drawdown": 0.02,
-                "total_trades": 10,
-                "total_fees": 150,
-                "metrics_history": None,
-                "metrics_summary": {"total_return_pct": 5.0}
-            }
-        return None
-
-    async def cancel_backtest(self, request_id):
-        return True
 
 
 class StubDataProvider:

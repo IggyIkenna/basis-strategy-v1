@@ -15,10 +15,8 @@ import pytz
 import pandas as pd
 
 from ..event_engine.event_driven_strategy_engine import EventDrivenStrategyEngine
-from ...infrastructure.data.historical_data_provider import DataProvider
 from ..strategies.strategy_factory import StrategyFactory
 
-from ...core.logging.base_logging_interface import StandardizedLoggingMixin, LogLevel, EventType
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +31,7 @@ ERROR_CODES = {
 
 
 @dataclass
-class BacktestRequest(StandardizedLoggingMixin):
+class BacktestRequest:
     """Request object for backtest execution."""
     strategy_name: str
     start_date: datetime
@@ -97,7 +95,7 @@ class BacktestRequest(StandardizedLoggingMixin):
         required_fields = config.get('required_request_fields', ['strategy_name', 'start_date', 'end_date'])
         return all(hasattr(self, field) for field in required_fields)
     
-    def _validate(self) -> List[str]:
+    def validate(self) -> List[str]:
         """Validate request parameters."""
         errors = []
         
@@ -116,14 +114,14 @@ class BacktestRequest(StandardizedLoggingMixin):
         return errors
 
 
-class BacktestService(StandardizedLoggingMixin):
+class BacktestService:
     """Service for running backtests using the new component architecture."""
     
     def __init__(self):
         self.running_backtests: Dict[str, Dict[str, Any]] = {}
         self.completed_backtests: Dict[str, Dict[str, Any]] = {}
     
-    def _create_request(self, strategy_name: str, start_date: datetime, end_date: datetime,
+    def create_request(self, strategy_name: str, start_date: datetime, end_date: datetime,
                       initial_capital: Decimal, share_class: str, 
                       config_overrides: Dict[str, Any] = None,
                       debug_mode: bool = False) -> BacktestRequest:
@@ -138,7 +136,7 @@ class BacktestService(StandardizedLoggingMixin):
             debug_mode=debug_mode
         )
     
-    async def run_backtest(self, request: BacktestRequest) -> str:
+    async def run_backtest(self, request: BacktestRequest, correlation_id: str = None) -> str:
         """
         Run a backtest using Phase 3 architecture with proper dependency injection.
         
@@ -155,22 +153,24 @@ class BacktestService(StandardizedLoggingMixin):
             from ...infrastructure.config.config_manager import get_config_manager
             from ...infrastructure.data.data_provider_factory import create_data_provider
             
-            # Get validated config for the specific strategy mode
-            config_manager = get_config_manager()
-            config = config_manager.get_complete_config(mode=request.strategy_name)
-            
-            # Apply config overrides from request
-            if request.config_overrides:
-                config.update(request.config_overrides)
+            # Create config with API request parameters applied
+            config = self._create_config(request)
             
             # Get data provider (on-demand loading with date validation)
             import os
+            from ...infrastructure.config.config_manager import get_config_manager
+            config_manager = get_config_manager()
+            
+            # Determine data type from strategy name
+            if request.strategy_name.startswith('ml_'):
+                data_type = 'cefi'
+            else:
+                data_type = 'defi'
+            
             data_provider = create_data_provider(
                 execution_mode=os.getenv('BASIS_EXECUTION_MODE'),
-                config=config,
-                data_dir=config_manager.get_data_directory(),
-                backtest_start_date=request.start_date.strftime('%Y-%m-%d'),
-                backtest_end_date=request.end_date.strftime('%Y-%m-%d')
+                data_type=data_type,
+                config=config
             )
             
             # Phase 3: Initialize strategy engine with proper dependency injection
@@ -180,7 +180,8 @@ class BacktestService(StandardizedLoggingMixin):
                 data_provider=data_provider,
                 initial_capital=float(request.initial_capital),  # From API request
                 share_class=request.share_class,  # From API request
-                debug_mode=request.debug_mode
+                debug_mode=request.debug_mode,
+                correlation_id=correlation_id
             )
             
             # Store request info
@@ -253,6 +254,7 @@ class BacktestService(StandardizedLoggingMixin):
                 result_store = ResultStore()
                 
                 # Create result data in the format expected by ResultStore
+                performance = results.get('performance', {})
                 result_data = {
                     'request_id': request_id,
                     'strategy_name': request.strategy_name,
@@ -260,24 +262,24 @@ class BacktestService(StandardizedLoggingMixin):
                     'start_date': request.start_date.isoformat(),
                     'end_date': request.end_date.isoformat(),
                     'initial_capital': str(request.initial_capital),
-                    'final_value': str(results.get('final_value', 0)),
-                    'total_return': str(results.get('total_return', 0)),
-                    'annualized_return': str(results.get('annualized_return', 0)),
-                    'sharpe_ratio': str(results.get('sharpe_ratio', 0)),
-                    'max_drawdown': str(results.get('max_drawdown', 0)),
-                    'target_apy': results.get('target_apy'),
-                    'target_max_drawdown': results.get('target_max_drawdown'),
-                    'apy_vs_target': results.get('apy_vs_target'),
-                    'drawdown_vs_target': results.get('drawdown_vs_target'),
-                    'total_trades': results.get('total_trades', 0),
-                    'winning_trades': results.get('winning_trades'),
-                    'losing_trades': results.get('losing_trades'),
-                    'total_fees': str(results.get('total_fees', 0)),
-                    'equity_curve': results.get('equity_curve'),
-                    'metrics_summary': results.get('metrics_summary', {})
+                    'final_value': str(performance.get('final_value', 0)),
+                    'total_return': str(performance.get('total_return', 0)),
+                    'annualized_return': str(performance.get('annualized_return', 0)),
+                    'sharpe_ratio': str(performance.get('sharpe_ratio', 0)),
+                    'max_drawdown': str(performance.get('max_drawdown', 0)),
+                    'target_apy': performance.get('target_apy'),
+                    'target_max_drawdown': performance.get('target_max_drawdown'),
+                    'apy_vs_target': performance.get('apy_vs_target'),
+                    'drawdown_vs_target': performance.get('drawdown_vs_target'),
+                    'total_trades': performance.get('total_trades', 0),
+                    'winning_trades': performance.get('winning_trades'),
+                    'losing_trades': performance.get('losing_trades'),
+                    'total_fees': str(performance.get('total_fees', 0)),
+                    'equity_curve': performance.get('equity_curve'),
+                    'metrics_summary': performance.get('metrics_summary', {})
                 }
                 
-                await result_store.save_result(request_id, result_data)
+                await result_store.save_result(request_id, result_data, full_results=results)
                 logger.info(f"✅ Results saved to filesystem for request {request_id}")
             except Exception as e:
                 logger.warning(f"⚠️ Failed to save results to filesystem: {e}")
@@ -302,29 +304,35 @@ class BacktestService(StandardizedLoggingMixin):
     def _create_config(self, request: BacktestRequest) -> Dict[str, Any]:
         """Create configuration using existing config infrastructure."""
         try:
-            from ...infrastructure.config.config_loader import get_config_loader
+            from ...infrastructure.config.config_manager import get_config_manager
             
-            # Get config loader
-            config_loader = get_config_loader()
+            # Get config manager
+            config_manager = get_config_manager()
+            
+            # Map strategy name to mode
+            mode = self._map_strategy_to_mode(request.strategy_name)
             
             # Load base config for the mode
-            mode = self._map_strategy_to_mode(request.strategy_name)
-            base_config = config_loader.get_complete_config(mode=mode)
+            base_config = config_manager.get_complete_config(mode=mode)
             
             # Apply user overrides
             if request.config_overrides:
                 base_config = self._deep_merge(base_config, request.config_overrides)
             
-            # Add request-specific overrides
+            # Add request-specific overrides (API request parameters take precedence)
             base_config.update({
                 'share_class': request.share_class,
                 'initial_capital': float(request.initial_capital),
+                'strategy_name': request.strategy_name,
+                'start_date': request.start_date,
+                'end_date': request.end_date,
                 'backtest': {
-                    'start_date': request.start_date.isoformat(),
-                    'end_date': request.end_date.isoformat(),
+                    'start_date': request.start_date.isoformat() if hasattr(request.start_date, 'isoformat') else str(request.start_date),
+                    'end_date': request.end_date.isoformat() if hasattr(request.end_date, 'isoformat') else str(request.end_date),
                     'initial_capital': float(request.initial_capital)
                 }
             })
+            
             
             return base_config
             
@@ -335,14 +343,15 @@ class BacktestService(StandardizedLoggingMixin):
     def _map_strategy_to_mode(self, strategy_name: str) -> str:
         """Map strategy name to mode."""
         mode_map = {
-            'pure_lending': 'pure_lending',
+            'pure_lending_usdt': 'pure_lending_usdt',
+            'pure_lending_eth': 'pure_lending_eth',
             'btc_basis': 'btc_basis',
             'eth_leveraged': 'eth_leveraged',
             'usdt_market_neutral': 'usdt_market_neutral',
             'usdt_market_neutral_no_leverage': 'usdt_market_neutral_no_leverage',
             'eth_staking_only': 'eth_staking_only'
         }
-        return mode_map.get(strategy_name, 'pure_lending')
+        return mode_map.get(strategy_name, 'pure_lending_usdt')
     
     def _deep_merge(self, base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]:
         """Deep merge two dictionaries."""
@@ -481,7 +490,7 @@ class BacktestService(StandardizedLoggingMixin):
             # Return the performance data in the expected format
             return {
                 'request_id': request_id,
-                'strategy_name': backtest_info.get('request', {}).strategy_name if hasattr(backtest_info.get('request', {}), 'strategy_name') else 'pure_lending',
+                'strategy_name': backtest_info.get('request', {}).strategy_name if hasattr(backtest_info.get('request', {}), 'strategy_name') else 'pure_lending_usdt',
                 'start_date': backtest_info.get('request', {}).start_date if hasattr(backtest_info.get('request', {}), 'start_date') else None,
                 'end_date': backtest_info.get('request', {}).end_date if hasattr(backtest_info.get('request', {}), 'end_date') else None,
                 'initial_capital': performance.get('initial_capital', 100000),
@@ -586,31 +595,3 @@ class BacktestService(StandardizedLoggingMixin):
         
         return backtests
 
-
-class MockExecutionEngine(StandardizedLoggingMixin):
-    """Mock execution engine for backtesting."""
-    
-    def __init__(self):
-        self.trades = []
-    
-    async def execute_trade(self, trade_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Mock trade execution."""
-        trade_result = {
-            'trade_id': f"trade_{len(self.trades) + 1}",
-            'status': 'filled',
-            'executed_price': trade_data.get('price', 100.0),
-            'executed_quantity': trade_data.get('quantity', 1.0),
-            'fees': trade_data.get('quantity', 1.0) * 0.001,  # 0.1% fee
-            'timestamp': datetime.utcnow()
-        }
-        
-        self.trades.append(trade_result)
-        return trade_result
-    
-    async def get_balance(self, asset: str) -> float:
-        """Mock balance retrieval."""
-        return 1000.0  # Mock balance
-    
-    async def get_positions(self) -> Dict[str, float]:
-        """Mock positions retrieval."""
-        return {'BTC': 0.1, 'ETH': 1.0, 'USDT': 10000.0}

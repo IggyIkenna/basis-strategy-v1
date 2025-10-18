@@ -2,6 +2,13 @@
 venue: "bybit"
 type: "cex"
 
+# Canonical instruments available on this venue
+canonical_instruments:
+  - "bybit:BaseToken:USDT"
+  - "bybit:BaseToken:BTC"
+  - "bybit:Perp:BTCUSDT"
+  - "bybit:Perp:ETHUSDT"
+
 # Trading parameters
 trading_fees:
   maker: 0.0001  # 0.01% maker fee
@@ -14,3 +21,4 @@ max_trade_size_usd: 1000000  # $1M max per trade
 # Basic limits
 max_leverage: 100
 min_order_size_usd: 10
+min_amount: 10

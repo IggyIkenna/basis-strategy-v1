@@ -97,9 +97,9 @@ class FailFastConfigurationQualityGates:
         self.total_gates += 1
         try:
             component_files = [
-                'backend/src/basis_strategy_v1/core/strategies/components/pnl_monitor.py',
-                'backend/src/basis_strategy_v1/core/strategies/components/exposure_monitor.py',
-                'backend/src/basis_strategy_v1/core/strategies/components/position_monitor.py',
+                'backend/src/basis_strategy_v1/core/components/pnl_monitor.py',
+                'backend/src/basis_strategy_v1/core/components/exposure_monitor.py',
+                'backend/src/basis_strategy_v1/core/components/position_monitor.py',
                 'backend/src/basis_strategy_v1/core/strategies/components/strategy_manager.py',
                 'backend/src/basis_strategy_v1/core/strategies/components/position_update_handler.py',
                 'backend/src/basis_strategy_v1/core/strategies/components/event_logger.py'
@@ -139,10 +139,10 @@ class FailFastConfigurationQualityGates:
         self.total_gates += 1
         try:
             component_files = [
-                'backend/src/basis_strategy_v1/core/strategies/components/risk_monitor.py',
-                'backend/src/basis_strategy_v1/core/strategies/components/pnl_monitor.py',
-                'backend/src/basis_strategy_v1/core/strategies/components/exposure_monitor.py',
-                'backend/src/basis_strategy_v1/core/strategies/components/position_monitor.py'
+                'backend/src/basis_strategy_v1/core/components/risk_monitor.py',
+                'backend/src/basis_strategy_v1/core/components/pnl_monitor.py',
+                'backend/src/basis_strategy_v1/core/components/exposure_monitor.py',
+                'backend/src/basis_strategy_v1/core/components/position_monitor.py'
             ]
             
             direct_access_found = False
@@ -172,10 +172,10 @@ class FailFastConfigurationQualityGates:
         self.total_gates += 1
         try:
             component_files = [
-                'backend/src/basis_strategy_v1/core/strategies/components/risk_monitor.py',
-                'backend/src/basis_strategy_v1/core/strategies/components/pnl_monitor.py',
-                'backend/src/basis_strategy_v1/core/strategies/components/exposure_monitor.py',
-                'backend/src/basis_strategy_v1/core/strategies/components/position_monitor.py'
+                'backend/src/basis_strategy_v1/core/components/risk_monitor.py',
+                'backend/src/basis_strategy_v1/core/components/pnl_monitor.py',
+                'backend/src/basis_strategy_v1/core/components/exposure_monitor.py',
+                'backend/src/basis_strategy_v1/core/components/position_monitor.py'
             ]
             
             validation_found = False
@@ -209,10 +209,10 @@ class FailFastConfigurationQualityGates:
             # This test validates that KeyError handling is in place
             # We'll check for KeyError patterns in the code
             component_files = [
-                'backend/src/basis_strategy_v1/core/strategies/components/risk_monitor.py',
-                'backend/src/basis_strategy_v1/core/strategies/components/pnl_monitor.py',
-                'backend/src/basis_strategy_v1/core/strategies/components/exposure_monitor.py',
-                'backend/src/basis_strategy_v1/core/strategies/components/position_monitor.py'
+                'backend/src/basis_strategy_v1/core/components/risk_monitor.py',
+                'backend/src/basis_strategy_v1/core/components/pnl_monitor.py',
+                'backend/src/basis_strategy_v1/core/components/exposure_monitor.py',
+                'backend/src/basis_strategy_v1/core/components/position_monitor.py'
             ]
             
             keyerror_handling_found = False
@@ -244,10 +244,10 @@ class FailFastConfigurationQualityGates:
         self.total_gates += 1
         try:
             component_files = [
-                'backend/src/basis_strategy_v1/core/strategies/components/risk_monitor.py',
-                'backend/src/basis_strategy_v1/core/strategies/components/pnl_monitor.py',
-                'backend/src/basis_strategy_v1/core/strategies/components/exposure_monitor.py',
-                'backend/src/basis_strategy_v1/core/strategies/components/position_monitor.py'
+                'backend/src/basis_strategy_v1/core/components/risk_monitor.py',
+                'backend/src/basis_strategy_v1/core/components/pnl_monitor.py',
+                'backend/src/basis_strategy_v1/core/components/exposure_monitor.py',
+                'backend/src/basis_strategy_v1/core/components/position_monitor.py'
             ]
             
             nested_get_patterns = []
@@ -279,10 +279,10 @@ class FailFastConfigurationQualityGates:
             # We'll check for direct config access patterns that would raise KeyError
             
             component_files = [
-                'backend/src/basis_strategy_v1/core/strategies/components/risk_monitor.py',
-                'backend/src/basis_strategy_v1/core/strategies/components/pnl_monitor.py',
-                'backend/src/basis_strategy_v1/core/strategies/components/exposure_monitor.py',
-                'backend/src/basis_strategy_v1/core/strategies/components/position_monitor.py'
+                'backend/src/basis_strategy_v1/core/components/risk_monitor.py',
+                'backend/src/basis_strategy_v1/core/components/pnl_monitor.py',
+                'backend/src/basis_strategy_v1/core/components/exposure_monitor.py',
+                'backend/src/basis_strategy_v1/core/components/position_monitor.py'
             ]
             
             fail_fast_patterns = []
@@ -313,14 +313,13 @@ class FailFastConfigurationQualityGates:
             # Test that we can import components without errors
             # This validates that the configuration structure is correct
             
-            from basis_strategy_v1.core.strategies.components.risk_monitor import RiskMonitor
-            from basis_strategy_v1.core.strategies.components.pnl_monitor import PnLMonitor
-            from basis_strategy_v1.core.strategies.components.exposure_monitor import ExposureMonitor
-            from basis_strategy_v1.core.strategies.components.position_monitor import PositionMonitor
+            from basis_strategy_v1.core.components.risk_monitor import RiskMonitor
+            from basis_strategy_v1.core.components.pnl_monitor import PnLCalculator
+            from basis_strategy_v1.core.components.exposure_monitor import ExposureMonitor
+            from basis_strategy_v1.core.components.position_monitor import PositionMonitor
             
             # Test that components can be instantiated with proper config
             config = {
-                'target_ltv': 0.8,
                 'max_drawdown': 0.1,
                 'leverage_enabled': True,
                 'share_class': 'USDT',
@@ -344,7 +343,7 @@ class FailFastConfigurationQualityGates:
             
             # Test component instantiation (should work with proper config)
             risk_monitor = RiskMonitor(config, data_provider, utility_manager)
-            pnl_monitor = PnLMonitor(config, data_provider, utility_manager)
+            pnl_calculator = PnLCalculator(config, 'USDT', 100000.0, data_provider, utility_manager)
             exposure_monitor = ExposureMonitor(config, data_provider, utility_manager)
             position_monitor = PositionMonitor(config, data_provider, utility_manager)
             

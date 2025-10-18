@@ -6,28 +6,8 @@ OnChain Execution Interface
 - Properly routes dev/staging/prod credentials
 - Uses environment variables instead of config for API keys
 
-TODO-REFACTOR: MISSING CENTRALIZED UTILITY MANAGER VIOLATION - See docs/REFERENCE_ARCHITECTURE_CANONICAL.md
-ISSUE: This component has scattered utility methods that should be centralized:
-
-1. CENTRALIZED UTILITY MANAGER REQUIREMENTS:
-   - Utility methods should be centralized in a single manager
-   - Liquidity index calculations should be centralized
-   - Market price conversions should be centralized
-   - No scattered utility methods across components
-
-2. REQUIRED VERIFICATION:
-   - Check for scattered utility methods in this component
-   - Verify utility methods are properly centralized
-   - Ensure no duplicate utility logic across components
-
-3. CANONICAL SOURCE:
-   - docs/REFERENCE_ARCHITECTURE_CANONICAL.md - Mode-Agnostic Architecture
-   - Centralized utilities required
-   - No logic to route based on BASIS_ENVIRONMENT (dev/staging/prod) to select appropriate credentials
-
-2. REQUIRED ARCHITECTURE (per 19_venue_based_execution_architecture.md):
-   - Should route to appropriate environment-specific credentials based on BASIS_ENVIRONMENT
-   - Backtest mode: Execution interfaces exist for CODE ALIGNMENT only - NO credentials needed, NO heartbeat tests
+Handles OnChain (Smart Contract) execution operations.
+Supports both backtest and live execution modes.
    - Backtest mode: Data source (CSV vs DB) is handled by DATA PROVIDER, not venue execution manager
    - Backtest mode: Dummy venue calls - make dummy calls but don't wait for responses, mark complete immediately
    - Live mode: Use real APIs with pattern: BASIS_DEV__ALCHEMY__RPC_URL, BASIS_PROD__ALCHEMY__RPC_URL
@@ -66,7 +46,6 @@ from pathlib import Path
 
 from .base_execution_interface import BaseExecutionInterface
 
-from ...core.logging.base_logging_interface import StandardizedLoggingMixin, LogLevel, EventType
 
 logger = logging.getLogger(__name__)
 
@@ -75,7 +54,7 @@ onchain_interface_logger = logging.getLogger('onchain_execution_interface')
 onchain_interface_logger.setLevel(logging.INFO)
 
 # Create logs directory if it doesn't exist
-logs_dir = Path(__file__).parent.parent.parent.parent.parent / 'logs'
+logs_dir = Path(__file__).parent.parent.parent.parent / 'logs'
 logs_dir.mkdir(exist_ok=True)
 
 # Create file handler for OnChain execution interface logs
@@ -199,24 +178,16 @@ class OnChainExecutionInterface(BaseExecutionInterface):
             # AAVE supply: USDT → aUSDT conversion
             # In backtest mode, we need to use the correct liquidity index for the conversion
             if token_out == 'aUSDT':
-                # Get the correct liquidity index using centralized utility
-                # TODO-REFACTOR: MISSING CENTRALIZED UTILITY MANAGER - 15_fix_mode_specific_pnl_calculator.md
-                # ISSUE: Should use centralized UtilityManager instead of local utility methods
-                # Canonical: docs/REFERENCE_ARCHITECTURE_CANONICAL.md - Mode-Specific PnL Calculator
-                # Fix: Use centralized UtilityManager for all utility methods
-                # Status: PENDING
-                from ..utils.market_data_utils import get_market_data_utils
-                market_utils = get_market_data_utils(self.data_provider)
+                # Use centralized UtilityManager for liquidity index calculation
+                from ...utilities.utility_manager import UtilityManager
+                utility_manager = UtilityManager(self.config, self.data_provider)
                 
                 if market_data and 'timestamp' in market_data:
-                    liquidity_index = market_utils.get_liquidity_index('USDT', market_data.get('timestamp'))
+                    liquidity_index = utility_manager.get_liquidity_index('USDT', market_data.get('timestamp'))
                 else:
-                    # TODO-REFACTOR: This hardcodes liquidity_index instead of using data provider
-                    # Canonical: docs/REFERENCE_ARCHITECTURE_CANONICAL.md - No Hardcoded Values
-                    # Fix: Use market_utils.get_liquidity_index() with proper data provider access
-                    # Fallback: use a default liquidity index if market_data is not available
+                    # Use default liquidity index if market_data is not available
                     logger.warning("Market data not available for liquidity index lookup, using default value")
-                    liquidity_index = 1.070100  # WRONG - hardcoded value violates architecture principles
+                    liquidity_index = 1.0  # Default fallback
                 
                 amount_out = amount / liquidity_index
                 logger.info(f"Onchain Execution: AAVE_SUPPLY USDT->aUSDT: {amount} USDT / {liquidity_index:.6f} = {amount_out:.2f} aUSDT")

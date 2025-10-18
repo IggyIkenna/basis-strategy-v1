@@ -1,343 +1,391 @@
 """
 Structured Logger
 
-Provides structured logging for all system components with consistent formatting,
-log levels, and integration with the Event Logger for strategy events.
+Provides structured logging for all system components with:
+- Correlation ID and PID tracking
+- Engine timestamp vs real UTC time
+- Error codes and stack traces for ERROR/CRITICAL
+- Component-specific log files in logs/{correlation_id}/{pid}/
 
-Reference: docs/specs/08_EVENT_LOGGER.md - Event logger specification
-Reference: docs/REFERENCE_ARCHITECTURE_CANONICAL.md - Section 10 (Health System Architecture)
+Reference: docs/LOGGING_GUIDE.md - Structured Logging Patterns
+Reference: docs/ERROR_HANDLING_PATTERNS.md - Error Code Standards
 """
 
 import json
-import time
 import logging
-from datetime import datetime
-from typing import Dict, Any, Optional, Union
-from dataclasses import dataclass, asdict
-import structlog
-
-logger = logging.getLogger(__name__)
-
-
-@dataclass
-class LogEvent:
-    """Structured log event."""
-    timestamp: str
-    level: str
-    component: str
-    message: str
-    event_type: Optional[str] = None
-    correlation_id: Optional[str] = None
-    duration_ms: Optional[float] = None
-    metadata: Optional[Dict[str, Any]] = None
-    
-    def to_dict(self) -> Dict[str, Any]:
-        """Convert to dictionary for JSON serialization."""
-        return asdict(self)
+import traceback
+from datetime import datetime, timezone
+from typing import Dict, Any, Optional
+from pathlib import Path
 
 
 class StructuredLogger:
-    """Structured logger for system components."""
+    """
+    Structured logger for system components.
     
-    def __init__(self, component_name: str, event_logger=None):
+    Features:
+    - Correlation ID tracking for request tracing
+    - PID tracking for process identification
+    - Engine timestamp (from EventDrivenStrategyEngine) vs real UTC time
+    - Full stack traces for ERROR and CRITICAL levels
+    - Error code support
+    - Component-specific log files
+    """
+    
+    def __init__(
+        self,
+        component_name: str,
+        correlation_id: str,
+        pid: int,
+        log_dir: Path,
+        engine=None
+    ):
+        """
+        Initialize structured logger.
+        
+        Args:
+            component_name: Name of the component using this logger
+            correlation_id: Unique correlation ID for this run
+            pid: Process ID
+            log_dir: Log directory path (logs/{correlation_id}/{pid}/)
+            engine: EventDrivenStrategyEngine instance (for timestamp access)
+        """
         self.component_name = component_name
-        self.event_logger = event_logger
-        self.correlation_id = None
-        
-        # Set up structured logging
-        self.logger = structlog.get_logger(component_name)
-        
-        # Configure log levels
-        self.log_levels = {
-            'DEBUG': logging.DEBUG,
-            'INFO': logging.INFO,
-            'WARNING': logging.WARNING,
-            'ERROR': logging.ERROR,
-            'CRITICAL': logging.CRITICAL
-        }
-    
-    def set_correlation_id(self, correlation_id: str):
-        """Set correlation ID for request tracing."""
         self.correlation_id = correlation_id
+        self.pid = pid
+        self.log_dir = Path(log_dir)
+        self.engine = engine
+        
+        # Create component log file
+        self.log_file = self.log_dir / f"{component_name}.log"
+        
+        # Ensure log directory exists
+        self.log_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Set up Python logger for file output
+        self._setup_file_logger()
     
-    def _create_log_event(
+    def _setup_file_logger(self):
+        """Set up Python logger for component log file."""
+        self.file_logger = logging.getLogger(f"{self.component_name}_{self.correlation_id}_{self.pid}")
+        self.file_logger.setLevel(logging.DEBUG)
+        self.file_logger.propagate = False
+        
+        # Avoid duplicate handlers
+        if not self.file_logger.handlers:
+            handler = logging.FileHandler(self.log_file)
+            handler.setLevel(logging.DEBUG)
+            formatter = logging.Formatter(
+                '%(asctime)s - %(levelname)s - %(message)s',
+                datefmt='%Y-%m-%d %H:%M:%S'
+            )
+            handler.setFormatter(formatter)
+            self.file_logger.addHandler(handler)
+    
+    def _get_timestamp_info(self) -> tuple:
+        """
+        Get both engine timestamp and real UTC time.
+        
+        Returns:
+            Tuple of (engine_timestamp, real_utc_time)
+            - engine_timestamp: Engine's current_timestamp (or real UTC if not available)
+            - real_utc_time: Actual current UTC time
+        """
+        real_utc = datetime.now(timezone.utc).isoformat()
+        engine_ts = None
+        
+        # Try to get engine timestamp
+        if self.engine and hasattr(self.engine, 'current_timestamp'):
+            try:
+                engine_ts = self.engine.current_timestamp.isoformat()
+            except:
+                pass  # Use real UTC if engine timestamp fails
+        
+        # Use engine timestamp if available, otherwise use real UTC
+        timestamp = engine_ts if engine_ts else real_utc
+        
+        return timestamp, real_utc
+    
+    def _create_log_dict(
         self,
         level: str,
         message: str,
-        event_type: Optional[str] = None,
-        duration_ms: Optional[float] = None,
-        metadata: Optional[Dict[str, Any]] = None
-    ) -> LogEvent:
-        """Create a structured log event."""
-        return LogEvent(
-            timestamp=datetime.now().isoformat(),
-            level=level,
-            component=self.component_name,
-            message=message,
-            event_type=event_type,
-            correlation_id=self.correlation_id,
-            duration_ms=duration_ms,
-            metadata=metadata or {}
-        )
-    
-    def _log_event(self, log_event: LogEvent):
-        """Log the event using structured logging."""
-        # Convert to dict for structured logging
-        event_dict = log_event.to_dict()
+        error_code: Optional[str] = None,
+        exc_info: Optional[Exception] = None,
+        **extra
+    ) -> Dict[str, Any]:
+        """
+        Create structured log dictionary.
         
-        # Log using appropriate level
-        level = self.log_levels.get(log_event.level, logging.INFO)
+        Args:
+            level: Log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+            message: Log message
+            error_code: Optional error code (from ERROR_REGISTRY)
+            exc_info: Optional exception for stack trace capture
+            **extra: Additional key-value pairs to include
+            
+        Returns:
+            Structured log dictionary
+        """
+        timestamp, real_utc = self._get_timestamp_info()
         
-        if level == logging.DEBUG:
-            self.logger.debug(log_event.message, **event_dict)
-        elif level == logging.INFO:
-            self.logger.info(log_event.message, **event_dict)
-        elif level == logging.WARNING:
-            self.logger.warning(log_event.message, **event_dict)
-        elif level == logging.ERROR:
-            self.logger.error(log_event.message, **event_dict)
-        elif level == logging.CRITICAL:
-            self.logger.critical(log_event.message, **event_dict)
+        log_dict = {
+            'timestamp': timestamp,
+            'real_utc_time': real_utc,
+            'level': level,
+            'component': self.component_name,
+            'message': message,
+            'correlation_id': self.correlation_id,
+            'pid': self.pid,
+        }
         
-        # Also send to event logger if available
-        if self.event_logger:
-            try:
-                self.event_logger.log_event(
-                    event_type=log_event.event_type or 'log',
-                    level=log_event.level,
-                    message=log_event.message,
-                    metadata=event_dict
-                )
-            except Exception as e:
-                # Don't let event logger errors break logging
-                self.logger.error(f"Failed to log to event logger: {e}")
+        # Add error code if provided
+        if error_code:
+            log_dict['error_code'] = error_code
+        
+        # Add full stack trace for ERROR and CRITICAL levels
+        if exc_info and level in ['ERROR', 'CRITICAL']:
+            log_dict['stack_trace'] = traceback.format_exc()
+            log_dict['exception_type'] = type(exc_info).__name__
+            log_dict['exception_message'] = str(exc_info)
+        
+        # Add any extra fields
+        if extra:
+            log_dict.update(extra)
+        
+        return log_dict
     
-    def debug(self, message: str, event_type: Optional[str] = None, **kwargs):
-        """Log debug message."""
-        log_event = self._create_log_event(
-            level='DEBUG',
-            message=message,
-            event_type=event_type,
-            metadata=kwargs
-        )
-        self._log_event(log_event)
+    def _write_log(self, log_dict: Dict[str, Any]):
+        """
+        Write log to file.
+        
+        Args:
+            log_dict: Structured log dictionary
+        """
+        level = log_dict['level']
+        message = log_dict['message']
+        
+        # Format message with metadata for file output
+        log_line = f"[{log_dict['correlation_id']}:{log_dict['pid']}] {message}"
+        
+        # Add error code if present
+        if 'error_code' in log_dict:
+            log_line = f"[{log_dict['error_code']}] {log_line}"
+        
+        # Write to file using appropriate level
+        if level == 'DEBUG':
+            self.file_logger.debug(log_line)
+        elif level == 'INFO':
+            self.file_logger.info(log_line)
+        elif level == 'WARNING':
+            self.file_logger.warning(log_line)
+        elif level == 'ERROR':
+            self.file_logger.error(log_line)
+            # Write stack trace on separate lines for ERROR
+            if 'stack_trace' in log_dict:
+                for line in log_dict['stack_trace'].split('\n'):
+                    if line.strip():
+                        self.file_logger.error(f"  {line}")
+        elif level == 'CRITICAL':
+            self.file_logger.critical(log_line)
+            # Write stack trace on separate lines for CRITICAL
+            if 'stack_trace' in log_dict:
+                for line in log_dict['stack_trace'].split('\n'):
+                    if line.strip():
+                        self.file_logger.critical(f"  {line}")
     
-    def info(self, message: str, event_type: Optional[str] = None, **kwargs):
-        """Log info message."""
-        log_event = self._create_log_event(
-            level='INFO',
-            message=message,
-            event_type=event_type,
-            metadata=kwargs
-        )
-        self._log_event(log_event)
+    def debug(self, message: str, **extra):
+        """
+        Log debug message.
+        
+        Args:
+            message: Log message
+            **extra: Additional context (metadata, etc.)
+        """
+        log_dict = self._create_log_dict('DEBUG', message, **extra)
+        self._write_log(log_dict)
     
-    def warning(self, message: str, event_type: Optional[str] = None, **kwargs):
-        """Log warning message."""
-        log_event = self._create_log_event(
-            level='WARNING',
-            message=message,
-            event_type=event_type,
-            metadata=kwargs
-        )
-        self._log_event(log_event)
+    def info(self, message: str, **extra):
+        """
+        Log info message.
+        
+        Args:
+            message: Log message
+            **extra: Additional context (metadata, etc.)
+        """
+        log_dict = self._create_log_dict('INFO', message, **extra)
+        self._write_log(log_dict)
     
-    def error(self, message: str, event_type: Optional[str] = None, **kwargs):
-        """Log error message."""
-        log_event = self._create_log_event(
-            level='ERROR',
-            message=message,
-            event_type=event_type,
-            metadata=kwargs
-        )
-        self._log_event(log_event)
+    def warning(self, message: str, error_code: Optional[str] = None, **extra):
+        """
+        Log warning message.
+        
+        Args:
+            message: Log message
+            error_code: Optional error code
+            **extra: Additional context (metadata, etc.)
+        """
+        log_dict = self._create_log_dict('WARNING', message, error_code=error_code, **extra)
+        self._write_log(log_dict)
     
-    def critical(self, message: str, event_type: Optional[str] = None, **kwargs):
-        """Log critical message."""
-        log_event = self._create_log_event(
-            level='CRITICAL',
-            message=message,
-            event_type=event_type,
-            metadata=kwargs
+    def error(
+        self,
+        message: str,
+        error_code: Optional[str] = None,
+        exc_info: Optional[Exception] = None,
+        **extra
+    ):
+        """
+        Log error message with full stack trace.
+        
+        Args:
+            message: Log message
+            error_code: Error code from ERROR_REGISTRY
+            exc_info: Exception to capture stack trace
+            **extra: Additional context (severity, operation, details, etc.)
+        
+        Example:
+            logger.error(
+                "Exposure calculation failed",
+                error_code="EXP-001",
+                exc_info=e,
+                asset="BTC",
+                severity="HIGH"
+            )
+        """
+        log_dict = self._create_log_dict(
+            'ERROR',
+            message,
+            error_code=error_code,
+            exc_info=exc_info,
+            **extra
         )
-        self._log_event(log_event)
+        self._write_log(log_dict)
+    
+    def critical(
+        self,
+        message: str,
+        error_code: Optional[str] = None,
+        exc_info: Optional[Exception] = None,
+        **extra
+    ):
+        """
+        Log critical message with full stack trace.
+        
+        Args:
+            message: Log message
+            error_code: Error code from ERROR_REGISTRY
+            exc_info: Exception to capture stack trace
+            **extra: Additional context (severity, operation, details, etc.)
+        
+        Example:
+            logger.critical(
+                "System failure triggered",
+                error_code="EXEC-004",
+                exc_info=e,
+                operation="reconciliation",
+                severity="CRITICAL"
+            )
+        """
+        log_dict = self._create_log_dict(
+            'CRITICAL',
+            message,
+            error_code=error_code,
+            exc_info=exc_info,
+            **extra
+        )
+        self._write_log(log_dict)
+    
+    def log_structured_error(
+        self,
+        error_code: str,
+        message: str,
+        component: str,
+        operation: str,
+        details: Optional[Dict[str, Any]] = None,
+        exc_info: Optional[Exception] = None
+    ):
+        """
+        Log structured error with full context.
+        
+        This is the recommended pattern for structured error logging.
+        
+        Args:
+            error_code: Error code from ERROR_REGISTRY
+            message: Error message
+            component: Component where error occurred
+            operation: Operation that failed
+            details: Additional error details
+            exc_info: Exception to capture stack trace
+        
+        Example:
+            logger.log_structured_error(
+                error_code="EXP-001",
+                message="Exposure calculation failed for BTC",
+                component="ExposureMonitor",
+                operation="calculate_exposure",
+                details={"asset": "BTC", "positions": {...}},
+                exc_info=e
+            )
+        """
+        self.error(
+            message,
+            error_code=error_code,
+            exc_info=exc_info,
+            component=component,
+            operation=operation,
+            details=details or {}
+        )
     
     def log_performance(
         self,
         operation: str,
         duration_ms: float,
-        success: bool = True,
-        **kwargs
+        **extra
     ):
-        """Log performance metrics."""
-        level = 'INFO' if success else 'WARNING'
-        message = f"Performance: {operation} completed in {duration_ms:.2f}ms"
+        """
+        Log performance metrics.
         
-        log_event = self._create_log_event(
-            level=level,
-            message=message,
-            event_type='performance',
+        Args:
+            operation: Operation name
+            duration_ms: Duration in milliseconds
+            **extra: Additional metrics
+        """
+        self.info(
+            f"Performance: {operation} completed in {duration_ms:.2f}ms",
+            operation=operation,
             duration_ms=duration_ms,
-            metadata={
-                'operation': operation,
-                'success': success,
-                **kwargs
-            }
+            **extra
         )
-        self._log_event(log_event)
+    
+    def flush(self):
+        """Flush all log handlers."""
+        for handler in self.file_logger.handlers:
+            handler.flush()
     
     def log_business_event(
         self,
         event_type: str,
         message: str,
-        level: str = 'INFO',
-        **kwargs
-    ):
-        """Log business event (strategy events, trades, etc.)."""
-        log_event = self._create_log_event(
-            level=level,
-            message=message,
-            event_type=event_type,
-            metadata=kwargs
-        )
-        self._log_event(log_event)
-    
-    def log_component_health(
-        self,
-        status: str,
-        message: str,
-        details: Optional[Dict[str, Any]] = None
-    ):
-        """Log component health status."""
-        level = 'INFO' if status == 'healthy' else 'WARNING' if status == 'degraded' else 'ERROR'
-        
-        log_event = self._create_log_event(
-            level=level,
-            message=f"Health check: {message}",
-            event_type='health',
-            metadata={
-                'status': status,
-                'details': details or {}
-            }
-        )
-        self._log_event(log_event)
-    
-    def log_data_event(
-        self,
-        operation: str,
-        data_type: str,
-        success: bool = True,
-        **kwargs
-    ):
-        """Log data-related events."""
-        level = 'INFO' if success else 'ERROR'
-        message = f"Data {operation}: {data_type}"
-        
-        log_event = self._create_log_event(
-            level=level,
-            message=message,
-            event_type='data',
-            metadata={
-                'operation': operation,
-                'data_type': data_type,
-                'success': success,
-                **kwargs
-            }
-        )
-        self._log_event(log_event)
-    
-    def log_strategy_event(
-        self,
-        strategy_name: str,
-        event_type: str,
-        message: str,
-        level: str = 'INFO',
-        **kwargs
-    ):
-        """Log strategy-specific events."""
-        log_event = self._create_log_event(
-            level=level,
-            message=f"[{strategy_name}] {message}",
-            event_type=f'strategy_{event_type}',
-            metadata={
-                'strategy_name': strategy_name,
-                'strategy_event_type': event_type,
-                **kwargs
-            }
-        )
-        self._log_event(log_event)
-    
-    def log_event(
-        self,
-        level: str,
-        message: str,
-        event_type: str = 'log',
         metadata: Optional[Dict[str, Any]] = None,
-        **kwargs
+        **extra
     ):
-        """Generic event logging method for compatibility."""
-        # Merge kwargs into metadata
-        if metadata is None:
-            metadata = {}
-        metadata.update(kwargs)
+        """
+        Log business events with structured data.
         
-        log_event = self._create_log_event(
-            level=level,
-            message=message,
-            event_type=event_type,
-            metadata=metadata
-        )
-        self._log_event(log_event)
+        Args:
+            event_type: Type of business event (e.g., 'component_initialization', 'order_execution')
+            message: Human-readable message
+            metadata: Additional structured data
+            **extra: Additional fields to include in log
+        """
+        log_data = {
+            'event_type': event_type,
+            'message': message,
+            'metadata': metadata or {},
+            **extra
+        }
+        
+        self.info(f"Business Event: {event_type} - {message}", **log_data)
 
 
-def get_structured_logger(component_name: str, event_logger=None) -> StructuredLogger:
-    """Get a structured logger for a component."""
-    return StructuredLogger(component_name, event_logger)
-
-
-# Global logger instances for common components
-_position_monitor_logger = None
-_risk_monitor_logger = None
-_strategy_manager_logger = None
-_data_provider_logger = None
-_execution_manager_logger = None
-
-
-def get_position_monitor_logger(event_logger=None) -> StructuredLogger:
-    """Get logger for Position Monitor component."""
-    global _position_monitor_logger
-    if _position_monitor_logger is None:
-        _position_monitor_logger = get_structured_logger('position_monitor', event_logger)
-    return _position_monitor_logger
-
-
-def get_risk_monitor_logger(event_logger=None) -> StructuredLogger:
-    """Get logger for Risk Monitor component."""
-    global _risk_monitor_logger
-    if _risk_monitor_logger is None:
-        _risk_monitor_logger = get_structured_logger('risk_monitor', event_logger)
-    return _risk_monitor_logger
-
-
-def get_strategy_manager_logger(event_logger=None) -> StructuredLogger:
-    """Get logger for Strategy Manager component."""
-    global _strategy_manager_logger
-    if _strategy_manager_logger is None:
-        _strategy_manager_logger = get_structured_logger('strategy_manager', event_logger)
-    return _strategy_manager_logger
-
-
-def get_data_provider_logger(event_logger=None) -> StructuredLogger:
-    """Get logger for Data Provider component."""
-    global _data_provider_logger
-    if _data_provider_logger is None:
-        _data_provider_logger = get_structured_logger('data_provider', event_logger)
-    return _data_provider_logger
-
-
-def get_execution_manager_logger(event_logger=None) -> StructuredLogger:
-    """Get logger for Execution Manager component."""
-    global _execution_manager_logger
-    if _execution_manager_logger is None:
-        _execution_manager_logger = get_structured_logger('execution_manager', event_logger)
-    return _execution_manager_logger

@@ -208,7 +208,7 @@ def analyze_reference_based_architecture(file_path: str) -> Dict[str, any]:
         # Only require __init__ method if the component uses data_provider or other components
         # Skip utility classes (calculators) that don't need component references
         file_name = os.path.basename(file_path)
-         is_utility_class = any(util in file_name for util in ['calculator', 'utils', 'helper', 'factory', 'models', 'logging', 'metrics'])
+        is_utility_class = any(util in file_name for util in ['calculator', 'utils', 'helper', 'factory', 'models', 'logging', 'metrics'])
         
         if not analysis['has_init_method'] and (analysis['data_provider_access'] or analysis['component_calls']) and not is_utility_class:
             analysis['violations'].append("No __init__ method found for reference storage")

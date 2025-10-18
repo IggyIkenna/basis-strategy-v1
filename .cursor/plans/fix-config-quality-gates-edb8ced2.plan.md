@@ -14,11 +14,11 @@ Address the remaining 52.3% gap in config documentation sync by fixing field nam
 These are fields that exist in the config documentation but are not properly documented in component/strategy specs:
 
 - **Top-level config fields**: `base_currency`, `initial_capital`, `environment`, `execution_mode`, `log_level`, `validation_strict`
-- **Strategy-specific fields**: `allows_hedging`, `basis_trading_supported`, `leverage_enabled`, `leverage_supported`, `market_neutral`, `max_drawdown`, `max_leverage`, `max_ltv`, `position_deviation_threshold`, `rewards_mode`, `stake_allocation_eth`, `staking_supported`
+- **Strategy-specific fields**: `allows_hedging`, `basis_trading_supported`, `leverage_enabled`, `leverage_supported`, `market_neutral`, `max_drawdown`, `max_leverage`, `max_ltv`, `position_deviation_threshold`, `rewards_mode`, `stake_allocation_percentage`, `staking_supported`
 - **ML config fields**: `ml_config`, `ml_config.candle_interval`, `ml_config.model_name`, `ml_config.model_registry`, `model_name`, `model_registry`, `model_version`, `signal_threshold`, `max_position_size`
 - **Data fields**: `candle_interval`, `data_requirements`
 - **Event logger fields**: `event_logger`, `event_logger.*` (9 fields)
-- **Component parent fields**: `component_config`, `execution_manager`, `exposure_monitor`, `pnl_calculator`, `results_store`, `risk_monitor`, `strategy_manager`
+- **Component parent fields**: `component_config`, `execution_manager`, `exposure_monitor`, `pnl_monitor`, `results_store`, `risk_monitor`, `strategy_manager`
 - **Venue parent fields**: `venues`, `instruments`
 - **Other fields**: `decimal_places`, `delta_tolerance`, `description`, `funding_threshold`, `hedge_allocation_bybit`, `hedge_venues`, `risk_level`, `supported_strategies`, `target_apy_range`, `type`
 
@@ -62,7 +62,7 @@ These are fields documented in component specs but missing from 19_CONFIGURATION
 - `leverage_enabled`, `leverage_supported`, `max_leverage` → Leveraged strategies
 - `market_neutral` → Market neutral strategies
 - `max_drawdown`, `max_ltv`, `position_deviation_threshold` → All strategies
-- `rewards_mode`, `stake_allocation_eth`, `staking_supported` → Staking strategies
+- `rewards_mode`, `stake_allocation_percentage`, `staking_supported` → Staking strategies
 - `hedge_allocation_bybit`, `hedge_venues` → Basis and market neutral strategies
 
 ### Phase 3: Add Missing ML Fields to ML Strategy Specs (High Priority)
@@ -254,7 +254,7 @@ Create comprehensive status report documenting:
 
 **Strategy Specs** (all 9):
 
-- `docs/specs/strategies/01_PURE_LENDING_STRATEGY.md`
+- `docs/specs/strategies/01_pure_lending_usdt_STRATEGY.md`
 - `docs/specs/strategies/02_BTC_BASIS_STRATEGY.md`
 - `docs/specs/strategies/03_ETH_BASIS_STRATEGY.md`
 - `docs/specs/strategies/04_ETH_STAKING_ONLY_STRATEGY.md`

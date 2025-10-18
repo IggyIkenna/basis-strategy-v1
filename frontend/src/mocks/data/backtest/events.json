@@ -1,0 +1,82 @@
+{
+    "events": [
+        {
+            "timestamp": "2024-01-01T00:00:00Z",
+            "event_type": "position_update",
+            "component": "position_monitor",
+            "data": {
+                "venue": "aave_v3",
+                "position_type": "lending",
+                "symbol": "USDT",
+                "amount": 50000,
+                "balance_snapshot": {
+                    "USDT": 100000,
+                    "aUSDT": 50000
+                }
+            }
+        },
+        {
+            "timestamp": "2024-01-01T00:01:00Z",
+            "event_type": "trade_execution",
+            "component": "execution_engine",
+            "data": {
+                "venue": "aave_v3",
+                "trade_type": "lend",
+                "symbol": "USDT",
+                "amount": 50000,
+                "rate": 0.045,
+                "fee": 2.50
+            }
+        },
+        {
+            "timestamp": "2024-01-01T00:02:00Z",
+            "event_type": "pnl_update",
+            "component": "pnl_calculator",
+            "data": {
+                "total_pnl": 125.50,
+                "component_pnl": {
+                    "lending": 125.50,
+                    "staking": 0,
+                    "basis_trading": 0
+                }
+            }
+        },
+        {
+            "timestamp": "2024-01-01T00:03:00Z",
+            "event_type": "risk_check",
+            "component": "risk_manager",
+            "data": {
+                "risk_metrics": {
+                    "current_drawdown": 0.0012,
+                    "var_95": 0.0085,
+                    "health_factor": 1.85
+                },
+                "status": "within_limits"
+            }
+        },
+        {
+            "timestamp": "2024-01-01T00:04:00Z",
+            "event_type": "rebalance_trigger",
+            "component": "rebalancer",
+            "data": {
+                "trigger_reason": "target_allocation_change",
+                "current_allocation": {
+                    "aave_v3": 0.5,
+                    "morpho": 0.3,
+                    "lido": 0.2
+                },
+                "target_allocation": {
+                    "aave_v3": 0.6,
+                    "morpho": 0.25,
+                    "lido": 0.15
+                }
+            }
+        }
+    ],
+    "pagination": {
+        "page": 1,
+        "limit": 100,
+        "total": 1000,
+        "total_pages": 10
+    }
+}

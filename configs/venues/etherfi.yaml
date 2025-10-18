@@ -2,6 +2,10 @@
 venue: "etherfi"
 type: "defi"
 
+# Canonical instruments available on this venue
+canonical_instruments:
+  - "etherfi:LST:weETH"
+
 # Basic staking parameters
 min_stake_amount: 0.01  # ETH
 unstaking_period: 7  # days

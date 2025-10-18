@@ -19,7 +19,7 @@ def find_markdown_files(docs_dir: str = "docs/") -> List[str]:
         for file in files:
             if file.endswith('.md'):
                 # Skip template files from link validation
-                if file == 'COMPONENT_SPEC_TEMPLATE.md':
+                if file == 'COMPONENT_SPECS_INDEX.md':
                     continue
                 markdown_files.append(os.path.join(root, file))
     return markdown_files

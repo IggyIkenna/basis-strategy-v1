@@ -17,7 +17,6 @@ from .cex_position_interface import CEXPositionInterface
 from .onchain_position_interface import OnChainPositionInterface
 from .transfer_position_interface import TransferPositionInterface
 
-from ...core.logging.base_logging_interface import StandardizedLoggingMixin, LogLevel, EventType
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +31,7 @@ ERROR_CODES = {
 }
 
 
-class VenueInterfaceFactory(StandardizedLoggingMixin):
+class VenueInterfaceFactory:
     """
     Factory for creating venue interfaces.
     
@@ -71,30 +70,6 @@ class VenueInterfaceFactory(StandardizedLoggingMixin):
             'created_interfaces_count': len(self.created_interfaces),
             'component': self.__class__.__name__
         }
-    
-    def _process_config_driven_creation(self, interface_type: str, config: Dict[str, Any]) -> Dict[str, Any]:
-        """Process interface creation based on configuration settings."""
-        try:
-            # Apply config-driven logic
-            if config.get('enable_validation', True):
-                # Validate interface type based on config
-                if self._validate_interface_type(interface_type, config):
-                    return config
-                else:
-                    logger.warning(f"Interface type validation failed: {interface_type}")
-                    return None
-            else:
-                return config
-                
-        except Exception as e:
-            self._handle_error(e, f"config_driven_interface_creation")
-            return None
-    
-    def _validate_interface_type(self, interface_type: str, config: Dict[str, Any]) -> bool:
-        """Validate interface type based on configuration."""
-        # Basic validation logic
-        allowed_types = config.get('allowed_interface_types', ['cex', 'dex', 'onchain', 'transfer'])
-        return interface_type.lower() in allowed_types
     
     @staticmethod
     def create_venue_interface(
@@ -283,38 +258,3 @@ class VenueInterfaceFactory(StandardizedLoggingMixin):
         # This method is provided for consistency with the update_state pattern
         logger.debug(f"VenueInterfaceFactory.update_state called at {timestamp} from {trigger_source}")
 
-
-# Legacy compatibility methods for backward transition
-# These will be removed in a future version
-class ExecutionInterfaceFactory(StandardizedLoggingMixin):
-    """
-    Legacy ExecutionInterfaceFactory - DEPRECATED
-    
-    Use VenueInterfaceFactory instead.
-    This class is provided for backward compatibility only.
-    """
-    
-    @staticmethod
-    def __create_interface(interface_type: str, execution_mode: str, config: Dict[str, Any], data_provider=None):
-        """Legacy method - use VenueInterfaceFactory.create_venue_interface() instead."""
-        return VenueInterfaceFactory.create_venue_interface(interface_type, execution_mode, config, data_provider)
-    
-    @staticmethod
-    def __create_all_interfaces(execution_mode: str, config: Dict[str, Any], data_provider=None):
-        """Legacy method - use VenueInterfaceFactory.create_all_venue_interfaces() instead."""
-        return VenueInterfaceFactory.create_all_venue_interfaces(execution_mode, config, data_provider)
-    
-    @staticmethod
-    def __set_interface_dependencies(interfaces, position_monitor, event_logger, data_provider):
-        """Legacy method - use VenueInterfaceFactory.set_venue_dependencies() instead."""
-        return VenueInterfaceFactory.set_venue_dependencies(interfaces, position_monitor, event_logger, data_provider)
-    
-    @staticmethod
-    def __create_position_interface(venue: str, execution_mode: str, config: Dict[str, Any]):
-        """Legacy method - use VenueInterfaceFactory.create_venue_position_interface() instead."""
-        return VenueInterfaceFactory.create_venue_position_interface(venue, execution_mode, config)
-    
-    @staticmethod
-    def __get_position_interfaces(venues: List[str], execution_mode: str, config: Dict[str, Any]):
-        """Legacy method - use VenueInterfaceFactory.get_venue_position_interfaces() instead."""
-        return VenueInterfaceFactory.get_venue_position_interfaces(venues, execution_mode, config)

@@ -6,7 +6,6 @@ type: "stable"
 description: "USDT stablecoin share class for market neutral strategies"
 
 # Currency Configuration
-base_currency: "USDT"
 quote_currency: "USDT"
 decimal_places: 6
 
@@ -17,21 +16,24 @@ allows_hedging: true
 
 # Supported Strategies (modes available for this share class)
 supported_strategies:
-  - "pure_lending"
+  - "pure_lending_usdt"
   - "btc_basis"
-  - "usdt_market_neutral"
-  - "usdt_market_neutral_no_leverage"
-  - "ml_btc_directional"
-  - "ml_usdt_directional"
+  - "eth_basis"
+  - "usdt_eth_staking_hedged_leveraged"
+  - "usdt_eth_staking_hedged_simple"
+  - "ml_btc_directional_usdt_margin"  # BTC directional on perps, USDT margin
 
 # Share Class Features
+leverage_enabled: true
 leverage_supported: true
 staking_supported: false
 basis_trading_supported: true
 
 # Risk Management
-max_leverage: 1.0  # No leverage for stable strategies
+max_leverage: 3.0  # Support leverage for hedged strategies
 max_drawdown: 0.05  # 5% max drawdown for stable strategies
+
+# Performance targets
 target_apy_range:
   min: 0.08  # 8% minimum target APY
   max: 0.15  # 15% maximum target APY

@@ -33,7 +33,7 @@ class DataAvailabilityChecker:
         
         # Strategy data requirements
         self.strategy_data_requirements = {
-            'pure_lending': {
+            'pure_lending_usdt': {
                 'protocols': ['aave_v3', 'morpho'],
                 'assets': ['USDC', 'USDT', 'DAI'],
                 'timeframes': ['1h', '1d'],
@@ -200,7 +200,7 @@ class DataAvailabilityChecker:
         
         return files
     
-    def _find_protocol_data_files(self, protocol: str) -> List[str]:
+    def _find_protocol_data_files(self, venue: str) -> List[str]:
         """Find data files for a specific protocol."""
         files = []
         
@@ -275,7 +275,7 @@ class TestDataAvailabilityQualityGate:
         assert checker.manual_sources_dir == Path("data/manual_sources")
         
         # Check strategy requirements are defined
-        assert 'pure_lending' in checker.strategy_data_requirements
+        assert 'pure_lending_usdt' in checker.strategy_data_requirements
         assert 'btc_basis' in checker.strategy_data_requirements
         assert 'eth_basis' in checker.strategy_data_requirements
         assert 'usdt_market_neutral' in checker.strategy_data_requirements
@@ -318,7 +318,7 @@ class TestDataAvailabilityQualityGate:
         strategy_reqs = report['strategy_requirements']
         
         # All strategies should be checked
-        assert 'pure_lending' in strategy_reqs
+        assert 'pure_lending_usdt' in strategy_reqs
         assert 'btc_basis' in strategy_reqs
         assert 'eth_basis' in strategy_reqs
         assert 'usdt_market_neutral' in strategy_reqs
@@ -422,14 +422,14 @@ class TestDataAvailabilityQualityGate:
         checker = DataAvailabilityChecker("data")
         
         # Test pure lending requirements
-        pure_lending_reqs = checker.strategy_data_requirements['pure_lending']
-        assert 'protocols' in pure_lending_reqs
-        assert 'aave_v3' in pure_lending_reqs['protocols']
-        assert 'morpho' in pure_lending_reqs['protocols']
-        assert 'assets' in pure_lending_reqs
-        assert 'USDC' in pure_lending_reqs['assets']
-        assert 'USDT' in pure_lending_reqs['assets']
-        assert 'DAI' in pure_lending_reqs['assets']
+        pure_lending_usdt_reqs = checker.strategy_data_requirements['pure_lending_usdt']
+        assert 'protocols' in pure_lending_usdt_reqs
+        assert 'aave_v3' in pure_lending_usdt_reqs['protocols']
+        assert 'morpho' in pure_lending_usdt_reqs['protocols']
+        assert 'assets' in pure_lending_usdt_reqs
+        assert 'USDC' in pure_lending_usdt_reqs['assets']
+        assert 'USDT' in pure_lending_usdt_reqs['assets']
+        assert 'DAI' in pure_lending_usdt_reqs['assets']
         
         # Test BTC basis requirements
         btc_basis_reqs = checker.strategy_data_requirements['btc_basis']
@@ -467,15 +467,15 @@ class TestDataProviderFactoryUnit:
         
         # Test all strategy modes
         modes = [
-            'pure_lending',
+            'pure_lending_usdt',
             'btc_basis',
             'eth_basis',
             'eth_staking_only',
             'eth_leveraged',
             'usdt_market_neutral_no_leverage',
             'usdt_market_neutral',
-            'ml_btc_directional',
-            'ml_usdt_directional'
+            'ml_btc_directional_usdt_margin',
+            'ml_usdt_directional_usdt_margin'
         ]
         
         for mode in modes:
@@ -534,7 +534,7 @@ class TestDataProviderFactoryUnit:
                 data_dir=missing_data_dir,
                 startup_mode='backtest',
                 config=mock_config,
-                mode='pure_lending'
+                mode='pure_lending_usdt'
             )
             # If no exception, should handle gracefully
             assert data_provider is None or isinstance(data_provider, BaseDataProvider)
@@ -674,19 +674,19 @@ class TestDataProviderUnit:
     def test_data_provider_initialization(self, mock_config, real_minimal_data):
         """Test Data Provider initialization with different configs."""
         # Test pure lending mode
-        pure_lending_config = mock_config.copy()
-        pure_lending_config['mode'] = 'pure_lending'
+        pure_lending_usdt_config = mock_config.copy()
+        pure_lending_usdt_config['mode'] = 'pure_lending_usdt'
         
         try:
             data_provider = create_data_provider(
                 data_dir='data',
                 startup_mode='backtest',
-                config=pure_lending_config,
-                mode='pure_lending'
+                config=pure_lending_usdt_config,
+                mode='pure_lending_usdt'
             )
             
             if data_provider:
-                assert data_provider.config['mode'] == 'pure_lending'
+                assert data_provider.config['mode'] == 'pure_lending_usdt'
                 
         except Exception as e:
             # Expected behavior if data not available
@@ -723,7 +723,7 @@ class TestDataProviderUnit:
                 data_dir='data',
                 startup_mode='backtest',
                 config=invalid_config,
-                mode='pure_lending'
+                mode='pure_lending_usdt'
             )
             
             if data_provider:
@@ -800,7 +800,7 @@ class TestDataProviderUnit:
                 data_dir='data',
                 startup_mode='backtest',
                 config=valid_config,
-                mode='pure_lending'
+                mode='pure_lending_usdt'
             )
             
             if data_provider:
@@ -820,7 +820,7 @@ class TestDataProviderUnit:
                 data_dir='data',
                 startup_mode='backtest',
                 config=invalid_config,
-                mode='pure_lending'
+                mode='pure_lending_usdt'
             )
             
             if data_provider:

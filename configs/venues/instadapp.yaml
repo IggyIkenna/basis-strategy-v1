@@ -2,6 +2,10 @@
 venue: "instadapp"
 type: "infrastructure"
 
+# Canonical instruments available on this venue
+canonical_instruments:
+  - "instadapp:BaseToken:WETH"  # Flash loan intermediary
+
 # Service type
 service: "atomic_transaction_middleware"
 

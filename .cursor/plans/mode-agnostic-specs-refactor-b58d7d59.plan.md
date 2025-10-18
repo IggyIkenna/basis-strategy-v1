@@ -3,7 +3,7 @@
 
 ## Overview
 
-Refactor 8 component specifications (`05_STRATEGY_MANAGER.md`, `07A_EXECUTION_INTERFACES.md`, `13_BACKTEST_SERVICE.md`, `14_LIVE_TRADING_SERVICE.md`, `15_EVENT_DRIVEN_STRATEGY_ENGINE.md`, `5A_STRATEGY_FACTORY.md`, `07B_EXECUTION_INTERFACE_FACTORY.md`, `05B_BASE_STRATEGY_MANAGER.md`) to implement config-driven, mode-agnostic architecture per AGENT_REFACTOR_PROMPT_MODE_AGNOSTIC.md.
+Refactor 8 component specifications (`05_STRATEGY_MANAGER.md`, `07A_EXECUTION_INTERFACES.md`, `13_BACKTEST_SERVICE.md`, `14_LIVE_TRADING_SERVICE.md`, `15_EVENT_DRIVEN_STRATEGY_ENGINE.md`, `5A_STRATEGY_FACTORY.md`, `07B_VENUE_INTERFACE_FACTORY.md`, `05B_BASE_STRATEGY_MANAGER.md`) to implement config-driven, mode-agnostic architecture per AGENT_REFACTOR_PROMPT_MODE_AGNOSTIC.md.
 
 ## Key Decisions
 
@@ -31,7 +31,7 @@ Refactor 8 component specifications (`05_STRATEGY_MANAGER.md`, `07A_EXECUTION_IN
 ### Group 4: Engine & Factory (2 files)
 
 - `docs/specs/15_EVENT_DRIVEN_STRATEGY_ENGINE.md` - Add factory orchestration note
-- `docs/specs/07B_EXECUTION_INTERFACE_FACTORY.md` - Complete factory with venue mappings
+- `docs/specs/07B_VENUE_INTERFACE_FACTORY.md` - Complete factory with venue mappings
 
 ## Implementation Approach
 
@@ -97,7 +97,7 @@ Refactor 8 component specifications (`05_STRATEGY_MANAGER.md`, `07A_EXECUTION_IN
 
 ### Phase 2: Update Execution Interface Specs (2 files)
 
-**Files**: `07A_EXECUTION_INTERFACES.md`, `07B_EXECUTION_INTERFACE_FACTORY.md`
+**Files**: `07A_EXECUTION_INTERFACES.md`, `07B_VENUE_INTERFACE_FACTORY.md`
 
 #### For `07A_EXECUTION_INTERFACES.md`:
 
@@ -114,7 +114,7 @@ Refactor 8 component specifications (`05_STRATEGY_MANAGER.md`, `07A_EXECUTION_IN
 
 3. Update examples to show venue-specific, not mode-specific
 
-#### For `07B_EXECUTION_INTERFACE_FACTORY.md`:
+#### For `07B_VENUE_INTERFACE_FACTORY.md`:
 
 1. Add complete INTERFACE_MAP with all venues:
 

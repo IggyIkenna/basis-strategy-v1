@@ -1,151 +1,90 @@
-# BTC Basis Trading Mode Configuration
-# BTC basis trading strategy with short side hedging in Binance, Bybit, and OKX perps
-
-mode: "eth_basis"
-
-# Strategy parameters
+mode: eth_basis
 lending_enabled: false
 staking_enabled: false
 basis_trade_enabled: true
 borrowing_enabled: false
 leverage_enabled: false
-# No borrowing/leverage loops
 enable_market_impact: true
-
-# Asset configuration
-share_class: "USDT"
-asset: "BTC"
+share_class: USDT
+asset: ETH
 lst_type: null
-rewards_mode: "base_only"
-funding_threshold: 0.0001  # 0.01% funding threshold
-
-# Execution parameters
-hedge_venues: ["binance", "bybit", "okx"]
-hedge_allocation_binance: 0.4
-hedge_allocation_bybit: 0.3
-hedge_allocation_okx: 0.3
-position_deviation_threshold: 0.02  # 2% deviation from target triggers rebalancing
-
-# Risk parameters
-margin_ratio_target: 0.8  # Target CEX margin ratio for futures (80% conservative)
-# NOTE: No AAVE in this mode, so no max_ltv/liquidation_threshold/max_stake_spread_move
-
-# Venue configuration
+rewards_mode: base_only
+funding_threshold: 0.0001
+hedge_venues:
+- binance
+- bybit
+- okx
+position_deviation_threshold: 0.02
+margin_ratio_target: 0.8
 venues:
   binance:
-    venue_type: "cex"
-    enabled: true
-    instruments: ["BTC-SPOT", "BTC-PERP"]
-    order_types: ["market", "limit"]
+    venue_type: cex
+    instruments:
+    - ETH-SPOT
+    - ETH-PERP
+    order_types:
+    - market
+    - limit
   bybit:
-    venue_type: "cex"
-    enabled: true
-    instruments: ["BTC-PERP"]
-    order_types: ["market", "limit"]
+    venue_type: cex
+    instruments:
+    - ETH-PERP
+    order_types:
+    - market
+    - limit
   okx:
-    venue_type: "cex"
-    enabled: true
-    instruments: ["BTC-PERP"]
-    order_types: ["market", "limit"]
+    venue_type: cex
+    instruments:
+    - ETH-PERP
+    order_types:
+    - market
+    - limit
   alchemy:
-    venue_type: "infrastructure"
-    enabled: true
-    instruments: ["WALLET-TRANSFER"]
-    order_types: ["transfer"]
-
-# Delta neutrality parameters
-delta_tolerance: 0.005  # 0.5% tolerance of gross exposure for delta neutrality
-
-# Data requirements
+    venue_type: infrastructure
+    instruments:
+    - WALLET-TRANSFER
+    order_types:
+    - transfer
+delta_tolerance: 0.005
 data_requirements:
-  - "btc_prices"  # Binance BTC/USDT spot
-  - "btc_futures"  # CEX futures data
-  - "funding_rates"  # CEX funding rates (all venues)
-  - "gas_costs"  # Ethereum gas prices
-  - "execution_costs"  # Execution cost model
-
-# Live time throttling 
+- eth_prices
+- eth_futures
+- funding_rates
+- gas_costs
+- execution_costs
 time_throttle_interval: 60
-
-# Performance targets
-target_apy: 0.08  # 8% APY target (funding rate collection)
-max_drawdown: 0.02  # 2% max drawdown (usually positive funding)
-
-# Component configuration
-component_config:
-  risk_monitor:
-    enabled_risk_types: ["cex_margin_ratio", "delta_risk"]
-    risk_limits:
-      target_margin_ratio: 0.5
-      cex_margin_ratio_min: 0.15
-      maintenance_margin_requirement: 0.10
-      delta_tolerance: 0.005
-      liquidation_threshold: 0.95
-  
-  exposure_monitor:
-    exposure_currency: "USDT"
-    track_assets: ["ETH", "ETH_PERP", "USDT"]
-    conversion_methods:
-      ETH: "usd_price"
-      ETH_PERP: "perp_mark_price"
-      USDT: "direct"
-  
-  pnl_calculator:
-    attribution_types: ["funding_pnl", "delta_pnl", "basis_pnl", "transaction_costs"]
-    reporting_currency: "USDT"
-    reconciliation_tolerance: 0.02
-  
-  strategy_manager:
-    strategy_type: "btc_basis"
-    actions: ["entry_full", "entry_partial", "exit_partial", "exit_full"]
-    rebalancing_triggers: ["deposit", "withdrawal", "delta_drift"]
-    position_calculation:
-      target_position: "btc_spot_long"
-      hedge_position: "btc_perp_short"
-      hedge_allocation:
-        binance: 0.4
-        bybit: 0.3
-        okx: 0.3
-  
-  execution_manager:
-    supported_actions: ["cex_spot_buy", "cex_spot_sell", "cex_perp_short", "cex_perp_close"]
-    action_mapping:
-      entry_full: ["cex_spot_buy", "cex_perp_short"]
-      exit_full: ["cex_perp_close", "cex_spot_sell"]
-      entry_partial: ["cex_spot_buy", "cex_perp_short"]
-      exit_partial: ["cex_perp_close", "cex_spot_sell"]
-  
-  results_store:
-    result_types: ["balance_sheet", "pnl_attribution", "risk_metrics", "execution_log", "delta_tracking", "funding_tracking"]
-    balance_sheet_assets: ["ETH", "USDT", "ETH_PERP"]
-    pnl_attribution_types: ["funding_pnl", "delta_pnl", "basis_pnl", "transaction_costs"]
-    delta_tracking_assets: ["ETH"]
-    funding_tracking_venues: ["binance", "bybit", "okx"]
-  
-  strategy_factory:
-    timeout: 30
-    max_retries: 3
-    validation_strict: true
-
-# Event logging configuration
+target_apy: 0.08
+max_drawdown: 0.02
 event_logger:
-  log_path: "./logs"
-  log_format: "json"
-  log_level: "INFO"
+  log_path: ./logs
+  log_format: json
+  log_level: INFO
   event_categories:
-    data: ["data_loaded", "data_updated", "data_error"]
-    risk: ["risk_breach", "risk_warning", "risk_calculation"]
-    event: ["event_logged", "event_filtered", "event_exported"]
-    business: ["trade_executed", "position_updated", "strategy_decision"]
+    data:
+    - data_loaded
+    - data_updated
+    - data_error
+    risk:
+    - risk_breach
+    - risk_warning
+    - risk_calculation
+    event:
+    - event_logged
+    - event_filtered
+    - event_exported
+    business:
+    - trade_executed
+    - position_updated
+    - strategy_decision
   event_logging_settings:
     buffer_size: 10000
-    export_format: "both"
+    export_format: both
     async_logging: true
     compression: false
   log_retention_policy:
     retention_days: 30
     max_file_size_mb: 100
-    rotation_frequency: "daily"
+    rotation_frequency: daily
     compression_after_days: 7
   logging_requirements:
     structured_logging: true
@@ -156,4 +95,52 @@ event_logger:
     filter_by_level: true
     filter_by_category: true
     exclude_patterns: []
-    include_patterns: ["*"]
+    include_patterns:
+    - '*'
+component_config:
+  strategy_factory:
+    timeout: 30
+  strategy_manager:
+    actions:
+    - entry_full
+    - entry_partial
+    - exit_full
+    - exit_partial
+    - sell_dust
+    position_calculation:
+      hedge_allocation:
+        binance: 0.4
+        bybit: 0.3
+        okx: 0.3
+  risk_monitor:
+    enabled_risk_types:
+    - health_factor
+    - ltv_ratio
+    - liquidation_threshold
+    delta_tracking_asset: ETH
+    maintenance_margin_ratio: 0.15
+  position_monitor:
+    position_subscriptions:
+      - "wallet:BaseToken:USDT"
+      - "binance:BaseToken:USDT"
+      - "binance:BaseToken:ETH"
+      - "binance:Perp:ETHUSDT"
+      - "bybit:BaseToken:USDT"
+      - "bybit:Perp:ETHUSDT"
+      - "okx:BaseToken:USDT"
+      - "okx:Perp:ETHUSDT"
+      - "alchemy:BaseToken:ETH"
+    dust_tokens:
+      dust_instruments: []
+      collection_venues: []
+      transfer_venues: []
+  pnl_monitor:
+    attribution_types: ["funding_pnl", "transaction_costs"]
+    reconciliation_tolerance: 0.02
+    reporting_currency: "USDT"
+  results_store:
+    result_types: ["balance_sheet", "pnl_attribution", "risk_metrics", "execution_log"]
+    funding_tracking_venues: ["binance", "bybit", "okx"]
+    leverage_tracking: false
+strategy_config:
+  position_deviation_threshold: 0.02

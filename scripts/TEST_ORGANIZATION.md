@@ -36,7 +36,7 @@ tests/                             # Conventional test directory (78 total test 
 │   ├── test_position_monitor_unit.py
 │   ├── test_exposure_monitor_unit.py
 │   ├── test_risk_monitor_unit.py
-│   ├── test_pnl_calculator_unit.py
+│   ├── test_pnl_monitor_unit.py
 │   ├── test_strategy_manager_unit.py
 │   ├── test_execution_manager_unit.py
 │   ├── test_data_provider_unit.py
@@ -55,11 +55,11 @@ tests/                             # Conventional test directory (78 total test 
 │   ├── test_live_trading_ui_quality_gates.py
 │   └── test_frontend_implementation_quality_gates.py
 └── e2e/                          # E2E tests with full system (13 files)
-    ├── test_pure_lending_e2e.py
+    ├── test_pure_lending_usdt_e2e.py
     ├── test_btc_basis_e2e.py
     ├── test_eth_basis_e2e.py
     ├── test_usdt_market_neutral_e2e.py
-    ├── test_pure_lending_quality_gates.py
+    ├── test_pure_lending_usdt_quality_gates.py
     ├── test_btc_basis_quality_gates.py
     ├── test_eth_basis_quality_gates.py
     └── test_usdt_market_neutral_quality_gates.py
@@ -101,7 +101,7 @@ scripts/
 def mock_config():
     """Minimal config with all required fields"""
     return {
-        'mode': 'pure_lending',
+        'mode': 'pure_lending_usdt',
         'share_class': 'USDT',
         'asset': 'USDT',
         'initial_capital': 100000.0,

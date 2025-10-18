@@ -12,8 +12,8 @@ Comprehensive quality gates for the BTC basis trading mode to ensure:
 Quality Gates:
 - QG1: Initial Setup Execution
 - QG2: Transfer Execution (Wallet → CEX)  
-- QG3: Spot Trade Execution (BTC purchases)
-- QG4: Perp Trade Execution (BTC shorts)
+- QG3: Spot ExecutionHandshake Execution (BTC purchases)
+- QG4: Perp ExecutionHandshake Execution (BTC shorts)
 - QG5: Delta Neutrality Validation
 - QG6: P&L Attribution Accuracy
 - QG7: Risk Monitoring
@@ -84,8 +84,8 @@ class BTCBasisQualityGates:
         quality_gates = [
             ('QG1', 'Initial Setup Execution', self._test_initial_setup_execution),
             ('QG2', 'Transfer Execution', self._test_transfer_execution),
-            ('QG3', 'Spot Trade Execution', self._test_spot_trade_execution),
-            ('QG4', 'Perp Trade Execution', self._test_perp_trade_execution),
+            ('QG3', 'Spot ExecutionHandshake Execution', self._test_spot_trade_execution),
+            ('QG4', 'Perp ExecutionHandshake Execution', self._test_perp_trade_execution),
             ('QG5', 'Delta Neutrality Validation', self._test_delta_neutrality),
             ('QG6', 'P&L Attribution Accuracy', self._test_pnl_attribution),
             ('QG7', 'Risk Monitoring', self._test_risk_monitoring),
@@ -424,7 +424,7 @@ class BTCBasisQualityGates:
         """QG8: Test new instruction system."""
         try:
             # Test instruction generation and format
-            from basis_strategy_v1.core.instructions import WalletTransferInstruction, CEXTradeInstruction
+            from basis_strategy_v1.core.instructions import WalletTransferInstruction, CEXExecutionHandshakeInstruction
             
             # Test instruction creation
             wallet_instruction = WalletTransferInstruction(
@@ -436,7 +436,7 @@ class BTCBasisQualityGates:
                 timestamp_group='phase_1'
             )
             
-            cex_instruction = CEXTradeInstruction(
+            cex_instruction = CEXExecutionHandshakeInstruction(
                 venue='binance',
                 pair='BTC/USDT',
                 side='BUY',
@@ -495,7 +495,7 @@ class BTCBasisQualityGates:
                 'position_monitor.log', 
                 'exposure_monitor.log',
                 'risk_monitor.log',
-                'pnl_calculator.log',
+                'pnl_monitor.log',
                 'event_engine.log',
                 'cex_execution_interface.log',
                 'onchain_execution_interface.log',

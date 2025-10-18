@@ -407,12 +407,20 @@ class ConfigAccessValidator:
         
         # Create a test config
         test_config = {
+            'execution_mode': 'backtest',
+            'share_class': 'USDT',
+            'initial_capital': 10000,
             'max_drawdown': 0.1,
             'leverage_enabled': True,
             'reconciliation_tolerance': 0.01,
             'max_retry_attempts': 3,
             'component_config': {
                 'position_monitor': {
+                    'position_subscriptions': [
+                        'wallet:BaseToken:USDT',
+                        'binance:BaseToken:USDT',
+                        'binance:BaseToken:ETH'
+                    ],
                     'track_assets': ['USDT', 'ETH'],
                     'fail_on_unknown_asset': True
                 },
@@ -420,7 +428,7 @@ class ConfigAccessValidator:
                     'enabled_risk_types': ['drawdown', 'leverage'],
                     'risk_limits': {'max_drawdown': 0.1}
                 },
-                'pnl_calculator': {
+                'pnl_monitor': {
                     'attribution_types': ['lending', 'funding'],
                     'reporting_currency': 'USDT'
                 },

@@ -31,7 +31,7 @@ For each of 18 spec files:
 - 01_POSITION_MONITOR.md → `position_monitor.py`
 - 02_EXPOSURE_MONITOR.md → `exposure_monitor.py`
 - 03_RISK_MONITOR.md → `risk_monitor.py`
-- 04_PNL_CALCULATOR.md → `pnl_calculator.py`
+- 04_pnl_monitor.md → `pnl_monitor.py`
 - 05_STRATEGY_MANAGER.md → `strategy_manager.py`
 - 06_CEX_EXECUTION_MANAGER.md → `cex_execution_manager.py`
 - 07_ONCHAIN_EXECUTION_MANAGER.md → `onchain_execution_manager.py`
@@ -44,7 +44,7 @@ For each of 18 spec files:
 - 14_LIVE_TRADING_SERVICE.md → live trading service
 - 15_EVENT_DRIVEN_STRATEGY_ENGINE.md → `event_driven_strategy_engine.py`
 - 16_MATH_UTILITIES.md → math utilities
-- 17_HEALTH_ERROR_SYSTEMS.md → health/error systems
+- HEALTH_ERROR_SYSTEMS.md → health/error systems
 - 19_CONFIGURATION.md → config system
 
 ### Implementation Status Template Structure

@@ -1,0 +1,233 @@
+[
+    {
+        "name": "usdt_pure_lending_usdt",
+        "description": "Pure lending strategy across multiple DeFi protocols",
+        "share_class": "usdt",
+        "strategy_name": "usdt_pure_lending",
+        "estimated_apy": 0.12,
+        "risk_level": "low",
+        "complexity": "simple",
+        "parameters": [
+            {
+                "name": "target_apy",
+                "type": "number",
+                "label": "Target APY",
+                "description": "Target annual percentage yield",
+                "required": true,
+                "default_value": 0.12,
+                "min_value": 0.05,
+                "max_value": 0.25,
+                "step": 0.01
+            },
+            {
+                "name": "max_ltv",
+                "type": "number",
+                "label": "Max LTV",
+                "description": "Maximum loan-to-value ratio",
+                "required": true,
+                "default_value": 0.8,
+                "min_value": 0.5,
+                "max_value": 0.95,
+                "step": 0.05
+            }
+        ]
+    },
+    {
+        "name": "usdt_basis_trading_usdt",
+        "description": "Basis trading strategy using funding rate arbitrage",
+        "share_class": "usdt",
+        "strategy_name": "usdt_basis_trading",
+        "estimated_apy": 0.35,
+        "risk_level": "high",
+        "complexity": "complex",
+        "parameters": [
+            {
+                "name": "funding_rate_threshold",
+                "type": "number",
+                "label": "Funding Rate Threshold",
+                "description": "Minimum funding rate to enter position",
+                "required": true,
+                "default_value": 0.01,
+                "min_value": 0.005,
+                "max_value": 0.05,
+                "step": 0.001
+            },
+            {
+                "name": "max_position_size",
+                "type": "number",
+                "label": "Max Position Size",
+                "description": "Maximum position size as percentage of capital",
+                "required": true,
+                "default_value": 0.3,
+                "min_value": 0.1,
+                "max_value": 0.8,
+                "step": 0.05
+            }
+        ]
+    },
+    {
+        "name": "eth_leveraged_staking_eth",
+        "description": "Leveraged staking strategy with optional hedging",
+        "share_class": "eth",
+        "strategy_name": "eth_leveraged_staking",
+        "estimated_apy": 0.28,
+        "risk_level": "high",
+        "complexity": "complex",
+        "parameters": [
+            {
+                "name": "leverage_multiplier",
+                "type": "number",
+                "label": "Leverage Multiplier",
+                "description": "Leverage multiplier for staking",
+                "required": true,
+                "default_value": 2.0,
+                "min_value": 1.0,
+                "max_value": 5.0,
+                "step": 0.1
+            },
+            {
+                "name": "hedge_ratio",
+                "type": "number",
+                "label": "Hedge Ratio",
+                "description": "Percentage of position to hedge",
+                "required": false,
+                "default_value": 0.0,
+                "min_value": 0.0,
+                "max_value": 1.0,
+                "step": 0.1
+            }
+        ]
+    },
+    {
+        "name": "usdt_market_neutral_usdt",
+        "description": "Market neutral strategy combining lending and staking",
+        "share_class": "usdt",
+        "strategy_name": "usdt_market_neutral",
+        "estimated_apy": 0.22,
+        "risk_level": "medium",
+        "complexity": "medium",
+        "parameters": [
+            {
+                "name": "lending_allocation",
+                "type": "number",
+                "label": "Lending Allocation",
+                "description": "Percentage allocated to lending",
+                "required": true,
+                "default_value": 0.6,
+                "min_value": 0.3,
+                "max_value": 0.8,
+                "step": 0.05
+            },
+            {
+                "name": "staking_allocation",
+                "type": "number",
+                "label": "Staking Allocation",
+                "description": "Percentage allocated to staking",
+                "required": true,
+                "default_value": 0.4,
+                "min_value": 0.2,
+                "max_value": 0.7,
+                "step": 0.05
+            }
+        ]
+    },
+    {
+        "name": "eth_pure_staking_eth",
+        "description": "Pure staking strategy across multiple validators",
+        "share_class": "eth",
+        "strategy_name": "eth_pure_staking",
+        "estimated_apy": 0.08,
+        "risk_level": "low",
+        "complexity": "simple",
+        "parameters": [
+            {
+                "name": "validator_diversification",
+                "type": "number",
+                "label": "Validator Diversification",
+                "description": "Number of validators to use",
+                "required": true,
+                "default_value": 3,
+                "min_value": 1,
+                "max_value": 10,
+                "step": 1
+            }
+        ]
+    },
+    {
+        "name": "usdt_cross_venue_arbitrage_usdt",
+        "description": "Cross-venue arbitrage strategy",
+        "share_class": "usdt",
+        "strategy_name": "usdt_cross_venue_arbitrage",
+        "estimated_apy": 0.45,
+        "risk_level": "high",
+        "complexity": "complex",
+        "parameters": [
+            {
+                "name": "min_spread",
+                "type": "number",
+                "label": "Minimum Spread",
+                "description": "Minimum spread to execute arbitrage",
+                "required": true,
+                "default_value": 0.005,
+                "min_value": 0.001,
+                "max_value": 0.02,
+                "step": 0.001
+            },
+            {
+                "name": "max_slippage",
+                "type": "number",
+                "label": "Max Slippage",
+                "description": "Maximum acceptable slippage",
+                "required": true,
+                "default_value": 0.002,
+                "min_value": 0.0005,
+                "max_value": 0.01,
+                "step": 0.0005
+            }
+        ]
+    },
+    {
+        "name": "eth_compound_strategy_eth",
+        "description": "Compound strategy with multiple yield sources",
+        "share_class": "eth",
+        "strategy_name": "eth_compound_strategy",
+        "estimated_apy": 0.32,
+        "risk_level": "medium",
+        "complexity": "complex",
+        "parameters": [
+            {
+                "name": "rebalance_frequency",
+                "type": "select",
+                "label": "Rebalance Frequency",
+                "description": "How often to rebalance positions",
+                "required": true,
+                "default_value": "daily",
+                "options": [
+                    {
+                        "value": "hourly",
+                        "label": "Hourly"
+                    },
+                    {
+                        "value": "daily",
+                        "label": "Daily"
+                    },
+                    {
+                        "value": "weekly",
+                        "label": "Weekly"
+                    }
+                ]
+            },
+            {
+                "name": "compound_threshold",
+                "type": "number",
+                "label": "Compound Threshold",
+                "description": "Minimum yield to trigger compounding",
+                "required": true,
+                "default_value": 0.001,
+                "min_value": 0.0001,
+                "max_value": 0.01,
+                "step": 0.0001
+            }
+        ]
+    }
+]

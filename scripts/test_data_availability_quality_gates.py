@@ -41,7 +41,7 @@ class DataAvailabilityChecker:
         
         # Strategy data requirements mapping
         self.strategy_data_requirements = {
-            'pure_lending': {
+            'pure_lending_usdt': {
                 'protocols': ['aave_v3'],
                 'assets': ['USDT'],
                 'timeframes': ['1h'],

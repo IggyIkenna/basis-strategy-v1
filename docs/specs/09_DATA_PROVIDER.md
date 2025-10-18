@@ -46,29 +46,63 @@ class BaseDataProvider(ABC):
 def get_data(self, timestamp: pd.Timestamp) -> Dict[str, Any]:
     """Return standardized data structure for all components"""
     return {
+        'timestamp': pd.Timestamp,
         'market_data': {
             'prices': {
-                'BTC': 45000.0,
-                'ETH': 3000.0,
-                'USDT': 1.0
+                'BTC': 45000.0,      # BTC/USD price
+                'ETH': 3000.0,       # ETH/USD price
+                'USDT': 1.0,         # USDT/USD always 1.0
+                'EIGEN': 3.50,       # EIGEN/USD price
+                'ETHFI': 0.25        # ETHFI/USD price
             },
-            'rates': {
-                'funding_binance_btc': 0.0001,
-                'aave_usdt_supply': 0.05
+            'funding_rates': {
+                'BTC_binance': 0.0001,  # BTC perp funding rate on Binance
+                'ETH_bybit': 0.0002,    # ETH perp funding rate on Bybit
+                'BTC_okx': 0.0001       # BTC perp funding rate on OKX
             }
         },
         'protocol_data': {
+            'perp_prices': {
+                'BTC_binance': 45000.0,  # BTC perp mark price on Binance
+                'ETH_okx': 3000.0        # ETH perp mark price on OKX
+            },
             'aave_indexes': {
-                'aUSDT': 1.05,
-                'aETH': 1.02
+                'aUSDT': 1.05,   # AAVE USDT supply index
+                'aWETH': 1.02,   # AAVE WETH supply index
+                'debtWETH': 1.01 # AAVE WETH borrow index
             },
             'oracle_prices': {
-                'weETH': 1.0256,
-                'wstETH': 1.0150
+                'weETH/ETH': 1.0256,  # weETH to ETH conversion rate
+                'weETH/USD': 3076.8,  # weETH to USD conversion rate
+                'wstETH/ETH': 1.0150, # wstETH to ETH conversion rate
+                'wstETH/USD': 3045.0  # wstETH to USD conversion rate
+            },
+            'staking_rewards': {
+                'etherfi_weETH': 0.04,  # EtherFi weETH APY
+                'lido_wstETH': 0.035    # Lido wstETH APY
+            }
+        },
+        'execution_data': {
+            'gas_costs': {
+                'ethereum_fast': 0.05,  # Gas cost in ETH
+                'ethereum_standard': 0.02
+            },
+            'execution_costs': {
+                'binance_spot_trade': 0.001,  # Trading fee
+                'aave_supply': 0.01           # Gas cost
             }
         }
     }
 ```
+
+**Data Key Format Standards**:
+
+- **Uppercase Format**: All asset symbols use uppercase (BTC, ETH, weETH, aUSDT)
+- **Venue Suffix**: Venue-specific keys use `{ASSET}_{venue}` format
+- **Conversion Rates**: Always `BASE/QUOTE` format (numerator/denominator)
+  - `weETH/ETH` means "weETH per 1 ETH" (if >1, weETH worth more than ETH)
+  - `BTC/USD` means "USD per 1 BTC" (standard price quote)
+- **Validation**: All instruments must exist in INSTRUMENTS registry, all venues in venue configs
 
 **Mode-Specific Data Providers**:
 - `PureLendingDataProvider`: Loads AAVE USDT rates and indexes

@@ -171,7 +171,7 @@ class AsyncAwaitAuditor:
             'backend/src/basis_strategy_v1/core/strategies/components/position_monitor.py',
             'backend/src/basis_strategy_v1/core/strategies/components/risk_monitor.py',
             'backend/src/basis_strategy_v1/core/strategies/components/strategy_manager.py',
-            'backend/src/basis_strategy_v1/core/strategies/components/pnl_calculator.py',
+            'backend/src/basis_strategy_v1/core/strategies/components/pnl_monitor.py',
             'backend/src/basis_strategy_v1/core/strategies/components/position_update_handler.py'
         ]
     

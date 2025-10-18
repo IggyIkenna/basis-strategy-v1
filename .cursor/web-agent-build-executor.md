@@ -187,7 +187,7 @@ python scripts/run_quality_gates.py
 # Run specific quality gates
 python scripts/test_environment_switching_quality_gates.py
 python scripts/test_async_ordering_quality_gates.py
-python scripts/test_pure_lending_quality_gates.py
+python scripts/test_pure_lending_usdt_quality_gates.py
 ```
 
 ### Testing

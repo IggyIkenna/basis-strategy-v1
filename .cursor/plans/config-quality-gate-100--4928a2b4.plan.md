@@ -46,8 +46,8 @@ Add "Config Fields Used" section documenting remaining event logger configuratio
 
 - `docs/specs/05_STRATEGY_MANAGER.md` - Add `component_config.strategy_manager.*` fields
 - `docs/specs/03_RISK_MONITOR.md` - Add `component_config.risk_monitor.*` fields
-- `docs/specs/04_PNL_CALCULATOR.md` - Add `component_config.pnl_calculator.*` fields
-- `docs/specs/06_EXECUTION_MANAGER.md` - Add `component_config.execution_manager.*` fields
+- `docs/specs/04_pnl_monitor.md` - Add `component_config.pnl_monitor.*` fields
+- `docs/specs/06_VENUE_MANAGER.md` - Add `component_config.execution_manager.*` fields
 - `docs/specs/02_EXPOSURE_MONITOR.md` - Add `component_config.exposure_monitor.*` fields
 - `docs/specs/18_RESULTS_STORE.md` - Add `component_config.results_store.*` fields
 - `docs/specs/5A_STRATEGY_FACTORY.md` - Add `component_config.strategy_factory.*` fields
@@ -58,10 +58,10 @@ Add "Config Fields Used" section documenting remaining event logger configuratio
 
 **Update individual strategy specs** in `docs/specs/strategies/`:
 
-- `01_PURE_LENDING_STRATEGY.md` - Add config fields: `max_drawdown`, `max_ltv`, `position_deviation_threshold`
+- `01_pure_lending_usdt_STRATEGY.md` - Add config fields: `max_drawdown`, `max_ltv`, `position_deviation_threshold`
 - `02_BTC_BASIS_STRATEGY.md` - Add config fields: `basis_trading_supported`, `hedge_allocation_bybit`, `hedge_venues`
 - `03_ETH_BASIS_STRATEGY.md` - Add config fields: `basis_trading_supported`, `hedge_allocation_bybit`, `hedge_venues`
-- `04_ETH_STAKING_ONLY_STRATEGY.md` - Add config fields: `staking_supported`, `rewards_mode`, `stake_allocation_eth`
+- `04_ETH_STAKING_ONLY_STRATEGY.md` - Add config fields: `staking_supported`, `rewards_mode`, `stake_allocation_percentage`
 - `05_ETH_LEVERAGED_STRATEGY.md` - Add config fields: `leverage_enabled`, `leverage_supported`, `max_leverage`, `staking_supported`
 - `06_USDT_MARKET_NEUTRAL_NO_LEVERAGE_STRATEGY.md` - Add config fields: `market_neutral`, `allows_hedging`
 - `07_USDT_MARKET_NEUTRAL_STRATEGY.md` - Add config fields: `market_neutral`, `allows_hedging`, `leverage_enabled`

@@ -13,7 +13,7 @@ from typing import Dict, List, Any, Optional, Tuple
 from dataclasses import dataclass
 import logging
 
-from .config_manager import _BASE_DIR, get_environment
+from .constants import _BASE_DIR, get_environment
 
 logger = logging.getLogger(__name__)
 
@@ -146,7 +146,8 @@ class ConfigValidator:
             'STRATEGY_MANAGER_TIMEOUT',
             'STRATEGY_MANAGER_MAX_RETRIES',
             'STRATEGY_FACTORY_TIMEOUT',
-            'STRATEGY_FACTORY_MAX_RETRIES'
+            'STRATEGY_FACTORY_MAX_RETRIES',
+            'BASIS_HOT_RELOAD'
         ]
         
         # Frontend/Caddy deployment variables (WARNING if missing, not ERROR)
@@ -234,12 +235,16 @@ class ConfigValidator:
             return
         
         expected_modes = [
-            'pure_lending.yaml',
-            'btc_basis.yaml', 
+            'pure_lending_usdt.yaml',
+            'pure_lending_eth.yaml', 
+            'btc_basis.yaml',
+            'eth_basis.yaml',
             'eth_leveraged.yaml',
             'eth_staking_only.yaml',
             'usdt_market_neutral.yaml',
-            'usdt_market_neutral_no_leverage.yaml'
+            'usdt_market_neutral_no_leverage.yaml',
+            'ml_btc_directional_btc_margin.yaml',
+            'ml_btc_directional_usdt_margin.yaml',
         ]
         
         for mode_file in expected_modes:
@@ -355,8 +360,8 @@ class ConfigValidator:
         leverage_enabled = config.get('leverage_enabled', False)
         max_ltv = config.get('max_ltv', 0.0)
         
-        # logger.debug(print(mode_name))
-        # logger.debug(print(config))
+        # logger.debug(f"Mode: {mode_name}")
+        # logger.debug(f"Config: {config}")
         
         
         # Validate position_deviation_threshold range
@@ -390,7 +395,7 @@ class ConfigValidator:
         
         # Check hedge venues consistency
         hedge_venues = config.get('hedge_venues', [])
-        hedge_allocation = config.get('hedge_allocation', {})
+        hedge_allocation = config.get("component_config", {}).get("strategy_manager", {}).get("strategy_type", {}).get("position_calculation", {}).get("hedge_allocation", {})
         
         # Check for individual allocation fields (hedge_allocation_binance, etc.)
         individual_allocations = {}
@@ -417,7 +422,7 @@ class ConfigValidator:
         
         # Validate component_config sections
         component_config = config.get('component_config', {})
-        required_components = ['risk_monitor', 'exposure_monitor', 'pnl_calculator', 'strategy_manager', 'execution_manager', 'results_store', 'strategy_factory']
+        required_components = ['risk_monitor', 'exposure_monitor', 'pnl_monitor', 'strategy_manager', 'execution_manager', 'results_store', 'strategy_factory']
         
         for component in required_components:
             if component not in component_config:
@@ -444,14 +449,14 @@ class ConfigValidator:
             if 'conversion_methods' not in config:
                 self.errors.append(f"Mode {mode_name}: component_config.exposure_monitor missing conversion_methods")
         
-        elif component == 'pnl_calculator':
-            # Validate pnl_calculator config
+        elif component == 'pnl_monitor':
+            # Validate pnl_monitor config
             if 'attribution_types' not in config:
-                self.errors.append(f"Mode {mode_name}: component_config.pnl_calculator missing attribution_types")
+                self.errors.append(f"Mode {mode_name}: component_config.pnl_monitor missing attribution_types")
             if 'reporting_currency' not in config:
-                self.errors.append(f"Mode {mode_name}: component_config.pnl_calculator missing reporting_currency")
+                self.errors.append(f"Mode {mode_name}: component_config.pnl_monitor missing reporting_currency")
             if 'reconciliation_tolerance' not in config:
-                self.errors.append(f"Mode {mode_name}: component_config.pnl_calculator missing reconciliation_tolerance")
+                self.errors.append(f"Mode {mode_name}: component_config.pnl_monitor missing reconciliation_tolerance")
         
         elif component == 'strategy_manager':
             # Validate strategy_manager config
@@ -468,9 +473,7 @@ class ConfigValidator:
             # Validate execution_manager config
             if 'supported_actions' not in config:
                 self.errors.append(f"Mode {mode_name}: component_config.execution_manager missing supported_actions")
-            if 'action_mapping' not in config:
-                self.errors.append(f"Mode {mode_name}: component_config.execution_manager missing action_mapping")
-        
+            
         elif component == 'results_store':
             # Validate results_store config
             if 'result_types' not in config:
@@ -513,22 +516,26 @@ class ConfigValidator:
         if mode_name not in supported_strategies:
             self.errors.append(f"Mode {mode_name}: Strategy not supported by share class '{mode_share_class}'. Supported strategies: {supported_strategies}")
         
-        # Validate base currency compatibility
+        # Validate asset currency compatibility
         mode_asset = mode_config.get('asset')
-        share_class_currency = share_class_config.get('base_currency')
+        share_class_currency = share_class_config.get('share_class')
         
         if mode_asset and share_class_currency:
             # USDT strategies should use USDT share class
             if 'usdt' in mode_name.lower() and share_class_currency != 'USDT':
                 self.errors.append(f"Mode {mode_name}: USDT strategy should use USDT share class, not {share_class_currency}")
             
-            # ETH strategies should use ETH share class  
+            # ETH strategies should use ETH share class, except for market neutral basis strategies
             if 'eth' in mode_name.lower() and share_class_currency != 'ETH':
-                self.errors.append(f"Mode {mode_name}: ETH strategy should use ETH share class, not {share_class_currency}")
+                # Exception: market neutral strategies that use USDT share class
+                if mode_name in ['eth_basis', 'usdt_eth_staking_hedged_leveraged', 'usdt_eth_staking_hedged_simple'] and share_class_currency == 'USDT':
+                    pass  # Allow market neutral ETH strategies to use USDT share class
+                else:
+                    self.errors.append(f"Mode {mode_name}: ETH strategy should use ETH share class, not {share_class_currency}")
         
         # Validate leverage compatibility
         mode_leverage = mode_config.get('leverage_enabled', False)
-        share_class_leverage = share_class_config.get('leverage_supported', False)
+        share_class_leverage = share_class_config.get('leverage_enabled', False)
         
         if mode_leverage and not share_class_leverage:
             self.errors.append(f"Mode {mode_name}: Leverage enabled but share class '{mode_share_class}' does not support leverage")
@@ -560,7 +567,7 @@ class ConfigValidator:
     
     def _validate_share_class_structure(self, config: Dict[str, Any], filename: str):
         """Validate share class configuration structure."""
-        required_fields = ['share_class', 'type', 'base_currency', 'supported_strategies']
+        required_fields = ['share_class', 'type', 'supported_strategies']
         
         for field in required_fields:
             if field not in config:
@@ -655,46 +662,19 @@ class ConfigValidator:
         # Live trading variables with defaults
         live_trading_vars = {
             'BASIS_LIVE_TRADING__ENABLED': os.getenv('BASIS_LIVE_TRADING__ENABLED', 'false'),
-            'BASIS_LIVE_TRADING__READ_ONLY': os.getenv('BASIS_LIVE_TRADING__READ_ONLY', 'true'),
-            'BASIS_LIVE_TRADING__MAX_TRADE_SIZE_USD': os.getenv('BASIS_LIVE_TRADING__MAX_TRADE_SIZE_USD', '100'),
-            'BASIS_LIVE_TRADING__EMERGENCY_STOP_LOSS_PCT': os.getenv('BASIS_LIVE_TRADING__EMERGENCY_STOP_LOSS_PCT', '0.15'),
-            'BASIS_LIVE_TRADING__HEARTBEAT_TIMEOUT_SECONDS': os.getenv('BASIS_LIVE_TRADING__HEARTBEAT_TIMEOUT_SECONDS', '300'),
-            'BASIS_LIVE_TRADING__CIRCUIT_BREAKER_ENABLED': os.getenv('BASIS_LIVE_TRADING__CIRCUIT_BREAKER_ENABLED', 'true')
+            'BASIS_LIVE_TRADING__READ_ONLY': os.getenv('BASIS_LIVE_TRADING__READ_ONLY', 'true')
         }
         
         # Validate boolean variables
-        boolean_vars = ['BASIS_LIVE_TRADING__ENABLED', 'BASIS_LIVE_TRADING__READ_ONLY', 'BASIS_LIVE_TRADING__CIRCUIT_BREAKER_ENABLED']
+        boolean_vars = ['BASIS_LIVE_TRADING__ENABLED', 'BASIS_LIVE_TRADING__READ_ONLY']
         for var in boolean_vars:
             value = live_trading_vars[var].lower()
             if value not in ['true', 'false']:
                 self.errors.append(f"Invalid {var}: {live_trading_vars[var]}. Must be 'true' or 'false'")
         
-        # Validate numeric variables
-        try:
-            max_trade_size = float(live_trading_vars['BASIS_LIVE_TRADING__MAX_TRADE_SIZE_USD'])
-            if max_trade_size <= 0:
-                self.errors.append(f"BASIS_LIVE_TRADING__MAX_TRADE_SIZE_USD must be positive, got: {max_trade_size}")
-        except ValueError:
-            self.errors.append(f"Invalid BASIS_LIVE_TRADING__MAX_TRADE_SIZE_USD: {live_trading_vars['BASIS_LIVE_TRADING__MAX_TRADE_SIZE_USD']}")
-        
-        try:
-            stop_loss_pct = float(live_trading_vars['BASIS_LIVE_TRADING__EMERGENCY_STOP_LOSS_PCT'])
-            if stop_loss_pct <= 0 or stop_loss_pct > 1:
-                self.errors.append(f"BASIS_LIVE_TRADING__EMERGENCY_STOP_LOSS_PCT must be between 0 and 1, got: {stop_loss_pct}")
-        except ValueError:
-            self.errors.append(f"Invalid BASIS_LIVE_TRADING__EMERGENCY_STOP_LOSS_PCT: {live_trading_vars['BASIS_LIVE_TRADING__EMERGENCY_STOP_LOSS_PCT']}")
-        
-        try:
-            heartbeat_timeout = int(live_trading_vars['BASIS_LIVE_TRADING__HEARTBEAT_TIMEOUT_SECONDS'])
-            if heartbeat_timeout <= 0:
-                self.errors.append(f"BASIS_LIVE_TRADING__HEARTBEAT_TIMEOUT_SECONDS must be positive, got: {heartbeat_timeout}")
-        except ValueError:
-            self.errors.append(f"Invalid BASIS_LIVE_TRADING__HEARTBEAT_TIMEOUT_SECONDS: {live_trading_vars['BASIS_LIVE_TRADING__HEARTBEAT_TIMEOUT_SECONDS']}")
-        
         # Log current live trading configuration
         logger.info(f"Live trading configuration: enabled={live_trading_vars['BASIS_LIVE_TRADING__ENABLED']}, "
-                   f"read_only={live_trading_vars['BASIS_LIVE_TRADING__READ_ONLY']}, "
-                   f"max_trade_size=${live_trading_vars['BASIS_LIVE_TRADING__MAX_TRADE_SIZE_USD']}")
+                   f"read_only={live_trading_vars['BASIS_LIVE_TRADING__READ_ONLY']}")
 
     def _get_file_pattern_for_requirement(self, requirement: str) -> Optional[str]:
         """Map data requirement to file pattern."""

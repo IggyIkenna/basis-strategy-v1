@@ -102,7 +102,7 @@ python -m pytest tests/ --cov=backend/src/basis_strategy_v1 --cov-report=term
 
 ## Reference Patterns
 Follow the exact patterns from completed strategies:
-- `tests/unit/strategies/test_pure_lending_strategy_refactored.py`
+- `tests/unit/strategies/test_pure_lending_usdt_strategy_refactored.py`
 - `tests/unit/strategies/test_btc_basis_strategy_refactored.py`
 - `tests/unit/strategies/test_eth_basis_strategy_refactored.py`
 

@@ -197,17 +197,17 @@ class TestExposureMonitorUnit:
     def test_exposure_monitor_initialization(self, mock_config, mock_data_provider, mock_utility_manager):
         """Test Exposure Monitor initialization with different configs."""
         # Test pure lending mode
-        pure_lending_config = mock_config.copy()
-        pure_lending_config['mode'] = 'pure_lending'
-        pure_lending_config['share_class'] = 'USDT'
+        pure_lending_usdt_config = mock_config.copy()
+        pure_lending_usdt_config['mode'] = 'pure_lending_usdt'
+        pure_lending_usdt_config['share_class'] = 'USDT'
         
         exposure_monitor = ExposureMonitor(
-            config=pure_lending_config,
+            config=pure_lending_usdt_config,
             data_provider=mock_data_provider,
             utility_manager=mock_utility_manager
         )
         
-        assert exposure_monitor.config['mode'] == 'pure_lending'
+        assert exposure_monitor.config['mode'] == 'pure_lending_usdt'
         assert exposure_monitor.config['share_class'] == 'USDT'
         
         # Test ETH basis mode
@@ -286,7 +286,7 @@ class TestExposureMonitorUnit:
     def test_exposure_monitor_mode_agnostic(self, mock_config, mock_data_provider, mock_utility_manager, mock_position_snapshot):
         """Test Exposure Monitor mode-agnostic behavior."""
         # Test different modes
-        modes = ['pure_lending', 'btc_basis', 'eth_basis', 'eth_leveraged', 'usdt_market_neutral']
+        modes = ['pure_lending_usdt', 'btc_basis', 'eth_basis', 'eth_leveraged', 'usdt_market_neutral']
         
         for mode in modes:
             test_config = mock_config.copy()

@@ -520,6 +520,120 @@ async def get_result(
         raise HTTPException(status_code=500, detail=f"Failed to fetch result: {str(e)}")
 
 
+@router.get(
+    "/{result_id}/pnl/latest",
+    summary="Get latest P&L",
+    description="Get most recent P&L calculation without recalculating"
+)
+async def get_latest_pnl(
+    result_id: str,
+    request: Request,
+    service = Depends(get_backtest_service)
+) -> StandardResponse[Dict[str, Any]]:
+    """Get latest P&L data without recalculation."""
+    correlation_id = getattr(request.state, "correlation_id", "unknown")
+    try:
+        logger.info("Fetching latest P&L", correlation_id=correlation_id, result_id=result_id)
+        
+        # Get the engine for this result
+        engine = service.get_engine(result_id)
+        if not engine or not engine.pnl_monitor:
+            raise HTTPException(status_code=404, detail="P&L data not available")
+        
+        # Get latest P&L without calculation
+        latest_pnl = engine.pnl_monitor.get_latest_pnl()
+        if not latest_pnl:
+            raise HTTPException(status_code=404, detail="No P&L data available")
+        
+        return StandardResponse(success=True, data=latest_pnl)
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(
+            "Failed to get latest P&L",
+            correlation_id=correlation_id,
+            result_id=result_id,
+            error=str(e)
+        )
+        raise HTTPException(status_code=500, detail=f"Failed to get latest P&L: {str(e)}")
+
+
+@router.get(
+    "/{result_id}/pnl/history",
+    summary="Get P&L history",
+    description="Get historical P&L data"
+)
+async def get_pnl_history(
+    result_id: str,
+    request: Request,
+    limit: int = Query(100, ge=1, le=1000, description="Maximum P&L records to return"),
+    service = Depends(get_backtest_service)
+) -> StandardResponse[List[Dict[str, Any]]]:
+    """Get P&L history without recalculation."""
+    correlation_id = getattr(request.state, "correlation_id", "unknown")
+    try:
+        logger.info("Fetching P&L history", correlation_id=correlation_id, result_id=result_id, limit=limit)
+        
+        # Get the engine for this result
+        engine = service.get_engine(result_id)
+        if not engine or not engine.pnl_monitor:
+            raise HTTPException(status_code=404, detail="P&L data not available")
+        
+        # Get P&L history without calculation
+        pnl_history = engine.pnl_monitor.get_pnl_history(limit=limit)
+        
+        return StandardResponse(success=True, data=pnl_history)
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(
+            "Failed to get P&L history",
+            correlation_id=correlation_id,
+            result_id=result_id,
+            error=str(e)
+        )
+        raise HTTPException(status_code=500, detail=f"Failed to get P&L history: {str(e)}")
+
+
+@router.get(
+    "/{result_id}/pnl/attribution",
+    summary="Get P&L attribution",
+    description="Get cumulative P&L attribution data"
+)
+async def get_pnl_attribution(
+    result_id: str,
+    request: Request,
+    service = Depends(get_backtest_service)
+) -> StandardResponse[Dict[str, float]]:
+    """Get cumulative P&L attribution without recalculation."""
+    correlation_id = getattr(request.state, "correlation_id", "unknown")
+    try:
+        logger.info("Fetching P&L attribution", correlation_id=correlation_id, result_id=result_id)
+        
+        # Get the engine for this result
+        engine = service.get_engine(result_id)
+        if not engine or not engine.pnl_monitor:
+            raise HTTPException(status_code=404, detail="P&L data not available")
+        
+        # Get cumulative attribution without calculation
+        attribution = engine.pnl_monitor.get_cumulative_attribution()
+        
+        return StandardResponse(success=True, data=attribution)
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(
+            "Failed to get P&L attribution",
+            correlation_id=correlation_id,
+            result_id=result_id,
+            error=str(e)
+        )
+        raise HTTPException(status_code=500, detail=f"Failed to get P&L attribution: {str(e)}")
+
+
 @router.delete(
     "/{result_id}",
     response_model=StandardResponse[dict],

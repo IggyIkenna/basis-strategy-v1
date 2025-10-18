@@ -81,6 +81,10 @@ class ConfigSpecYamlSyncQualityGates:
             'Patterns', 'Configuration', 'Integrates', 'With', 'Environment',
             'Specific', 'Credential', 'Routing', 'Ensure', 'Proper', 'Credential',
             'Selection', 'Based', 'On', 'BASIS_ENVIRONMENT', 'This', 'Integration',
+            # Metadata fields (not config fields)
+            'type', 'venue', 'base_currency',
+            # Documentation artifacts (not config fields)
+            'example', 'validation',
             # Environment variables (should not be config fields)
             'BASIS_EXECUTION_MODE', 'BASIS_LOG_LEVEL', 'BASIS_DATA_DIR', 'CONFIG_VALIDATION_STRICT',
             'CONFIG_CACHE_SIZE', 'CONFIG_RELOAD_INTERVAL',
@@ -253,6 +257,11 @@ class ConfigSpecYamlSyncQualityGates:
             'ml_config', 'venues', 'instruments'
         }
         
+        # Metadata and documentation fields that should be excluded from config field validation
+        METADATA_FIELDS = {
+            'type', 'venue', 'base_currency', 'example', 'validation', 'venue_type'
+        }
+        
         if not self.configs_dir.exists():
             logger.error(f"Configs directory not found: {self.configs_dir}")
             return yaml_fields
@@ -273,15 +282,22 @@ class ConfigSpecYamlSyncQualityGates:
                 with open(yaml_file, 'r', encoding='utf-8') as f:
                     config_data = yaml.safe_load(f)
                     if config_data:
+                        # Special handling for venue configs: prepend "venues.{venue_name}."
+                        prefix = ""
+                        if yaml_file.parent.name == "venues":
+                            # Get venue name from the config itself or filename
+                            venue_name = config_data.get('venue', yaml_file.stem)
+                            prefix = f"venues.{venue_name}"
+                        
                         # Extract all field paths from YAML structure
-                        self._extract_yaml_fields(config_data, "", yaml_fields, all_required_fields)
+                        self._extract_yaml_fields(config_data, prefix, yaml_fields, all_required_fields, METADATA_FIELDS)
             except Exception as e:
                 logger.warning(f"Failed to parse {yaml_file}: {e}")
         
         logger.info(f"Extracted {len(yaml_fields)} config fields from YAML files")
         return yaml_fields
     
-    def _extract_yaml_fields(self, data: Any, prefix: str, fields: Set[str], valid_fields: Set[str]):
+    def _extract_yaml_fields(self, data: Any, prefix: str, fields: Set[str], valid_fields: Set[str], metadata_fields: Set[str]):
         """Recursively extract field paths from YAML data."""
         # Top-level parent fields that are meaningless to check (if we have sub-levels, we have the parent)
         TOP_LEVEL_PARENT_FIELDS = {
@@ -296,20 +312,24 @@ class ConfigSpecYamlSyncQualityGates:
                 if field_path in TOP_LEVEL_PARENT_FIELDS:
                     # Still process children, but don't add the parent field itself
                     if isinstance(value, (dict, list)):
-                        self._extract_yaml_fields(value, field_path, fields, valid_fields)
+                        self._extract_yaml_fields(value, field_path, fields, valid_fields, metadata_fields)
                     continue
                 
+                # Skip metadata and documentation fields
+                if key in metadata_fields:
+                    continue
+                    
                 # Only add if it's a valid config field
                 if (field_path in valid_fields and 
                     field_path not in self.EXCLUDE_TERMS):
                     fields.add(field_path)
                 # Recursively process nested structures
                 if isinstance(value, (dict, list)):
-                    self._extract_yaml_fields(value, field_path, fields, valid_fields)
+                    self._extract_yaml_fields(value, field_path, fields, valid_fields, metadata_fields)
         elif isinstance(data, list):
             for i, item in enumerate(data):
                 if isinstance(item, (dict, list)):
-                    self._extract_yaml_fields(item, prefix, fields, valid_fields)
+                    self._extract_yaml_fields(item, prefix, fields, valid_fields, metadata_fields)
     
     def validate_spec_yaml_sync(self) -> Dict[str, Any]:
         """Validate that all config fields in specs are used in YAML configs."""

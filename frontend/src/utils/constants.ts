@@ -13,6 +13,11 @@ export const API_ENDPOINTS = {
     EVENTS: (id: string) => `/results/${id}/events`,
     DOWNLOAD: (id: string) => `/results/${id}/download`,
   },
+  PNL: {
+    LATEST: (id: string) => `/results/${id}/pnl/latest`,
+    HISTORY: (id: string) => `/results/${id}/pnl/history`,
+    ATTRIBUTION: (id: string) => `/results/${id}/pnl/attribution`,
+  },
   LIVE: {
     START: '/live/start',
     STATUS: (id: string) => `/live/status/${id}`,
@@ -96,7 +101,7 @@ export const STRATEGY_NAMES = [
   'btc_basis',
   'eth_basis',
   'eth_leveraged',
-  'pure_lending',
+  'pure_lending_usdt',
   'eth_staking_only',
   'usdt_market_neutral_no_leverage'
 ] as const;
@@ -129,7 +134,7 @@ export const COMPONENT_NAMES = [
   'position_monitor',
   'exposure_monitor',
   'risk_monitor',
-  'pnl_calculator',
+  'pnl_monitor',
   'strategy_manager',
   'execution_manager',
   'event_logger',

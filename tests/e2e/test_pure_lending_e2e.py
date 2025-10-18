@@ -39,7 +39,7 @@ class PureLendingQualityGates:
             response = requests.post(
                 f"{self.api_base_url}/api/v1/backtest/",
                 json={
-                    "strategy_name": "pure_lending",
+                    "strategy_name": "pure_lending_usdt",
                     "start_date": "2024-06-01T00:00:00Z",
                     "end_date": "2024-06-10T00:00:00Z",
                     "initial_capital": 100000,
@@ -245,7 +245,7 @@ class PureLendingQualityGates:
             response = requests.post(
                 f"{self.api_base_url}/api/v1/backtest/",
                 json={
-                    "strategy_name": "pure_lending",
+                    "strategy_name": "pure_lending_usdt",
                     "start_date": "2024-06-10T00:00:00Z",  # End before start
                     "end_date": "2024-06-01T00:00:00Z",
                     "initial_capital": 100000,
@@ -299,7 +299,7 @@ class PureLendingQualityGates:
                 'backend/logs/exposure_monitor.log',
                 'backend/logs/risk_monitor.log',
                 'backend/logs/onchain_execution_manager.log',
-                'logs/pnl_calculator.log'
+                'logs/pnl_monitor.log'
             ]
             
             log_status = {}
@@ -443,7 +443,7 @@ class PureLendingQualityGates:
             results_dir = Path(__file__).parent.parent / 'results'
             
             # Find the most recent backtest result directory
-            backtest_dirs = [d for d in results_dir.glob('*_usdt_pure_lending') if d.is_dir()]
+            backtest_dirs = [d for d in results_dir.glob('*_usdt_pure_lending_usdt') if d.is_dir()]
             if not backtest_dirs:
                 return {
                     'status': 'FAIL',
@@ -532,7 +532,7 @@ class PureLendingQualityGates:
             results_dir = Path(__file__).parent.parent / 'results'
             
             # Find the most recent backtest result directory
-            backtest_dirs = [d for d in results_dir.glob('*_usdt_pure_lending') if d.is_dir()]
+            backtest_dirs = [d for d in results_dir.glob('*_usdt_pure_lending_usdt') if d.is_dir()]
             if not backtest_dirs:
                 return {
                     'status': 'FAIL',
@@ -614,7 +614,7 @@ class PureLendingQualityGates:
             results_dir = Path(__file__).parent.parent / 'results'
             
             # Find the most recent backtest result directory
-            backtest_dirs = [d for d in results_dir.glob('*_usdt_pure_lending') if d.is_dir()]
+            backtest_dirs = [d for d in results_dir.glob('*_usdt_pure_lending_usdt') if d.is_dir()]
             if not backtest_dirs:
                 return {
                     'status': 'FAIL',
@@ -683,7 +683,7 @@ class PureLendingQualityGates:
             results_dir = Path(__file__).parent.parent / 'results'
             
             # Find the most recent backtest result directory
-            backtest_dirs = [d for d in results_dir.glob('*_usdt_pure_lending') if d.is_dir()]
+            backtest_dirs = [d for d in results_dir.glob('*_usdt_pure_lending_usdt') if d.is_dir()]
             if not backtest_dirs:
                 return {
                     'status': 'FAIL',

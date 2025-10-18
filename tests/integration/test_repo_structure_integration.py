@@ -136,7 +136,7 @@ class RepositoryStructureValidator:
             'core/strategies/': {
                 'base_strategy_manager.py': '5B_BASE_STRATEGY_MANAGER.md',
                 'strategy_factory.py': '5A_STRATEGY_FACTORY.md',
-                'pure_lending_strategy.py': 'MODES.md',
+                'pure_lending_usdt_strategy.py': 'MODES.md',
                 'btc_basis_strategy.py': 'MODES.md',
                 'eth_basis_strategy.py': 'MODES.md',
                 'eth_staking_only_strategy.py': 'MODES.md',
@@ -168,8 +168,8 @@ class RepositoryStructureValidator:
             },
             # Core math components (from specs)
             'core/math/': {
-                'pnl_calculator.py': '04_PNL_CALCULATOR.md - P&L calculation',
-                'health_calculator.py': '17_HEALTH_ERROR_SYSTEMS.md - Health calculations',
+                'pnl_monitor.py': '04_pnl_monitor.md - P&L calculation',
+                'health_calculator.py': 'HEALTH_ERROR_SYSTEMS.md - Health calculations',
                 'ltv_calculator.py': 'WORKFLOW_GUIDE.md - LTV calculations',
                 'margin_calculator.py': 'WORKFLOW_GUIDE.md - Margin calculations',
                 'metrics_calculator.py': 'API_DOCUMENTATION.md - Metrics calculation',
@@ -193,14 +193,14 @@ class RepositoryStructureValidator:
             },
             # Core health systems (from specs)
             'core/health/': {
-                'component_health.py': '17_HEALTH_ERROR_SYSTEMS.md',
-                'unified_health_manager.py': '17_HEALTH_ERROR_SYSTEMS.md',
+                'component_health.py': 'HEALTH_ERROR_SYSTEMS.md',
+                'unified_health_manager.py': 'HEALTH_ERROR_SYSTEMS.md',
                 '__init__.py': 'Required for package'
             },
             # Core error codes (from specs)
             'core/error_codes/': {
-                'error_code_registry.py': '17_HEALTH_ERROR_SYSTEMS.md',
-                'exceptions.py': '17_HEALTH_ERROR_SYSTEMS.md',
+                'error_code_registry.py': 'HEALTH_ERROR_SYSTEMS.md',
+                'exceptions.py': 'HEALTH_ERROR_SYSTEMS.md',
                 '__init__.py': 'Required for package'
             },
             # Core instructions (from specs)
@@ -230,7 +230,7 @@ class RepositoryStructureValidator:
                 'historical_data_provider.py': '09_DATA_PROVIDER.md',
                 'live_data_provider.py': '09_DATA_PROVIDER.md',
                 'ml_directional_data_provider.py': '09_DATA_PROVIDER.md',
-                'pure_lending_data_provider.py': '09_DATA_PROVIDER.md',
+                'pure_lending_usdt_data_provider.py': '09_DATA_PROVIDER.md',
                 'usdt_market_neutral_data_provider.py': '09_DATA_PROVIDER.md',
                 'usdt_market_neutral_no_leverage_data_provider.py': '09_DATA_PROVIDER.md',
                 '__init__.py': 'Required for package'
@@ -257,7 +257,7 @@ class RepositoryStructureValidator:
             },
             # Infrastructure health (from specs)
             'infrastructure/health/': {
-                'health_checker.py': '17_HEALTH_ERROR_SYSTEMS.md',
+                'health_checker.py': 'HEALTH_ERROR_SYSTEMS.md',
                 '__init__.py': 'Required for package'
             },
             # Infrastructure monitoring (from specs)
@@ -396,8 +396,8 @@ class RepositoryStructureValidator:
         
         # Check for legacy spec files that should be venue-centric
         legacy_specs = [
-            'docs/specs/06_EXECUTION_MANAGER.md',
-            'docs/specs/07_EXECUTION_INTERFACE_MANAGER.md',
+            'docs/specs/06_VENUE_MANAGER.md',
+            'docs/specs/07_VENUE_INTERFACE_MANAGER.md',
             'docs/specs/07B_EXECUTION_INTERFACES.md',
             'docs/specs/07C_EXECUTION_INTERFACE_FACTORY.md'
         ]

@@ -5,7 +5,7 @@
 
 ### 1.1 Update Configuration Files (configs/modes/)
 
-**Files**: All 7 mode configs (btc_basis.yaml, eth_basis.yaml, eth_leveraged.yaml, eth_staking_only.yaml, pure_lending.yaml, usdt_market_neutral.yaml, usdt_market_neutral_no_leverage.yaml)
+**Files**: All 7 mode configs (btc_basis.yaml, eth_basis.yaml, eth_leveraged.yaml, eth_staking_only.yaml, pure_lending_usdt_usdt.yaml, usdt_market_neutral.yaml, usdt_market_neutral_no_leverage.yaml)
 
 **Changes**:
 
@@ -454,7 +454,7 @@ for timestamp in self.timestamps:
     self.position_monitor.update_state(timestamp, 'full_loop')
     self.exposure_monitor.update_state(timestamp, 'full_loop') 
     self.risk_monitor.update_state(timestamp, 'full_loop')
-    self.pnl_calculator.update_state(timestamp, 'full_loop')
+    self.pnl_monitor.update_state(timestamp, 'full_loop')
     
     # Components query data with timestamp
     # market_data = self.data_provider.get_data(timestamp)
@@ -572,7 +572,7 @@ Execute phases in sequence to maintain consistency between config → models →
 
 ### To-dos
 
-- [ ] Remove use_flash_loan and unwind_mode from all 7 mode configs (btc_basis.yaml, eth_basis.yaml, eth_leveraged.yaml, eth_staking_only.yaml, pure_lending.yaml, usdt_market_neutral.yaml, usdt_market_neutral_no_leverage.yaml)
+- [ ] Remove use_flash_loan and unwind_mode from all 7 mode configs (btc_basis.yaml, eth_basis.yaml, eth_leveraged.yaml, eth_staking_only.yaml, pure_lending_usdt_usdt.yaml, usdt_market_neutral.yaml, usdt_market_neutral_no_leverage.yaml)
 - [ ] Remove use_flash_loan and unwind_mode fields from StrategyConfig in config_models.py, including validators and MODE_REQUIREMENTS
 - [ ] Add position_deviation_threshold: 0.02 parameter to all 7 mode configs
 - [ ] Add position_deviation_threshold field to StrategyConfig in config_models.py with validation (0.0 to 1.0)

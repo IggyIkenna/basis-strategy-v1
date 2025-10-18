@@ -6,7 +6,7 @@ Validates that all mode configurations load successfully and pass Pydantic valid
 Tests config loading at startup to ensure no silent failures.
 
 Validation Categories:
-1. Mode Config Loading - All 9 mode configs load successfully
+1. Mode Config Loading - All 10 mode configs load successfully
 2. Pydantic Validation - All configs pass Pydantic model validation
 3. Config Manager Integration - Config manager initialization succeeds
 4. No Silent Failures - All configs are accessible and valid
@@ -53,15 +53,16 @@ class ConfigLoadingQualityGates:
         
         # Expected mode names
         self.expected_modes = [
-            'pure_lending',
+            'pure_lending_usdt',
+            'pure_lending_eth',
             'btc_basis', 
             'eth_basis',
             'eth_leveraged',
             'eth_staking_only',
-            'usdt_market_neutral',
-            'usdt_market_neutral_no_leverage',
-            'ml_btc_directional',
-            'ml_usdt_directional'
+            'usdt_eth_staking_hedged_leveraged',
+            'usdt_eth_staking_hedged_simple',
+            'ml_btc_directional_usdt_margin',
+            'ml_btc_directional_btc_margin'
         ]
     
     def load_mode_config(self, mode_name: str) -> Dict[str, Any]:

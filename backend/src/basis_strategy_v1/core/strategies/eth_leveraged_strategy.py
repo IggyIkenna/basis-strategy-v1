@@ -4,104 +4,147 @@ ETH Leveraged Strategy Implementation
 Implements ETH leveraged staking strategy with LSTs and optional hedging.
 Uses unified Order/Trade system for execution.
 
-Reference: docs/MODES.md - ETH Leveraged Strategy Mode
+Reference: docs/STRATEGY_MODES.md - ETH Leveraged Strategy Mode
 Reference: docs/specs/05_STRATEGY_MANAGER.md - Component specification
 """
 
 from typing import Dict, List, Any
 import logging
 import pandas as pd
+from pathlib import Path
 
 from .base_strategy_manager import BaseStrategyManager
 from ...core.models.order import Order, OrderOperation
-from ...core.logging.base_logging_interface import StandardizedLoggingMixin, LogLevel, EventType
+from ...core.models.venues import Venue
+from ...core.models.instruments import validate_instrument_key, get_display_name
 
 logger = logging.getLogger(__name__)
 
 
 class ETHLeveragedStrategy(BaseStrategyManager):
     """
-    ETH Leveraged Strategy - Leveraged staking with LSTs and optional hedging.
+    ETH Leveraged Strategy - Leveraged staking with LSTs.
     
     Strategy Overview:
     - Stake ETH via liquid staking protocols
     - Use leverage to increase exposure
-    - Optional hedging via short positions
     - Target APY: 20-40%
     """
     
-    def __init__(self, config: Dict[str, Any], risk_monitor, position_monitor, event_engine):
+    def __init__(self, config: Dict[str, Any], data_provider, exposure_monitor, 
+                 position_monitor, risk_monitor, utility_manager=None, 
+                 correlation_id: str = None, pid: int = None, log_dir: Path = None):
         """
         Initialize ETH leveraged strategy.
         
         Args:
             config: Strategy configuration
-            risk_monitor: Risk monitor instance
-            position_monitor: Position monitor instance
-            event_engine: Event engine instance
+            data_provider: Data provider instance for market data
+            exposure_monitor: Exposure monitor instance for exposure data
+            position_monitor: Position monitor instance for position data
+            risk_monitor: Risk monitor instance for risk assessment
+            utility_manager: Centralized utility manager for conversion rates
+            correlation_id: Unique correlation ID for this run
+            pid: Process ID
+            log_dir: Log directory path (logs/{correlation_id}/{pid}/)
         """
-        super().__init__(config, risk_monitor, position_monitor, event_engine)
+        super().__init__(config, data_provider, exposure_monitor, position_monitor, 
+                        risk_monitor, utility_manager, correlation_id, pid, log_dir)
         
         # Validate required configuration at startup (fail-fast)
-        required_keys = ['eth_allocation', 'leverage_multiplier', 'lst_type', 'staking_protocol', 'hedge_allocation']
+        required_keys = ['eth_allocation', 'lst_type', 'staking_protocol']
         for key in required_keys:
             if key not in config:
                 raise KeyError(f"Missing required configuration: {key}")
         
         # ETH leveraged-specific configuration (fail-fast access)
-        self.eth_allocation = config['eth_allocation']  # 80% to ETH
-        self.leverage_multiplier = config['leverage_multiplier']  # 2x leverage
+        self.eth_allocation = config['eth_allocation']  # 90% to ETH staking
         self.lst_type = config['lst_type']  # Default LST type
         self.staking_protocol = config['staking_protocol']  # Default protocol
-        self.hedge_allocation = config['hedge_allocation']  # No hedging by default
+        self.share_class = config.get('share_class', 'ETH')  # Share class currency
+        self.asset = config.get('asset', 'ETH')  # Primary asset
+        self.mode = config.get('mode', 'backtest')  # Execution mode
         
-        logger.info(f"ETHLeveragedStrategy initialized with {self.eth_allocation*100}% ETH allocation, {self.leverage_multiplier}x leverage")
+        # Define and validate instrument keys
+        self.entry_instrument = f"{Venue.WALLET.value}:BaseToken:ETH"
+        self.staking_instrument = f"{Venue.ETHERFI.value}:LST:weETH"  # Fixed: use LST not aToken
+        self.lending_instrument = f"{Venue.AAVE_V3.value}:aToken:aWETH"
+        self.borrow_instrument = f"{Venue.AAVE_V3.value}:debtToken:debtWETH"
+        
+        # Validate instrument keys
+        validate_instrument_key(self.entry_instrument)
+        validate_instrument_key(self.staking_instrument)
+        validate_instrument_key(self.lending_instrument)
+        validate_instrument_key(self.borrow_instrument)
+        
+        # Get available instruments from position_monitor config
+        position_config = config.get('component_config', {}).get('position_monitor', {})
+        self.available_instruments = position_config.get('position_subscriptions', [])
+        
+        if not self.available_instruments:
+            raise ValueError(
+                f"{self.__class__.__name__} requires position_subscriptions in config. "
+                "Define all instruments this strategy will use in component_config.position_monitor.position_subscriptions"
+            )
+        
+        # Define required instruments for this strategy
+        required_instruments = [self.entry_instrument, self.staking_instrument, self.lending_instrument, self.borrow_instrument]
+        
+        # Validate all required instruments are in available set
+        for instrument in required_instruments:
+            if instrument not in self.available_instruments:
+                raise ValueError(
+                    f"Required instrument {instrument} not in position_subscriptions. "
+                    f"Add to configs/modes/{config.get('mode', 'eth_leveraged')}.yaml"
+                )
+        
+        logger.info(f"ETHLeveragedStrategy initialized with {self.eth_allocation*100}% ETH allocation, {self.lst_type}")
+        logger.info(f"  Available instruments: {len(self.available_instruments)}")
+        logger.info(f"  Entry: {get_display_name(self.entry_instrument)}")
+        logger.info(f"  Staking: {get_display_name(self.staking_instrument)}")
+        logger.info(f"  Lending: {get_display_name(self.lending_instrument)}")
+        logger.info(f"  Borrow: {get_display_name(self.borrow_instrument)}")
     
-    def make_strategy_decision(self, timestamp: pd.Timestamp, trigger_source: str, market_data: Dict, exposure_data: Dict, risk_assessment: Dict) -> List[Order]:
+    def generate_orders(self, timestamp: pd.Timestamp, exposure: Dict, risk_assessment: Dict, pnl: Dict, market_data: Dict) -> List[Order]:
         """
-        Make ETH leveraged strategy decision based on market conditions.
+        Generate orders for ETH leveraged strategy based on market conditions.
         
         Args:
             timestamp: Current timestamp
-            trigger_source: What triggered this decision
+            exposure: Current exposure data
+            risk_assessment: Risk assessment data (includes target_ltv)
+            pnl: Current PnL data (deprecated)
             market_data: Current market data
-            exposure_data: Current exposure data
-            risk_assessment: Risk assessment data
             
         Returns:
             List of Order objects to execute
         """
         try:
+            # Get target_ltv from risk_assessment
+            target_ltv = risk_assessment.get('target_ltv', 0.0)
+            
             # Log strategy decision start
-            self.log_component_event(
-                event_type=EventType.BUSINESS_EVENT,
-                message=f"Making ETH leveraged strategy decision triggered by {trigger_source}",
-                data={
-                    'trigger_source': trigger_source,
-                    'strategy_type': self.__class__.__name__,
-                    'timestamp': str(timestamp)
-                },
-                level=LogLevel.INFO
-            )
+            self.logger.info(f"Making ETH leveraged strategy decision with target_ltv={target_ltv}")
             
             # Get current equity and positions
-            current_equity = exposure_data.get('total_exposure', 0.0)
-            current_positions = exposure_data.get('positions', {})
+            current_equity = exposure.get('total_exposure', 0.0)
+            current_positions = exposure.get('positions', {})
             
             # Check if we have any position
             has_position = any(
                 current_positions.get(f'{self.lst_type.lower()}_balance', 0.0) > 0 or
-                current_positions.get('eth_perpetual_short', 0.0) != 0
+                current_positions.get('aave_v3:aToken:aWETH', 0.0) > 0 or
+                current_positions.get('aave_v3:debtToken:debtWETH', 0.0) != 0
                 for _ in [1]
             )
             
             # ETH Leveraged Strategy Decision Logic
             if current_equity > 0 and not has_position:
-                # Enter full position
-                return self._create_entry_full_orders(current_equity)
+                # Enter full position with target_ltv
+                return self._create_entry_full_orders(current_equity, target_ltv)
             elif current_equity > 0 and has_position:
                 # Check for dust tokens to sell
-                dust_tokens = exposure_data.get('dust_tokens', {})
+                dust_tokens = exposure.get('dust_tokens', {})
                 if dust_tokens:
                     return self._create_dust_sell_orders(dust_tokens)
                 else:
@@ -115,12 +158,11 @@ class ETHLeveragedStrategy(BaseStrategyManager):
             self.log_error(
                 error=e,
                 context={
-                    'method': 'make_strategy_decision',
-                    'trigger_source': trigger_source,
+                    'method': 'generate_orders',
                     'strategy_type': self.__class__.__name__
                 }
             )
-            logger.error(f"Error in ETH leveraged strategy decision: {e}")
+            logger.error(f"Error in ETH leveraged strategy order generation: {e}")
             return []
     
     def _get_asset_price(self) -> float:
@@ -128,34 +170,46 @@ class ETHLeveragedStrategy(BaseStrategyManager):
         # In real implementation, this would get actual price from market data
         return 3000.0  # Mock ETH price
     
-    def calculate_target_position(self, current_equity: float) -> Dict[str, float]:
+    def calculate_target_position(self, current_equity: float, target_ltv: float = 0.0) -> Dict[str, float]:
         """
-        Calculate target position for ETH leveraged strategy.
+        Calculate target position for ETH leveraged strategy using target_ltv from risk_monitor.
         
         Args:
             current_equity: Current equity in share class currency
+            target_ltv: Target loan-to-value ratio from risk_monitor
             
         Returns:
             Dictionary of target positions by token/venue
         """
         try:
-            # Calculate target allocations with leverage
-            leveraged_equity = current_equity * self.leverage_multiplier
+            # Calculate leverage from target_ltv: leverage = target_ltv / (1 - target_ltv)
+            if target_ltv > 0 and target_ltv < 1:
+                leverage = target_ltv / (1 - target_ltv)
+            else:
+                leverage = 1.0  # No leverage if target_ltv is 0 or invalid
+            
+            # Calculate target allocations
+            leveraged_equity = current_equity * leverage
             eth_target = leveraged_equity * self.eth_allocation
-            hedge_target = leveraged_equity * self.hedge_allocation
             
             # Get current ETH price
             eth_price = self._get_asset_price()
             eth_amount = eth_target / eth_price if eth_price > 0 else 0
-            hedge_amount = hedge_target / eth_price if eth_price > 0 else 0
+            
+            # Calculate AAVE positions
+            supply_amount = eth_amount  # LST supplied as collateral
+            debt_amount = eth_amount * (leverage - 1)  # WETH borrowed
             
             return {
                 'eth_balance': 0.0,  # No raw ETH, all staked
-                f'{self.lst_type.lower()}_balance': eth_amount,  # Leveraged ETH staked
-                'eth_perpetual_short': -hedge_amount,  # Optional hedge position
-                f'{self.share_class.lower()}_balance': reserve_target,
+                f'{self.lst_type.lower()}_balance': eth_amount,  # LST staked
+                'aave_v3:aToken:aWETH': supply_amount,  # LST supplied as collateral
+                'aave_v3:debtToken:debtWETH': debt_amount,  # WETH borrowed
+                f'{self.share_class.lower()}_balance': current_equity,
                 'total_equity': current_equity,
-                'leveraged_equity': leveraged_equity
+                'leveraged_equity': leveraged_equity,
+                'target_ltv': target_ltv,
+                'leverage': leverage
             }
             
         except Exception as e:
@@ -163,88 +217,178 @@ class ETHLeveragedStrategy(BaseStrategyManager):
             return {
                 'eth_balance': 0.0,
                 f'{self.lst_type.lower()}_balance': 0.0,
-                'eth_perpetual_short': 0.0,
+                'aave_v3:aToken:aWETH': 0.0,
+                'aave_v3:debtToken:debtWETH': 0.0,
+                f'{self.share_class.lower()}_balance': 0.0,
                 'total_equity': current_equity,
-                'leveraged_equity': current_equity
+                'leveraged_equity': current_equity,
+                'target_ltv': 0.0,
+                'leverage': 1.0
             }
     
-    def _create_entry_full_orders(self, equity: float) -> List[Order]:
+    def _create_entry_full_orders(self, equity: float, target_ltv: float) -> List[Order]:
         """
-        Create entry full orders for ETH leveraged strategy.
+        Create entry full orders for ETH leveraged strategy using atomic flash loan.
         
         Args:
             equity: Available equity in share class currency
+            target_ltv: Target loan-to-value ratio from risk_monitor
             
         Returns:
             List of Order objects for full entry
         """
         try:
-            # Calculate target position
-            target_position = self.calculate_target_position(equity)
+            # Calculate target position with target_ltv
+            target_position = self.calculate_target_position(equity, target_ltv)
             
             orders = []
             atomic_group_id = f"eth_leveraged_entry_{int(equity)}"
             
-            # 1. Buy ETH with leverage (atomic group)
+            # Calculate leverage and amounts
+            leverage = target_position.get('leverage', 1.0)
             eth_amount = target_position[f'{self.lst_type.lower()}_balance']
-            if eth_amount > 0:
+            supply_amount = target_position.get('aave_v3:aToken:aWETH', 0.0)
+            debt_amount = target_position.get('aave_v3:debtToken:debtWETH', 0.0)
+            
+            if eth_amount > 0 and leverage > 1.0:
+                # Atomic flash loan sequence:
+                # 1. FLASH_BORROW WETH from Morpho (via Instadapp)
                 orders.append(Order(
-                    venue='binance',
-                    operation=OrderOperation.SPOT_TRADE,
-                    pair='ETH/USDT',
-                    side='BUY',
-                    amount=eth_amount,
+                    operation_id=f"flash_borrow_{int(pd.Timestamp.now().timestamp() * 1000000)}",
+                    venue=Venue.INSTADAPP,
+                    operation=OrderOperation.FLASH_BORROW,
+                    token_out='WETH',
+                    amount=debt_amount,
+                    source_venue=Venue.INSTADAPP,
+                    target_venue=Venue.WALLET,
+                    source_token='WETH',
+                    target_token='WETH',
+                    expected_deltas={
+                        f'{Venue.INSTADAPP}:BaseToken:WETH': debt_amount,  # Gain WETH from flash loan
+                        f'{Venue.WALLET}:BaseToken:WETH': debt_amount
+                    },
+                    operation_details={'target_ltv': target_ltv, 'leverage': leverage},
                     execution_mode='atomic',
                     atomic_group_id=atomic_group_id,
                     sequence_in_group=1,
                     strategy_intent='entry_full',
                     strategy_id='eth_leveraged',
-                    metadata={'leverage': self.leverage_multiplier}
+                    metadata={'target_ltv': target_ltv, 'leverage': leverage}
                 ))
-            
-            # 2. Stake ETH to get LST (atomic group)
-            if eth_amount > 0:
+                
+                # 2. STAKE WETH to get LST (weETH/wstETH)
                 orders.append(Order(
-                    venue=self.staking_protocol,
+                    operation_id=f"stake_{int(pd.Timestamp.now().timestamp() * 1000000)}",
+                    venue=Venue.ETHERFI,
                     operation=OrderOperation.STAKE,
-                    token_in='ETH',
+                    token_in='WETH',
                     token_out=self.lst_type,
                     amount=eth_amount,
+                    source_venue='wallet',
+                    target_venue=self.staking_protocol,
+                    source_token='WETH',
+                    target_token=self.lst_type,
+                    expected_deltas={
+                        f'{Venue.WALLET}:BaseToken:WETH': -eth_amount,  # Lose WETH
+                        self.staking_instrument: eth_amount  # Gain LST
+                    },
+                    operation_details={'lst_type': self.lst_type, 'staking_protocol': self.staking_protocol},
                     execution_mode='atomic',
                     atomic_group_id=atomic_group_id,
                     sequence_in_group=2,
                     strategy_intent='entry_full',
                     strategy_id='eth_leveraged'
                 ))
-            
-            # 3. Open hedge position if configured (atomic group)
-            hedge_amount = target_position['eth_perpetual_short']
-            if hedge_amount < 0:
+                
+                # 3. SUPPLY LST to AAVE as collateral
                 orders.append(Order(
-                    venue='bybit',
-                    operation=OrderOperation.PERP_TRADE,
-                    pair='ETHUSDT',
-                    side='SHORT',
-                    amount=abs(hedge_amount),
+                    operation_id=f"supply_{int(pd.Timestamp.now().timestamp() * 1000000)}",
+                    venue=Venue.AAVE_V3,
+                    operation=OrderOperation.SUPPLY,
+                    token_in=self.lst_type,
+                    token_out=f'a{self.lst_type}',
+                    amount=supply_amount,
+                    source_venue=Venue.WALLET,
+                    target_venue=Venue.AAVE_V3,
+                    source_token=self.lst_type,
+                    target_token=f'a{self.lst_type}',
+                    expected_deltas={
+                        f'{Venue.WALLET}:BaseToken:{self.lst_type}': -supply_amount,  # Lose LST
+                        f'{Venue.AAVE_V3}:aToken:a{self.lst_type}': supply_amount  # Gain aToken
+                    },
+                    operation_details={'lending_protocol': 'aave_v3', 'collateral_type': self.lst_type},
                     execution_mode='atomic',
                     atomic_group_id=atomic_group_id,
                     sequence_in_group=3,
                     strategy_intent='entry_full',
                     strategy_id='eth_leveraged'
                 ))
-            
-            # 4. Maintain reserves (sequential)
-            reserve_amount = target_position[f'{self.share_class.lower()}_balance']
-            if reserve_amount > 0:
+                
+                # 4. BORROW WETH from AAVE (up to target_ltv)
                 orders.append(Order(
-                    venue='wallet',
-                    operation=OrderOperation.TRANSFER,
+                    operation_id=f"borrow_{int(pd.Timestamp.now().timestamp() * 1000000)}",
+                    venue=Venue.AAVE_V3,
+                    operation=OrderOperation.BORROW,
+                    token_out='WETH',
+                    amount=debt_amount,
+                    source_venue=Venue.AAVE_V3,
+                    target_venue=Venue.WALLET,
+                    source_token='WETH',
+                    target_token='WETH',
+                    expected_deltas={
+                        self.borrow_instrument: debt_amount,  # Gain debt
+                        f'{Venue.WALLET}:BaseToken:WETH': debt_amount  # Gain WETH
+                    },
+                    operation_details={'lending_protocol': 'aave_v3', 'borrow_asset': 'WETH'},
+                    execution_mode='atomic',
+                    atomic_group_id=atomic_group_id,
+                    sequence_in_group=4,
+                    strategy_intent='entry_full',
+                    strategy_id='eth_leveraged'
+                ))
+                
+                # 5. FLASH_REPAY WETH to Morpho
+                orders.append(Order(
+                    operation_id=f"flash_repay_{int(pd.Timestamp.now().timestamp() * 1000000)}",
+                    venue=Venue.INSTADAPP,
+                    operation=OrderOperation.FLASH_REPAY,
+                    token_in='WETH',
+                    amount=debt_amount,
+                    source_venue=Venue.WALLET,
+                    target_venue=Venue.INSTADAPP,
+                    source_token='WETH',
+                    target_token='WETH',
+                    expected_deltas={
+                        f'{Venue.WALLET}:BaseToken:WETH': -debt_amount,  # Lose WETH
+                        f'{Venue.INSTADAPP}:BaseToken:WETH': -debt_amount  # Repay flash loan
+                    },
+                    operation_details={'flash_loan_protocol': 'instadapp', 'repay_asset': 'WETH'},
+                    execution_mode='atomic',
+                    atomic_group_id=atomic_group_id,
+                    sequence_in_group=5,
+                    strategy_intent='entry_full',
+                    strategy_id='eth_leveraged'
+                ))
+            else:
+                # No leverage needed - simple staking only
+                orders.append(Order(
+                    operation_id=f"stake_{int(pd.Timestamp.now().timestamp() * 1000000)}",
+                    venue=Venue.ETHERFI,
+                    operation=OrderOperation.STAKE,
+                    token_in='WETH',
+                    token_out=self.lst_type,
+                    amount=eth_amount,
                     source_venue='wallet',
-                    target_venue='wallet',
-                    token=self.share_class,
-                    amount=reserve_amount,
+                    target_venue=self.staking_protocol,
+                    source_token='WETH',
+                    target_token=self.lst_type,
+                    expected_deltas={
+                        f'{Venue.WALLET}:BaseToken:WETH': -eth_amount,  # Lose WETH
+                        self.staking_instrument: eth_amount  # Gain LST
+                    },
+                    operation_details={'lst_type': self.lst_type, 'staking_protocol': self.staking_protocol},
                     execution_mode='sequential',
-                    strategy_intent='reserve',
+                    strategy_intent='entry_full',
                     strategy_id='eth_leveraged'
                 ))
             
@@ -254,72 +398,168 @@ class ETHLeveragedStrategy(BaseStrategyManager):
             logger.error(f"Error creating entry full orders: {e}")
             return []
     
-    def _create_entry_partial_orders(self, equity_delta: float) -> List[Order]:
+    def _create_entry_partial_orders(self, equity_delta: float, target_ltv: float) -> List[Order]:
         """
         Create entry partial orders for ETH leveraged strategy.
         
         Args:
             equity_delta: Additional equity to deploy
+            target_ltv: Target loan-to-value ratio from risk_monitor
             
         Returns:
             List of Order objects for partial entry
         """
         try:
-            # Calculate proportional allocation with leverage
-            leveraged_delta = equity_delta * self.leverage_multiplier
-            eth_delta = leveraged_delta * self.eth_allocation
-            hedge_delta = leveraged_delta * self.hedge_allocation
-            
-            # Get current ETH price
-            eth_price = self._get_asset_price()
-            eth_amount = eth_delta / eth_price if eth_price > 0 else 0
-            hedge_amount = hedge_delta / eth_price if eth_price > 0 else 0
+            # Calculate target position for additional equity
+            target_position = self.calculate_target_position(equity_delta, target_ltv)
             
             orders = []
             atomic_group_id = f"eth_leveraged_partial_{int(equity_delta)}"
             
-            # 1. Buy additional ETH with leverage (atomic group)
-            if eth_amount > 0:
+            # Calculate amounts
+            leverage = target_position.get('leverage', 1.0)
+            eth_amount = target_position[f'{self.lst_type.lower()}_balance']
+            supply_amount = target_position.get('aave_v3:aToken:aWETH', 0.0)
+            debt_amount = target_position.get('aave_v3:debtToken:debtWETH', 0.0)
+            
+            if eth_amount > 0 and leverage > 1.0:
+                # Use same atomic flash loan sequence as full entry
+                # 1. FLASH_BORROW WETH
                 orders.append(Order(
-                    venue='binance',
-                    operation=OrderOperation.SPOT_TRADE,
-                    pair='ETH/USDT',
-                    side='BUY',
-                    amount=eth_amount,
+                    operation_id=f"flash_borrow_{int(pd.Timestamp.now().timestamp() * 1000000)}",
+                    venue=Venue.INSTADAPP,
+                    operation=OrderOperation.FLASH_BORROW,
+                    token_out='WETH',
+                    amount=debt_amount,
+                    source_venue='instadapp',
+                    target_venue='wallet',
+                    source_token='WETH',
+                    target_token='WETH',
+                    expected_deltas={
+                        f'{Venue.INSTADAPP}:BaseToken:WETH': debt_amount,  # Gain WETH from flash loan
+                        f'{Venue.WALLET}:BaseToken:WETH': debt_amount
+                    },
+                    operation_details={'target_ltv': target_ltv, 'leverage': leverage},
                     execution_mode='atomic',
                     atomic_group_id=atomic_group_id,
                     sequence_in_group=1,
                     strategy_intent='entry_partial',
                     strategy_id='eth_leveraged',
-                    metadata={'leverage': self.leverage_multiplier}
+                    metadata={'target_ltv': target_ltv, 'leverage': leverage}
                 ))
-            
-            # 2. Stake additional ETH (atomic group)
-            if eth_amount > 0:
+                
+                # 2. STAKE WETH to get LST
                 orders.append(Order(
-                    venue=self.staking_protocol,
+                    operation_id=f"stake_{int(pd.Timestamp.now().timestamp() * 1000000)}",
+                    venue=Venue.ETHERFI,
                     operation=OrderOperation.STAKE,
-                    token_in='ETH',
+                    token_in='WETH',
                     token_out=self.lst_type,
                     amount=eth_amount,
+                    source_venue='wallet',
+                    target_venue=self.staking_protocol,
+                    source_token='WETH',
+                    target_token=self.lst_type,
+                    expected_deltas={
+                        f'{Venue.WALLET}:BaseToken:WETH': -eth_amount,  # Lose WETH
+                        self.staking_instrument: eth_amount  # Gain LST
+                    },
+                    operation_details={'lst_type': self.lst_type, 'staking_protocol': self.staking_protocol},
                     execution_mode='atomic',
                     atomic_group_id=atomic_group_id,
                     sequence_in_group=2,
                     strategy_intent='entry_partial',
                     strategy_id='eth_leveraged'
                 ))
-            
-            # 3. Increase hedge position if configured (atomic group)
-            if hedge_amount > 0:
+                
+                # 3. SUPPLY LST to AAVE
                 orders.append(Order(
-                    venue='bybit',
-                    operation=OrderOperation.PERP_TRADE,
-                    pair='ETHUSDT',
-                    side='SHORT',
-                    amount=hedge_amount,
+                    operation_id=f"supply_{int(pd.Timestamp.now().timestamp() * 1000000)}",
+                    venue=Venue.AAVE_V3,
+                    operation=OrderOperation.SUPPLY,
+                    token_in=self.lst_type,
+                    token_out=f'a{self.lst_type}',
+                    amount=supply_amount,
+                    source_venue=Venue.WALLET,
+                    target_venue=Venue.AAVE_V3,
+                    source_token=self.lst_type,
+                    target_token=f'a{self.lst_type}',
+                    expected_deltas={
+                        f'{Venue.WALLET}:BaseToken:{self.lst_type}': -supply_amount,  # Lose LST
+                        f'{Venue.AAVE_V3}:aToken:a{self.lst_type}': supply_amount  # Gain aToken
+                    },
+                    operation_details={'lending_protocol': 'aave_v3', 'collateral_type': self.lst_type},
                     execution_mode='atomic',
                     atomic_group_id=atomic_group_id,
                     sequence_in_group=3,
+                    strategy_intent='entry_partial',
+                    strategy_id='eth_leveraged'
+                ))
+                
+                # 4. BORROW WETH from AAVE
+                orders.append(Order(
+                    operation_id=f"borrow_{int(pd.Timestamp.now().timestamp() * 1000000)}",
+                    venue=Venue.AAVE_V3,
+                    operation=OrderOperation.BORROW,
+                    token_out='WETH',
+                    amount=debt_amount,
+                    source_venue=Venue.AAVE_V3,
+                    target_venue=Venue.WALLET,
+                    source_token='WETH',
+                    target_token='WETH',
+                    expected_deltas={
+                        self.borrow_instrument: debt_amount,  # Gain debt
+                        f'{Venue.WALLET}:BaseToken:WETH': debt_amount  # Gain WETH
+                    },
+                    operation_details={'lending_protocol': 'aave_v3', 'borrow_asset': 'WETH'},
+                    execution_mode='atomic',
+                    atomic_group_id=atomic_group_id,
+                    sequence_in_group=4,
+                    strategy_intent='entry_partial',
+                    strategy_id='eth_leveraged'
+                ))
+                
+                # 5. FLASH_REPAY WETH
+                orders.append(Order(
+                    operation_id=f"flash_repay_{int(pd.Timestamp.now().timestamp() * 1000000)}",
+                    venue=Venue.INSTADAPP,
+                    operation=OrderOperation.FLASH_REPAY,
+                    token_in='WETH',
+                    amount=debt_amount,
+                    source_venue=Venue.WALLET,
+                    target_venue=Venue.INSTADAPP,
+                    source_token='WETH',
+                    target_token='WETH',
+                    expected_deltas={
+                        f'{Venue.WALLET}:BaseToken:WETH': -debt_amount,  # Lose WETH
+                        f'{Venue.INSTADAPP}:BaseToken:WETH': -debt_amount  # Repay flash loan
+                    },
+                    operation_details={'flash_loan_protocol': 'instadapp', 'repay_asset': 'WETH'},
+                    execution_mode='atomic',
+                    atomic_group_id=atomic_group_id,
+                    sequence_in_group=5,
+                    strategy_intent='entry_partial',
+                    strategy_id='eth_leveraged'
+                ))
+            else:
+                # Simple staking for additional equity
+                orders.append(Order(
+                    operation_id=f"stake_{int(pd.Timestamp.now().timestamp() * 1000000)}",
+                    venue=Venue.ETHERFI,
+                    operation=OrderOperation.STAKE,
+                    token_in='WETH',
+                    token_out=self.lst_type,
+                    amount=eth_amount,
+                    source_venue='wallet',
+                    target_venue=self.staking_protocol,
+                    source_token='WETH',
+                    target_token=self.lst_type,
+                    expected_deltas={
+                        f'{Venue.WALLET}:BaseToken:WETH': -eth_amount,  # Lose WETH
+                        self.staking_instrument: eth_amount  # Gain LST
+                    },
+                    operation_details={'lst_type': self.lst_type, 'staking_protocol': self.staking_protocol},
+                    execution_mode='sequential',
                     strategy_intent='entry_partial',
                     strategy_id='eth_leveraged'
                 ))
@@ -344,19 +584,29 @@ class ETHLeveragedStrategy(BaseStrategyManager):
             # Get current position
             current_position = self.position_monitor.get_current_position()
             lst_balance = current_position.get(f'{self.lst_type.lower()}_balance', 0.0)
-            hedge_balance = current_position.get('eth_perpetual_short', 0.0)
+            aave_supply = current_position.get('aave_v3:aToken:aWETH', 0.0)
+            aave_debt = current_position.get('aave_v3:debtToken:debtWETH', 0.0)
             
             orders = []
             atomic_group_id = f"eth_leveraged_exit_{int(equity)}"
             
-            # 1. Close hedge position (atomic group)
-            if hedge_balance < 0:
+            # 1. Repay AAVE debt (atomic group)
+            if aave_debt > 0:
                 orders.append(Order(
-                    venue='bybit',
-                    operation=OrderOperation.PERP_TRADE,
-                    pair='ETHUSDT',
-                    side='LONG',  # Close short position
-                    amount=abs(hedge_balance),
+                    operation_id=f"repay_{int(pd.Timestamp.now().timestamp() * 1000000)}",
+                    venue=Venue.AAVE_V3,
+                    operation=OrderOperation.REPAY,
+                    token_in='WETH',
+                    amount=aave_debt,
+                    source_venue=Venue.WALLET,
+                    target_venue=Venue.AAVE_V3,
+                    source_token='WETH',
+                    target_token='WETH',
+                    expected_deltas={
+                        f'{Venue.WALLET}:BaseToken:WETH': -aave_debt,  # Lose WETH
+                        'aave_v3:debtToken:debtWETH': -aave_debt  # Reduce debt
+                    },
+                    operation_details={'lending_protocol': 'aave_v3', 'repay_asset': 'WETH'},
                     execution_mode='atomic',
                     atomic_group_id=atomic_group_id,
                     sequence_in_group=1,
@@ -364,14 +614,23 @@ class ETHLeveragedStrategy(BaseStrategyManager):
                     strategy_id='eth_leveraged'
                 ))
             
-            # 2. Unstake LST to get ETH (atomic group)
-            if lst_balance > 0:
+            # 2. Withdraw LST from AAVE (atomic group)
+            if aave_supply > 0:
                 orders.append(Order(
-                    venue=self.staking_protocol,
-                    operation=OrderOperation.UNSTAKE,
-                    token_in=self.lst_type,
-                    token_out='ETH',
-                    amount=lst_balance,
+                    operation_id=f"withdraw_{int(pd.Timestamp.now().timestamp() * 1000000)}",
+                    venue=Venue.AAVE_V3,
+                    operation=OrderOperation.WITHDRAW,
+                    token_out=self.lst_type,
+                    amount=aave_supply,
+                    source_venue=Venue.AAVE_V3,
+                    target_venue=Venue.WALLET,
+                    source_token=f'a{self.lst_type}',
+                    target_token=self.lst_type,
+                    expected_deltas={
+                        f'aave_v3:aToken:a{self.lst_type}': -aave_supply,  # Lose aToken
+                        f'{Venue.WALLET}:BaseToken:{self.lst_type}': aave_supply  # Gain LST
+                    },
+                    operation_details={'lending_protocol': 'aave_v3', 'withdraw_asset': self.lst_type},
                     execution_mode='atomic',
                     atomic_group_id=atomic_group_id,
                     sequence_in_group=2,
@@ -379,14 +638,25 @@ class ETHLeveragedStrategy(BaseStrategyManager):
                     strategy_id='eth_leveraged'
                 ))
             
-            # 3. Sell ETH (atomic group)
-            if lst_balance > 0:
+            # 3. Unstake LST to get WETH (atomic group)
+            total_lst = lst_balance + aave_supply
+            if total_lst > 0:
                 orders.append(Order(
-                    venue='binance',
-                    operation=OrderOperation.SPOT_TRADE,
-                    pair='ETH/USDT',
-                    side='SELL',
-                    amount=lst_balance,
+                    operation_id=f"unstake_{int(pd.Timestamp.now().timestamp() * 1000000)}",
+                    venue=Venue.ETHERFI,
+                    operation=OrderOperation.UNSTAKE,
+                    token_in=self.lst_type,
+                    token_out='WETH',
+                    amount=total_lst,
+                    source_venue=self.staking_protocol,
+                    target_venue='wallet',
+                    source_token=self.lst_type,
+                    target_token='WETH',
+                    expected_deltas={
+                        f'{self.staking_protocol}:aToken:{self.lst_type}': -total_lst,  # Lose LST
+                        f'{Venue.WALLET}:BaseToken:WETH': total_lst  # Gain WETH
+                    },
+                    operation_details={'lst_type': self.lst_type, 'staking_protocol': self.staking_protocol},
                     execution_mode='atomic',
                     atomic_group_id=atomic_group_id,
                     sequence_in_group=3,
@@ -394,14 +664,22 @@ class ETHLeveragedStrategy(BaseStrategyManager):
                     strategy_id='eth_leveraged'
                 ))
             
-            # 4. Convert all to share class currency (sequential)
+            # 4. Convert WETH to share class currency (sequential)
             orders.append(Order(
+                operation_id=f"transfer_{int(pd.Timestamp.now().timestamp() * 1000000)}",
                 venue='wallet',
                 operation=OrderOperation.TRANSFER,
                 source_venue='wallet',
                 target_venue='wallet',
+                source_token='WETH',
+                target_token=self.share_class,
                 token=self.share_class,
                 amount=equity,
+                expected_deltas={
+                    f'{Venue.WALLET}:BaseToken:WETH': -equity,  # Lose WETH
+                    f'{Venue.WALLET}:BaseToken:{self.share_class}': equity  # Gain share class (simplified 1:1)
+                },
+                operation_details={'conversion_type': 'exit_conversion', 'from_asset': 'WETH', 'to_asset': self.share_class},
                 execution_mode='sequential',
                 strategy_intent='exit_full',
                 strategy_id='eth_leveraged'
@@ -427,29 +705,30 @@ class ETHLeveragedStrategy(BaseStrategyManager):
             # Get current position
             current_position = self.position_monitor.get_current_position()
             lst_balance = current_position.get(f'{self.lst_type.lower()}_balance', 0.0)
-            hedge_balance = current_position.get('eth_perpetual_short', 0.0)
+            aave_supply = current_position.get('aave_v3:aToken:aWETH', 0.0)
+            aave_debt = current_position.get('aave_v3:debtToken:debtWETH', 0.0)
             
             # Calculate proportional reduction
-            total_position = lst_balance + abs(hedge_balance)
-            if total_position > 0:
-                reduction_ratio = min(equity_delta / (total_position * self._get_asset_price()), 1.0)
+            total_lst = lst_balance + aave_supply
+            if total_lst > 0:
+                reduction_ratio = min(equity_delta / (total_lst * self._get_asset_price()), 1.0)
             else:
                 reduction_ratio = 0.0
             
             lst_reduction = lst_balance * reduction_ratio
-            hedge_reduction = abs(hedge_balance) * reduction_ratio
+            aave_supply_reduction = aave_supply * reduction_ratio
+            aave_debt_reduction = aave_debt * reduction_ratio
             
             orders = []
             atomic_group_id = f"eth_leveraged_partial_exit_{int(equity_delta)}"
             
-            # 1. Reduce hedge position (atomic group)
-            if hedge_reduction > 0:
+            # 1. Repay proportional AAVE debt (atomic group)
+            if aave_debt_reduction > 0:
                 orders.append(Order(
-                    venue='bybit',
-                    operation=OrderOperation.PERP_TRADE,
-                    pair='ETHUSDT',
-                    side='LONG',  # Reduce short position
-                    amount=hedge_reduction,
+                    venue=Venue.AAVE_V3,
+                    operation=OrderOperation.REPAY,
+                    token_in='WETH',
+                    amount=aave_debt_reduction,
                     execution_mode='atomic',
                     atomic_group_id=atomic_group_id,
                     sequence_in_group=1,
@@ -457,14 +736,13 @@ class ETHLeveragedStrategy(BaseStrategyManager):
                     strategy_id='eth_leveraged'
                 ))
             
-            # 2. Unstake proportional LST (atomic group)
-            if lst_reduction > 0:
+            # 2. Withdraw proportional LST from AAVE (atomic group)
+            if aave_supply_reduction > 0:
                 orders.append(Order(
-                    venue=self.staking_protocol,
-                    operation=OrderOperation.UNSTAKE,
-                    token_in=self.lst_type,
-                    token_out='ETH',
-                    amount=lst_reduction,
+                    venue=Venue.AAVE_V3,
+                    operation=OrderOperation.WITHDRAW,
+                    token_out=self.lst_type,
+                    amount=aave_supply_reduction,
                     execution_mode='atomic',
                     atomic_group_id=atomic_group_id,
                     sequence_in_group=2,
@@ -472,14 +750,15 @@ class ETHLeveragedStrategy(BaseStrategyManager):
                     strategy_id='eth_leveraged'
                 ))
             
-            # 3. Sell proportional ETH (atomic group)
-            if lst_reduction > 0:
+            # 3. Unstake proportional LST (atomic group)
+            total_lst_reduction = lst_reduction + aave_supply_reduction
+            if total_lst_reduction > 0:
                 orders.append(Order(
-                    venue='binance',
-                    operation=OrderOperation.SPOT_TRADE,
-                    pair='ETH/USDT',
-                    side='SELL',
-                    amount=lst_reduction,
+                    venue=Venue.ETHERFI,
+                    operation=OrderOperation.UNSTAKE,
+                    token_in=self.lst_type,
+                    token_out='WETH',
+                    amount=total_lst_reduction,
                     execution_mode='atomic',
                     atomic_group_id=atomic_group_id,
                     sequence_in_group=3,
@@ -522,28 +801,47 @@ class ETHLeveragedStrategy(BaseStrategyManager):
             for token, amount in dust_tokens.items():
                 if amount > 0 and token != self.share_class:
                     # Convert to share class currency
-                    if token == 'ETH':
-                        # Sell ETH for share class
+                    if token == 'WETH':
+                        # Convert WETH to share class
                         orders.append(Order(
-                            venue='binance',
-                            operation=OrderOperation.SPOT_TRADE,
-                            pair='ETH/USDT',
-                            side='SELL',
+                            operation_id=f"dust_transfer_{int(pd.Timestamp.now().timestamp() * 1000000)}",
+                            venue='wallet',
+                            operation=OrderOperation.TRANSFER,
+                            source_venue='wallet',
+                            target_venue='wallet',
+                            source_token=token,
+                            target_token=self.share_class,
+                            token=token,
                             amount=amount,
+                            expected_deltas={
+                                f'{Venue.WALLET}:BaseToken:{token}': -amount,  # Lose dust token
+                                f'{Venue.WALLET}:BaseToken:{self.share_class}': amount  # Gain share class (simplified 1:1)
+                            },
+                            operation_details={'conversion_type': 'dust_cleanup', 'from_asset': token, 'to_asset': self.share_class},
                             execution_mode='sequential',
                             strategy_intent='sell_dust',
                             strategy_id='eth_leveraged'
                         ))
                     
                     elif token == self.lst_type:
-                        # Unstake LST first, then sell ETH (atomic group)
+                        # Unstake LST first, then convert WETH (atomic group)
                         atomic_group_id = f"dust_unstake_{token}_{int(amount)}"
                         orders.append(Order(
-                            venue=self.staking_protocol,
+                            operation_id=f"dust_unstake_{int(pd.Timestamp.now().timestamp() * 1000000)}",
+                            venue=Venue.ETHERFI,
                             operation=OrderOperation.UNSTAKE,
                             token_in=token,
-                            token_out='ETH',
+                            token_out='WETH',
                             amount=amount,
+                            source_venue=self.staking_protocol,
+                            target_venue='wallet',
+                            source_token=token,
+                            target_token='WETH',
+                            expected_deltas={
+                                f'{self.staking_protocol}:aToken:{token}': -amount,  # Lose LST
+                                f'{Venue.WALLET}:BaseToken:WETH': amount  # Gain WETH
+                            },
+                            operation_details={'lst_type': token, 'staking_protocol': self.staking_protocol},
                             execution_mode='atomic',
                             atomic_group_id=atomic_group_id,
                             sequence_in_group=1,
@@ -551,11 +849,20 @@ class ETHLeveragedStrategy(BaseStrategyManager):
                             strategy_id='eth_leveraged'
                         ))
                         orders.append(Order(
-                            venue='binance',
-                            operation=OrderOperation.SPOT_TRADE,
-                            pair='ETH/USDT',
-                            side='SELL',
+                            operation_id=f"dust_transfer_{int(pd.Timestamp.now().timestamp() * 1000000)}",
+                            venue='wallet',
+                            operation=OrderOperation.TRANSFER,
+                            source_venue='wallet',
+                            target_venue='wallet',
+                            source_token='WETH',
+                            target_token=self.share_class,
+                            token='WETH',
                             amount=amount,
+                            expected_deltas={
+                                f'{Venue.WALLET}:BaseToken:WETH': -amount,  # Lose WETH
+                                f'{Venue.WALLET}:BaseToken:{self.share_class}': amount  # Gain share class (simplified 1:1)
+                            },
+                            operation_details={'conversion_type': 'dust_cleanup', 'from_asset': 'WETH', 'to_asset': self.share_class},
                             execution_mode='atomic',
                             atomic_group_id=atomic_group_id,
                             sequence_in_group=2,
@@ -563,28 +870,45 @@ class ETHLeveragedStrategy(BaseStrategyManager):
                             strategy_id='eth_leveraged'
                         ))
                     
-                    elif token in ['BTC', 'USDT']:
-                        # Direct conversion
+                    elif token in ['EIGEN', 'ETHFI', 'KING']:
+                        # Dust tokens from staking rewards - convert to share class
                         orders.append(Order(
+                            operation_id=f"dust_transfer_{int(pd.Timestamp.now().timestamp() * 1000000)}",
                             venue='wallet',
                             operation=OrderOperation.TRANSFER,
                             source_venue='wallet',
                             target_venue='wallet',
+                            source_token=token,
+                            target_token=self.share_class,
                             token=token,
                             amount=amount,
+                            expected_deltas={
+                                f'{Venue.WALLET}:BaseToken:{token}': -amount,  # Lose dust token
+                                f'{Venue.WALLET}:BaseToken:{self.share_class}': amount  # Gain share class (simplified 1:1)
+                            },
+                            operation_details={'conversion_type': 'dust_cleanup', 'from_asset': token, 'to_asset': self.share_class},
                             execution_mode='sequential',
                             strategy_intent='sell_dust',
                             strategy_id='eth_leveraged'
                         ))
                     
                     else:
-                        # Other tokens - sell for share class
+                        # Other tokens - convert to share class
                         orders.append(Order(
-                            venue='binance',
-                            operation=OrderOperation.SPOT_TRADE,
-                            pair=f'{token}/USDT',
-                            side='SELL',
+                            operation_id=f"dust_transfer_{int(pd.Timestamp.now().timestamp() * 1000000)}",
+                            venue='wallet',
+                            operation=OrderOperation.TRANSFER,
+                            source_venue='wallet',
+                            target_venue='wallet',
+                            source_token=token,
+                            target_token=self.share_class,
+                            token=token,
                             amount=amount,
+                            expected_deltas={
+                                f'{Venue.WALLET}:BaseToken:{token}': -amount,  # Lose dust token
+                                f'{Venue.WALLET}:BaseToken:{self.share_class}': amount  # Gain share class (simplified 1:1)
+                            },
+                            operation_details={'conversion_type': 'dust_cleanup', 'from_asset': token, 'to_asset': self.share_class},
                             execution_mode='sequential',
                             strategy_intent='sell_dust',
                             strategy_id='eth_leveraged'
@@ -595,225 +919,6 @@ class ETHLeveragedStrategy(BaseStrategyManager):
         except Exception as e:
             logger.error(f"Error creating dust sell orders: {e}")
             return []
-    
-    # Public action methods for backward compatibility
-    def entry_full(self, equity: float) -> StrategyAction:
-        """Enter full ETH leveraged position - wrapper for Order-based implementation."""
-        try:
-            orders = self._create_entry_full_orders(equity)
-            # Convert orders to legacy StrategyAction format
-            instructions = []
-            for order in orders:
-                instructions.append({
-                    'type': 'order',
-                    'venue': order.venue,
-                    'operation': order.operation.value,
-                    'amount': order.amount,
-                    'pair': order.pair,
-                    'side': order.side,
-                    'execution_mode': order.execution_mode,
-                    'atomic_group_id': order.atomic_group_id,
-                    'sequence_in_group': order.sequence_in_group
-                })
-            
-            return StrategyAction(
-                action_type='entry_full',
-                target_amount=equity,
-                target_currency=self.share_class,
-                instructions=instructions,
-                atomic=True,
-                metadata={
-                    'strategy': 'eth_leveraged',
-                    'eth_allocation': self.eth_allocation,
-                    'leverage_multiplier': self.leverage_multiplier,
-                    'lst_type': self.lst_type,
-                    'hedge_allocation': self.hedge_allocation,
-                    'order_system': 'unified_order_trade'
-                }
-            )
-        except Exception as e:
-            logger.error(f"Error in entry_full: {e}")
-            return StrategyAction(
-                action_type='entry_full',
-                target_amount=0.0,
-                target_currency=self.share_class,
-                instructions=[],
-                atomic=False,
-                metadata={'error': str(e)}
-            )
-    
-    def entry_partial(self, equity_delta: float) -> StrategyAction:
-        """Enter partial ETH leveraged position - wrapper for Order-based implementation."""
-        try:
-            orders = self._create_entry_partial_orders(equity_delta)
-            # Convert orders to legacy StrategyAction format
-            instructions = []
-            for order in orders:
-                instructions.append({
-                    'type': 'order',
-                    'venue': order.venue,
-                    'operation': order.operation.value,
-                    'amount': order.amount,
-                    'pair': order.pair,
-                    'side': order.side,
-                    'execution_mode': order.execution_mode,
-                    'atomic_group_id': order.atomic_group_id,
-                    'sequence_in_group': order.sequence_in_group
-                })
-            
-            return StrategyAction(
-                action_type='entry_partial',
-                target_amount=equity_delta,
-                target_currency=self.share_class,
-                instructions=instructions,
-                atomic=True,
-                metadata={
-                    'strategy': 'eth_leveraged',
-                    'eth_delta': equity_delta,
-                    'leverage_multiplier': self.leverage_multiplier,
-                    'order_system': 'unified_order_trade'
-                }
-            )
-        except Exception as e:
-            logger.error(f"Error in entry_partial: {e}")
-            return StrategyAction(
-                action_type='entry_partial',
-                target_amount=0.0,
-                target_currency=self.share_class,
-                instructions=[],
-                atomic=False,
-                metadata={'error': str(e)}
-            )
-    
-    def exit_full(self, equity: float) -> StrategyAction:
-        """Exit full ETH leveraged position - wrapper for Order-based implementation."""
-        try:
-            orders = self._create_exit_full_orders(equity)
-            # Convert orders to legacy StrategyAction format
-            instructions = []
-            for order in orders:
-                instructions.append({
-                    'type': 'order',
-                    'venue': order.venue,
-                    'operation': order.operation.value,
-                    'amount': order.amount,
-                    'pair': order.pair,
-                    'side': order.side,
-                    'execution_mode': order.execution_mode,
-                    'atomic_group_id': order.atomic_group_id,
-                    'sequence_in_group': order.sequence_in_group
-                })
-            
-            return StrategyAction(
-                action_type='exit_full',
-                target_amount=equity,
-                target_currency=self.share_class,
-                instructions=instructions,
-                atomic=True,
-                metadata={
-                    'strategy': 'eth_leveraged',
-                    'lst_type': self.lst_type,
-                    'leverage_multiplier': self.leverage_multiplier,
-                    'order_system': 'unified_order_trade'
-                }
-            )
-        except Exception as e:
-            logger.error(f"Error in exit_full: {e}")
-            return StrategyAction(
-                action_type='exit_full',
-                target_amount=0.0,
-                target_currency=self.share_class,
-                instructions=[],
-                atomic=False,
-                metadata={'error': str(e)}
-            )
-    
-    def exit_partial(self, equity_delta: float) -> StrategyAction:
-        """Exit partial ETH leveraged position - wrapper for Order-based implementation."""
-        try:
-            orders = self._create_exit_partial_orders(equity_delta)
-            # Convert orders to legacy StrategyAction format
-            instructions = []
-            for order in orders:
-                instructions.append({
-                    'type': 'order',
-                    'venue': order.venue,
-                    'operation': order.operation.value,
-                    'amount': order.amount,
-                    'pair': order.pair,
-                    'side': order.side,
-                    'execution_mode': order.execution_mode,
-                    'atomic_group_id': order.atomic_group_id,
-                    'sequence_in_group': order.sequence_in_group
-                })
-            
-            return StrategyAction(
-                action_type='exit_partial',
-                target_amount=equity_delta,
-                target_currency=self.share_class,
-                instructions=instructions,
-                atomic=True,
-                metadata={
-                    'strategy': 'eth_leveraged',
-                    'equity_delta': equity_delta,
-                    'lst_type': self.lst_type,
-                    'leverage_multiplier': self.leverage_multiplier,
-                    'order_system': 'unified_order_trade'
-                }
-            )
-        except Exception as e:
-            logger.error(f"Error in exit_partial: {e}")
-            return StrategyAction(
-                action_type='exit_partial',
-                target_amount=0.0,
-                target_currency=self.share_class,
-                instructions=[],
-                atomic=False,
-                metadata={'error': str(e)}
-            )
-    
-    def sell_dust(self, dust_tokens: Dict[str, float]) -> StrategyAction:
-        """Sell dust tokens - wrapper for Order-based implementation."""
-        try:
-            orders = self._create_dust_sell_orders(dust_tokens)
-            # Convert orders to legacy StrategyAction format
-            instructions = []
-            for order in orders:
-                instructions.append({
-                    'type': 'order',
-                    'venue': order.venue,
-                    'operation': order.operation.value,
-                    'amount': order.amount,
-                    'pair': order.pair,
-                    'side': order.side,
-                    'execution_mode': order.execution_mode,
-                    'atomic_group_id': order.atomic_group_id,
-                    'sequence_in_group': order.sequence_in_group
-                })
-            
-            return StrategyAction(
-                action_type='sell_dust',
-                target_amount=sum(dust_tokens.values()),
-                target_currency=self.share_class,
-                instructions=instructions,
-                atomic=False,
-                metadata={
-                    'strategy': 'eth_leveraged',
-                    'dust_tokens': dust_tokens,
-                    'lst_type': self.lst_type,
-                    'order_system': 'unified_order_trade'
-                }
-            )
-        except Exception as e:
-            logger.error(f"Error in sell_dust: {e}")
-            return StrategyAction(
-                action_type='sell_dust',
-                target_amount=0.0,
-                target_currency=self.share_class,
-                instructions=[],
-                atomic=False,
-                metadata={'error': str(e)}
-            )
     
     def get_strategy_info(self) -> Dict[str, Any]:
         """
@@ -829,12 +934,12 @@ class ETHLeveragedStrategy(BaseStrategyManager):
             base_info.update({
                 'strategy_type': 'eth_leveraged',
                 'eth_allocation': self.eth_allocation,
-                'leverage_multiplier': self.leverage_multiplier,
                 'lst_type': self.lst_type,
                 'staking_protocol': self.staking_protocol,
-                'hedge_allocation': self.hedge_allocation,
-                'description': 'ETH leveraged staking with LST tokens and optional hedging using Order/Trade system',
-                'order_system': 'unified_order_trade'
+                'description': 'ETH leveraged staking with LST tokens using atomic flash loan leverage via unified_order_trade system',
+                'order_system': 'unified_order_trade',
+                'leverage_mechanism': 'atomic_flash_loan',
+                'target_ltv_source': 'risk_monitor'
             })
             
             return base_info

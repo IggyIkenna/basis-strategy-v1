@@ -2,5 +2,12 @@
 venue: "morpho"
 type: "defi"
 
+# Canonical instruments available on this venue
+canonical_instruments:
+  - "morpho:aToken:aUSDT"
+  - "morpho:aToken:aWETH"
+  - "morpho:debtToken:debtUSDT"
+  - "morpho:debtToken:debtWETH"
+
 # Protocol Configuration
 network: "ethereum"

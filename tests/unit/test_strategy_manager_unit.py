@@ -26,15 +26,15 @@ class TestStrategyFactoryUnit:
         
         # Test all strategy modes (excluding ML strategies which are not implemented yet)
         modes = [
-            'pure_lending',
+            'pure_lending_usdt',
             'btc_basis',
             'eth_basis',
             'eth_staking_only',
             'eth_leveraged',
             'usdt_market_neutral_no_leverage',
             'usdt_market_neutral'
-            # 'ml_btc_directional',  # Not implemented yet
-            # 'ml_usdt_directional'  # Not implemented yet
+            # 'ml_btc_directional_usdt_margin',  # Not implemented yet
+            # 'ml_usdt_directional_usdt_margin'  # Not implemented yet
         ]
         
         for mode in modes:
@@ -131,15 +131,15 @@ class TestStrategyFactoryUnit:
         """Test that STRATEGY_MAP contains all expected strategies."""
         # Assert
         expected_strategies = [
-            'pure_lending',
+            'pure_lending_usdt',
             'btc_basis',
             'eth_basis', 
             'eth_staking_only',
             'eth_leveraged',
             'usdt_market_neutral_no_leverage',
             'usdt_market_neutral',
-            'ml_btc_directional',
-            'ml_usdt_directional'
+            'ml_btc_directional_usdt_margin',
+            'ml_usdt_directional_usdt_margin'
         ]
         
         for strategy in expected_strategies:
@@ -159,7 +159,7 @@ class TestBaseStrategyManagerUnit:
         
         # Create a concrete strategy manager
         strategy_manager = StrategyFactory.create_strategy(
-            mode='pure_lending',
+            mode='pure_lending_usdt',
             config=mock_config,
             risk_monitor=mock_risk_monitor,
             position_monitor=mock_position_monitor,
@@ -187,7 +187,7 @@ class TestBaseStrategyManagerUnit:
         mock_event_engine = Mock()
         
         strategy_manager = StrategyFactory.create_strategy(
-            mode='pure_lending',
+            mode='pure_lending_usdt',
             config=mock_config,
             risk_monitor=mock_risk_monitor,
             position_monitor=mock_position_monitor,
@@ -216,7 +216,7 @@ class TestBaseStrategyManagerUnit:
         mock_event_engine = Mock()
         
         strategy_manager = StrategyFactory.create_strategy(
-            mode='pure_lending',
+            mode='pure_lending_usdt',
             config=mock_config,
             risk_monitor=mock_risk_monitor,
             position_monitor=mock_position_monitor,
@@ -241,12 +241,12 @@ class TestBaseStrategyManagerUnit:
     def test_mode_specific_logic_isolation(self, mock_config, mock_data_provider, mock_utility_manager):
         """Test mode-specific strategy logic isolation."""
         # Test pure lending mode
-        pure_lending_config = mock_config.copy()
-        pure_lending_config['mode'] = 'pure_lending'
+        pure_lending_usdt_config = mock_config.copy()
+        pure_lending_usdt_config['mode'] = 'pure_lending_usdt'
         
-        pure_lending_manager = StrategyFactory.create_strategy(
-            mode='pure_lending',
-            config=pure_lending_config,
+        pure_lending_usdt_manager = StrategyFactory.create_strategy(
+            mode='pure_lending_usdt',
+            config=pure_lending_usdt_config,
             risk_monitor=Mock(),
             position_monitor=Mock(),
             event_engine=Mock()
@@ -270,7 +270,7 @@ class TestBaseStrategyManagerUnit:
         )
         
         # Assert - Different modes should have different logic
-        assert pure_lending_manager.config['mode'] == 'pure_lending'
+        assert pure_lending_usdt_manager.config['mode'] == 'pure_lending_usdt'
         assert btc_basis_manager.config['mode'] == 'btc_basis'
         
         # The specific logic differences would be tested in integration tests
@@ -291,7 +291,7 @@ class TestBaseStrategyManagerUnit:
         }
         
         strategy_manager = StrategyFactory.create_strategy(
-            mode='pure_lending',
+            mode='pure_lending_usdt',
             config=mock_config,
             risk_monitor=mock_risk_monitor,
             position_monitor=mock_position_monitor,
@@ -460,7 +460,7 @@ class TestStrategyManagerIntegration:
         mock_risk_monitor.assess_risk.side_effect = Exception("Risk monitor error")
         
         strategy_manager = StrategyFactory.create_strategy(
-            mode='pure_lending',
+            mode='pure_lending_usdt',
             config=mock_config,
             risk_monitor=mock_risk_monitor,
             position_monitor=mock_position_monitor,

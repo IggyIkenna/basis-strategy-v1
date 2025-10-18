@@ -234,8 +234,8 @@ Start with Task 01: Environment file switching & fail-fast validation.
    - Success: Risk monitoring, risk calculations
 
 4. **Task 14**: P&L Calculator Unit Quality Gate
-   - File: `.cursor/tasks/14_pnl_calculator_unit_quality_gate.md`
-   - Quality Gate: `tests/unit/test_pnl_calculator_unit.py`
+   - File: `.cursor/tasks/14_pnl_monitor_unit_quality_gate.md`
+   - Quality Gate: `tests/unit/test_pnl_monitor_unit.py`
    - Success: P&L calculation, attribution P&L
 
 5. **Task 15**: Strategy Manager Unit Quality Gate
@@ -379,8 +379,8 @@ Start with Task 01: Environment file switching & fail-fast validation.
 **Priority**: HIGH - End-to-end strategy validation
 
 1. **Task 36**: Pure Lending E2E Quality Gate
-   - File: `.cursor/tasks/36_pure_lending_e2e_quality_gate.md`
-   - Quality Gate: `tests/e2e/test_pure_lending_e2e.py`
+   - File: `.cursor/tasks/36_pure_lending_usdt_e2e_quality_gate.md`
+   - Quality Gate: `tests/e2e/test_pure_lending_usdt_e2e.py`
    - Success: Pure lending strategy execution, 3-8% APY validation
 
 2. **Task 37**: BTC Basis E2E Quality Gate
@@ -442,7 +442,7 @@ Start with Task 01: Environment file switching & fail-fast validation.
 
 **Architecture Tasks (04-14)**:
 - Task 04: `docs/specs/12_FRONTEND_SPEC.md` (API endpoints)
-- Task 05: `docs/specs/17_HEALTH_ERROR_SYSTEMS.md` (Health & logging)
+- Task 05: `docs/specs/HEALTH_ERROR_SYSTEMS.md` (Health & logging)
 - Task 06: `docs/specs/05_STRATEGY_MANAGER.md` (Strategy manager)
 - Task 07: `docs/REFERENCE_ARCHITECTURE_CANONICAL.md` Section 6 (Async/await)
 - Task 08: `docs/REFERENCE_ARCHITECTURE_CANONICAL.md` Section 7 (Mode-agnostic)
@@ -464,7 +464,7 @@ Start with Task 01: Environment file switching & fail-fast validation.
 - Task 20: `docs/specs/02_EXPOSURE_MONITOR.md`
 - Task 21: `docs/specs/03_RISK_MONITOR.md`
 - Task 22: `docs/specs/05_STRATEGY_MANAGER.md`
-- Task 23: `docs/specs/04_PNL_CALCULATOR.md`
+- Task 23: `docs/specs/04_pnl_monitor.md`
 
 **Infrastructure Tasks (24-31)**:
 - Task 24: `docs/specs/12_FRONTEND_SPEC.md` (Frontend - EXCLUDED)
@@ -473,8 +473,8 @@ Start with Task 01: Environment file switching & fail-fast validation.
 - Task 27: `docs/specs/12_FRONTEND_SPEC.md` (Authentication - EXCLUDED)
 - Task 28: `docs/specs/12_FRONTEND_SPEC.md` (Live trading UI - EXCLUDED)
 - Task 29: `docs/specs/16_MATH_UTILITIES.md` (Shared utilities)
-- Task 30: `docs/specs/06_EXECUTION_MANAGER.md`, `docs/specs/07_EXECUTION_INTERFACE_MANAGER.md`
-- Task 31: `docs/specs/17_HEALTH_ERROR_SYSTEMS.md` (Infrastructure components)
+- Task 30: `docs/specs/06_VENUE_MANAGER.md`, `docs/specs/07_VENUE_INTERFACE_MANAGER.md`
+- Task 31: `docs/specs/HEALTH_ERROR_SYSTEMS.md` (Infrastructure components)
 
 **Test Tasks (32-43)**:
 - Tasks 32-35: `docs/specs/` (Component unit tests)
@@ -569,7 +569,7 @@ python scripts/analyze_test_coverage.py
 
 1. **Task 27**: Infrastructure components completion
    - File: `.cursor/tasks/31_infrastructure_components_completion.md`
-   - Reference: `docs/specs/16_MATH_UTILITIES.md`, `docs/specs/17_HEALTH_ERROR_SYSTEMS.md`
+   - Reference: `docs/specs/16_MATH_UTILITIES.md`, `docs/specs/HEALTH_ERROR_SYSTEMS.md`
    - Success: Complete infrastructure components, unified health system
 
 2. **Task 28**: Live mode quality gates
@@ -584,12 +584,12 @@ python scripts/analyze_test_coverage.py
 
 4. **Task 30**: Execution components implementation
    - File: `.cursor/tasks/30_execution_components_implementation.md`
-   - Reference: `docs/specs/06_EXECUTION_MANAGER.md`, `docs/specs/07_EXECUTION_INTERFACE_MANAGER.md`
+   - Reference: `docs/specs/06_VENUE_MANAGER.md`, `docs/specs/07_VENUE_INTERFACE_MANAGER.md`
    - Success: Complete execution infrastructure, tight loop architecture
 
 5. **Task 31**: Infrastructure components completion
    - File: `.cursor/tasks/31_infrastructure_components_completion.md`
-   - Reference: `docs/specs/17_HEALTH_ERROR_SYSTEMS.md`
+   - Reference: `docs/specs/HEALTH_ERROR_SYSTEMS.md`
    - Success: Health systems, error handling, results store
 
 **Success Criteria**:

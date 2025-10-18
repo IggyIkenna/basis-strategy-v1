@@ -11,7 +11,6 @@ from decimal import Decimal
 from typing import Dict, Optional, Tuple, Any
 import logging
 
-from ...core.logging.base_logging_interface import StandardizedLoggingMixin, LogLevel, EventType
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +27,7 @@ ERROR_CODES = {
 }
 
 
-class LTVCalculator(StandardizedLoggingMixin):
+class LTVCalculator:
     """Pure function calculator for loan-to-value ratios.
     
     All functions are static and stateless, receiving configuration as parameters.
@@ -302,23 +301,21 @@ class LTVCalculator(StandardizedLoggingMixin):
     def calculate_dynamic_ltv_target(
         max_ltv: Decimal,
         max_stake_spread_move: Decimal,
-        safety_buffer: Decimal = Decimal("0.02")
     ) -> Decimal:
         """Calculate dynamic LTV target with safety buffers.
         
         Args:
             max_ltv: Maximum LTV from AAVE risk parameters
             max_stake_spread_move: Maximum expected stake spread move
-            safety_buffer: Additional safety buffer (default 2%)
             
         Returns:
             Dynamic LTV target with safety buffers applied
         """
         # Calculate dynamic LTV target
-        dynamic_ltv = max_ltv - max_stake_spread_move - safety_buffer
+        dynamic_ltv = max_ltv (1 - max_stake_spread_move)
         
-        # Ensure it's not negative (minimum 10% LTV)
-        dynamic_ltv = max(dynamic_ltv, Decimal("0.1"))
+        # Ensure it's not negative (minimum 0% LTV)
+        dynamic_ltv = max(dynamic_ltv, Decimal("0"))
         
         return dynamic_ltv
 
@@ -336,7 +333,7 @@ class LTVCalculator(StandardizedLoggingMixin):
         Returns:
             Available LTV headroom for additional leverage
         """
-        headroom = safe_ltv - current_ltv
+        headroom = safe_ltv / current_ltv
         return max(Decimal('0'), headroom)
 
 

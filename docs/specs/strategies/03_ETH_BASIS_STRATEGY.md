@@ -273,9 +273,6 @@ component_config:
       max_funding_rate_risk: 0.05
     execution_settings:
       hedge_venues: ["binance", "bybit", "okx"]
-      hedge_allocation_binance: 0.4
-      hedge_allocation_bybit: 0.3
-      hedge_allocation_okx: 0.3
       gas_price_multiplier: 1.1
       max_gas_price_gwei: 50
       retry_attempts: 3
@@ -294,17 +291,14 @@ component_config:
 
 ### Strategy-Specific Config
 - **basis_trading_supported**: bool - Whether basis trading is supported
-- **hedge_allocation_binance**: float - Proportion of hedge on Binance (0.0-1.0)
   - **Usage**: Controls capital allocation to Binance for perp hedging
   - **Example**: 0.4 (40% of hedge on Binance)
   - **Used in**: Execution manager venue routing
 
-- **hedge_allocation_bybit**: float - Proportion of hedge on Bybit (0.0-1.0)
   - **Usage**: Controls capital allocation to Bybit for perp hedging
   - **Example**: 0.3 (30% of hedge on Bybit)
   - **Used in**: Execution manager venue routing
 
-- **hedge_allocation_okx**: float - Proportion of hedge on OKX (0.0-1.0)
   - **Usage**: Controls capital allocation to OKX for perp hedging
   - **Example**: 0.3 (30% of hedge on OKX)
   - **Used in**: Execution manager venue routing
@@ -313,15 +307,12 @@ component_config:
 
 ### Venue Configuration
 - **venues.binance.venue_type**: str - Venue type ('cex')
-- **venues.binance.enabled**: bool - Whether Binance is enabled
 - **venues.binance.instruments**: List[str] - Available instruments
 - **venues.binance.order_types**: List[str] - Available order types
 - **venues.bybit.venue_type**: str - Venue type ('cex')
-- **venues.bybit.enabled**: bool - Whether Bybit is enabled
 - **venues.bybit.instruments**: List[str] - Available instruments
 - **venues.bybit.order_types**: List[str] - Available order types
 - **venues.okx.venue_type**: str - Venue type ('cex')
-- **venues.okx.enabled**: bool - Whether OKX is enabled
 - **venues.okx.instruments**: List[str] - Available instruments
 - **venues.okx.order_types**: List[str] - Available order types
 

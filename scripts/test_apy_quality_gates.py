@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 
 # Strategy APY targets
 STRATEGY_APY_TARGETS = {
-    'pure_lending': (3.0, 8.0),      # 3-8% APY - IMPLEMENTED
+    'pure_lending_usdt': (3.0, 8.0),      # 3-8% APY - IMPLEMENTED
     'btc_basis': (3.0, 30.0),        # 3-30% APY - IMPLEMENTED
     # Note: Other strategies are not fully implemented yet
     # 'eth_leveraged': (2.0, 50.0),    # 2-50% APY - NOT IMPLEMENTED

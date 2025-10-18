@@ -9,7 +9,7 @@
 - **Partial implementation**: Some specs (10_RECONCILIATION, 11_POSITION_UPDATE_HANDLER, 06/07/08 execution layer) already have basic "Environment Variables" sections
 - **File numbering issue**: Two files numbered `16_` (MATH_UTILITIES and RESULTS_STORE), two numbered `08_` (EVENT_LOGGER and EXECUTION_INTERFACES)
 - **Current implementation**: EventLogger stores events in memory, exports to CSV. Individual components (ExposureMonitor, RiskMonitor) have separate `.log` files via standard Python logging
-- **Health system exists**: 17_HEALTH_ERROR_SYSTEMS.md is comprehensive and documents structured error handling patterns
+- **Health system exists**: HEALTH_ERROR_SYSTEMS.md is comprehensive and documents structured error handling patterns
 
 ### Scope Clarification
 
@@ -18,7 +18,7 @@ This plan will:
 1. Standardize ALL 20 component specs to 18-section format
 2. Add missing sections (Environment Variables, Config Fields, Data Queries) to 15+ specs that lack them
 3. **ENHANCE** Event Logging sections to document component-specific log file routing (ideal state, may need implementation)
-4. **ENHANCE** Error Codes sections with structured error handling + health integration patterns from 17_HEALTH_ERROR_SYSTEMS.md
+4. **ENHANCE** Error Codes sections with structured error handling + health integration patterns from HEALTH_ERROR_SYSTEMS.md
 5. Fix file numbering conflicts (16_ and 08_ duplicates)
 6. Update quality gate validation to enforce 18-section structure
 
@@ -98,7 +98,7 @@ def __init__(self, ...):
 ## Config Fields Used
 
 ### Universal Config (All Components)
-- `mode`: str - e.g., 'eth_basis', 'pure_lending'
+- `mode`: str - e.g., 'eth_basis', 'pure_lending_usdt'
 - `share_class`: str - 'usdt_stable' | 'eth_directional'
 - `initial_capital`: float - Starting capital
 
@@ -177,7 +177,7 @@ def update_state(self, timestamp: pd.Timestamp, trigger_source: str):
 1. `logs/events/position_monitor_events.jsonl`
 2. `logs/events/exposure_monitor_events.jsonl`
 3. `logs/events/risk_monitor_events.jsonl`
-4. `logs/events/pnl_calculator_events.jsonl`
+4. `logs/events/pnl_monitor_events.jsonl`
 5. `logs/events/strategy_manager_events.jsonl`
 6. `logs/events/execution_manager_events.jsonl`
 7. `logs/events/execution_interface_manager_events.jsonl`
@@ -259,7 +259,7 @@ self.event_logger.log_event(
                                                                                                                                 - Rotate daily, keep 30 days
                                                                                                                                 - CSV export on-demand for analysis
 
-**Note**: Current implementation stores events in memory and exports to CSV only. Enhanced implementation will add iterative JSONL writing. Reference: `docs/specs/17_HEALTH_ERROR_SYSTEMS.md`
+**Note**: Current implementation stores events in memory and exports to CSV only. Enhanced implementation will add iterative JSONL writing. Reference: `docs/specs/HEALTH_ERROR_SYSTEMS.md`
 
 ````
 
@@ -372,7 +372,7 @@ def _health_check(self) -> Dict:
 - **degraded**: Minor errors, slower processing, retries succeeding
 - **unhealthy**: Critical errors, failed retries, unable to process
 
-**Reference**: `docs/specs/17_HEALTH_ERROR_SYSTEMS.md`
+**Reference**: `docs/specs/HEALTH_ERROR_SYSTEMS.md`
 
 ````
 
@@ -388,7 +388,7 @@ def _health_check(self) -> Dict:
 4. Update COMPONENT_SPECS_INDEX.md
 
 ### Phase 1: Update Core Monitoring Components (5 specs, 3-4 hours)
-**Components**: 01_POSITION_MONITOR, 02_EXPOSURE_MONITOR, 03_RISK_MONITOR, 04_PNL_CALCULATOR, 05_STRATEGY_MANAGER
+**Components**: 01_POSITION_MONITOR, 02_EXPOSURE_MONITOR, 03_RISK_MONITOR, 04_pnl_monitor, 05_STRATEGY_MANAGER
 
 **Actions per spec**:
 1. Add **Environment Variables** section (new)
@@ -406,7 +406,7 @@ def _health_check(self) -> Dict:
 - Component-specific log file documented
 
 ### Phase 2: Update Execution Layer Components (5 specs, 3-4 hours)
-**Components**: 06_EXECUTION_MANAGER, 07_EXECUTION_INTERFACE_MANAGER, 08_EVENT_LOGGER, 07A_EXECUTION_INTERFACES, 10_RECONCILIATION_COMPONENT, 11_POSITION_UPDATE_HANDLER
+**Components**: 06_VENUE_MANAGER, 07_VENUE_INTERFACE_MANAGER, 08_EVENT_LOGGER, 07A_EXECUTION_INTERFACES, 10_RECONCILIATION_COMPONENT, 11_POSITION_UPDATE_HANDLER
 
 **Notes**:
 - 06/07/08/10/11 already have basic "Environment Variables" sections - enhance these
@@ -501,7 +501,7 @@ def _health_check(self) -> Dict:
    - **docs-consistency-agent.json**:
      - Update to check cross-references in new sections
      - Validate template consistency across all 20 specs
-     - Check Event Logging section references 17_HEALTH_ERROR_SYSTEMS.md
+     - Check Event Logging section references HEALTH_ERROR_SYSTEMS.md
    
    - **docs-logical-inconsistency-agent.json**:
      - Update to detect inconsistencies in new sections
@@ -563,7 +563,7 @@ python scripts/test_docs_structure_validation_quality_gates.py
 
 ### DRY Principle
 
-- Cross-reference 17_HEALTH_ERROR_SYSTEMS.md instead of duplicating error handling patterns
+- Cross-reference HEALTH_ERROR_SYSTEMS.md instead of duplicating error handling patterns
 - Reference REFERENCE_ARCHITECTURE_CANONICAL.md for architectural principles
 - Use templates to avoid duplication
 
@@ -581,7 +581,7 @@ python scripts/test_docs_structure_validation_quality_gates.py
 
 ### Canonical Architecture
 
-- 17_HEALTH_ERROR_SYSTEMS.md is canonical for error handling
+- HEALTH_ERROR_SYSTEMS.md is canonical for error handling
 - REFERENCE_ARCHITECTURE_CANONICAL.md is canonical for architecture
 - Component specs must align with canonical sources
 

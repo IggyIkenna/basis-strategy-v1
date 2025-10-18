@@ -1,9 +1,9 @@
 // Authentication context for JWT token management
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { jwtDecode } from 'jwt-decode';
-import { User, LoginRequest } from '../types';
+import React, { createContext, ReactNode, useContext, useEffect, useState } from 'react';
 import { apiClient } from '../services/api';
+import { User } from '../types';
 
 interface AuthContextType {
   user: User | null;
@@ -25,6 +25,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   useEffect(() => {
     const initializeAuth = async () => {
+      // Skip authentication in development if VITE_SKIP_AUTH is true
+      if (import.meta.env.VITE_SKIP_AUTH === 'true') {
+        setUser({
+          id: 'dev-user',
+          username: 'developer',
+          email: 'dev@example.com',
+          role: 'admin'
+        });
+        setLoading(false);
+        return;
+      }
+
       const token = localStorage.getItem('token');
       if (token) {
         try {
@@ -58,7 +70,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       const response = await apiClient.login({ username, password });
       localStorage.setItem('token', response.access_token);
-      
+
       // Get user info after successful login
       const userInfo = await apiClient.getCurrentUser();
       setUser(userInfo);

@@ -57,7 +57,7 @@ Execute all 29 tasks across 6 days, starting from foundational infrastructure th
 ### Task 07: Fix Async/Await Violations (HIGH PRIORITY)
 
 - **File**: `.cursor/tasks/07_fix_async_await_violations.md`
-- **Targets**: `position_monitor.py`, `risk_monitor.py`, `strategy_manager.py`, `pnl_calculator.py`, `position_update_handler.py`
+- **Targets**: `position_monitor.py`, `risk_monitor.py`, `strategy_manager.py`, `pnl_monitor.py`, `position_update_handler.py`
 - **Quality Gate**: `scripts/test_async_ordering_quality_gates.py`
 - **Critical**: Remove async from internal methods per ADR-006
 
@@ -82,7 +82,7 @@ Execute all 29 tasks across 6 days, starting from foundational infrastructure th
 ### Task 08: Mode-Agnostic Architecture (HIGH PRIORITY)
 
 - **File**: `.cursor/tasks/08_mode_agnostic_architecture.md`
-- **Targets**: `exposure_monitor.py`, `pnl_calculator.py`
+- **Targets**: `exposure_monitor.py`, `pnl_monitor.py`
 - **Success**: Config params instead of mode checks
 
 ### Task 09: Fail-Fast Configuration
@@ -130,8 +130,8 @@ Execute all 29 tasks across 6 days, starting from foundational infrastructure th
 
 ### Task 15: Pure Lending E2E
 
-- **File**: `.cursor/tasks/15_pure_lending_quality_gates.md`
-- **Quality Gate**: `scripts/test_pure_lending_quality_gates.py`
+- **File**: `.cursor/tasks/15_pure_lending_usdt_quality_gates.md`
+- **Quality Gate**: `scripts/test_pure_lending_usdt_quality_gates.py`
 - **Success**: 3-8% APY validation (not 1166%)
 
 ### Task 16: BTC Basis E2E
@@ -160,7 +160,7 @@ Execute all 29 tasks across 6 days, starting from foundational infrastructure th
 - **Task 20**: Exposure Monitor - `scripts/test_exposure_monitor_unit_tests_quality_gates.py`
 - **Task 21**: Risk Monitor - `scripts/test_risk_monitor_unit_tests_quality_gates.py`
 - **Task 22**: Strategy Manager - `scripts/test_strategy_manager_unit_tests_quality_gates.py`
-- **Task 23**: P&L Calculator - `scripts/test_pnl_calculator_unit_tests_quality_gates.py`
+- **Task 23**: P&L Calculator - `scripts/test_pnl_monitor_unit_tests_quality_gates.py`
 - **Success**: 80% test coverage each
 
 ## Day 6: Frontend & Live Mode (3 Tasks - 12-16 hours)

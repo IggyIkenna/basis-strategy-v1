@@ -51,7 +51,6 @@ class TestEthLeveragedStrategy:
         """Mock configuration for testing."""
         return {
             'max_leverage': 3.0,
-            'target_ltv': 0.75,
             'liquidation_threshold': 0.85,
             'rebalance_threshold': 0.05,
             'staking_protocol': 'lido',

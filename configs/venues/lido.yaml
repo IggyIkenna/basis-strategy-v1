@@ -2,6 +2,11 @@
 venue: "lido"
 type: "defi"
 
+# Canonical instruments available on this venue
+canonical_instruments:
+  - "lido:LST:stETH"
+  - "lido:LST:wstETH"
+
 # Basic staking parameters
 min_stake_amount: 0.01  # ETH
 unstaking_period: 0  # days (instant for wstETH)

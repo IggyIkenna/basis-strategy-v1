@@ -41,7 +41,7 @@
 ### Batch 2A: Async/Await & Reference Architecture (Parallel)
 
 - Task 07: Fix async/await violations (6-8 hours)
-  - Files: `position_monitor.py`, `risk_monitor.py`, `strategy_manager.py`, `pnl_calculator.py`
+  - Files: `position_monitor.py`, `risk_monitor.py`, `strategy_manager.py`, `pnl_monitor.py`
   - Remove async from internal methods per ADR-006
 
 - Task 10: Reference-based architecture (6-8 hours)
@@ -61,7 +61,7 @@
 ### Batch 2C: Mode-Agnostic & Fail-Fast (Parallel)
 
 - Task 08: Mode-agnostic architecture (6-8 hours)
-  - Targets: `exposure_monitor.py`, `pnl_calculator.py`
+  - Targets: `exposure_monitor.py`, `pnl_monitor.py`
   - Config params instead of mode checks
 
 - Task 09: Fail-fast configuration (6-8 hours)
@@ -107,7 +107,7 @@
 ### Simple Strategies First
 
 - Task 15: Pure lending E2E (4-5 hours)
-  - Quality Gate: `tests/e2e/test_pure_lending_e2e.py`
+  - Quality Gate: `tests/e2e/test_pure_lending_usdt_e2e.py`
   - Target: 3-8% APY validation (not 1166%)
 
 - Task 16: BTC basis E2E (4-5 hours)
@@ -149,7 +149,7 @@
   - Target: 80% coverage, inheritance-based
 
 - Task 23: P&L calculator unit tests (8-10 hours)
-  - File: `tests/unit/test_pnl_calculator_unit.py`
+  - File: `tests/unit/test_pnl_monitor_unit.py`
   - Target: 80% coverage, mode-agnostic
 
 ### Batch 5C: Infrastructure Components (Parallel)
@@ -168,11 +168,11 @@
 ### Batch 6A: Execution Components (Sequential)
 
 - Task 30: Execution components implementation (8-10 hours)
-  - Reference: `docs/specs/06_EXECUTION_MANAGER.md`, `docs/specs/07_EXECUTION_INTERFACE_MANAGER.md`
+  - Reference: `docs/specs/06_VENUE_MANAGER.md`, `docs/specs/07_VENUE_INTERFACE_MANAGER.md`
   - Complete execution infrastructure
 
 - Task 31: Infrastructure components completion (6-8 hours)
-  - Reference: `docs/specs/17_HEALTH_ERROR_SYSTEMS.md`
+  - Reference: `docs/specs/HEALTH_ERROR_SYSTEMS.md`
   - Health systems, error handling, results store
 
 ### Batch 6B: Service Validation (Parallel with 6A)

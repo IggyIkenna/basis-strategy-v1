@@ -13,7 +13,7 @@ from basis_strategy_v1.core.instructions.execution_instructions import (
     ExecutionMode,
     InstructionType,
     WalletTransferInstruction,
-    CEXTradeInstruction,
+    CEXExecutionHandshakeInstruction,
     SmartContractInstruction,
     InstructionBlock,
     InstructionGenerator
@@ -157,12 +157,12 @@ class TestWalletTransferInstruction:
         assert any('gas_limit must be positive' in error for error in errors)
 
 
-class TestCEXTradeInstruction:
-    """Test CEXTradeInstruction dataclass."""
+class TestCEXExecutionHandshakeInstruction:
+    """Test CEXExecutionHandshakeInstruction dataclass."""
     
     def test_initialization(self):
         """Test CEX trade instruction initialization."""
-        instruction = CEXTradeInstruction(
+        instruction = CEXExecutionHandshakeInstruction(
             instruction_id="trade_001",
             venue="binance",
             instruction_type=InstructionType.SPOT_TRADE,
@@ -182,7 +182,7 @@ class TestCEXTradeInstruction:
     
     def test_validation_success(self):
         """Test successful CEX trade instruction validation."""
-        instruction = CEXTradeInstruction(
+        instruction = CEXExecutionHandshakeInstruction(
             instruction_id="trade_001",
             venue="binance",
             instruction_type=InstructionType.SPOT_TRADE,
@@ -197,7 +197,7 @@ class TestCEXTradeInstruction:
     
     def test_validation_missing_venue(self):
         """Test validation with missing venue."""
-        instruction = CEXTradeInstruction(
+        instruction = CEXExecutionHandshakeInstruction(
             instruction_id="trade_001",
             venue="",
             instruction_type=InstructionType.SPOT_TRADE,
@@ -213,7 +213,7 @@ class TestCEXTradeInstruction:
     
     def test_validation_invalid_side(self):
         """Test validation with invalid side."""
-        instruction = CEXTradeInstruction(
+        instruction = CEXExecutionHandshakeInstruction(
             instruction_id="trade_001",
             venue="binance",
             instruction_type=InstructionType.SPOT_TRADE,
@@ -229,7 +229,7 @@ class TestCEXTradeInstruction:
     
     def test_validation_invalid_amount(self):
         """Test validation with invalid amount."""
-        instruction = CEXTradeInstruction(
+        instruction = CEXExecutionHandshakeInstruction(
             instruction_id="trade_001",
             venue="binance",
             instruction_type=InstructionType.SPOT_TRADE,

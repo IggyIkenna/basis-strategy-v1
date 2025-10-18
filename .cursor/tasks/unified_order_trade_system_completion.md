@@ -136,7 +136,7 @@ The platform is being refactored from a complex multi-abstraction system (Strate
 **Files to Update**:
 - `docs/specs/05_STRATEGY_MANAGER.md`
 - `docs/specs/5B_BASE_STRATEGY_MANAGER.md`
-- `docs/specs/06_EXECUTION_MANAGER.md`
+- `docs/specs/06_VENUE_MANAGER.md`
 - `docs/specs/07_VENUE_INTERFACE_MANAGER.md`
 - All individual strategy specification files
 

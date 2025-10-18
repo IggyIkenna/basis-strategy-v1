@@ -13,7 +13,7 @@ from typing import Dict, Any
 import logging
 
 from ..models import ApiResponse
-from ...infrastructure.health.health_checker import check_health, check_detailed_health
+from ...core.health import system_health_aggregator
 
 logger = logging.getLogger(__name__)
 
@@ -25,12 +25,12 @@ async def basic_health():
     """
     Basic health check endpoint for load balancers.
     
-    Returns simple health status without detailed component information.
+    Fast heartbeat (< 50ms) - returns simple health status without detailed component information.
     """
     try:
         logger.debug("Basic health check requested")
         
-        health_data = check_health()
+        health_data = await system_health_aggregator.check_basic_health()
         
         return ApiResponse(
             success=True,
@@ -51,12 +51,12 @@ async def detailed_health():
     """
     Detailed health check endpoint for monitoring systems.
     
-    Returns comprehensive health information including component details.
+    Comprehensive check (~200ms) - returns full component health with readiness checks and metrics.
     """
     try:
         logger.debug("Detailed health check requested")
         
-        health_data = check_detailed_health()
+        health_data = await system_health_aggregator.check_detailed_health()
         
         return ApiResponse(
             success=True,
@@ -77,15 +77,15 @@ async def health_status():
     """
     Simple status endpoint that returns just the health status.
     
-    Useful for simple monitoring checks.
+    Fastest check - returns only status string (no ApiResponse wrapper).
     """
     try:
-        health_data = check_health()
+        health_data = await system_health_aggregator.check_basic_health()
         
         return {
             "status": health_data.get("status", "unknown"),
             "timestamp": health_data.get("timestamp"),
-            "service": health_data.get("service", "basis-strategy-v1")
+            "service": "basis-strategy-v1"
         }
         
     except Exception as e:

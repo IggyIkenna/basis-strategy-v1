@@ -49,7 +49,7 @@ def setup_test_environment():
 def mock_config():
     """Mock configuration for tests."""
     return {
-        'mode': 'pure_lending',
+        'mode': 'pure_lending_usdt',
         'share_class': 'USDT',
         'asset': 'USDT',
         'initial_capital': 100000.0,
@@ -72,10 +72,10 @@ def mock_config():
                 'update_interval': 60,
                 'max_risk_ratio': 0.8
             },
-            'pnl_calculator': {
-                'update_interval': 60,
-                'precision': 6,
-                'attribution_enabled': True
+            'pnl_monitor': {
+                'attribution_types': ['supply_yield', 'funding_pnl', 'delta_pnl', 'transaction_costs'],
+                'reporting_currency': 'USDT',
+                'reconciliation_tolerance': 0.02
             }
         }
     }

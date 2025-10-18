@@ -1,14 +1,11 @@
 """
 Venue Interface Manager
 
-Manages venue interfaces and routes instructions to appropriate venues.
-Implements instruction routing logic for 3 instruction types:
-- wallet_transfer: Routes to transfer venue interface
-- smart_contract_action: Routes to onchain venue interface  
-- cex_trade: Routes to CEX venue interface
+Routes Orders to execution interfaces only (not position interfaces).
+No longer owns tight loop orchestration - PositionUpdateHandler is the only tight loop owner.
 
 Reference: docs/specs/07_VENUE_INTERFACE_MANAGER.md
-Reference: docs/REFERENCE_ARCHITECTURE_CANONICAL.md - ADR-001 (Tight Loop Architecture)
+Reference: docs/REFERENCE_ARCHITECTURE_CANONICAL.md - Section 4
 """
 
 import logging
@@ -17,8 +14,9 @@ from typing import Dict, Any, List, Optional
 from datetime import datetime
 from ..interfaces.venue_interface_factory import VenueInterfaceFactory
 from ..interfaces.base_execution_interface import BaseExecutionInterface
+from ...core.models.order import Order
+from ...core.models.execution import ExecutionHandshake, ExecutionStatus
 
-from ...core.logging.base_logging_interface import StandardizedLoggingMixin, LogLevel, EventType
 from ...core.errors.component_error import ComponentError
 
 logger = logging.getLogger(__name__)
@@ -41,16 +39,10 @@ ERROR_CODES = {
 }
 
 
-class VenueInterfaceManager(StandardizedLoggingMixin):
+class VenueInterfaceManager:
     """
-    Manages venue interfaces and routes instructions to appropriate venues.
-    
-    Implements the tight loop architecture pattern:
-    1. Route instruction to appropriate venue interface
-    2. Execute instruction through venue interface
-    3. Update position monitor
-    4. Verify reconciliation
-    5. Return execution result
+    Routes Orders to execution interfaces only (not position interfaces).
+    No longer owns tight loop orchestration.
     """
     
     def __init__(self, config: Dict[str, Any], data_provider, execution_mode: str):
@@ -241,62 +233,58 @@ class VenueInterfaceManager(StandardizedLoggingMixin):
         
         return interfaces
     
-    def route_to_venue(self, timestamp: pd.Timestamp, instruction_block: Dict[str, Any]) -> Dict[str, Any]:
+    def route_to_venue(self, order: Order) -> ExecutionHandshake:
         """
-        Route instruction to appropriate venue interface.
+        Route Order to appropriate execution interface.
         
         Args:
-            timestamp: Current timestamp
-            instruction_block: Instruction block containing instruction details
+            order: Order object containing order details
             
         Returns:
-            Execution result dictionary
+            ExecutionHandshake: Execution result from venue
         """
-        # Config-driven behavior
-        routing_config = self.config.get('venue_interface_manager', {}).get('routing', {})
-        enable_logging = routing_config.get('enable_logging', True)
-        timeout_seconds = routing_config.get('timeout_seconds', 30)
         try:
-            # Parse instruction type
-            instruction_type = instruction_block.get('type')
-            if not instruction_type:
-                raise ValueError("Instruction type not specified")
-            
-            # Route to appropriate interface
-            if instruction_type == 'wallet_transfer':
-                return self._route_to_transfer(timestamp, instruction_block)
-            elif instruction_type == 'smart_contract_action':
-                return self._route_to_onchain(timestamp, instruction_block)
-            elif instruction_type == 'cex_trade':
-                return self._route_to_cex(timestamp, instruction_block)
+            # Route to appropriate execution interface based on operation
+            if order.operation == 'transfer':
+                return self._route_to_transfer(order)
+            elif order.operation in ['supply', 'borrow', 'repay', 'withdraw', 'stake', 'unstake']:
+                return self._route_to_onchain(order)
+            elif order.operation in ['spot_trade', 'perp_trade']:
+                return self._route_to_cex(order)
             else:
-                raise ValueError(f"Unknown instruction type: {instruction_type}")
+                raise ValueError(f"Unknown order operation: {order.operation}")
         
         except Exception as e:
             self.instructions_failed += 1
             logger.error(f"Venue routing failed: {e}")
-            raise
+            # Return a failed ExecutionHandshake instead of raising
+            return ExecutionHandshake(
+                operation_id=order.operation_id,
+                status=ExecutionStatus.FAILED,
+                actual_deltas={},
+                execution_details={},
+                error_code='VEN-001',
+                error_message=str(e),
+                submitted_at=datetime.now(),
+                simulated=self.execution_mode == 'backtest'
+            )
     
-    def _route_to_transfer(self, timestamp: pd.Timestamp, instruction_block: Dict[str, Any]) -> Dict[str, Any]:
-        """Route wallet transfer instruction to transfer interface."""
+    def _route_to_transfer(self, order: Order) -> ExecutionHandshake:
+        """Route wallet transfer order to transfer execution interface."""
         try:
-            # Get transfer type from instruction
-            transfer_type = instruction_block.get('transfer_type', 'default')
-            interface_key = f'transfer_{transfer_type}'
-            
-            # Get transfer interface
-            transfer_interface = self.venue_interfaces.get(interface_key)
+            # Get transfer execution interface
+            transfer_interface = self.venue_interfaces.get('transfer_wallet')
             if not transfer_interface:
-                raise ValueError(f"Transfer interface not available for type: {transfer_type}")
+                raise ValueError("Transfer execution interface not available")
             
             # Execute transfer
-            result = transfer_interface.execute_transfer(instruction_block, {})
+            result = transfer_interface.execute_transfer(order)
             
             # Update routing history
             self.routing_history.append({
-                'timestamp': timestamp,
-                'instruction_type': 'wallet_transfer',
-                'transfer_type': transfer_type,
+                'timestamp': datetime.now(),
+                'order_type': 'transfer',
+                'venue': order.venue,
                 'result': result
             })
             
@@ -308,28 +296,44 @@ class VenueInterfaceManager(StandardizedLoggingMixin):
         except Exception as e:
             self.instructions_failed += 1
             logger.error(f"Transfer routing failed: {e}")
-            raise
+            return ExecutionHandshake(
+                operation_id=order.operation_id,
+                status=ExecutionStatus.FAILED,
+                actual_deltas={},
+                execution_details={},
+                error_code='VEN-001',
+                error_message=str(e),
+                submitted_at=datetime.now(),
+                simulated=self.execution_mode == 'backtest'
+            )
     
-    def _route_to_onchain(self, timestamp: pd.Timestamp, instruction_block: Dict[str, Any]) -> Dict[str, Any]:
-        """Route smart contract action instruction to onchain interface."""
+    def _route_to_onchain(self, order: Order) -> ExecutionHandshake:
+        """Route smart contract action order to onchain execution interface."""
         try:
-            # Get protocol from instruction
-            protocol = instruction_block.get('protocol', 'default')
-            interface_key = f'onchain_{protocol}'
-            
-            # Get onchain interface
+            # Get onchain execution interface
+            interface_key = f'onchain_{order.venue}'
             onchain_interface = self.venue_interfaces.get(interface_key)
             if not onchain_interface:
-                raise ValueError(f"OnChain interface not available for protocol: {protocol}")
+                raise ValueError(f"OnChain execution interface not available for venue: {order.venue}")
             
-            # Execute smart contract action
-            result = onchain_interface.execute_smart_contract_action(instruction_block, {})
+            # Execute smart contract action based on operation
+            if order.operation.value == 'supply':
+                result = onchain_interface.execute_supply(order)
+            elif order.operation.value == 'borrow':
+                result = onchain_interface.execute_borrow(order)
+            elif order.operation.value == 'stake':
+                result = onchain_interface.execute_stake(order)
+            elif order.operation.value == 'unstake':
+                result = onchain_interface.execute_unstake(order)
+            else:
+                result = onchain_interface.execute_trade(order)
             
             # Update routing history
             self.routing_history.append({
-                'timestamp': timestamp,
-                'instruction_type': 'smart_contract_action',
-                'protocol': protocol,
+                'timestamp': datetime.now(),
+                'order_type': 'onchain',
+                'venue': order.venue,
+                'operation': order.operation.value,
                 'result': result
             })
             
@@ -341,28 +345,40 @@ class VenueInterfaceManager(StandardizedLoggingMixin):
         except Exception as e:
             self.instructions_failed += 1
             logger.error(f"OnChain routing failed: {e}")
-            raise
+            return ExecutionHandshake(
+                operation_id=order.operation_id,
+                status=ExecutionStatus.FAILED,
+                actual_deltas={},
+                execution_details={},
+                error_code='VEN-002',
+                error_message=str(e),
+                submitted_at=datetime.now(),
+                simulated=self.execution_mode == 'backtest'
+            )
     
-    def _route_to_cex(self, timestamp: pd.Timestamp, instruction_block: Dict[str, Any]) -> Dict[str, Any]:
-        """Route CEX trade instruction to CEX interface."""
+    def _route_to_cex(self, order: Order) -> ExecutionHandshake:
+        """Route CEX trade order to CEX execution interface."""
         try:
-            # Get venue from instruction
-            venue = instruction_block.get('venue', 'default')
-            interface_key = f'cex_{venue}'
-            
-            # Get CEX interface
+            # Get CEX execution interface
+            interface_key = f'cex_{order.venue}'
             cex_interface = self.venue_interfaces.get(interface_key)
             if not cex_interface:
-                raise ValueError(f"CEX interface not available for venue: {venue}")
+                raise ValueError(f"CEX execution interface not available for venue: {order.venue}")
             
-            # Execute trade
-            result = cex_interface.execute_trade(instruction_block, {})
+            # Execute CEX trade based on operation
+            if order.operation.value == 'spot_trade':
+                result = cex_interface.execute_spot_trade(order)
+            elif order.operation.value == 'perp_trade':
+                result = cex_interface.execute_perp_trade(order)
+            else:
+                result = cex_interface.execute_trade(order)
             
             # Update routing history
             self.routing_history.append({
-                'timestamp': timestamp,
-                'instruction_type': 'cex_trade',
-                'venue': venue,
+                'timestamp': datetime.now(),
+                'order_type': 'cex',
+                'venue': order.venue,
+                'operation': order.operation.value,
                 'result': result
             })
             
@@ -374,7 +390,16 @@ class VenueInterfaceManager(StandardizedLoggingMixin):
         except Exception as e:
             self.instructions_failed += 1
             logger.error(f"CEX routing failed: {e}")
-            raise
+            return ExecutionHandshake(
+                operation_id=order.operation_id,
+                status=ExecutionStatus.FAILED,
+                actual_deltas={},
+                execution_details={},
+                error_code='VEN-003',
+                error_message=str(e),
+                submitted_at=datetime.now(),
+                simulated=self.execution_mode == 'backtest'
+            )
     
     def _get_routing_stats(self) -> Dict[str, Any]:
         """Get routing statistics."""
@@ -395,28 +420,28 @@ class VenueInterfaceManager(StandardizedLoggingMixin):
         
         logger.info("Set dependencies for all venue interfaces")
     
-    def update_state(self, timestamp: pd.Timestamp, trigger_source: str, instruction_block: Optional[Dict] = None) -> Dict:
+    def update_state(self, timestamp: pd.Timestamp, trigger_source: str, order: Optional[Dict] = None) -> Dict:
         """
-        Main entry point for instruction routing.
+        Main entry point for order routing.
         
         Args:
             timestamp: Current loop timestamp (from EventDrivenStrategyEngine)
             trigger_source: 'venue_manager' | 'manual' | 'retry'
-            instruction_block: Dict (optional) - instruction block from Venue Manager
+            order: Dict (optional) - order from Venue Manager
             
         Returns:
-            Dict: Execution deltas (net position changes)
+            Dict: Trade result
         """
         try:
-            logger.info(f"Venue Interface Manager: Updating state from {trigger_source}")
+            logger.info(f"VenueInterfaceManager: Updating state from {trigger_source}")
             
-            if instruction_block:
-                return self.route_to_venue(timestamp, instruction_block)
+            if order:
+                return self.route_to_venue(timestamp, order)
             else:
-                return {'success': True, 'message': 'No instruction block to process'}
+                return {'success': True, 'message': 'No order to process'}
                 
         except Exception as e:
-            logger.error(f"Venue Interface Manager: Error in update_state: {e}")
+            logger.error(f"VenueInterfaceManager: Error in update_state: {e}")
             return {
                 'success': False,
                 'error': str(e),
@@ -424,224 +449,5 @@ class VenueInterfaceManager(StandardizedLoggingMixin):
             }
 
 
-# Legacy compatibility class for backward transition
-# This will be removed in a future version
-class ExecutionInterfaceManager(StandardizedLoggingMixin):
-    """
-    Legacy ExecutionInterfaceManager - DEPRECATED
     
-    Use VenueInterfaceManager instead.
-    This class is provided for backward compatibility only.
-    """
     
-    def __init__(self, config: Dict[str, Any], data_provider, execution_mode: str):
-        """Legacy constructor - use VenueInterfaceManager instead."""
-        self._venue_manager = VenueInterfaceManager(config, data_provider, execution_mode)
-        # Map legacy attributes
-        self.execution_interfaces = self._venue_manager.venue_interfaces
-        self.current_instruction = self._venue_manager.current_instruction
-        self.routing_history = self._venue_manager.routing_history
-        self.instructions_routed = self._venue_manager.instructions_routed
-        self.instructions_failed = self._venue_manager.instructions_failed
-        self.instructions_succeeded = self._venue_manager.instructions_succeeded
-    
-    def _route_instruction(self, timestamp: pd.Timestamp, instruction_block: Dict[str, Any]) -> Dict[str, Any]:
-        """Legacy method - use VenueInterfaceManager.route_to_venue() instead."""
-        return self._venue_manager.route_to_venue(timestamp, instruction_block)
-    
-    def get_routing_stats(self) -> Dict[str, Any]:
-        """Legacy method - use VenueInterfaceManager.get_routing_stats() instead."""
-        return self._venue_manager.get_routing_stats()
-    
-    def set_dependencies(self, position_monitor, event_logger, data_provider):
-        """Legacy method - use VenueInterfaceManager.set_dependencies() instead."""
-        return self._venue_manager.set_dependencies(position_monitor, event_logger, data_provider)
-    
-    def update_state(self, timestamp: pd.Timestamp, trigger_source: str, instruction_block: Optional[Dict] = None) -> Dict:
-        """Legacy method - use VenueInterfaceManager.update_state() instead."""
-        return self._venue_manager.update_state(timestamp, trigger_source, instruction_block)
-    
-    def _route_to_cex(self, instruction: Dict) -> Dict:
-        """Route CEX trade instruction to appropriate CEX interface."""
-        try:
-            venue = instruction['venue']
-            interface = self.cex_venue_interfaces.get(venue)
-            
-            if not interface:
-                raise ValueError(f"CEX interface not found for venue: {venue}")
-            
-            if self.execution_mode == 'backtest':
-                return interface.execute_backtest_trade(instruction)
-            else:
-                return interface.execute_live_trade(instruction)
-                
-        except Exception as e:
-            logger.error(f"Failed to route CEX instruction: {e}")
-            return {'success': False, 'error': str(e)}
-    
-    def _route_to_onchain(self, instruction: Dict) -> Dict:
-        """Route smart contract action to appropriate OnChain interface."""
-        try:
-            protocol = instruction['protocol']
-            interface = self.onchain_venue_interfaces.get(protocol)
-            
-            if not interface:
-                raise ValueError(f"OnChain interface not found for protocol: {protocol}")
-            
-            if self.execution_mode == 'backtest':
-                return interface.execute_backtest_action(instruction)
-            else:
-                return interface.execute_live_action(instruction)
-                
-        except Exception as e:
-            logger.error(f"Failed to route OnChain instruction: {e}")
-            return {'success': False, 'error': str(e)}
-    
-    def _route_to_transfer(self, instruction: Dict) -> Dict:
-        """Route wallet transfer to appropriate interface."""
-        try:
-            from_venue = instruction['from_venue']
-            to_venue = instruction['to_venue']
-            
-            # Determine which interface to use based on venues
-            if from_venue in self.cex_venue_interfaces and to_venue in self.cex_venue_interfaces:
-                # CEX to CEX transfer
-                interface = self.cex_venue_interfaces[from_venue]
-                return interface.execute_transfer(instruction)
-            elif from_venue in self.onchain_venue_interfaces and to_venue in self.onchain_venue_interfaces:
-                # OnChain to OnChain transfer
-                interface = self.onchain_venue_interfaces[from_venue]
-                return interface.execute_transfer(instruction)
-            else:
-                # Cross-venue transfer - use bridge interface
-                bridge_interface = self.bridge_venue_interfaces.get('cross_venue')
-                if bridge_interface:
-                    return bridge_interface.execute_transfer(instruction)
-                else:
-                    raise ValueError(f"No bridge interface available for cross-venue transfer: {from_venue} -> {to_venue}")
-                    
-        except Exception as e:
-            logger.error(f"Failed to route transfer instruction: {e}")
-            self._handle_error('VIM-013', f"Failed to route transfer instruction: {e}")
-            return {'success': False, 'error': str(e)}
-    
-    def check_component_health(self) -> Dict[str, Any]:
-        """
-        Check component health status.
-        
-        Returns:
-            Health status dictionary
-        """
-        try:
-            current_time = datetime.now()
-            
-            # Check if component is responsive
-            if (current_time - self.health_status['last_check']).seconds > 300:  # 5 minutes
-                self.health_status['status'] = 'unhealthy'
-                self.health_status['error'] = 'Component not responding'
-            
-            # Check error rate
-            total_operations = self.health_status['error_count'] + self.health_status['success_count']
-            if total_operations > 0:
-                error_rate = self.health_status['error_count'] / total_operations
-                if error_rate > 0.1:  # 10% error rate threshold
-                    self.health_status['status'] = 'degraded'
-                    self.health_status['error_rate'] = error_rate
-            
-            self.health_status['last_check'] = current_time
-            
-            return {
-                'component': 'venue_interface_manager',
-                'status': self.health_status['status'],
-                'last_check': self.health_status['last_check'].isoformat(),
-                'error_count': self.health_status['error_count'],
-                'success_count': self.health_status['success_count'],
-                'total_operations': total_operations
-            }
-            
-        except Exception as e:
-            logger.error(f"Health check failed: {e}")
-            return {
-                'component': 'venue_interface_manager',
-                'status': 'unhealthy',
-                'error': str(e)
-            }
-    
-    def _handle_error(self, error_code: str, error_message: str, details: Optional[Dict] = None):
-        """
-        Handle errors with structured error handling.
-        
-        Args:
-            error_code: Error code from ERROR_CODES
-            error_message: Error message
-            details: Additional error details
-        """
-        try:
-            # Update health status
-            self.health_status['error_count'] += 1
-            
-            # Create structured error
-            error = ComponentError(
-                component='venue_interface_manager',
-                error_code=error_code,
-                message=error_message,
-                details=details or {}
-            )
-            
-            # Log structured error
-            self.structured_logger.error(
-                f"Venue Interface Manager Error: {error_code}",
-                error_code=error_code,
-                error_message=error_message,
-                details=details,
-                component='venue_interface_manager'
-            )
-            
-            # Update health status if too many errors
-            if self.health_status['error_count'] > 10:
-                self.health_status['status'] = 'unhealthy'
-            
-        except Exception as e:
-            logger.error(f"Failed to handle error: {e}")
-    
-    def _log_success(self, operation: str, details: Optional[Dict] = None):
-        """
-        Log successful operations.
-        
-        Args:
-            operation: Operation name
-            details: Operation details
-        """
-        try:
-            # Update health status
-            self.health_status['success_count'] += 1
-            
-            # Log success
-            self.structured_logger.info(
-                f"Venue Interface Manager Success: {operation}",
-                operation=operation,
-                details=details,
-                component='venue_interface_manager'
-            )
-            
-        except Exception as e:
-            logger.error(f"Failed to log success: {e}")
-    
-    def get_data(self, timestamp: pd.Timestamp) -> Dict[str, Any]:
-        """
-        Get data using canonical data access pattern.
-        
-        Args:
-            timestamp: Current timestamp
-            
-        Returns:
-            Data dictionary
-        """
-        try:
-            if self.data_provider:
-                return self.data_provider.get_data(timestamp)
-            else:
-                return {}
-        except Exception as e:
-            self._handle_error('VIM-001', f"Failed to get data: {e}")
-            return {}

@@ -190,16 +190,18 @@ class ChartGenerator:
 
             # DEBUG: Log what data we received
             logger.info(f"Chart generation debug for {request_id}:")
-            logger.info(f"  Equity curve data points: {len(equity_curve)}")
-            if equity_curve:
+            if equity_curve is None:
+                logger.warning("  Equity curve data is None - will use fallback", extra={"error_code": "CHART_ERROR_001"})
+            elif not equity_curve:
+                logger.warning("  No equity curve data - will use fallback", extra={"error_code": "CHART_ERROR_002"})
+            else:
+                logger.info(f"  Equity curve data points: {len(equity_curve)}")
                 logger.info(f"  First point: {equity_curve[0]}")
                 logger.info(f"  Last point: {equity_curve[-1]}")
-            else:
-                logger.warning("  No equity curve data - will use fallback")
 
-            if not equity_curve:
+            if not equity_curve or equity_curve is None:
                 logger.warning(
-                    "No equity curve data available, creating placeholder")
+                    "No equity curve data available, creating placeholder", extra={"error_code": "CHART_ERROR_003"})
                 # Fallback to simple curve if no time series data
                 dates = [datetime.now() - timedelta(days=1), datetime.now()]
                 net_values = [initial_capital, final_value]

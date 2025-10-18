@@ -44,7 +44,7 @@ class TestResultsRoutes:
         service = Mock()
         service.get_result.return_value = {
             "request_id": "test_result_123",
-            "strategy_name": "pure_lending",
+            "strategy_name": "pure_lending_usdt",
             "start_date": "2024-05-12",
             "end_date": "2024-05-19",
             "initial_capital": 100000.0,
@@ -77,11 +77,11 @@ class TestResultsRoutes:
         results_dir.mkdir()
         
         # Create a test result directory
-        result_dir = results_dir / "test_result_123_pure_lending"
+        result_dir = results_dir / "test_result_123_pure_lending_usdt"
         result_dir.mkdir()
         
         # Create mock CSV files
-        event_log_file = result_dir / "test_result_123_pure_lending_event_log.csv"
+        event_log_file = result_dir / "test_result_123_pure_lending_usdt_event_log.csv"
         with open(event_log_file, 'w', newline='') as f:
             writer = csv.DictWriter(f, fieldnames=['timestamp', 'action', 'amount', 'gross_value', 'net_value', 'total_fees_paid'])
             writer.writeheader()
@@ -103,7 +103,7 @@ class TestResultsRoutes:
             })
         
         # Create mock equity curve file
-        equity_curve_file = result_dir / "test_result_123_pure_lending_equity_curve.csv"
+        equity_curve_file = result_dir / "test_result_123_pure_lending_usdt_equity_curve.csv"
         with open(equity_curve_file, 'w', newline='') as f:
             writer = csv.DictWriter(f, fieldnames=['timestamp', 'net_value', 'gross_value'])
             writer.writeheader()
@@ -111,14 +111,14 @@ class TestResultsRoutes:
             writer.writerow({'timestamp': '2024-05-19T23:59:59', 'net_value': '101000.0', 'gross_value': '101000.0'})
         
         # Create mock trades file
-        trades_file = result_dir / "test_result_123_pure_lending_trades.csv"
+        trades_file = result_dir / "test_result_123_pure_lending_usdt_trades.csv"
         with open(trades_file, 'w', newline='') as f:
             writer = csv.DictWriter(f, fieldnames=['timestamp', 'action', 'amount', 'price'])
             writer.writeheader()
             writer.writerow({'timestamp': '2024-05-12T00:00:00', 'action': 'buy', 'amount': '1000.0', 'price': '1.0'})
         
         # Create mock HTML chart files
-        chart_file = result_dir / "test_result_123_pure_lending_equity_curve.html"
+        chart_file = result_dir / "test_result_123_pure_lending_usdt_equity_curve.html"
         chart_file.write_text("<html><body>Equity Curve Chart</body></html>")
         
         return results_dir
@@ -207,7 +207,7 @@ class TestResultsRoutes:
             assert response.status_code == 200
             assert response.headers["content-type"] == "application/zip"
             assert "attachment" in response.headers["content-disposition"]
-            assert "test_result_123_pure_lending_export.zip" in response.headers["content-disposition"]
+            assert "test_result_123_pure_lending_usdt_export.zip" in response.headers["content-disposition"]
 
     def test_download_result_assets_not_found(self, client):
         """Test result assets download for non-existent result."""
@@ -234,7 +234,7 @@ class TestResultsRoutes:
         """Test results listing with filters."""
         with patch('basis_strategy_v1.api.routes.results.get_backtest_service', return_value=mock_backtest_service):
             with patch('basis_strategy_v1.api.routes.results._scan_results_filesystem', return_value=[]):
-                response = client.get("/results/?strategy=pure_lending&limit=5")
+                response = client.get("/results/?strategy=pure_lending_usdt&limit=5")
                 
                 assert response.status_code == 200
                 data = response.json()
@@ -249,7 +249,7 @@ class TestResultsRoutes:
             data = response.json()
             assert data["success"] is True
             assert data["data"]["request_id"] == "test_result_123"
-            assert data["data"]["strategy_name"] == "pure_lending"
+            assert data["data"]["strategy_name"] == "pure_lending_usdt"
             assert data["data"]["initial_capital"] == 100000.0
             assert data["data"]["final_value"] == 101000.0
             assert "chart_links" in data["data"]
@@ -285,7 +285,7 @@ class TestResultsRoutes:
         """Test result retrieval with missing start/end dates."""
         mock_backtest_service.get_result.return_value = {
             "request_id": "test_result_123",
-            "strategy_name": "pure_lending"
+            "strategy_name": "pure_lending_usdt"
             # Missing start_date and end_date
         }
         
@@ -331,7 +331,7 @@ class TestResultsRoutes:
     def test_csv_loading_edge_cases(self, client, mock_results_directory):
         """Test CSV loading with various edge cases."""
         # Test with empty CSV
-        empty_csv = mock_results_directory / "test_result_123_pure_lending" / "empty_event_log.csv"
+        empty_csv = mock_results_directory / "test_result_123_pure_lending_usdt" / "empty_event_log.csv"
         with open(empty_csv, 'w', newline='') as f:
             writer = csv.DictWriter(f, fieldnames=['timestamp', 'action', 'amount'])
             writer.writeheader()

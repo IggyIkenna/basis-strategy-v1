@@ -5,7 +5,6 @@ from typing import Dict, List, Optional
 from datetime import datetime
 import logging
 
-from ...core.logging.base_logging_interface import StandardizedLoggingMixin, LogLevel, EventType
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +18,7 @@ ERROR_CODES = {
 }
 
 
-class MetricsCalculator(StandardizedLoggingMixin):
+class MetricsCalculator:
     """Pure metrics calculation functions - no side effects or I/O."""
     
     @staticmethod

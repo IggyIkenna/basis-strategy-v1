@@ -66,10 +66,10 @@ python3 scripts/validate_config_alignment.py
 - 01_POSITION_MONITOR.md
 - 02_EXPOSURE_MONITOR.md
 - 03_RISK_MONITOR.md
-- 04_PNL_CALCULATOR.md
+- 04_pnl_monitor.md
 - 05_STRATEGY_MANAGER.md
-- 06_EXECUTION_MANAGER.md
-- 07_EXECUTION_INTERFACE_MANAGER.md
+- 06_VENUE_MANAGER.md
+- 07_VENUE_INTERFACE_MANAGER.md
 - 07B_EXECUTION_INTERFACES.md
 - 07C_EXECUTION_INTERFACE_FACTORY.md
 - 08_EVENT_LOGGER.md
@@ -81,7 +81,7 @@ python3 scripts/validate_config_alignment.py
 - 14_LIVE_TRADING_SERVICE.md
 - 15_EVENT_DRIVEN_STRATEGY_ENGINE.md
 - 16_MATH_UTILITIES.md
-- 17_HEALTH_ERROR_SYSTEMS.md
+- HEALTH_ERROR_SYSTEMS.md
 - 18_RESULTS_STORE.md
 - 19_CONFIGURATION.md
 - 5A_STRATEGY_FACTORY.md
@@ -182,7 +182,7 @@ def validate_business_logic(self):
 
 ```python
 def test_all_configs_load():
-    modes = ['pure_lending', 'btc_basis', 'eth_basis', 'eth_leveraged',
+    modes = ['pure_lending_usdt', 'btc_basis', 'eth_basis', 'eth_leveraged',
              'eth_staking_only', 'usdt_market_neutral', 
              'usdt_market_neutral_no_leverage', 'ml_btc_directional', 
              'ml_usdt_directional']

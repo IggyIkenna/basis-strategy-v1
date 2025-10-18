@@ -2,6 +2,14 @@
 venue: "binance"
 type: "cex"
 
+# Canonical instruments available on this venue
+canonical_instruments:
+  - "binance:BaseToken:USDT"
+  - "binance:BaseToken:BTC"
+  - "binance:BaseToken:ETH"
+  - "binance:Perp:BTCUSDT"
+  - "binance:Perp:ETHUSDT"
+
 # Trading parameters
 trading_fees:
   maker: 0.001  # 0.1% maker fee
@@ -14,3 +22,4 @@ max_trade_size_usd: 1000000  # $1M max per trade
 # Basic limits
 max_leverage: 125
 min_order_size_usd: 10
+min_amount: 10

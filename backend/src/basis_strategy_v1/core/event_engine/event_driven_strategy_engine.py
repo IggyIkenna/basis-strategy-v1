@@ -1,32 +1,15 @@
 """
-New Event-Driven Strategy Engine using the new component architecture.
+Event-Driven Strategy Engine using the component architecture.
 
-TODO-REFACTOR: SINGLETON PATTERN VIOLATION - See docs/REFERENCE_ARCHITECTURE_CANONICAL.md
-ISSUE: This component may violate singleton pattern requirements:
-
-1. SINGLETON PATTERN REQUIREMENTS:
-   - All components must use singleton pattern correctly
-   - Single instances across the system
-   - Proper instance management and lifecycle
-
-2. REQUIRED VERIFICATION:
-   - Verify all 9 components use singleton pattern
-   - Ensure proper instance management
-   - Check for multiple instantiation issues
-
-3. CANONICAL SOURCE:
-   - docs/REFERENCE_ARCHITECTURE_CANONICAL.md - Singleton Pattern
-   - All components must be single instances
-
-This engine wires together all 9 components:
+This engine orchestrates all 9 components:
 - Position Monitor (Core Component)
 - Event Logger (Core Component) 
 - Exposure Monitor (Core Component)
 - Risk Monitor (Core Component)
 - P&L Calculator (Core Component)
 - Strategy Manager (Execution Component)
-- CEX Execution Manager (Execution Component)
-- OnChain Execution Manager (Execution Component)
+- ExecutionManager (Execution Component)
+- VenueInterfaceManager (Execution Component)
 - Data Provider (Execution Component)
 """
 
@@ -45,12 +28,14 @@ from ..components.position_monitor import PositionMonitor
 from ...infrastructure.logging.event_logger import EventLogger
 from ..components.exposure_monitor import ExposureMonitor
 from ..components.risk_monitor import RiskMonitor
-from ..math.pnl_calculator import PnLCalculator
+from ..components.pnl_monitor import PnLCalculator
 from ..strategies.base_strategy_manager import BaseStrategyManager
 from ..components.position_update_handler import PositionUpdateHandler
-# Legacy execution managers removed - using new execution interfaces instead
+from ..execution.execution_manager import ExecutionManager
+from ..execution.venue_interface_manager import VenueInterfaceManager
 from ..interfaces.venue_interface_factory import VenueInterfaceFactory
 from ...infrastructure.persistence.async_results_store import AsyncResultsStore
+from ...core.utilities.utility_manager import UtilityManager
 from ..health import (
     system_health_aggregator,
     PositionMonitorHealthChecker,
@@ -58,7 +43,8 @@ from ..health import (
     RiskMonitorHealthChecker,
     EventLoggerHealthChecker
 )
-from ...core.logging.base_logging_interface import StandardizedLoggingMixin, LogLevel, EventType
+from ...infrastructure.logging.log_directory_manager import LogDirectoryManager
+from ...infrastructure.logging.structured_logger import StructuredLogger
 
 logger = logging.getLogger(__name__)
 
@@ -67,7 +53,7 @@ event_engine_logger = logging.getLogger('event_engine')
 event_engine_logger.setLevel(logging.INFO)
 
 # Create logs directory if it doesn't exist
-logs_dir = Path(__file__).parent.parent.parent.parent.parent / 'logs'
+logs_dir = Path(__file__).parent.parent.parent.parent / 'logs'
 logs_dir.mkdir(exist_ok=True)
 
 # Create file handler for event engine logs
@@ -82,7 +68,7 @@ event_engine_handler.setFormatter(event_engine_formatter)
 event_engine_logger.addHandler(event_engine_handler)
 
 
-class EventDrivenStrategyEngine(StandardizedLoggingMixin):
+class EventDrivenStrategyEngine:
     """
     Event-driven strategy engine using the new component architecture.
     
@@ -93,7 +79,7 @@ class EventDrivenStrategyEngine(StandardizedLoggingMixin):
     4. Risk Monitor assesses risks
     5. P&L Calculator tracks performance
     6. Strategy Manager makes decisions
-    7. Execution Managers execute trades
+    7. ExecutionManager processes Orders and executes trades
     8. Event Logger records everything
     """
     
@@ -103,17 +89,8 @@ class EventDrivenStrategyEngine(StandardizedLoggingMixin):
                  data_provider,
                  initial_capital: float,
                  share_class: str,
-                 # Component references - following reference-based architecture
-                 position_monitor=None,
-                 event_logger=None,
-                 exposure_monitor=None,
-                 risk_monitor=None,
-                 pnl_calculator=None,
-                 strategy_manager=None,
-                 position_update_handler=None,
-                 results_store=None,
-                 utility_manager=None,
-                 debug_mode: bool = False):
+                 debug_mode: bool = False,
+                 correlation_id: str = None):
         """
         Initialize event engine with injected configuration and data.
         
@@ -125,6 +102,8 @@ class EventDrivenStrategyEngine(StandardizedLoggingMixin):
             data_provider: Pre-loaded data provider with all data in memory
             initial_capital: Initial capital from API request (NO DEFAULT)
             share_class: Share class from API request (NO DEFAULT)
+            debug_mode: Debug mode from API request (NO DEFAULT)
+            correlation_id: Correlation ID from API request (NO DEFAULT)
         """
         self.config = config
         self.mode = config.get('mode')
@@ -133,25 +112,30 @@ class EventDrivenStrategyEngine(StandardizedLoggingMixin):
         self.execution_mode = execution_mode
         self.data_provider = data_provider  # Pre-loaded data provider
         self.debug_mode = debug_mode
+        # Generate correlation_id and pid for this run
+        self.correlation_id = correlation_id or uuid.uuid4().hex
+        self.pid = os.getpid()
+        
+        # Create log directory structure
+        self.log_dir = LogDirectoryManager.create_run_logs(
+            correlation_id=self.correlation_id,
+            pid=self.pid,
+            mode=self.mode,
+            strategy=self.mode,  # or extract strategy name from config
+            capital=self.initial_capital
+        )
+        
+        # Initialize structured logger for engine
+        self.logger = StructuredLogger(
+            component_name="EventDrivenStrategyEngine",
+            correlation_id=self.correlation_id,
+            pid=self.pid,
+            log_dir=self.log_dir,
+            engine=self  # Pass self for timestamp access
+        )
+        
         self.health_status = "healthy"
         self.error_count = 0
-        
-        # Store component references - following reference-based architecture
-        # Create components if not provided (for backtest service compatibility)
-        
-        # Initialize Execution Interface Factory first (required for Position Monitor)
-        self.execution_interface_factory = self._create_execution_interface_factory()
-        
-        # Create components with proper dependency order
-        self.position_monitor = position_monitor or self._create_position_monitor()
-        self.event_logger = event_logger or self._create_event_logger()
-        self.exposure_monitor = exposure_monitor or self._create_exposure_monitor()
-        self.risk_monitor = risk_monitor or self._create_risk_monitor()
-        self.pnl_calculator = pnl_calculator or self._create_pnl_calculator()
-        self.strategy_manager = strategy_manager or self._create_strategy_manager()
-        self.position_update_handler = position_update_handler or self._create_position_update_handler()
-        self.results_store = results_store or self._create_results_store()
-        self.utility_manager = utility_manager or self._create_utility_manager()
         
         # Validate required parameters (FAIL FAST)
         if not self.mode:
@@ -166,6 +150,112 @@ class EventDrivenStrategyEngine(StandardizedLoggingMixin):
         if not data_provider:
             raise ValueError("Data provider is required")
         
+        # Create shared dependencies once (no more multiple UtilityManager instances!)
+        self.utility_manager =  UtilityManager(self.config, self.data_provider)
+        self.venue_interface_factory = VenueInterfaceFactory()
+        
+        # Create all components directly with shared dependencies
+        self.position_monitor = PositionMonitor(
+            self.config, 
+            self.data_provider, 
+            self.utility_manager, 
+            self.venue_interface_factory,
+            self.execution_mode,
+            self.initial_capital,
+            self.share_class,
+            correlation_id=self.correlation_id,
+            pid=self.pid,
+            log_dir=self.log_dir
+        )
+        
+        self.event_logger = EventLogger(
+            self.config, 
+            self.data_provider, 
+            self.utility_manager,
+            correlation_id=self.correlation_id
+        )
+        
+        self.exposure_monitor = ExposureMonitor(
+            self.config, 
+            self.data_provider, 
+            self.utility_manager,
+            correlation_id=self.correlation_id,
+            pid=self.pid,
+            log_dir=self.log_dir
+        )
+        
+        self.risk_monitor = RiskMonitor(
+            self.config, 
+            self.data_provider, 
+            self.utility_manager,
+            correlation_id=self.correlation_id,
+            pid=self.pid,
+            log_dir=self.log_dir
+        )
+        
+        self.pnl_monitor = PnLCalculator(
+            self.config, 
+            self.share_class, 
+            self.initial_capital,
+            data_provider=self.data_provider,
+            utility_manager=self.utility_manager,
+            exposure_monitor=self.exposure_monitor,
+            correlation_id=self.correlation_id,
+            pid=self.pid,
+            log_dir=self.log_dir
+        )
+        
+        # Create venue interface manager (needs venue interface factory)
+        self.venue_interface_manager = VenueInterfaceManager(
+            self.config,
+            self.data_provider,
+            self.venue_interface_factory
+        )
+        
+        # Create execution manager first (without position_update_handler to avoid circular dependency)
+        self.execution_manager = ExecutionManager(
+            execution_mode=self.execution_mode,
+            config=self.config,
+            venue_interface_manager=self.venue_interface_manager,
+            position_update_handler=None,  # Will be set after PositionUpdateHandler is created
+            data_provider=self.data_provider
+        )
+        
+        # Create position update handler (doesn't need execution_manager)
+        self.position_update_handler = PositionUpdateHandler(
+            self.config,
+            self.data_provider,
+            self.execution_mode,
+            self.position_monitor,
+            self.exposure_monitor,
+            self.risk_monitor,
+            self.pnl_monitor,
+            correlation_id=self.correlation_id,
+            pid=self.pid,
+            log_dir=self.log_dir
+        )
+        
+        # Set the circular reference after both are created
+        self.execution_manager.position_update_handler = self.position_update_handler
+        
+        # Create strategy manager (needs monitors and event engine reference)
+        from ..strategies.strategy_factory import StrategyFactory
+        self.strategy_manager = StrategyFactory.create_strategy(
+            mode=self.config.get('mode'),  # FAIL FAST - no default
+            config=self.config,
+            data_provider=self.data_provider,
+            exposure_monitor=self.exposure_monitor,
+            position_monitor=self.position_monitor,
+            risk_monitor=self.risk_monitor,
+            utility_manager=self.utility_manager,
+            correlation_id=self.correlation_id,
+            pid=self.pid,
+            log_dir=self.log_dir
+        )
+        
+        # Create results store
+        self.results_store = AsyncResultsStore("results", self.execution_mode)
+        
         # Validate component references (FAIL FAST)
         if not self.position_monitor:
             raise ValueError("Position monitor reference is required")
@@ -175,7 +265,7 @@ class EventDrivenStrategyEngine(StandardizedLoggingMixin):
             raise ValueError("Exposure monitor reference is required")
         if not self.risk_monitor:
             raise ValueError("Risk monitor reference is required")
-        if not self.pnl_calculator:
+        if not self.pnl_monitor:
             raise ValueError("P&L calculator reference is required")
         if not self.strategy_manager:
             raise ValueError("Strategy manager reference is required")
@@ -183,12 +273,81 @@ class EventDrivenStrategyEngine(StandardizedLoggingMixin):
             raise ValueError("Results store reference is required")
         if not self.utility_manager:
             raise ValueError("Utility manager reference is required")
+        if not self.execution_manager:
+            raise ValueError("Execution manager reference is required")
+        if not self.venue_interface_manager:
+            raise ValueError("Venue interface manager reference is required")
+        if not self.position_update_handler:
+            raise ValueError("Position update handler reference is required")
         
         # Event loop state
         self.current_timestamp = None
         self.is_running = False
         
+        # Register components with health system
+        self._register_components_with_health_system()
+        
+        self.logger.info(
+            f"EventDrivenStrategyEngine initialized: {self.mode} mode, {share_class} share class, {initial_capital} capital",
+            mode=self.mode,
+            share_class=share_class,
+            initial_capital=initial_capital
+        )
+        
         logger.info(f"EventDrivenStrategyEngine initialized: {self.mode} mode, {share_class} share class, {initial_capital} capital")
+    
+    def _register_components_with_health_system(self):
+        """Register all components with the health system for monitoring."""
+        try:
+            from ..health import (
+                system_health_aggregator,
+                PositionMonitorHealthChecker,
+                DataProviderHealthChecker,
+                RiskMonitorHealthChecker,
+                EventLoggerHealthChecker,
+                ExposureMonitorHealthChecker,
+                PnLCalculatorHealthChecker,
+                StrategyManagerHealthChecker,
+                ExecutionManagerHealthChecker
+            )
+            
+            # Register all core components
+            system_health_aggregator.register_component(
+                "position_monitor",
+                PositionMonitorHealthChecker(self.position_monitor)
+            )
+            system_health_aggregator.register_component(
+                "data_provider",
+                DataProviderHealthChecker(self.data_provider)
+            )
+            system_health_aggregator.register_component(
+                "exposure_monitor",
+                ExposureMonitorHealthChecker(self.exposure_monitor)
+            )
+            system_health_aggregator.register_component(
+                "risk_monitor",
+                RiskMonitorHealthChecker(self.risk_monitor)
+            )
+            system_health_aggregator.register_component(
+                "pnl_monitor",
+                PnLCalculatorHealthChecker(self.pnl_monitor)
+            )
+            system_health_aggregator.register_component(
+                "strategy_manager",
+                StrategyManagerHealthChecker(self.strategy_manager)
+            )
+            system_health_aggregator.register_component(
+                "execution_manager",
+                ExecutionManagerHealthChecker(self.execution_manager)
+            )
+            system_health_aggregator.register_component(
+                "event_logger",
+                EventLoggerHealthChecker(self.event_logger)
+            )
+            
+            logger.info("All 8 main components registered with health system")
+        except Exception as e:
+            logger.error(f"Failed to register components with health system: {e}")
     
     def _handle_error(self, error: Exception, context: str = "") -> None:
         """Handle errors with structured error handling."""
@@ -208,249 +367,6 @@ class EventDrivenStrategyEngine(StandardizedLoggingMixin):
         elif self.error_count > 5:
             self.health_status = "degraded"
     
-    def check_component_health(self) -> Dict[str, Any]:
-        """Check component health status."""
-        return {
-            'status': self.health_status,
-            'error_count': self.error_count,
-            'mode': self.mode,
-            'share_class': self.share_class,
-            'execution_mode': self.execution_mode,
-            'is_running': self.is_running,
-            'component': self.__class__.__name__
-        }
-
-    def _process_config_driven_operations(self, operations: List[Dict]) -> List[Dict]:
-        """Process operations based on configuration settings."""
-        processed_operations = []
-        for operation in operations:
-            if self._validate_operation(operation):
-                processed_operations.append(operation)
-            else:
-                self._handle_error(ValueError(f"Invalid operation: {operation}"), "config_driven_validation")
-        return processed_operations
-    
-    def _validate_operation(self, operation: Dict) -> bool:
-        """Validate operation against configuration."""
-        required_fields = ['action', 'component', 'timestamp']
-        return all(field in operation for field in required_fields)
-    
-    def _initialize_components(self):
-        """
-        Initialize all components with proper configuration and dependency tracking.
-        
-        Phase 3: Components initialized in dependency order with injected parameters.
-        """
-        # Health check functions now handled by unified health manager
-        
-        initialized_components = []
-        
-        try:
-            # Component 1: Position Monitor (foundational - others depend on it)
-            logger.info("Initializing Position Monitor...")
-            self.position_monitor = PositionMonitor(
-                config=self.config,
-                data_provider=self.data_provider,
-                utility_manager=self.utility_manager
-            )
-            # Component health now handled by unified health manager
-            initialized_components.append('position_monitor')
-            logger.info("✅ Position Monitor initialized successfully")
-            
-        except Exception as e:
-            # Component health now handled by unified health manager
-            logger.error(f"❌ Position Monitor initialization failed: {e}")
-            raise ValueError(f"Position Monitor initialization failed: {e}")
-        
-        try:
-            # Component 2: Event Logger
-            logger.info("Initializing Event Logger...")
-            self.event_logger = EventLogger(
-                config=self.config,
-                data_provider=self.data_provider,
-                utility_manager=self.utility_manager
-            )
-            # Component health now handled by unified health manager
-            initialized_components.append('event_logger')
-            logger.info("✅ Event Logger initialized successfully")
-            
-        except Exception as e:
-            # Component health now handled by unified health manager
-            logger.error(f"❌ Event Logger initialization failed: {e}")
-            raise ValueError(f"Event Logger initialization failed: {e}")
-        
-        try:
-            # Component 3: Exposure Monitor (depends on position_monitor and data_provider)
-            logger.info("Initializing Exposure Monitor...")
-            self.exposure_monitor = ExposureMonitor(
-                config=self.config,
-                data_provider=self.data_provider,
-                utility_manager=self.utility_manager
-            )
-            # Component health now handled by unified health manager
-            initialized_components.append('exposure_monitor')
-            logger.info("✅ Exposure Monitor initialized successfully")
-            
-        except Exception as e:
-            # Component health now handled by unified health manager
-            logger.error(f"❌ Exposure Monitor initialization failed: {e}")
-            raise ValueError(f"Exposure Monitor initialization failed: {e}")
-        
-        try:
-            # Component 4: Risk Monitor (depends on position_monitor, exposure_monitor, data_provider)
-            logger.info("Initializing Risk Monitor...")
-            self.risk_monitor = RiskMonitor(
-                config=self.config,
-                data_provider=self.data_provider,
-                utility_manager=self.utility_manager
-            )
-            # Component health now handled by unified health manager
-            initialized_components.append('risk_monitor')
-            logger.info("✅ Risk Monitor initialized successfully")
-            
-        except Exception as e:
-            # Component health now handled by unified health manager
-            logger.error(f"❌ Risk Monitor initialization failed: {e}")
-            raise ValueError(f"Risk Monitor initialization failed: {e}")
-        
-        try:
-            # Component 5: P&L Calculator
-            logger.info("Initializing P&L Calculator...")
-            self.pnl_calculator = PnLCalculator(
-                config=self.config,
-                share_class=self.share_class,
-                initial_capital=self.initial_capital,
-                data_provider=self.data_provider,
-                utility_manager=self.utility_manager
-            )
-            # Component health now handled by unified health manager
-            initialized_components.append('pnl_calculator')
-            logger.info("✅ P&L Calculator initialized successfully")
-            
-        except Exception as e:
-            # Component health now handled by unified health manager
-            logger.error(f"❌ P&L Calculator initialization failed: {e}")
-            raise ValueError(f"P&L Calculator initialization failed: {e}")
-        
-        logger.info(f"✅ All core components initialized successfully: {initialized_components}")
-        
-        # Phase 3: Data provider is injected, not created here
-        # self.data_provider is already set from constructor injection
-        
-        try:
-            # Component 6: Strategy Manager (depends on exposure_monitor and risk_monitor)
-            logger.info("Initializing Strategy Manager...")
-            from ..strategies.strategy_factory import StrategyFactory
-            self.strategy_manager = StrategyFactory.create_strategy(
-                mode=self.config.get('mode', 'pure_lending'),
-                config=self.config,
-                risk_monitor=self.risk_monitor,
-                position_monitor=self.position_monitor,
-                event_engine=self
-            )
-            # Component health now handled by unified health manager
-            initialized_components.append('strategy_manager')
-            logger.info("✅ Strategy Manager initialized successfully")
-            
-        except Exception as e:
-            # Component health now handled by unified health manager
-            logger.error(f"❌ Strategy Manager initialization failed: {e}")
-            raise ValueError(f"Strategy Manager initialization failed: {e}")
-        # Create execution interfaces using factory
-        self.execution_interfaces = VenueInterfaceFactory.create_all_venue_interfaces(
-            execution_mode=self.execution_mode,
-            config=self.config,
-            data_provider=self.data_provider
-        )
-        
-        # Set dependencies for execution interfaces
-        VenueInterfaceFactory.set_venue_dependencies(
-            interfaces=self.execution_interfaces,
-            position_monitor=self.position_monitor,
-            event_logger=self.event_logger,
-            data_provider=self.data_provider
-        )
-        
-        # Legacy execution managers removed - using new execution interfaces instead
-        
-        # Update cross-references
-        self.exposure_monitor.data_provider = self.data_provider
-        
-        # Initialize Position Update Handler for tight loop management
-        try:
-            logger.info("Initializing Position Update Handler...")
-            self.position_update_handler = PositionUpdateHandler(
-                config=self.config,
-                position_monitor=self.position_monitor,
-                exposure_monitor=self.exposure_monitor,
-                risk_monitor=self.risk_monitor,
-                pnl_calculator=self.pnl_calculator,
-                execution_mode=self.execution_mode
-            )
-            logger.info("✅ Position Update Handler initialized successfully")
-        except Exception as e:
-            logger.error(f"❌ Position Update Handler initialization failed: {e}")
-            raise ValueError(f"Position Update Handler initialization failed: {e}")
-        
-        # Set Position Update Handler on execution interfaces
-        self._set_position_update_handler_on_interfaces()
-        
-        # Register components with health check system
-        self._register_health_checkers()
-        
-        logger.info("All components initialized successfully")
-    
-    def _set_position_update_handler_on_interfaces(self):
-        """Set Position Update Handler on all execution interfaces for tight loop management."""
-        try:
-            # Set on CEX interface
-            if 'cex' in self.execution_interfaces:
-                self.execution_interfaces['cex'].position_update_handler = self.position_update_handler
-                logger.info("Position Update Handler set on CEX interface")
-            
-            # Set on OnChain interface
-            if 'onchain' in self.execution_interfaces:
-                self.execution_interfaces['onchain'].position_update_handler = self.position_update_handler
-                logger.info("Position Update Handler set on OnChain interface")
-            
-            # Set on Transfer interface
-            if 'transfer' in self.execution_interfaces:
-                self.execution_interfaces['transfer'].position_update_handler = self.position_update_handler
-                logger.info("Position Update Handler set on Transfer interface")
-            
-            logger.info("Position Update Handler set on all execution interfaces")
-            
-        except Exception as e:
-            logger.error(f"Failed to set Position Update Handler on interfaces: {e}")
-            raise
-    
-    def _register_health_checkers(self):
-        """Register all components with the unified health check system."""
-        try:
-            from ..health import unified_health_manager
-            
-            # Register core components
-            unified_health_manager.register_component(
-                "position_monitor", 
-                PositionMonitorHealthChecker(self.position_monitor)
-            )
-            unified_health_manager.register_component(
-                "data_provider", 
-                DataProviderHealthChecker(self.data_provider)
-            )
-            unified_health_manager.register_component(
-                "risk_monitor", 
-                RiskMonitorHealthChecker(self.risk_monitor)
-            )
-            unified_health_manager.register_component(
-                "event_logger", 
-                EventLoggerHealthChecker(self.event_logger)
-            )
-            
-            logger.info("Health checkers registered with unified health manager")
-        except Exception as e:
-            logger.error(f"Failed to register health checkers: {e}")
-    
     async def run_backtest(self, start_date: str, end_date: str) -> Dict[str, Any]:
         """
         Run a complete backtest using all components.
@@ -465,7 +381,7 @@ class EventDrivenStrategyEngine(StandardizedLoggingMixin):
         Raises:
             ValueError: If start_date or end_date is not provided or invalid
             
-        # TODO: [WORKFLOW_TIME_TRIGGERED] - Implement time-triggered workflow for backtest execution
+        # Time-triggered workflow for backtest execution
         # Current Issue: Backtest execution loop needs to implement time-triggered workflow pattern
         # Required Changes:
         #   1. Implement simulated hourly data loop for backtest time triggers
@@ -536,7 +452,7 @@ class EventDrivenStrategyEngine(StandardizedLoggingMixin):
             
             # Generate timestamps for backtest based on strategy mode
             # ML strategies use 5-minute intervals, others use hourly
-            if self.mode in ['ml_btc_directional', 'ml_usdt_directional']:
+            if self.mode in ['ml_btc_directional_usdt_margin', 'ml_usdt_directional_usdt_margin']:
                 freq = '5min'  # 5-minute intervals for ML strategies
                 logger.info("Using 5-minute intervals for ML strategy")
             else:
@@ -553,20 +469,21 @@ class EventDrivenStrategyEngine(StandardizedLoggingMixin):
             logger.info(f"Running backtest for {len(timestamps)} timestamps from {start_date} to {end_date}")
             
             # Run backtest loop with component orchestration
+            # Note: Initial capital is handled automatically by Position Monitor on first position_refresh
+            # See: docs/POSITION_MONITOR_REFACTOR_DESIGN.md - Phase 3: 2-Trigger System
             for timestamp in timestamps:
                 try:
                     # Get market data snapshot for this timestamp using canonical pattern
                     data = self.data_provider.get_data(timestamp)
-                    market_data = data['market_data']
-                    self._process_timestep(timestamp, market_data, request_id)
+                    market_data = data['market_data']      
                 except Exception as e:
                     logger.warning(f"Skipping timestamp {timestamp} due to missing data: {e}")
                     continue
-            
+                self._process_timestep(timestamp, market_data, request_id)
             # Save final results and event log
             final_results = self._calculate_final_results(results)
             await self.results_store.save_final_result(request_id, final_results)
-            await self.results_store.save_event_log(request_id, self.event_logger.get_all_events())
+            await self.results_store.save_event_log(request_id, self.event_logger._get_all_events())
             
             # Stop async results store
             await self.results_store.stop()
@@ -593,32 +510,36 @@ class EventDrivenStrategyEngine(StandardizedLoggingMixin):
         self.current_timestamp = timestamp
         
         try:
-            # 1. Get current position snapshot
-            logger.info(f"Event Engine: About to call position_monitor.get_current_positions() for timestep {timestamp}")
-            position_snapshot = self.position_monitor.get_current_positions()
-            logger.info(f"Event Engine: Position snapshot type = {type(position_snapshot)}, is None = {position_snapshot is None}")
-            if position_snapshot is not None:
-                logger.info(f"Event Engine: Position snapshot keys = {list(position_snapshot.keys())}")
-                # Log wallet balance for debugging
-                wallet = position_snapshot.get('wallet', {})
-                logger.info(f"Event Engine: Wallet USDT balance = {wallet.get('USDT', 0)}")
-                # Log CEX balances for debugging  
-                cex_accounts = position_snapshot.get('cex_accounts', {})
-                for venue, balances in cex_accounts.items():
-                    if balances:
-                        logger.info(f"Event Engine: {venue} balances = {balances}")
-            
-            # Debug: Log position snapshot for each timestep
-            if self.debug_mode:
-                self.position_monitor.log_position_snapshot(timestamp, "TIMESTEP_START")
+            # 1. Refresh positions (MODE-AGNOSTIC - called in BOTH backtest and live)
+            # Ref: POSITION_MONITOR_REFACTOR_DESIGN.md - Symmetric triggers
+            logger.info(f"Event Engine: Refreshing positions at timestep {timestamp}")
+            position_snapshot = self.position_monitor.update_state(
+                timestamp, 
+                'position_refresh',  # Called in BOTH modes
+                None
+            )
+            logger.info(f"Event Engine: Position snapshot refreshed, {len(position_snapshot)} positions tracked")
             
             # 2. Calculate current exposure using injected data provider
             exposure = self.exposure_monitor.calculate_exposure(
                 timestamp=timestamp,
                 position_snapshot=position_snapshot,
-                market_data={}  # TODO: Pass actual market data
+                market_data=market_data
             )
             logger.info(f"Event Engine: Exposure calculated - type: {type(exposure)}, keys: {list(exposure.keys()) if isinstance(exposure, dict) else 'Not a dict'}")
+            
+            # Log exposure data to domain-specific file
+            self.event_logger.log_domain_event(
+                timestamp=timestamp,
+                event_type='exposure_calculated',
+                component='exposure_monitor',
+                domain_data={
+                    'exposure': exposure,
+                    'position_snapshot_keys': list(position_snapshot.keys()) if isinstance(position_snapshot, dict) else 'Not a dict',
+                    'market_data_keys': list(market_data.keys()) if isinstance(market_data, dict) else 'Not a dict'
+                },
+                message=f"Exposure calculated for {len(position_snapshot) if isinstance(position_snapshot, dict) else 0} positions"
+            )
             
             # 3. Assess risk using injected config and data
             # Enable debug logging if debug mode is enabled
@@ -629,94 +550,119 @@ class EventDrivenStrategyEngine(StandardizedLoggingMixin):
             logger.info(f"Event Engine: Calling Risk Monitor assess_risk")
             risk_assessment = self.risk_monitor.assess_risk(
                 exposure_data=exposure,
-                market_data=market_data
+                market_data=market_data,
+                timestamp=timestamp
             )
             logger.info(f"Event Engine: Risk Monitor assess_risk completed")
             
-            # 4. Calculate P&L using injected config
-            logger.info(f"Event Engine: About to calculate P&L for timestamp {timestamp}")
-            logger.info(f"Event Engine: P&L input - exposure type: {type(exposure)}, exposure value: {exposure}")
-            try:
-                pnl = self.pnl_calculator.get_current_pnl(
-                    current_exposure=exposure,
-                    timestamp=timestamp
-                )
-                logger.info(f"Event Engine: P&L calculated successfully")
-                logger.info(f"Event Engine: P&L structure keys: {list(pnl.keys())}")
-                if 'balance_based' in pnl:
-                    logger.info(f"Event Engine: Balance-based P&L keys: {list(pnl['balance_based'].keys())}")
-                    logger.info(f"Event Engine: P&L calculated - balance_based pnl_cumulative: {pnl.get('balance_based', {}).get('pnl_cumulative', 0)}")
-                else:
-                    logger.warning(f"Event Engine: P&L result missing 'balance_based' key: {pnl}")
-            except Exception as e:
-                logger.error(f"Event Engine: P&L calculation failed: {e}")
-                # Create a default P&L structure to avoid downstream errors
-                pnl = {
-                    'balance_based': {'pnl_cumulative': 0.0, 'pnl_pct': 0.0},
-                    'attribution': {'pnl_cumulative': 0.0},
-                    'error': str(e)
-                }
+            # Log risk assessment data to domain-specific file
+            self.event_logger.log_domain_event(
+                timestamp=timestamp,
+                event_type='risk_assessed',
+                component='risk_monitor',
+                domain_data={
+                    'risk_assessment': risk_assessment,
+                    'exposure_keys': list(exposure.keys()) if isinstance(exposure, dict) else 'Not a dict',
+                    'market_data_keys': list(market_data.keys()) if isinstance(market_data, dict) else 'Not a dict'
+                },
+                message=f"Risk assessment completed with {len(risk_assessment) if isinstance(risk_assessment, dict) else 0} metrics"
+            )
             
-            # 5. Make strategy decision
-            strategy_decision = self.strategy_manager.make_strategy_decision(
-                current_exposure=exposure,
+            # 4. Generate strategy orders
+            # P1 FIX: Remove PnL calculation before execution (line 493 removed)
+            # Spec: WORKFLOW_REFACTOR_SPECIFICATION.md lines 456-466 - PnL calculated AFTER execution
+            
+            strategy_orders = self.strategy_manager.generate_orders(
+                timestamp=timestamp,
+                exposure=exposure,
                 risk_assessment=risk_assessment,
-                config=self.config,
                 market_data=market_data
             )
             
-            # 6. Execute trades if needed (via execution interfaces)
-            action = strategy_decision.get('action')
-            logger.info(f"Event Engine: Strategy decision action = {action}")
-            if action not in ['HOLD', 'MAINTAIN_NEUTRAL', 'NO_ACTION']:
-                logger.info(f"Event Engine: Executing strategy decision: {strategy_decision}")
-                self._execute_strategy_decision(strategy_decision, timestamp, market_data)
+            # Log strategy orders to domain-specific file
+            self.event_logger.log_domain_event(
+                timestamp=timestamp,
+                event_type='strategy_orders_generated',
+                component='strategy_manager',
+                domain_data={
+                    'strategy_orders': [order.__dict__ if hasattr(order, '__dict__') else str(order) for order in strategy_orders],
+                    'orders_count': len(strategy_orders),
+                    'exposure_keys': list(exposure.keys()) if isinstance(exposure, dict) else 'Not a dict',
+                    'risk_assessment_keys': list(risk_assessment.keys()) if isinstance(risk_assessment, dict) else 'Not a dict',
+                    'market_data_keys': list(market_data.keys()) if isinstance(market_data, dict) else 'Not a dict'
+                },
+                message=f"Strategy generated {len(strategy_orders)} orders"
+            )
+            
+            # 5. Execute orders if any (via ExecutionManager orchestration)
+            if strategy_orders:
+                logger.info(f"Event Engine: Strategy generated {len(strategy_orders)} orders to execute")
                 
-                # Note: Fast path balance updates are now handled in Strategy Manager after each instruction block
+                # Execute orders through ExecutionManager (handles orchestration + reconciliation)
+                execution_result = self.execution_manager.process_orders(
+                    timestamp=timestamp,
+                    orders=strategy_orders
+                )
+                logger.info(f"Event Engine: Execution completed with result: {execution_result}")
+                
+                # P1 FIX: Check execution success per WORKFLOW_REFACTOR_SPECIFICATION.md lines 276-286
+                # execution_result is a List[Dict], check if any trades failed
+                failed_trades = [trade for trade in execution_result if not trade.get('success', True)]
+                if failed_trades:
+                    self._handle_execution_failure(failed_trades, timestamp)
+                    return  # Stop processing this timestep on failure
             else:
-                logger.info(f"Event Engine: No action needed for {action}")
+                logger.info(f"Event Engine: No orders to execute")
+            
+            # 6. Calculate P&L AFTER execution (with execution costs)
+            # Spec: WORKFLOW_REFACTOR_SPECIFICATION.md lines 288-291, 456-466
+            logger.info(f"Event Engine: Calculating P&L after execution with all costs")
+            self.pnl_monitor.update_state(timestamp, 'full_loop')
+            pnl = self.pnl_monitor.get_latest_pnl()
+            logger.info(f"Event Engine: P&L calculated successfully")
+            if pnl and 'balance_based' in pnl:
+                logger.info(f"Event Engine: P&L pnl_cumulative: {pnl.get('balance_based', {}).get('pnl_cumulative', 0)}")
+            else:
+                logger.warning(f"Event Engine: P&L result missing 'balance_based' key: {pnl}")
             
             # 7. Log events (async I/O - handled separately)
-            self._log_timestep_event(timestamp, exposure, risk_assessment, pnl, strategy_decision)
+            # P0 FIX: Use strategy_orders instead of undefined strategy_decision
+            self._log_timestep_event(timestamp, exposure, risk_assessment, pnl, strategy_orders)
             
             # 8. Store results (async I/O - handled separately)
-            self._store_timestep_result(request_id, timestamp, exposure, risk_assessment, pnl, strategy_decision, action)
+            # P0 FIX: Use strategy_orders and remove undefined action parameter
+            self._store_timestep_result(request_id, timestamp, exposure, risk_assessment, pnl, strategy_orders)
             
+        except ValueError as e:
+            # P2 FIX: More specific exception handling - fail fast on critical errors
+            logger.error(f"ValueError processing timestep {timestamp}: {e}")
+            self._log_error_event(timestamp, str(e))
+            raise  # Propagate ValueError for fail-fast
+        except KeyError as e:
+            logger.error(f"KeyError processing timestep {timestamp}: {e}")
+            self._log_error_event(timestamp, str(e))
+            raise  # Propagate KeyError for fail-fast
         except Exception as e:
-            logger.error(f"Error processing timestep {timestamp}: {e}")
-            # Log error event (async I/O - handled separately)
+            # Log but continue for non-critical errors
+            error_code = "EVENT_ERROR_001" if "'list' object has no attribute 'get'" in str(e) else "EVENT_ERROR_002"
+            logger.warning(f"Non-critical error processing timestep {timestamp}: {e}", extra={"error_code": error_code})
             self._log_error_event(timestamp, str(e))
 
-    def _execute_strategy_decision(self, decision: Dict, timestamp: pd.Timestamp, market_data: Dict):
-        """Execute a strategy decision by delegating to Strategy Manager."""
-        action = decision.get('action')
-        
-        if action in ['MAINTAIN_NEUTRAL', 'HOLD', 'NO_ACTION']:
-            # No execution needed - just maintain current position
-            logger.debug(f"No execution needed for action: {action}")
-        else:
-            # Delegate all execution to Strategy Manager with market data
-            # Note: Strategy Manager doesn't have execute_decision method yet
-            # For now, just log the decision
-            logger.info(f"Strategy decision to execute: {decision}")
-            # TODO: Implement strategy execution when Strategy Manager is complete
     
-    # REMOVED: Other legacy async methods that can be implemented later
-    # _initialize_pure_lending_positions, _update_ausdt_balance,
-    # execute_trade_with_interface, get_balance_with_interface, get_position_with_interface,
-    # execute_transfer_with_interface - these are interface methods, not core orchestration
     
     def _calculate_final_results(self, results: Dict) -> Dict[str, Any]:
         """Calculate final backtest results."""
         
         # Get current position and calculate exposure for P&L calculation
-        current_position = self.position_monitor.get_current_positions(self.current_timestamp)
+        current_position = self.position_monitor.get_current_positions()
         final_exposure = self.exposure_monitor.calculate_exposure(
             timestamp=self.current_timestamp,
             position_snapshot=current_position,
-            market_data={}  # TODO: Pass actual market data
+            market_data=self.data_provider.get_data(self.current_timestamp)
         )
-        final_pnl = self.pnl_calculator.get_current_pnl(final_exposure, timestamp=self.current_timestamp)
+        # Update P&L state with final exposure
+        self.pnl_monitor.update_state(self.current_timestamp, 'final_calculation')
+        final_pnl = self.pnl_monitor.get_latest_pnl()
         
         # Calculate performance metrics
         initial_capital = self.initial_capital
@@ -729,7 +675,7 @@ class EventDrivenStrategyEngine(StandardizedLoggingMixin):
         total_return_pct = (total_return / initial_capital) * 100 if initial_capital > 0 else 0
         
         # Get all events
-        all_events = self.event_logger.get_all_events()
+        all_events = self.event_logger._get_all_events()
         
         final_results = {
             'performance': {
@@ -752,25 +698,30 @@ class EventDrivenStrategyEngine(StandardizedLoggingMixin):
         return final_results
     
     async def run_live(self):
-        """Run the strategy in live mode."""
+        """Run the strategy in live mode with 60-second position refresh cycle."""
         logger.info("Starting live strategy execution")
         self.is_running = True
+        request_id = str(uuid.uuid4())
         
         try:
+            # Start async results store
+            await self.results_store.start()
+            
             while self.is_running:
                 # Get current market data using canonical pattern
                 current_timestamp = pd.Timestamp.now(tz='UTC')
                 data = self.data_provider.get_data(current_timestamp)
                 current_data = data['market_data']
                 
-                # Process current timestep
-                await self._process_timestep(
+                # Process timestep (includes position_refresh at start)
+                # See: docs/POSITION_MONITOR_REFACTOR_DESIGN.md - Phase 3: 2-Trigger System
+                self._process_timestep(
                     current_timestamp,
                     current_data,
-                    {}
+                    request_id
                 )
                 
-                # Wait for next update cycle
+                # Wait for next update cycle (60-second refresh)
                 await asyncio.sleep(60)  # Update every minute
                 
         except Exception as e:
@@ -778,6 +729,11 @@ class EventDrivenStrategyEngine(StandardizedLoggingMixin):
             raise
         finally:
             self.is_running = False
+            # Stop async results store
+            try:
+                await self.results_store.stop()
+            except Exception as stop_error:
+                logger.error(f"Error stopping results store: {stop_error}")
     
     def _stop(self):
         """Stop the live strategy execution."""
@@ -802,36 +758,6 @@ class EventDrivenStrategyEngine(StandardizedLoggingMixin):
             # In live mode, return current time
             return pd.Timestamp.now(tz='UTC')
     
-    def _trigger_tight_loop(self):
-        """
-        Trigger tight loop execution reconciliation pattern.
-        
-        The tight loop ensures that each execution instruction is followed by
-        position reconciliation before proceeding to the next instruction.
-        
-        Tight Loop = execution → position_monitor → reconciliation → next instruction
-        """
-        try:
-            logger.info("Triggering tight loop reconciliation")
-            
-            # Get current position state
-            if self.position_monitor:
-                current_position = self.position_monitor.get_current_positions()
-                logger.debug(f"Current position state: {current_position}")
-            
-            # Verify position reconciliation
-            if self.position_monitor and hasattr(self.position_monitor, 'verify_reconciliation'):
-                reconciliation_result = self.position_monitor.verify_reconciliation()
-                if reconciliation_result.get('status') != 'success':
-                    logger.warning(f"Position reconciliation failed: {reconciliation_result}")
-                    return {'status': 'failed', 'reason': 'reconciliation_failed'}
-            
-            logger.info("Tight loop reconciliation completed successfully")
-            return {'status': 'success', 'message': 'Tight loop reconciliation completed'}
-            
-        except Exception as e:
-            logger.error(f"Tight loop reconciliation failed: {e}")
-            return {'status': 'failed', 'reason': str(e)}
     
     async def get_status(self) -> Dict[str, Any]:
         """Get current status of all components with health information."""
@@ -856,7 +782,7 @@ class EventDrivenStrategyEngine(StandardizedLoggingMixin):
                 'event_logger': 'active',
                 'exposure_monitor': 'active',
                 'risk_monitor': 'active',
-                'pnl_calculator': 'active',
+                'pnl_monitor': 'active',
                 'strategy_manager': 'active',
                 'cex_execution_interface': 'active',
                 'onchain_execution_interface': 'active',
@@ -865,363 +791,186 @@ class EventDrivenStrategyEngine(StandardizedLoggingMixin):
             }
         }
     
+    def _handle_execution_failure(self, execution_result: Dict, timestamp: pd.Timestamp) -> None:
+        """
+        Handle execution failure with logging and error escalation.
+        
+        P1 FIX: Implements execution failure handling per WORKFLOW_REFACTOR_SPECIFICATION.md lines 276-286
+        
+        Args:
+            execution_result: Result dictionary from ExecutionManager.process_orders()
+            timestamp: Current timestamp for logging
+        """
+        self.error_count += 1
+        
+        error_details = {
+            'timestamp': timestamp,
+            'execution_result': execution_result,
+            'error_code': f"EXEC_FAILURE_{self.error_count:04d}"
+        }
+        
+        logger.error(f"Execution failure: {error_details}", extra=error_details)
+        
+        # Update health status
+        if self.error_count > 5:
+            self.health_status = "degraded"
+        if self.error_count > 10:
+            self.health_status = "critical"
+            self._trigger_system_failure(f"Too many execution failures: {self.error_count}")
+        
+        # Log error event
+        self._log_error_event(timestamp, f"Execution failure: {execution_result}")
+    
+    def _trigger_system_failure(self, failure_reason: str) -> None:
+        """
+        Trigger system failure and restart via health/error systems.
+        
+        P1 FIX: Implements system failure trigger per WORKFLOW_REFACTOR_SPECIFICATION.md lines 397-411
+        
+        Args:
+            failure_reason: Reason for system failure
+            
+        Raises:
+            SystemExit: Always raises to trigger deployment restart
+        """
+        # Update health status to critical
+        self.health_status = "critical"
+        
+        # Log critical error with structured logging
+        logger.critical(f"SYSTEM FAILURE: {failure_reason}", extra={
+            'error_code': 'SYSTEM_FAILURE',
+            'failure_reason': failure_reason,
+            'component': self.__class__.__name__,
+            'timestamp': pd.Timestamp.now(tz='UTC'),
+            'execution_mode': self.execution_mode,
+            'error_count': self.error_count
+        })
+        
+        # Raise SystemExit to trigger deployment restart
+        raise SystemExit(f"System failure: {failure_reason}")
+    
     def _debug_print_position_monitor(self):
         """Print detailed position monitor state for debugging."""
         if not self.debug_mode:
             return
             
-        print("\n" + "="*80)
-        print("🔍 DEBUG MODE - POSITION MONITOR STATE")
-        print("="*80)
+        logger.info("="*80)
+        logger.info("🔍 DEBUG MODE - POSITION MONITOR STATE")
+        logger.info("="*80)
         
         try:
             snapshot = self.position_monitor.get_current_positions()
             
-            print(f"📊 Position Monitor Snapshot:")
-            print(f"   Last Updated: {snapshot.get('last_updated', 'N/A')}")
+            logger.info(f"📊 Position Monitor Snapshot:")
+            logger.info(f"   Last Updated: {snapshot.get('last_updated', 'N/A')}")
             
             # Wallet balances
-            print(f"\n💰 Wallet Balances:")
+            logger.info(f"\n💰 Wallet Balances:")
             wallet = snapshot.get('wallet', {})
             for token, balance in wallet.items():
                 if balance != 0:  # Only show non-zero balances
-                    print(f"   {token}: {balance:,.6f}")
+                    logger.info(f"   {token}: {balance:,.6f}")
             
             # CEX accounts
-            print(f"\n🏦 CEX Account Balances:")
+            logger.info(f"\n🏦 CEX Account Balances:")
             cex_accounts = snapshot.get('cex_accounts', {})
             for exchange, tokens in cex_accounts.items():
-                print(f"   {exchange.upper()}:")
+                logger.info(f"   {exchange.upper()}:")
                 for token, balance in tokens.items():
                     if balance != 0:  # Only show non-zero balances
-                        print(f"     {token}: {balance:,.6f}")
+                        logger.info(f"     {token}: {balance:,.6f}")
             
             # Perpetual positions
-            print(f"\n📈 Perpetual Positions:")
+            logger.info(f"\n📈 Perpetual Positions:")
             perp_positions = snapshot.get('perp_positions', {})
             for exchange, positions in perp_positions.items():
                 if positions:  # Only show exchanges with positions
-                    print(f"   {exchange.upper()}:")
+                    logger.info(f"   {exchange.upper()}:")
                     for instrument, position in positions.items():
-                        print(f"     {instrument}:")
-                        print(f"       Size: {position.get('size', 0):,.6f}")
-                        print(f"       Entry Price: {position.get('entry_price', 0):,.6f}")
-                        print(f"       Entry Time: {position.get('entry_timestamp', 'N/A')}")
-                        print(f"       Notional USD: ${position.get('notional_usd', 0):,.2f}")
+                        logger.info(f"     {instrument}:")
+                        logger.info(f"       Size: {position.get('size', 0):,.6f}")
+                        logger.info(f"       Entry Price: {position.get('entry_price', 0):,.6f}")
+                        logger.info(f"       Entry Time: {position.get('entry_timestamp', 'N/A')}")
+                        logger.info(f"       Notional USD: ${position.get('notional_usd', 0):,.2f}")
                 else:
-                    print(f"   {exchange.upper()}: No positions")
+                    logger.info(f"   {exchange.upper()}: No positions")
             
-            print("="*80)
-            print("🔍 END DEBUG MODE")
-            print("="*80 + "\n")
+            logger.info("="*80)
+            logger.info("🔍 END DEBUG MODE")
+            logger.info("="*80 + "\n")
             
         except Exception as e:
-            print(f"\n❌ DEBUG ERROR: Failed to get position monitor state: {e}\n")
+            logger.error(f"\n❌ DEBUG ERROR: Failed to get position monitor state: {e}\n")
     
-    def _log_timestep_event(self, timestamp: pd.Timestamp, exposure: Dict, risk_assessment: Dict, pnl: Dict, strategy_decision: Dict):
-        """Log timestep event asynchronously (I/O operation)."""
+    def _log_timestep_event(self, timestamp: pd.Timestamp, exposure: Dict, risk_assessment: Dict, pnl: Dict, strategy_orders: List):
+        """
+        Log timestep event synchronously.
+        
+        Note: EventLogger.log_event() is synchronous for simplicity.
+        See: docs/POSITION_MONITOR_REFACTOR_DESIGN.md - Phase 3: 2-Trigger System
+        """
         try:
-            # Schedule async logging (non-blocking)
-            import asyncio
-            loop = asyncio.get_event_loop()
-            if loop.is_running():
-                # If we're in an async context, schedule the coroutine
-                asyncio.create_task(self.event_logger.log_event(
-                    event_type='TIMESTEP_PROCESSED',
-                    event_data={
-                        'venue': 'system',
-                        'token': None,
-                        'exposure': exposure,
-                        'risk': risk_assessment,
-                        'pnl': pnl,
-                        'decision': strategy_decision
-                    },
-                    timestamp=timestamp
-                ))
-            else:
-                # If we're not in an async context, run it
-                loop.run_until_complete(self.event_logger.log_event(
-                    event_type='TIMESTEP_PROCESSED',
-                    event_data={
-                        'venue': 'system',
-                        'token': None,
-                        'exposure': exposure,
-                        'risk': risk_assessment,
-                        'pnl': pnl,
-                        'decision': strategy_decision
-                    },
-                    timestamp=timestamp
-                ))
+            self.event_logger.log_event(
+                timestamp=timestamp,
+                event_type='TIMESTEP_PROCESSED',
+                component='event_engine',
+                data={
+                    'venue': 'system',
+                    'token': None,
+                    'exposure': exposure,
+                    'risk': risk_assessment,
+                    'pnl': pnl,
+                    'orders': strategy_orders
+                }
+            )
         except Exception as e:
             logger.error(f"Failed to log timestep event: {e}")
     
-    def _store_timestep_result(self, request_id: str, timestamp: pd.Timestamp, exposure: Dict, risk_assessment: Dict, pnl: Dict, strategy_decision: Dict, action: str):
-        """Store timestep result asynchronously (I/O operation)."""
+    def _store_timestep_result(self, request_id: str, timestamp: pd.Timestamp, exposure: Dict, risk_assessment: Dict, pnl: Dict, strategy_orders: List):
+        """
+        Store timestep result asynchronously (queued for background processing).
+        
+        Note: Results are queued and processed asynchronously by AsyncResultsStore worker.
+        See: docs/specs/15_EVENT_DRIVEN_STRATEGY_ENGINE.md - Async Results Storage
+        """
         try:
-            # Schedule async storage (non-blocking)
+            # Queue result for async storage (non-blocking)
             import asyncio
-            loop = asyncio.get_event_loop()
-            if loop.is_running():
-                # If we're in an async context, schedule the coroutine
-                asyncio.create_task(self.results_store.save_timestep_result(
-                    request_id=request_id,
-                    timestamp=timestamp,
-                    data={
-                        'pnl': pnl,
-                        'exposure': exposure,
-                        'risk': risk_assessment,
-                        'decision': strategy_decision,
-                        'event_type': 'TIMESTEP_PROCESSED'
-                    }
-                ))
-            else:
-                # If we're not in an async context, run it
-                loop.run_until_complete(self.results_store.save_timestep_result(
-                    request_id=request_id,
-                    timestamp=timestamp,
-                    data={
-                        'pnl': pnl,
-                        'exposure': exposure,
-                        'risk': risk_assessment,
-                        'decision': strategy_decision,
-                        'event_type': 'TIMESTEP_PROCESSED'
-                    }
-                ))
+            asyncio.create_task(self.results_store.save_timestep_result(
+                request_id=request_id,
+                timestamp=timestamp,
+                data={
+                    'pnl': pnl,
+                    'exposure': exposure,
+                    'risk': risk_assessment,
+                    'orders': strategy_orders,
+                    'event_type': 'TIMESTEP_PROCESSED'
+                }
+            ))
         except Exception as e:
             logger.error(f"Failed to store timestep result: {e}")
     
     def _log_error_event(self, timestamp: pd.Timestamp, error_message: str):
-        """Log error event asynchronously (I/O operation)."""
+        """
+        Log error event synchronously.
+        
+        Note: EventLogger.log_event() is synchronous for simplicity.
+        See: docs/POSITION_MONITOR_REFACTOR_DESIGN.md - Phase 3: 2-Trigger System
+        """
         try:
-            # Schedule async logging (non-blocking)
-            import asyncio
-            loop = asyncio.get_event_loop()
-            if loop.is_running():
-                # If we're in an async context, schedule the coroutine
-                asyncio.create_task(self.event_logger.log_event(
-                    event_type='ERROR',
-                    event_data={
-                        'venue': 'system',
-                        'token': None,
-                        'error': error_message
-                    },
-                    timestamp=timestamp
-                ))
-            else:
-                # If we're not in an async context, run it
-                loop.run_until_complete(self.event_logger.log_event(
-                    event_type='ERROR',
-                    event_data={
-                        'venue': 'system',
-                        'token': None,
-                        'error': error_message
-                    },
-                    timestamp=timestamp
-                ))
+            self.event_logger.log_event(
+                timestamp=timestamp,
+                event_type='ERROR',
+                component='event_engine',
+                data={
+                    'venue': 'system',
+                    'token': None,
+                    'error': error_message
+                }
+            )
         except Exception as e:
             logger.error(f"Failed to log error event: {e}")
 
 
-# REMOVED: create_event_driven_strategy_engine convenience function
-# Phase 3: EventDrivenStrategyEngine now requires injected parameters from API request:
-# - config (from config_manager)
-# - execution_mode (from startup config)  
-# - data_provider (from data_provider_factory)
-# - initial_capital (from API request)
-# - share_class (from API request)
-# Use direct constructor with proper dependency injection instead
-
-    def _create_execution_interface_factory(self):
-        """Create execution interface factory."""
-        from ..interfaces.venue_interface_factory import VenueInterfaceFactory
-        return VenueInterfaceFactory()
     
-    def _create_position_monitor(self):
-        """Create position monitor component."""
-        from ..components.position_monitor import PositionMonitor
-        from ...core.utilities.utility_manager import UtilityManager
-        utility_manager = UtilityManager(self.config, self.data_provider)
-        return PositionMonitor(
-            self.config, 
-            self.data_provider, 
-            utility_manager, 
-            self.execution_interface_factory
-        )
-    
-    def _create_event_logger(self):
-        """Create event logger component."""
-        from ...infrastructure.logging.event_logger import EventLogger
-        from ...core.utilities.utility_manager import UtilityManager
-        utility_manager = UtilityManager(self.config, self.data_provider)
-        return EventLogger(self.config, self.data_provider, utility_manager)
-    
-    def _create_exposure_monitor(self):
-        """Create exposure monitor component."""
-        from ..components.exposure_monitor import ExposureMonitor
-        from ...core.utilities.utility_manager import UtilityManager
-        utility_manager = UtilityManager(self.config, self.data_provider)
-        return ExposureMonitor(self.config, self.data_provider, utility_manager)
-    
-    def _create_risk_monitor(self):
-        """Create risk monitor component."""
-        from ..components.risk_monitor import RiskMonitor
-        from ...core.utilities.utility_manager import UtilityManager
-        utility_manager = UtilityManager(self.config, self.data_provider)
-        return RiskMonitor(self.config, self.data_provider, utility_manager)
-    
-    def _create_pnl_calculator(self):
-        """Create P&L calculator component."""
-        from ..math.pnl_calculator import PnLCalculator
-        return PnLCalculator(self.config, self.share_class, self.initial_capital)
-    
-    def _create_strategy_manager(self):
-        """Create strategy manager component."""
-        from ..strategies.strategy_factory import StrategyFactory
-        return StrategyFactory.create_strategy(
-            mode=self.config.get('mode', 'pure_lending'),
-            config=self.config,
-            risk_monitor=self.risk_monitor,
-            position_monitor=self.position_monitor,
-            event_engine=self
-        )
-    
-    def _create_position_update_handler(self):
-        """Create position update handler component."""
-        from ..components.position_update_handler import PositionUpdateHandler
-        return PositionUpdateHandler(
-            self.config,
-            self.position_monitor,
-            self.exposure_monitor,
-            self.risk_monitor,
-            self.pnl_calculator
-        )
-    
-    def _create_results_store(self):
-        """Create results store component."""
-        from ...infrastructure.persistence.async_results_store import AsyncResultsStore
-        return AsyncResultsStore("results", self.execution_mode)
-    
-    def _create_utility_manager(self):
-        """Create utility manager component."""
-        from ...core.utilities.utility_manager import UtilityManager
-        return UtilityManager(self.config, self.data_provider)
-    
-    def update_state(self, timestamp: pd.Timestamp, trigger_source: str, **kwargs) -> None:
-        """
-        Update state for all components.
-        
-        Args:
-            timestamp: Current timestamp
-            trigger_source: Source of the update trigger
-            **kwargs: Additional update parameters
-        """
-        try:
-            # Update all components with the new timestamp
-            if self.position_monitor:
-                self.position_monitor.update_state(timestamp, trigger_source, **kwargs)
-            
-            if self.event_logger:
-                self.event_logger.update_state(timestamp, trigger_source, **kwargs)
-            
-            if self.exposure_monitor:
-                self.exposure_monitor.update_state(timestamp, trigger_source, **kwargs)
-            
-            if self.risk_monitor:
-                self.risk_monitor.update_state(timestamp, trigger_source, **kwargs)
-            
-            if self.pnl_calculator:
-                self.pnl_calculator.update_state(timestamp, trigger_source, **kwargs)
-            
-            # Update execution interfaces
-            if self.execution_interfaces:
-                for interface_type, interface in self.execution_interfaces.items():
-                    if interface and hasattr(interface, 'update_state'):
-                        interface.update_state(timestamp, trigger_source, **kwargs)
-            
-            logger.debug(f"EventDrivenStrategyEngine.update_state completed at {timestamp} from {trigger_source}")
-            
-        except Exception as e:
-            logger.error(f"Failed to update state in EventDrivenStrategyEngine: {e}")
-            raise
-    
-    async def initialize_engine(self, config: Dict[str, Any], execution_mode: str) -> Dict[str, Any]:
-        """
-        Initialize all components in dependency order.
-        
-        Parameters:
-        - config: Strategy configuration
-        - execution_mode: Execution mode (backtest/live)
-        
-        Returns:
-        - Dict: Initialization results with component status
-        """
-        try:
-            logger.info(f"Initializing EventDrivenStrategyEngine in {execution_mode} mode")
-            
-            # Store configuration
-            self.config = config
-            self.execution_mode = execution_mode
-            
-            # Initialize components in dependency order
-            initialization_results = {}
-            
-            # 1. Initialize Data Provider (shared)
-            from ...infrastructure.data.base_data_provider import BaseDataProvider
-            self.data_provider = BaseDataProvider(execution_mode, config)
-            initialization_results['data_provider'] = 'initialized'
-            
-            # 2. Initialize Position Monitor (foundation)
-            self.position_monitor = PositionMonitor(config, self.data_provider, None)
-            initialization_results['position_monitor'] = 'initialized'
-            
-            # 3. Initialize Event Logger
-            self.event_logger = EventLogger(config)
-            initialization_results['event_logger'] = 'initialized'
-            
-            # 4. Initialize Exposure Monitor
-            self.exposure_monitor = ExposureMonitor(config, self.data_provider, None)
-            initialization_results['exposure_monitor'] = 'initialized'
-            
-            # 5. Initialize Risk Monitor
-            self.risk_monitor = RiskMonitor(config, self.data_provider, None)
-            initialization_results['risk_monitor'] = 'initialized'
-            
-            # 6. Initialize PnL Calculator
-            self.pnl_calculator = PnLCalculator(config, None)
-            initialization_results['pnl_calculator'] = 'initialized'
-            
-            # 7. Initialize Strategy Manager
-            self.strategy_manager = BaseStrategyManager(config, self.data_provider, self.exposure_monitor, self.risk_monitor)
-            initialization_results['strategy_manager'] = 'initialized'
-            
-            # 8. Initialize Position Update Handler
-            self.position_update_handler = PositionUpdateHandler(
-                config, self.position_monitor, self.exposure_monitor, 
-                self.risk_monitor, self.pnl_calculator, execution_mode
-            )
-            initialization_results['position_update_handler'] = 'initialized'
-            
-            # 9. Initialize Execution Interfaces (if needed)
-            # Note: Execution interfaces are initialized by VenueManager
-            initialization_results['execution_interfaces'] = 'deferred'
-            
-            # Set initialization status
-            self.initialized = True
-            self.initialization_timestamp = pd.Timestamp.now(tz='UTC')
-            
-            logger.info(f"EventDrivenStrategyEngine initialized successfully with {len(initialization_results)} components")
-            
-            return {
-                'success': True,
-                'components_initialized': initialization_results,
-                'execution_mode': execution_mode,
-                'initialization_timestamp': self.initialization_timestamp
-            }
-            
-        except Exception as e:
-            logger.error(f"Failed to initialize EventDrivenStrategyEngine: {e}")
-            return {
-                'success': False,
-                'error': str(e),
-                'components_initialized': initialization_results if 'initialization_results' in locals() else {}
-            }
+ 
