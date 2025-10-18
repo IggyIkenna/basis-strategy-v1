@@ -1,14 +1,16 @@
 import React from 'react';
-import { Settings, Info, AlertTriangle } from 'lucide-react';
+import { Settings, Info, AlertTriangle, ArrowLeft, ArrowRight } from 'lucide-react';
 
 interface StrategyConfigStepProps {
   mode: string;
   shareClass: 'USDT' | 'ETH';
   params: Record<string, any>;
   onUpdate: (params: Record<string, any>) => void;
+  onNext?: () => void;
+  onBack?: () => void;
 }
 
-export function StrategyConfigStep({ mode, shareClass, params, onUpdate }: StrategyConfigStepProps) {
+export function StrategyConfigStep({ mode, shareClass, params, onUpdate, onNext, onBack }: StrategyConfigStepProps) {
   const getStrategyConfig = (mode: string, shareClass: 'USDT' | 'ETH') => {
     const baseConfigs = {
       pure_lending_usdt: {
@@ -176,83 +178,149 @@ export function StrategyConfigStep({ mode, shareClass, params, onUpdate }: Strat
   };
 
   return (
-    <div className="space-y-6">
-      <div className="text-center">
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">
-          {strategyConfig.title}
-        </h2>
-        <p className="text-gray-600">
-          {strategyConfig.description}
-        </p>
-      </div>
-
-      <div className="space-y-6">
-        {strategyConfig.fields.map((field) => (
-          <div key={field.id} className="space-y-3">
-            <div className="flex items-center justify-between">
-              <label className="text-sm font-medium text-gray-700">
-                {field.label}
-              </label>
-              <span className="text-sm text-gray-500">
-                {getFieldValue(field.id, field.default).toFixed(field.step < 1 ? 1 : 0)}
-                {field.type === 'number' && field.label.includes('%') ? '%' : ''}
-              </span>
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 transition-colors">
+      {/* Header */}
+      <div className="bg-gradient-to-r from-slate-900 to-slate-800 dark:from-slate-800 dark:to-slate-700 text-white">
+        <div className="max-w-4xl mx-auto px-6 py-12">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-4xl font-bold tracking-tight mb-2">
+                {strategyConfig.title}
+              </h1>
+              <p className="text-slate-300 text-lg">
+                {strategyConfig.description}
+              </p>
             </div>
-            
-            <input
-              type="range"
-              min={field.min}
-              max={field.max}
-              step={field.step}
-              value={getFieldValue(field.id, field.default)}
-              onChange={(e) => handleFieldChange(field.id, parseFloat(e.target.value))}
-              className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
-            />
-            
-            <div className="flex justify-between text-xs text-gray-500">
-              <span>{field.min}{field.type === 'number' && field.label.includes('%') ? '%' : ''}</span>
-              <span>{field.max}{field.type === 'number' && field.label.includes('%') ? '%' : ''}</span>
-            </div>
-            
-            <p className="text-xs text-gray-600">
-              {field.description}
-            </p>
-          </div>
-        ))}
-      </div>
-
-      {/* Info Panel */}
-      <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-        <div className="flex items-start">
-          <Info className="w-5 h-5 text-blue-600 mr-2 mt-0.5" />
-          <div className="text-sm text-blue-800">
-            <p className="font-medium mb-1">Strategy Parameters:</p>
-            <ul className="space-y-1 text-blue-700">
-              <li>• These parameters will be used to configure your strategy execution</li>
-              <li>• You can adjust them based on your risk tolerance and market conditions</li>
-              <li>• Higher values generally mean higher risk and potential returns</li>
-              <li>• Consider backtesting with different parameter values to find optimal settings</li>
-            </ul>
+            {onBack && (
+              <button
+                onClick={onBack}
+                className="text-slate-300 hover:text-white transition-colors"
+                aria-label="Go back"
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </button>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Current Configuration Summary */}
-      <div className="mt-6 p-4 bg-gray-50 border border-gray-200 rounded-lg">
-        <div className="flex items-center mb-3">
-          <Settings className="w-5 h-5 text-gray-600 mr-2" />
-          <h3 className="text-sm font-medium text-gray-900">Current Configuration</h3>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {strategyConfig.fields.map((field) => (
-            <div key={field.id} className="flex justify-between text-sm">
-              <span className="text-gray-600">{field.label}:</span>
-              <span className="font-medium text-gray-900">
-                {getFieldValue(field.id, field.default).toFixed(field.step < 1 ? 1 : 0)}
-                {field.type === 'number' && field.label.includes('%') ? '%' : ''}
-              </span>
+      {/* Main Content */}
+      <div className="max-w-4xl mx-auto px-6 py-12">
+        <div className="space-y-8">
+
+          <div className="space-y-8">
+            {strategyConfig.fields.map((field) => (
+              <div key={field.id} className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <label className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                    {field.label}
+                  </label>
+                  <span className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+                    {getFieldValue(field.id, field.default).toFixed(field.step < 1 ? 1 : 0)}
+                    {field.type === 'number' && field.label.includes('%') ? '%' : ''}
+                  </span>
+                </div>
+                
+                <input
+                  type="range"
+                  min={field.min}
+                  max={field.max}
+                  step={field.step}
+                  value={getFieldValue(field.id, field.default)}
+                  onChange={(e) => handleFieldChange(field.id, parseFloat(e.target.value))}
+                  className="w-full h-3 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer slider focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  style={{
+                    background: `linear-gradient(to right, #10b981 0%, #10b981 ${((getFieldValue(field.id, field.default) - field.min) / (field.max - field.min)) * 100}%, #e2e8f0 ${((getFieldValue(field.id, field.default) - field.min) / (field.max - field.min)) * 100}%, #e2e8f0 100%)`
+                  }}
+                />
+                
+                <div className="flex justify-between text-sm text-slate-500 dark:text-slate-400 mt-2">
+                  <span>{field.min}{field.type === 'number' && field.label.includes('%') ? '%' : ''}</span>
+                  <span>{field.max}{field.type === 'number' && field.label.includes('%') ? '%' : ''}</span>
+                </div>
+                
+                <p className="text-sm text-slate-600 dark:text-slate-400 mt-3">
+                  {field.description}
+                </p>
+              </div>
+            ))}
+          </div>
+
+          {/* Info Panel */}
+          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-6">
+            <div className="flex items-start">
+              <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 flex items-center justify-center mr-3 mt-0.5">
+                <Info className="w-5 h-5" />
+              </div>
+              <div className="text-sm">
+                <p className="font-semibold text-blue-900 dark:text-blue-100 mb-2">Strategy Parameters:</p>
+                <ul className="space-y-2 text-blue-800 dark:text-blue-200">
+                  <li className="flex items-start">
+                    <div className="w-2 h-2 rounded-full bg-blue-500 mr-3 mt-2 flex-shrink-0"></div>
+                    <span>These parameters will be used to configure your strategy execution</span>
+                  </li>
+                  <li className="flex items-start">
+                    <div className="w-2 h-2 rounded-full bg-blue-500 mr-3 mt-2 flex-shrink-0"></div>
+                    <span>You can adjust them based on your risk tolerance and market conditions</span>
+                  </li>
+                  <li className="flex items-start">
+                    <div className="w-2 h-2 rounded-full bg-blue-500 mr-3 mt-2 flex-shrink-0"></div>
+                    <span>Higher values generally mean higher risk and potential returns</span>
+                  </li>
+                  <li className="flex items-start">
+                    <div className="w-2 h-2 rounded-full bg-blue-500 mr-3 mt-2 flex-shrink-0"></div>
+                    <span>Consider backtesting with different parameter values to find optimal settings</span>
+                  </li>
+                </ul>
+              </div>
             </div>
-          ))}
+          </div>
+
+          {/* Current Configuration Summary */}
+          <div className="bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-6">
+            <div className="flex items-center mb-4">
+              <div className="w-8 h-8 rounded-lg bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400 flex items-center justify-center mr-3">
+                <Settings className="w-5 h-5" />
+              </div>
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Current Configuration</h3>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {strategyConfig.fields.map((field) => (
+                <div key={field.id} className="flex justify-between items-center p-3 bg-white dark:bg-slate-700 rounded-lg">
+                  <span className="text-slate-600 dark:text-slate-400 font-medium">{field.label}:</span>
+                  <span className="font-bold text-slate-900 dark:text-slate-100">
+                    {getFieldValue(field.id, field.default).toFixed(field.step < 1 ? 1 : 0)}
+                    {field.type === 'number' && field.label.includes('%') ? '%' : ''}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              {onBack && (
+                <button
+                  onClick={onBack}
+                  className="px-6 py-3 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors flex items-center gap-2"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  Previous
+                </button>
+              )}
+            </div>
+
+            {onNext && (
+              <button
+                onClick={onNext}
+                className="px-8 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg transition-all duration-200 flex items-center gap-2 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+              >
+                Continue
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>

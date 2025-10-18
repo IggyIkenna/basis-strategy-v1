@@ -1,5 +1,5 @@
 import React from 'react';
-import { CheckCircle, AlertCircle, Clock, DollarSign, TrendingUp, Settings } from 'lucide-react';
+import { CheckCircle, AlertCircle, Clock, DollarSign, TrendingUp, Settings, ArrowLeft, ArrowRight } from 'lucide-react';
 
 interface ReviewStepProps {
   config: {
@@ -12,9 +12,10 @@ interface ReviewStepProps {
     estimatedAPY?: number;
   };
   onComplete: () => void;
+  onBack?: () => void;
 }
 
-export function ReviewStep({ config, onComplete }: ReviewStepProps) {
+export function ReviewStep({ config, onComplete, onBack }: ReviewStepProps) {
   const getModeDisplayName = (mode: string) => {
     const modeNames: Record<string, string> = {
       pure_lending_usdt: 'Pure Lending',
@@ -59,105 +60,135 @@ export function ReviewStep({ config, onComplete }: ReviewStepProps) {
   const backtestDuration = calculateBacktestDuration();
 
   return (
-    <div className="space-y-6">
-      <div className="text-center">
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">
-          Review Your Configuration
-        </h2>
-        <p className="text-gray-600">
-          Please review your strategy configuration before proceeding
-        </p>
-      </div>
-
-      {/* Configuration Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Basic Configuration */}
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-gray-900 flex items-center">
-            <DollarSign className="w-5 h-5 mr-2" />
-            Basic Configuration
-          </h3>
-          <div className="space-y-3">
-            <div className="flex justify-between">
-              <span className="text-gray-600">Share Class:</span>
-              <span className="font-medium">{config.shareClass}</span>
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 transition-colors">
+      {/* Header */}
+      <div className="bg-gradient-to-r from-slate-900 to-slate-800 dark:from-slate-800 dark:to-slate-700 text-white">
+        <div className="max-w-4xl mx-auto px-6 py-12">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-4xl font-bold tracking-tight mb-2">
+                Review Your Configuration
+              </h1>
+              <p className="text-slate-300 text-lg">
+                Please review your strategy configuration before proceeding
+              </p>
             </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">Initial Capital:</span>
-              <span className="font-medium">
-                {config.initialCapital.toLocaleString()} {config.shareClass}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">Backtest Period:</span>
-              <span className="font-medium">{backtestDuration} days</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">Start Date:</span>
-              <span className="font-medium">{config.startDate}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">End Date:</span>
-              <span className="font-medium">{config.endDate}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Strategy Configuration */}
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-gray-900 flex items-center">
-            <TrendingUp className="w-5 h-5 mr-2" />
-            Strategy Configuration
-          </h3>
-          <div className="space-y-3">
-            <div className="flex justify-between">
-              <span className="text-gray-600">Strategy Mode:</span>
-              <span className="font-medium">{getModeDisplayName(config.mode)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">Risk Level:</span>
-              <span className={`px-2 py-1 text-xs font-medium rounded-full ${riskInfo.color}`}>
-                {riskInfo.level}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">Estimated APY:</span>
-              <span className="font-medium text-green-600">{estimatedAPY}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">Parameters:</span>
-              <span className="font-medium">
-                {Object.keys(config.strategyParams).length} configured
-              </span>
-            </div>
+            {onBack && (
+              <button
+                onClick={onBack}
+                className="text-slate-300 hover:text-white transition-colors"
+                aria-label="Go back"
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </button>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Strategy Parameters */}
-      {Object.keys(config.strategyParams).length > 0 && (
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-gray-900 flex items-center">
-            <Settings className="w-5 h-5 mr-2" />
-            Strategy Parameters
-          </h3>
-          <div className="bg-gray-50 rounded-lg p-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {Object.entries(config.strategyParams).map(([key, value]) => (
-                <div key={key} className="flex justify-between">
-                  <span className="text-gray-600 capitalize">
-                    {key.replace(/([A-Z])/g, ' $1').trim()}:
-                  </span>
-                  <span className="font-medium">
-                    {typeof value === 'number' ? value.toFixed(1) : value}
-                    {key.includes('Rate') || key.includes('Threshold') || key.includes('Loss') || key.includes('Profit') ? '%' : ''}
+      {/* Main Content */}
+      <div className="max-w-4xl mx-auto px-6 py-12">
+        <div className="space-y-8">
+
+          {/* Configuration Summary */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {/* Basic Configuration */}
+            <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
+              <div className="flex items-center mb-6">
+                <div className="w-12 h-12 rounded-xl bg-emerald-100 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mr-4">
+                  <DollarSign className="w-6 h-6" />
+                </div>
+                <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100">
+                  Basic Configuration
+                </h3>
+              </div>
+              <div className="space-y-4">
+                <div className="flex justify-between items-center p-3 bg-slate-50 dark:bg-slate-700 rounded-lg">
+                  <span className="text-slate-600 dark:text-slate-400 font-medium">Share Class:</span>
+                  <span className="font-bold text-slate-900 dark:text-slate-100">{config.shareClass}</span>
+                </div>
+                <div className="flex justify-between items-center p-3 bg-slate-50 dark:bg-slate-700 rounded-lg">
+                  <span className="text-slate-600 dark:text-slate-400 font-medium">Initial Capital:</span>
+                  <span className="font-bold text-slate-900 dark:text-slate-100">
+                    {config.initialCapital.toLocaleString()} {config.shareClass}
                   </span>
                 </div>
-              ))}
+                <div className="flex justify-between items-center p-3 bg-slate-50 dark:bg-slate-700 rounded-lg">
+                  <span className="text-slate-600 dark:text-slate-400 font-medium">Backtest Period:</span>
+                  <span className="font-bold text-slate-900 dark:text-slate-100">{backtestDuration} days</span>
+                </div>
+                <div className="flex justify-between items-center p-3 bg-slate-50 dark:bg-slate-700 rounded-lg">
+                  <span className="text-slate-600 dark:text-slate-400 font-medium">Start Date:</span>
+                  <span className="font-bold text-slate-900 dark:text-slate-100">{config.startDate}</span>
+                </div>
+                <div className="flex justify-between items-center p-3 bg-slate-50 dark:bg-slate-700 rounded-lg">
+                  <span className="text-slate-600 dark:text-slate-400 font-medium">End Date:</span>
+                  <span className="font-bold text-slate-900 dark:text-slate-100">{config.endDate}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Strategy Configuration */}
+            <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
+              <div className="flex items-center mb-6">
+                <div className="w-12 h-12 rounded-xl bg-blue-100 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 flex items-center justify-center mr-4">
+                  <TrendingUp className="w-6 h-6" />
+                </div>
+                <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100">
+                  Strategy Configuration
+                </h3>
+              </div>
+              <div className="space-y-4">
+                <div className="flex justify-between items-center p-3 bg-slate-50 dark:bg-slate-700 rounded-lg">
+                  <span className="text-slate-600 dark:text-slate-400 font-medium">Strategy Mode:</span>
+                  <span className="font-bold text-slate-900 dark:text-slate-100">{getModeDisplayName(config.mode)}</span>
+                </div>
+                <div className="flex justify-between items-center p-3 bg-slate-50 dark:bg-slate-700 rounded-lg">
+                  <span className="text-slate-600 dark:text-slate-400 font-medium">Risk Level:</span>
+                  <span className={`px-3 py-1 text-sm font-bold rounded-full ${riskInfo.color}`}>
+                    {riskInfo.level}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center p-3 bg-slate-50 dark:bg-slate-700 rounded-lg">
+                  <span className="text-slate-600 dark:text-slate-400 font-medium">Estimated APY:</span>
+                  <span className="font-bold text-emerald-600 dark:text-emerald-400">{estimatedAPY}</span>
+                </div>
+                <div className="flex justify-between items-center p-3 bg-slate-50 dark:bg-slate-700 rounded-lg">
+                  <span className="text-slate-600 dark:text-slate-400 font-medium">Parameters:</span>
+                  <span className="font-bold text-slate-900 dark:text-slate-100">
+                    {Object.keys(config.strategyParams).length} configured
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+
+          {/* Strategy Parameters */}
+          {Object.keys(config.strategyParams).length > 0 && (
+            <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
+              <div className="flex items-center mb-6">
+                <div className="w-12 h-12 rounded-xl bg-purple-100 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 flex items-center justify-center mr-4">
+                  <Settings className="w-6 h-6" />
+                </div>
+                <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100">
+                  Strategy Parameters
+                </h3>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {Object.entries(config.strategyParams).map(([key, value]) => (
+                  <div key={key} className="flex justify-between items-center p-3 bg-slate-50 dark:bg-slate-700 rounded-lg">
+                    <span className="text-slate-600 dark:text-slate-400 font-medium capitalize">
+                      {key.replace(/([A-Z])/g, ' $1').trim()}:
+                    </span>
+                    <span className="font-bold text-slate-900 dark:text-slate-100">
+                      {typeof value === 'number' ? value.toFixed(1) : value}
+                      {key.includes('Rate') || key.includes('Threshold') || key.includes('Loss') || key.includes('Profit') ? '%' : ''}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
       {/* Risk Warning */}
       <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
