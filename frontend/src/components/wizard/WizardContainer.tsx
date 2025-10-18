@@ -140,6 +140,8 @@ export function WizardContainer({ onComplete, onCancel, onShowResults }: WizardC
           <BasicConfigStep
             config={config}
             onUpdate={updateConfig}
+            onNext={nextStep}
+            onBack={currentStep > 0 ? prevStep : undefined}
           />
         );
       case 3:
@@ -149,6 +151,8 @@ export function WizardContainer({ onComplete, onCancel, onShowResults }: WizardC
             shareClass={config.shareClass!}
             params={config.strategyParams || {}}
             onUpdate={(params) => updateConfig({ strategyParams: params })}
+            onNext={nextStep}
+            onBack={currentStep > 0 ? prevStep : undefined}
           />
         );
       case 4:
