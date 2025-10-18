@@ -212,7 +212,11 @@ class TestUSDTETHStakingHedgedLeveragedStrategyActions:
     
     def test_create_exit_full_orders(self, strategy):
         """Test _create_exit_full_orders method."""
-        with patch.object(strategy, '_get_asset_price', return_value=3000.0):
+        with patch.object(strategy, '_get_asset_price', return_value=3000.0), \
+             patch.object(strategy.position_monitor, 'get_current_position', return_value={
+                 'aUSDT_balance': 10000.0,
+                 'etherfi_balance': 3.33
+             }):
             orders = strategy._create_exit_full_orders(10000.0)
             
             # Should have orders to unwind leveraged position
@@ -222,7 +226,7 @@ class TestUSDTETHStakingHedgedLeveragedStrategyActions:
             unstake_order = next((o for o in orders if o.operation == OrderOperation.UNSTAKE), None)
             assert unstake_order is not None
             assert unstake_order.venue == Venue.ETHERFI
-            assert unstake_order.token_in == 'weETH'
+            assert unstake_order.token_in == 'etherfi'
             assert unstake_order.token_out == 'ETH'
             assert unstake_order.strategy_intent == 'exit_full'
             
