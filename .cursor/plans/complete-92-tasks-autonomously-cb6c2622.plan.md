@@ -323,7 +323,7 @@
 
 - Log exact error messages
 - Retry operations up to 3 times
-- Restart backend if needed: `./platform.sh stop-local && ./platform.sh backtest`
+- Restart backend if needed: `./platform.sh stop && ./platform.sh backtest`
 - Document issues and continue (don't stop)
 
 ### Canonical Compliance
@@ -381,7 +381,7 @@ python -m pytest tests/unit/test_position_monitor_unit.py -v
 ./platform.sh backtest
 
 # Stop backend
-./platform.sh stop-local
+./platform.sh stop
 
 # Check health
 curl -s http://localhost:8001/health/

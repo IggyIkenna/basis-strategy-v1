@@ -1,7 +1,7 @@
 # Position Update Handler Component Specification
 
 ## Purpose
-Orchestrates the tight loop sequence between position updates and downstream component chain, abstracting tight loop complexity from EventDrivenStrategyEngine. 
+Orchestrates the tight loop sequence between position updates and downstream component chain, performing reconciliation logic and abstracting tight loop complexity from EventDrivenStrategyEngine. 
 
 ## 📚 **Canonical Sources**
 
@@ -17,9 +17,10 @@ Orchestrates the tight loop sequence between position updates and downstream com
 
 ## Responsibilities
 1. Receive position update triggers from Execution Manager
-2. Orchestrate tight loop: position_monitor → exposure_monitor → risk_monitor → pnl_calculator
-3. Handle both full loop and tight loop triggers
-4. Coordinate reconciliation handshake with Execution Manager
+2. Perform reconciliation logic: compare simulated vs real positions with tolerance checking
+3. Orchestrate tight loop: position_monitor → reconciliation → exposure_monitor → risk_monitor → pnl_calculator
+4. Handle both full loop and tight loop triggers
+5. Coordinate reconciliation handshake with Execution Manager
 
 ## State
 - tight_loop_active: bool
@@ -34,8 +35,7 @@ The following are set once during initialization and NEVER passed as runtime par
 - position_monitor: PositionMonitor
 - exposure_monitor: ExposureMonitor
 - risk_monitor: RiskMonitor
-- pnl_calculator: PnLCalculator
-- reconciliation_component: ReconciliationComponent
+- pnl_calculator: PnLMonitor
 - data_provider: BaseDataProvider (reference, uses shared clock)
 - config: Dict (reference, never modified)
 - execution_mode: str (BASIS_EXECUTION_MODE)
@@ -70,6 +70,10 @@ Components NEVER receive these as method parameters during runtime.
 - **position_settings**: Dict (position-specific settings)
   - **update_interval**: Position update interval
   - **validation_rules**: Position validation rules
+- **component_config.position_update_handler.reconciliation_tolerance**: float - Position reconciliation tolerance
+  - **Usage**: Defines tolerance for position reconciliation between simulated and real positions
+  - **Examples**: 0.01 (1% tolerance)
+  - **Used in**: Position reconciliation logic in live mode
 
 ## Config-Driven Behavior
 
@@ -110,13 +114,13 @@ component_config:
 - Complex AAVE component chain
 - Same orchestration logic as other modes
 
-**Key Principle**: Position Update Handler is **purely orchestration** - it does NOT:
+**Key Principle**: Position Update Handler is **orchestration + reconciliation** - it does NOT:
 - Make mode-specific decisions about which components to call
 - Handle strategy-specific orchestration logic
 - Convert or transform data between components
 - Make business logic decisions
 
-All orchestration logic is generic - it calls the same component sequence (position_monitor → exposure_monitor → risk_monitor → pnl_calculator) regardless of strategy mode, with each component handling mode-specific logic internally using config-driven behavior.
+All orchestration logic is generic - it calls the same component sequence (position_monitor → reconciliation → exposure_monitor → risk_monitor → pnl_calculator) regardless of strategy mode, with each component handling mode-specific logic internally using config-driven behavior.
 
 ## Data Provider Queries
 
@@ -149,11 +153,10 @@ def update_state(self, timestamp: pd.Timestamp, trigger_source: str, execution_d
 ```
 
 ### Data Dependencies
-- **Position Monitor**: Position state updates
+- **Position Monitor**: Position state updates and reconciliation data
 - **Exposure Monitor**: Exposure calculations
 - **Risk Monitor**: Risk assessments
 - **PnL Calculator**: PnL calculations
-- **Reconciliation Component**: Position reconciliation
 - **DataProvider**: Market data for calculations
 
 ## Mode-Aware Behavior
@@ -190,7 +193,7 @@ class PositionUpdateHandler:
     
     def __init__(self, config: Dict, data_provider: 'BaseDataProvider', execution_mode: str,
                  position_monitor: 'PositionMonitor', exposure_monitor: 'ExposureMonitor',
-                 risk_monitor: 'RiskMonitor', pnl_calculator: 'PnLCalculator'):
+                 risk_monitor: 'RiskMonitor', pnl_monitor: 'PnLMonitor', correlation_id: str, pid: str, log_dir: str):
         # Store references (NEVER modified)
         self.config = config
         self.data_provider = data_provider
@@ -198,7 +201,10 @@ class PositionUpdateHandler:
         self.position_monitor = position_monitor
         self.exposure_monitor = exposure_monitor
         self.risk_monitor = risk_monitor
-        self.pnl_calculator = pnl_calculator
+        self.pnl_monitor = pnl_monitor
+        self.correlation_id = correlation_id
+        self.pid = pid
+        self.log_dir = log_dir
         
         # Initialize component-specific state
         self.tight_loop_active = False
@@ -251,12 +257,8 @@ class PositionUpdateHandler:
             )
             
             # Step 4: Recalculate P&L
-            updated_pnl = self.pnl_calculator.get_current_pnl(
-                current_exposure=updated_exposure,
-                previous_exposure=None,  # Will use internal state
-                timestamp=timestamp,
-                period_start=self.config.get('period_start')
-            )
+            self.pnl_calculator.update_state(timestamp, "position_update")
+            updated_pnl = self.pnl_calculator.get_latest_pnl()
             
             # Log component end (per EVENT_LOGGER.md)
             end_time = pd.Timestamp.now()
@@ -297,7 +299,7 @@ class ComponentFactory:
     @staticmethod
     def create_position_update_handler(config: Dict, data_provider: 'BaseDataProvider', execution_mode: str,
                                        position_monitor: 'PositionMonitor', exposure_monitor: 'ExposureMonitor',
-                                       risk_monitor: 'RiskMonitor', pnl_calculator: 'PnLCalculator') -> PositionUpdateHandler:
+                                       risk_monitor: 'RiskMonitor', pnl_calculator: 'PnLMonitor') -> PositionUpdateHandler:
         """Create Position Update Handler - mode-agnostic tight loop orchestrator"""
         # No component config needed - mode-agnostic
         return PositionUpdateHandler(
@@ -752,12 +754,28 @@ Parameters:
 
 Behavior:
 1. Call position_monitor.update_state(timestamp, 'execution_manager', execution_deltas)
-2. Call reconciliation_component.update_state(timestamp, simulated_state, 'execution_manager')
+2. Perform internal reconciliation: _reconcile_positions()
 3. If reconciliation success: Continue tight loop chain
 4. If reconciliation failed: Trigger refresh loop
 5. Call exposure_monitor.update_state(timestamp, 'tight_loop')
 6. Call risk_monitor.update_state(timestamp, 'tight_loop')
 7. Call pnl_calculator.update_state(timestamp, 'tight_loop')
+
+### _reconcile_positions() -> Dict
+Internal reconciliation method that compares simulated vs real positions.
+
+Parameters:
+- None (uses internal state from position_monitor)
+
+Behavior:
+1. Check execution_mode (backtest vs live)
+2. Backtest mode: Always return success (simulated = real)
+3. Live mode: Compare simulated vs real positions with tolerance checking
+4. Return reconciliation result with success/failure status
+5. NO async/await: Synchronous execution only
+
+Returns:
+- Dict with 'success', 'reconciliation_type', 'message', 'mismatches' (if any)
 
 ### _execute_full_loop(timestamp: pd.Timestamp)
 Execute the full loop sequence without reconciliation.
@@ -872,8 +890,9 @@ def _execute_tight_loop(self, timestamp: pd.Timestamp, execution_deltas: Dict = 
         # Execute tight loop with real reconciliation
         self.position_monitor.update_state(timestamp, execution_deltas, 'execution_manager')
         
-        # Check reconciliation status
-        if self.reconciliation_component.reconciliation_status == 'success':
+        # Perform reconciliation
+        reconciliation_result = self._reconcile_positions()
+        if reconciliation_result['success']:
             # Continue tight loop chain
             self.exposure_monitor.update_state(timestamp, 'tight_loop')
             self.risk_monitor.update_state(timestamp, 'tight_loop')
@@ -889,20 +908,14 @@ def _execute_tight_loop(self, timestamp: pd.Timestamp, execution_deltas: Dict = 
 ```python
 # Execution Manager calls this sequence
 def _process_single_block(self, timestamp: pd.Timestamp, block: Dict):
-    # Reset reconciliation status
-    self.reconciliation_component.reconciliation_status = 'pending'
-    
     # Execute instruction and get deltas
     deltas = self.execution_interface_manager.route_instruction(timestamp, block)
     
-    # Update position with deltas via Position Update Handler
+    # Update position with deltas via Position Update Handler (includes reconciliation)
     self.position_update_handler.update_state(timestamp, 'execution_manager', deltas)
     
-    # Check reconciliation status (synchronous polling)
-    if self.reconciliation_component.reconciliation_status == 'success':
-        return True
-    else:
-        return False
+    # Position Update Handler handles reconciliation internally
+    return True
 ```
 
 ### EventDrivenStrategyEngine Integration
@@ -957,7 +970,7 @@ position_snapshot = position_monitor.get_current_positions()
 - exposure_monitor.update_state(timestamp, 'tight_loop') - exposure calculations
 - risk_monitor.update_state(timestamp, 'tight_loop') - risk assessments
 - pnl_calculator.update_state(timestamp, 'tight_loop') - P&L calculations
-- reconciliation_component.update_state(timestamp, simulated_state, 'execution_manager') - reconciliation
+- _reconcile_positions() - internal reconciliation method
 
 ### Communication
 - Direct method calls ONLY
@@ -996,8 +1009,8 @@ position_snapshot = position_monitor.get_current_positions()
 class PositionUpdateHandler:
     def __init__(self, config: Dict, data_provider: 'BaseDataProvider', execution_mode: str,
                  position_monitor: 'PositionMonitor', exposure_monitor: 'ExposureMonitor',
-                 risk_monitor: 'RiskMonitor', pnl_calculator: 'PnLCalculator',
-                 reconciliation_component: 'ReconciliationComponent'):
+                 risk_monitor: 'RiskMonitor', pnl_calculator: 'PnLMonitor',
+                 ):
         # Store references (NEVER modified)
         self.config = config
         self.data_provider = data_provider
@@ -1006,7 +1019,6 @@ class PositionUpdateHandler:
         self.exposure_monitor = exposure_monitor
         self.risk_monitor = risk_monitor
         self.pnl_calculator = pnl_calculator
-        self.reconciliation_component = reconciliation_component
         
         # Initialize component-specific state
         self.tight_loop_active = False
@@ -1044,8 +1056,9 @@ class PositionUpdateHandler:
                 # Always succeed in backtest
                 reconciliation_success = True
             elif self.execution_mode == 'live':
-                # Check real reconciliation status
-                reconciliation_success = (self.reconciliation_component.reconciliation_status == 'success')
+                # Perform reconciliation
+                reconciliation_result = self._reconcile_positions()
+                reconciliation_success = reconciliation_result['success']
             
             if reconciliation_success:
                 # Continue tight loop chain
@@ -1116,7 +1129,6 @@ class PositionUpdateHandler:
 - [Exposure Monitor Specification](02_EXPOSURE_MONITOR.md) - Exposure calculations
 - [Risk Monitor Specification](03_RISK_MONITOR.md) - Risk metrics
 - [PnL Calculator Specification](04_PNL_CALCULATOR.md) - PnL calculations
-- [Reconciliation Component Specification](10_RECONCILIATION_COMPONENT.md) - Position validation
 - [Execution Manager Specification](06_EXECUTION_MANAGER.md) - Execution coordination
 - [Event-Driven Strategy Engine Specification](15_EVENT_DRIVEN_STRATEGY_ENGINE.md) - Engine integration
 

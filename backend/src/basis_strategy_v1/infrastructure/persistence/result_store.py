@@ -25,7 +25,9 @@ class ResultStore:
         self.base_path = Path(base_path).resolve()
         self.base_path.mkdir(parents=True, exist_ok=True)
 
-    async def save_result(self, request_id: str, result: Dict[str, Any], full_results: Optional[Dict[str, Any]] = None) -> None:
+    async def save_result(
+        self, request_id: str, result: Dict[str, Any], full_results: Optional[Dict[str, Any]] = None
+    ) -> None:
         """
         Save result summary to filesystem using existing format.
 
@@ -33,8 +35,8 @@ class ResultStore:
         This method saves the summary.json file to match existing format.
         """
         try:
-            strategy_name = result.get('strategy_name', 'unknown')
-            share_class = result.get('share_class', 'usdt').lower()  # Default to usdt, lowercase
+            strategy_name = result.get("strategy_name", "unknown")
+            share_class = result.get("share_class", "usdt").lower()  # Default to usdt, lowercase
             result_dir = self.base_path / f"{request_id}_{share_class}_{strategy_name}"
             result_dir.mkdir(parents=True, exist_ok=True)
 
@@ -42,53 +44,48 @@ class ResultStore:
             # metadata.json)
             summary_file = result_dir / "summary.json"
             summary = {
-                'request_id': request_id,
-                'strategy_name': strategy_name,
-                'start_date': result.get('start_date'),
-                'end_date': result.get('end_date'),
-                'initial_capital': result.get('initial_capital'),
-                'final_value': result.get('final_value'),
-                'total_return': result.get('total_return'),
-                'annualized_return': result.get('annualized_return', 0),
-                'sharpe_ratio': result.get('sharpe_ratio', 0),
-                'max_drawdown': result.get('max_drawdown', 0),
-                'total_trades': result.get('total_trades', 0),
-                'chart_paths': result.get('chart_paths', [])
+                "request_id": request_id,
+                "strategy_name": strategy_name,
+                "start_date": result.get("start_date"),
+                "end_date": result.get("end_date"),
+                "initial_capital": result.get("initial_capital"),
+                "final_value": result.get("final_value"),
+                "total_return": result.get("total_return"),
+                "annualized_return": result.get("annualized_return", 0),
+                "sharpe_ratio": result.get("sharpe_ratio", 0),
+                "max_drawdown": result.get("max_drawdown", 0),
+                "total_trades": result.get("total_trades", 0),
+                "chart_paths": result.get("chart_paths", []),
             }
 
-            with open(summary_file, 'w') as f:
+            with open(summary_file, "w") as f:
                 json.dump(summary, f, indent=2, default=str)
 
-            logger.info(
-                "Result summary saved",
-                request_id=request_id,
-                result_dir=str(result_dir))
-            
+            logger.info("Result summary saved", request_id=request_id, result_dir=str(result_dir))
+
             # Generate CSV files and charts using ChartGenerator
             try:
                 from ..visualization.chart_generator import ChartGenerator
+
                 chart_generator = ChartGenerator()
-                
+
                 # Generate charts and CSV files using full results if available
                 chart_data = full_results if full_results else result
                 chart_generator.generate_all_charts(
                     results=chart_data,
                     request_id=request_id,
                     strategy_name=strategy_name,
-                    output_dir=result_dir
+                    output_dir=result_dir,
                 )
-                
+
                 logger.info(f"Charts and CSV files generated for {request_id}")
-                
+
             except Exception as e:
                 logger.warning(f"Failed to generate charts and CSV files: {e}")
                 # Continue without failing the result save
 
         except Exception as e:
-            logger.error(
-                "Failed to save result summary",
-                request_id=request_id,
-                error=str(e))
+            logger.error("Failed to save result summary", request_id=request_id, error=str(e))
             raise
 
     async def get_result(self, request_id: str) -> Optional[Dict[str, Any]]:
@@ -100,8 +97,7 @@ class ResultStore:
         """
         try:
             # Find result directory
-            candidates = sorted(
-                glob.glob(str(self.base_path / f"{request_id}_*")))
+            candidates = sorted(glob.glob(str(self.base_path / f"{request_id}_*")))
             if not candidates:
                 return None
 
@@ -109,29 +105,22 @@ class ResultStore:
             summary_file = result_dir / "summary.json"
 
             if summary_file.exists():
-                with open(summary_file, 'r') as f:
+                with open(summary_file, "r") as f:
                     return json.load(f)
 
             # Fallback: basic info from directory name
-            strategy_name = result_dir.name.split(
-                '_', 1)[1] if '_' in result_dir.name else 'unknown'
-            return {
-                'request_id': request_id,
-                'strategy_name': strategy_name,
-                'status': 'completed'
-            }
+            strategy_name = (
+                result_dir.name.split("_", 1)[1] if "_" in result_dir.name else "unknown"
+            )
+            return {"request_id": request_id, "strategy_name": strategy_name, "status": "completed"}
 
         except Exception as e:
-            logger.error(
-                "Failed to get result",
-                request_id=request_id,
-                error=str(e))
+            logger.error("Failed to get result", request_id=request_id, error=str(e))
             return None
 
-    async def list_results(self,
-                           strategy_filter: Optional[str] = None,
-                           limit: int = 1000,
-                           offset: int = 0) -> List[Dict[str, Any]]:
+    async def list_results(
+        self, strategy_filter: Optional[str] = None, limit: int = 1000, offset: int = 0
+    ) -> List[Dict[str, Any]]:
         """
         List all results from filesystem.
 
@@ -146,7 +135,7 @@ class ResultStore:
                     continue
 
                 # Parse directory name: {request_id}_{strategy_name}
-                parts = entry.name.split('_', 1)
+                parts = entry.name.split("_", 1)
                 if len(parts) != 2:
                     continue
 
@@ -159,7 +148,7 @@ class ResultStore:
                 summary_file = entry / "summary.json"
                 if summary_file.exists():
                     try:
-                        with open(summary_file, 'r') as f:
+                        with open(summary_file, "r") as f:
                             result = json.load(f)
                             results.append(result)
                             continue
@@ -167,19 +156,21 @@ class ResultStore:
                         pass
 
                 # Fallback: basic info
-                results.append({
-                    'request_id': request_id,
-                    'strategy_name': strategy_name,
-                    'status': 'completed',
-                    'export_dir': str(entry)
-                })
+                results.append(
+                    {
+                        "request_id": request_id,
+                        "strategy_name": strategy_name,
+                        "status": "completed",
+                        "export_dir": str(entry),
+                    }
+                )
 
             # Sort by request_id (most recent first, assuming UUID timestamp
             # ordering)
-            results.sort(key=lambda x: x.get('request_id', ''), reverse=True)
+            results.sort(key=lambda x: x.get("request_id", ""), reverse=True)
 
             # Apply pagination
-            return results[offset:offset + limit]
+            return results[offset : offset + limit]
 
         except Exception as e:
             logger.error("Failed to list results", error=str(e))
@@ -190,8 +181,7 @@ class ResultStore:
         Delete result directory from filesystem.
         """
         try:
-            candidates = sorted(
-                glob.glob(str(self.base_path / f"{request_id}_*")))
+            candidates = sorted(glob.glob(str(self.base_path / f"{request_id}_*")))
             if not candidates:
                 return False
 
@@ -199,17 +189,12 @@ class ResultStore:
 
             # Remove entire directory
             import shutil
+
             shutil.rmtree(result_dir)
 
-            logger.info(
-                "Result deleted",
-                request_id=request_id,
-                result_dir=str(result_dir))
+            logger.info("Result deleted", request_id=request_id, result_dir=str(result_dir))
             return True
 
         except Exception as e:
-            logger.error(
-                "Failed to delete result",
-                request_id=request_id,
-                error=str(e))
+            logger.error("Failed to delete result", request_id=request_id, error=str(e))
             return False

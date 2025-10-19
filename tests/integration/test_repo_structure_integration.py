@@ -147,7 +147,7 @@ class RepositoryStructureValidator:
             },
             # Execution components (from specs)
             'core/execution/': {
-                'venue_manager.py': '06_VENUE_MANAGER.md',
+                'execution_manager.py': '06_VENUE_MANAGER.md',
                 'venue_interface_manager.py': '07_VENUE_INTERFACE_MANAGER.md',
                 'wallet_transfer_executor.py': 'Required for execution',
                 '__init__.py': 'Required for package'
@@ -383,7 +383,7 @@ class RepositoryStructureValidator:
         venue_centric_files = [
             'core/interfaces/venue_interface_factory.py',
             'core/execution/venue_interface_manager.py',
-            'core/execution/venue_manager.py'
+            'core/execution/execution_manager.py'
         ]
         
         for venue_file in venue_centric_files:

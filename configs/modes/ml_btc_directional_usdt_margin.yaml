@@ -14,7 +14,6 @@ enable_market_impact: true
 
 # Asset configuration
 share_class: "USDT"
-asset: "BTC"
 margin_currency: "USDT"  # USDT margin for this variant
 lst_type: null
 
@@ -62,7 +61,6 @@ strategy_config:
   signal_threshold: 0.8  # ML signal confidence threshold
   max_position_size: 1.0
   stop_loss_pct: 0.05
-  take_profit_pct: 0.10
 
 # Component configuration
 component_config:
@@ -116,10 +114,8 @@ component_config:
     actions: ["entry_full", "entry_partial", "exit_full", "exit_partial", "sell_dust"]
     position_calculation:
       target_position: "btc_perp_position"
-      max_position_size: 1.0
       signal_threshold: 0.8
       stop_loss_pct: 0.05
-      take_profit_pct: 0.10
   
   # Execution management
   execution_manager:
@@ -181,7 +177,6 @@ event_logger:
   log_retention_policy:
     retention_days: 30
     max_file_size_mb: 100
-    rotation_frequency: "daily"
     compression_after_days: 7
   logging_requirements:
     structured_logging: true

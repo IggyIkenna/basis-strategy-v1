@@ -93,7 +93,11 @@ class MLBTCDirectionalUSDTMarginStrategy(BaseStrategyManager):
         self.stop_loss_pct = config["stop_loss_pct"]  # Stop loss percentage
         self.take_profit_pct = config["take_profit_pct"]  # Take profit percentage
         self.share_class = config.get("share_class", "USDT")  # Share class currency
-        self.asset = config.get("asset", "BTC")  # Primary asset
+        self.delta_tracking_asset = (
+            config.get("component_config", {})
+            .get("risk_monitor", {})
+            .get("delta_tracking_asset", "BTC")
+        )
 
         # Define and validate instrument keys
         self.entry_instrument = f"{Venue.WALLET.value}:BaseToken:USDT"
@@ -279,8 +283,10 @@ class MLBTCDirectionalUSDTMarginStrategy(BaseStrategyManager):
 
             # Get ML predictions from data provider using canonical pattern
             # This would be implemented based on the actual ML model integration
-            data = self.data_provider.get_data(pd.Timestamp.now())
-            ml_predictions = data.get("ml_predictions", {}).get("btc_directional")
+            if not self.utility_manager:
+                raise ValueError("utility_manager is required but not provided")
+            data = self.utility_manager.data_provider.get_data(pd.Timestamp.now())
+            ml_predictions = data["ml_data"]["predictions"]["btc_directional"]
 
             if ml_predictions is None:
                 return None
@@ -793,7 +799,7 @@ class MLBTCDirectionalUSDTMarginStrategy(BaseStrategyManager):
                 "strategy_type": "ml_btc_directional",
                 "mode": self.mode,
                 "share_class": self.share_class,
-                "asset": self.asset,
+                "asset": self.delta_tracking_asset,
                 "equity": 0.0,
                 "error": str(e),
             }

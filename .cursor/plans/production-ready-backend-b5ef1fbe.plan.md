@@ -185,7 +185,7 @@ def process_trades(self, trades: List[Trade], timestamp: pd.Timestamp, market_da
     
     # Trigger tight loop
     changes = {'timestamp': timestamp, 'position_deltas': position_deltas}
-    return self._handle_position_update(changes, timestamp, market_data, 'venue_manager')
+    return self._handle_position_update(changes, timestamp, market_data, 'execution_manager')
 ```
 
 **PositionMonitor** - Enhance `update_state()`:
@@ -210,7 +210,7 @@ def _execute_full_loop_cycle(self, timestamp: pd.Timestamp):
     orders = self.strategy_manager.make_decision(...)
     
     # 2. Execute orders → trades
-    trades = self.venue_manager.execute_orders(timestamp, orders)
+    trades = self.execution_manager.execute_orders(timestamp, orders)
     
     # 3. Update positions
     self.position_update_handler.process_trades(trades, timestamp, market_data)
@@ -244,7 +244,7 @@ python scripts/run_quality_gates.py --category components
 - ✅ `trade.py` - Complete
 - ❌ `base_strategy_manager.py` - Remove StrategyAction class
 - ❌ `strategy_manager.py` - Remove StrategyAction handling
-- ❌ `venue_manager.py` - Add execute_orders()
+- ❌ `execution_manager.py` - Add execute_orders()
 - ❌ `venue_interface_manager.py` - Add route_order()
 - ❌ `position_update_handler.py` - Add process_trades()
 - ❌ `position_monitor.py` - Enhance update_state()

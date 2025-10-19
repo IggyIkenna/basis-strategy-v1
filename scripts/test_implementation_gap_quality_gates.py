@@ -366,9 +366,9 @@ def generate_gap_report(specs: List[str], implementations: List[str]) -> Dict[st
             'positionmonitor': 'position_monitor.py',
             'exposuremonitor': 'exposure_monitor.py', 
             'riskmonitor': 'risk_monitor.py',
-            'pnlcalculator': 'pnl_monitor.py',
+            'PnLMonitor': 'pnl_monitor.py',
             'strategymanager': 'strategy_manager.py',
-            'venuemanager': 'venue_manager.py',
+            'venuemanager': 'execution_manager.py',
             'eventlogger': 'event_logger.py',
             'dataprovider': 'base_data_provider.py',  # Use base data provider as representative
             'positionupdatehandler': 'position_update_handler.py',

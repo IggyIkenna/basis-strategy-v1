@@ -117,7 +117,6 @@ class TestMLBTCDirectionalUSDTMarginStrategyInit:
     def test_init_success_with_valid_config(self, strategy):
         """Test successful initialization with valid config."""
         assert strategy.share_class == 'USDT'
-        assert strategy.asset == 'BTC'
         assert strategy.entry_instrument == 'wallet:BaseToken:USDT'
         assert strategy.perp_instrument == 'binance:Perp:BTCUSDT'
         assert len(strategy.available_instruments) == 2

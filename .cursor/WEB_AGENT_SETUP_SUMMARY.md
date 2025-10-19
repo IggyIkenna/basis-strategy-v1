@@ -146,7 +146,7 @@ Follow the instructions in `.cursor/web-agent-build-executor.md` to execute task
 
 ### Server Management
 - Use `./platform.sh backtest` to start backend
-- Use `./platform.sh stop-local` before restarting
+- Use `./platform.sh stop` before restarting
 - Restart server before long-running tests
 - Check server status with `ps aux | grep python` if needed
 

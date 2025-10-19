@@ -1,13 +1,15 @@
-mode: eth_staking_only
+mode: "eth_staking_only"
 lending_enabled: false
 staking_enabled: true
 basis_trade_enabled: false
 borrowing_enabled: false
 leverage_enabled: false
 enable_market_impact: true
-share_class: ETH
-asset: ETH
-lst_type: weeth
+share_class: "ETH"
+lst_type: "weeth"
+
+# Protocol configuration
+staking_protocol: etherfi
 rewards_mode: base_only
 funding_threshold: 0.0001
 position_deviation_threshold: 0.02
@@ -16,19 +18,20 @@ venues:
   etherfi:
     venue_type: defi
     instruments:
-    - ETH-STAKING
+    - "etherfi:BaseToken:weETH"
     order_types:
     - stake
     - unstake
   alchemy:
     venue_type: infrastructure
     instruments:
-    - WALLET-TRANSFER
+    - "alchemy:BaseToken:ETH"
     order_types:
     - transfer
-delta_tolerance: 0.005
 data_requirements:
 - eth_prices
+- aave_oracle_prices  # AAVE oracle prices for LST tokens
+- lst_market_prices   # DEX/CEX market prices for LST tokens
 - staking_rates
 - gas_costs
 - execution_costs
@@ -64,7 +67,6 @@ event_logger:
   log_retention_policy:
     retention_days: 30
     max_file_size_mb: 100
-    rotation_frequency: daily
     compression_after_days: 7
   logging_requirements:
     structured_logging: true
@@ -97,7 +99,7 @@ component_config:
   position_monitor:
     position_subscriptions:
       - "wallet:BaseToken:ETH"
-      - "etherfi:LST:weETH"
+      - "etherfi:BaseToken:weETH"
       - "alchemy:BaseToken:ETH"
     dust_tokens:
       dust_instruments: 

@@ -21,9 +21,9 @@ __pycache__/
 Thumbs.db
 
 # Logs
-*.log
-logs/
-backend/logs/
+# *.log
+# logs/
+# backend/logs/
 
 # Data files (large datasets) - EXCLUDED FOR CURSOR AGENTS
 *.zip

@@ -129,7 +129,7 @@ strategy_orders = self.strategy_manager.generate_orders(
 
 # Step 5: Execute orders
 if strategy_orders:
-    execution_result = self.venue_manager.process_orders(...)
+    execution_result = self.execution_manager.process_orders(...)
     ...
 
 # Step 6: Calculate P&L AFTER execution (with execution costs)
@@ -358,7 +358,7 @@ if self.error_count > 10:
 ### ✅ Phase 4: Circular Dependency Resolution
 
 **Test**: `test_phase_4_circular_dependency_resolution` ✅
-- Validates `venue_manager.position_update_handler` is set
+- Validates `execution_manager.position_update_handler` is set
 - Validates circular reference established correctly
 
 ---

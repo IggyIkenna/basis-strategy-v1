@@ -284,7 +284,7 @@ class AsyncAwaitQualityGates:
             from basis_strategy_v1.core.strategies.components.risk_monitor import RiskMonitor
             from basis_strategy_v1.core.strategies.components.strategy_manager import StrategyManager
             from basis_strategy_v1.core.strategies.components.position_update_handler import PositionUpdateHandler
-            from basis_strategy_v1.core.components.pnl_monitor import PnLCalculator
+            from basis_strategy_v1.core.components.pnl_monitor import PnLMonitor
             
             logger.info("✅ All components imported successfully")
             return True

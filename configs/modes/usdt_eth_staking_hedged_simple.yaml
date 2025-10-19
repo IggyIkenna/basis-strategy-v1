@@ -14,9 +14,12 @@ enable_market_impact: true
 
 # Asset configuration
 share_class: "USDT"
-asset: "ETH"
 margin_currency: "USDT"
 lst_type: "weETH"  # EtherFi weETH
+
+# Protocol configuration
+lending_protocol: "aave_v3"
+staking_protocol: "etherfi"
 
 # Position allocation
 stake_allocation_percentage: 0.5  # 50% for staking, 50% for hedging
@@ -74,7 +77,7 @@ component_config:
   position_monitor:
     position_subscriptions:
       - "wallet:BaseToken:USDT"
-      - "etherfi:LST:weETH"
+      - "etherfi:BaseToken:weETH"
       - "binance:BaseToken:USDT"
       - "binance:Perp:ETHUSDT"
       - "bybit:BaseToken:USDT"
@@ -124,7 +127,6 @@ component_config:
     actions: ["entry_full", "entry_partial", "exit_full", "exit_partial", "sell_dust"]
     position_calculation:
       target_position: "weeth_position"
-      max_position_size: 1.0
       hedge_allocation:
         binance: 0.4
         bybit: 0.3
@@ -176,7 +178,6 @@ event_logger:
   log_retention_policy:
     retention_days: 30
     max_file_size_mb: 100
-    rotation_frequency: "daily"
     compression_after_days: 7
   logging_requirements:
     structured_logging: true

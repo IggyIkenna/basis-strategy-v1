@@ -172,7 +172,7 @@ Copy and paste this prompt when setting up your web-based background agent for t
 ./platform.sh backtest
 
 # Stop services  
-./platform.sh stop-local
+./platform.sh stop
 
 # Validate environment
 python validate_config.py

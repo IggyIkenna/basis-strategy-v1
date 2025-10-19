@@ -204,7 +204,7 @@ Execute all 29 tasks across 6 days, starting from foundational infrastructure th
 ### Server Management
 
 - Use `./platform.sh backtest` to start backend
-- Use `./platform.sh stop-local` before restarting
+- Use `./platform.sh stop` before restarting
 - Restart server before long-running tests
 
 ### Error Handling

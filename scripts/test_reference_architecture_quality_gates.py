@@ -186,8 +186,8 @@ class ReferenceArchitectureQualityGates:
                 component_name = 'StrategyManager'
             elif component_name == 'Exposuremonitor':
                 component_name = 'ExposureMonitor'
-            elif component_name == 'Pnlcalculator':
-                component_name = 'PnLCalculator'
+            elif component_name == 'PnLMonitor':
+                component_name = 'PnLMonitor'
             elif component_name == 'Eventlogger':
                 component_name = 'EventLogger'
             elif component_name == 'Positionupdatehandler':
@@ -201,7 +201,7 @@ class ReferenceArchitectureQualityGates:
                 r'RiskMonitor\(',
                 r'StrategyManager\(',
                 r'ExposureMonitor\(',
-                r'PnLCalculator\(',
+                r'PnLMonitor\(',
                 r'EventLogger\(',
                 r'PositionUpdateHandler\('
             ]
@@ -240,7 +240,7 @@ class ReferenceArchitectureQualityGates:
                 'PositionMonitor(',
                 'RiskMonitor(',
                 'StrategyManager(',
-                'PnLCalculator(',
+                'PnLMonitor(',
                 'ExposureMonitor('
             ]
             
@@ -275,7 +275,7 @@ class ReferenceArchitectureQualityGates:
             components_needing_data_provider = [
                 'PositionMonitor(',
                 'RiskMonitor(',
-                'PnLCalculator(',
+                'PnLMonitor(',
                 'ExposureMonitor('
             ]
             
@@ -346,7 +346,7 @@ class ReferenceArchitectureQualityGates:
             from basis_strategy_v1.core.components.risk_monitor import RiskMonitor
             from basis_strategy_v1.core.strategies.base_strategy_manager import BaseStrategyManager
             from basis_strategy_v1.core.components.position_update_handler import PositionUpdateHandler
-            from basis_strategy_v1.core.components.pnl_monitor import PnLCalculator
+            from basis_strategy_v1.core.components.pnl_monitor import PnLMonitor
             
             logger.info("✅ All components imported successfully")
             return True

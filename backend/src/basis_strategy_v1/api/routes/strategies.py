@@ -6,17 +6,15 @@ from typing import Optional, Dict, Any
 import structlog
 import yaml
 
-from ..models.responses import (
-    StandardResponse,
-    StrategyInfoResponse,
-    StrategyListResponse
-)
+from ..models.responses import StandardResponse, StrategyInfoResponse, StrategyListResponse
 
-from ...infrastructure.config.config_manager import load_strategy_config as load_merged_strategy_config
+from ...infrastructure.config.config_manager import (
+    load_strategy_config as load_merged_strategy_config,
+)
 from ...infrastructure.config.config_manager import (
     get_available_strategies,
     get_strategy_file_path,
-    validate_strategy_name
+    validate_strategy_name,
 )
 from ...infrastructure.config.config_validator import validate_configuration
 
@@ -30,22 +28,22 @@ router = APIRouter()
 def _derive_strategy_info_from_config(strategy_name: str, config: Dict[str, Any]) -> Dict[str, Any]:
     """Derive strategy information from config parameters."""
     # Read directly from root level (not from 'strategy' section)
-    share_class = config.get('share_class', 'USDT')
-    
+    share_class = config.get("share_class", "USDT")
+
     # Extract feature flags from root level
-    has_leverage = config.get('leverage_enabled', False) or config.get('borrowing_enabled', False)
-    has_basis_trading = config.get('basis_trade_enabled', False)
-    has_staking = config.get('staking_enabled', False)
-    has_lending = config.get('lending_enabled', False)
-    
+    has_leverage = config.get("leverage_enabled", False) or config.get("borrowing_enabled", False)
+    has_basis_trading = config.get("basis_trade_enabled", False)
+    has_staking = config.get("staking_enabled", False)
+    has_lending = config.get("lending_enabled", False)
+
     # Derive risk level
     if has_leverage or has_basis_trading:
         risk_level = "high"
     elif has_staking:
-        risk_level = "medium"  
+        risk_level = "medium"
     else:
         risk_level = "low"
-    
+
     # Build feature list
     features = []
     if has_lending:
@@ -56,43 +54,47 @@ def _derive_strategy_info_from_config(strategy_name: str, config: Dict[str, Any]
         features.append("leverage")
     if has_basis_trading:
         features.append("basis_trading")
-    
+
     strategy_type = "_".join(features) if features else "unknown"
-    
+
     # Calculate expected return from target_apy if available
-    target_apy = config.get('target_apy', 0.05)
+    target_apy = config.get("target_apy", 0.05)
     apy_percent = int(target_apy * 100)
     expected_return = f"{apy_percent}% APR"
-    
+
     # Extract venues from config - read actual venues section
-    venues_config = config.get('venues', {}) or {}
+    venues_config = config.get("venues", {}) or {}
     supported_venues = []
-    
+
     # Read venues from the standardized config structure
     for venue_name, venue_info in (venues_config or {}).items():
         if isinstance(venue_info, dict):
             # Check if venue is enabled (required field in standardized structure)
-            if venue_info.get('enabled', False):
+            if venue_info.get("enabled", False):
                 # Validate standardized structure has required fields
-                if 'venue_type' in venue_info and 'instruments' in venue_info and 'order_types' in venue_info:
+                if (
+                    "venue_type" in venue_info
+                    and "instruments" in venue_info
+                    and "order_types" in venue_info
+                ):
                     supported_venues.append(venue_name.upper())
                 # Fallback for legacy structure
-                elif venue_info.get('enabled', False):
+                elif venue_info.get("enabled", False):
                     supported_venues.append(venue_name.upper())
         elif isinstance(venue_info, bool) and venue_info:
             # Simple boolean venue (legacy support)
             supported_venues.append(venue_name.upper())
-    
+
     # Add hedge venues (for basis trading strategies)
-    hedge_venues = config.get('hedge_venues', []) or []
-    for venue in (hedge_venues or []):
+    hedge_venues = config.get("hedge_venues", []) or []
+    for venue in hedge_venues or []:
         venue_upper = venue.upper()
         if venue_upper not in supported_venues:
             supported_venues.append(venue_upper)
-    
+
     # Remove duplicates while preserving order
     supported_venues = list(dict.fromkeys(supported_venues))
-    
+
     return {
         "name": strategy_name,
         "description": f"{strategy_name.replace('_', ' ').title()} strategy",
@@ -109,8 +111,8 @@ def _derive_strategy_info_from_config(strategy_name: str, config: Dict[str, Any]
                 "staking_enabled": has_staking,
                 "leverage_enabled": has_leverage,
                 "basis_trade_enabled": has_basis_trading,
-            }
-        }
+            },
+        },
     }
 
 
@@ -118,7 +120,7 @@ def _derive_strategy_info_from_config(strategy_name: str, config: Dict[str, Any]
     "/",
     response_model=StandardResponse[StrategyListResponse],
     summary="List available strategies",
-    description="Get a list of all available trading strategies from config files"
+    description="Get a list of all available trading strategies from config files",
 )
 async def list_strategies(
     request: Request,
@@ -129,42 +131,48 @@ async def list_strategies(
     List all available trading strategies by reading config files.
     """
     correlation_id = getattr(request.state, "correlation_id", "unknown")
-    
+
     try:
         logger.info(
             "Listing available strategies from config files",
             correlation_id=correlation_id,
             share_class_filter=share_class,
-            risk_level_filter=risk_level
+            risk_level_filter=risk_level,
         )
-        
+
         # Use centralized strategy discovery
         try:
             from ...infrastructure.config.config_manager import get_config_manager
+
             cm = get_config_manager()
-            logger.info(f"Config manager created, modes cache: {cm.config_cache.get('modes', 'NOT_FOUND')}")
+            logger.info(
+                f"Config manager created, modes cache: {cm.config_cache.get('modes', 'NOT_FOUND')}"
+            )
             available_strategy_names = get_available_strategies()
             logger.info(f"get_available_strategies() returned: {available_strategy_names}")
             if available_strategy_names is None:
-                logger.error("get_available_strategies() returned None - config manager not initialized")
+                logger.error(
+                    "get_available_strategies() returned None - config manager not initialized"
+                )
                 raise HTTPException(status_code=500, detail="Configuration manager not initialized")
             if not available_strategy_names:
                 logger.warning("No strategies found in configs/modes/")
                 return StandardResponse(
-                    success=True,
-                    data=StrategyListResponse(strategies=[], total=0)
+                    success=True, data=StrategyListResponse(strategies=[], total=0)
                 )
         except Exception as e:
             logger.error(f"Failed to get available strategies: {e}")
             raise HTTPException(status_code=500, detail=f"Configuration error: {str(e)}")
-        
+
         strategies = []
-        
+
         # Process each discovered strategy
         if available_strategy_names is None:
             logger.error("available_strategy_names is None - cannot iterate")
-            raise HTTPException(status_code=500, detail="Configuration error: strategy list is None")
-            
+            raise HTTPException(
+                status_code=500, detail="Configuration error: strategy list is None"
+            )
+
         for strategy_name in available_strategy_names:
             # Load merged config and derive strategy info
             try:
@@ -175,120 +183,106 @@ async def list_strategies(
             except Exception as e:
                 logger.error(f"Failed to load config for strategy {strategy_name}: {e}")
                 continue
-                
+
             try:
                 strategy_info = _derive_strategy_info_from_config(strategy_name, config)
             except Exception as e:
                 logger.error(f"Failed to derive strategy info for {strategy_name}: {e}")
                 continue
-            
+
             # Apply filters
             if share_class and strategy_info.get("share_class") != share_class:
                 continue
             if risk_level and strategy_info.get("risk_level") != risk_level:
                 continue
-                
-            strategies.append(StrategyInfoResponse(**strategy_info))
-        
-        return StandardResponse(
-            success=True,
-            data=StrategyListResponse(
-                strategies=strategies,
-                total=len(strategies)
-            )
-        )
-        
-    except Exception as e:
-        logger.error(
-            "Failed to list strategies", 
-            correlation_id=correlation_id,
-            error=str(e)
-        )
-        raise HTTPException(status_code=500, detail=f"Failed to list strategies: {str(e)}")
 
+            strategies.append(StrategyInfoResponse(**strategy_info))
+
+        return StandardResponse(
+            success=True, data=StrategyListResponse(strategies=strategies, total=len(strategies))
+        )
+
+    except Exception as e:
+        logger.error("Failed to list strategies", correlation_id=correlation_id, error=str(e))
+        raise HTTPException(status_code=500, detail=f"Failed to list strategies: {str(e)}")
 
 
 @router.get(
     "/{strategy_name}/parameters",
     response_model=StandardResponse[Dict[str, Any]],
     summary="Get strategy parameters",
-    description="Get configurable parameters for a strategy"
+    description="Get configurable parameters for a strategy",
 )
 async def get_strategy_parameters(
-    strategy_name: str,
-    request: Request
+    strategy_name: str, request: Request
 ) -> StandardResponse[Dict[str, Any]]:
     """
     Get configurable parameters for a strategy.
     """
     correlation_id = getattr(request.state, "correlation_id", "unknown")
-    
+
     try:
         logger.info(
             "Getting strategy parameters",
             correlation_id=correlation_id,
-            strategy_name=strategy_name
+            strategy_name=strategy_name,
         )
-        
+
         # Validate strategy name
         try:
             validate_strategy_name(strategy_name)
         except ValueError as e:
             raise HTTPException(status_code=404, detail=str(e))
-        
+
         # Load strategy config
         config = load_merged_strategy_config(strategy_name)
         if not config:
             raise HTTPException(
-                status_code=404,
-                detail=f"Strategy config not found: {strategy_name}"
+                status_code=404, detail=f"Strategy config not found: {strategy_name}"
             )
-        
+
         # Extract configurable parameters
         parameters = {
             "strategy": {
                 "share_class": {
                     "type": "string",
                     "options": ["USDT", "ETH"],
-                    "default": config.get('strategy', {}).get('share_class', 'USDT'),
-                    "description": "Share class for the strategy"
+                    "default": config.get("strategy", {}).get("share_class", "USDT"),
+                    "description": "Share class for the strategy",
                 },
                 "target_apy": {
                     "type": "number",
                     "min": 0.0,
                     "max": 1.0,
-                    "default": config.get('strategy', {}).get('target_apy', 0.1),
-                    "description": "Target APY for the strategy"
-                }
+                    "default": config.get("strategy", {}).get("target_apy", 0.1),
+                    "description": "Target APY for the strategy",
+                },
             },
             "backtest": {
                 "initial_capital": {
                     "type": "number",
                     "min": 1000,
                     "max": 10000000,
-                    "default": config.get('backtest', {}).get('initial_capital', 10000),
-                    "description": "Initial capital for backtest"
+                    "default": config.get("backtest", {}).get("initial_capital", 10000),
+                    "description": "Initial capital for backtest",
                 },
                 "start_date": {
                     "type": "string",
                     "format": "date",
-                    "default": config.get('backtest', {}).get('start_date', '2024-01-01'),
-                    "description": "Backtest start date"
+                    "default": config.get("backtest", {}).get("start_date", "2024-01-01"),
+                    "description": "Backtest start date",
                 },
                 "end_date": {
                     "type": "string",
                     "format": "date",
-                    "default": config.get('backtest', {}).get('end_date', '2024-12-31'),
-                    "description": "Backtest end date"
-                }
-            }
+                    "default": config.get("backtest", {}).get("end_date", "2024-12-31"),
+                    "description": "Backtest end date",
+                },
+            },
         }
-        
-        return StandardResponse(
-            success=True,
-            data=parameters
-        )
-        
+
+        return StandardResponse(success=True, data=parameters)
+
     except HTTPException:
         raise
     except Exception as e:
@@ -296,7 +290,7 @@ async def get_strategy_parameters(
             "Failed to get strategy parameters",
             correlation_id=correlation_id,
             strategy_name=strategy_name,
-            error=str(e)
+            error=str(e),
         )
         raise HTTPException(status_code=500, detail=f"Failed to get strategy parameters: {str(e)}")
 
@@ -305,45 +299,41 @@ async def get_strategy_parameters(
     "/{strategy_name}",
     response_model=StandardResponse[StrategyInfoResponse],
     summary="Get strategy details",
-    description="Get detailed information about a specific strategy from its config"
+    description="Get detailed information about a specific strategy from its config",
 )
 async def get_strategy(
-    strategy_name: str,
-    request: Request
+    strategy_name: str, request: Request
 ) -> StandardResponse[StrategyInfoResponse]:
     """
     Get detailed information about a specific strategy by reading its config file.
     """
     correlation_id = getattr(request.state, "correlation_id", "unknown")
-    
+
     try:
         logger.info(
             "Getting strategy details from config",
             correlation_id=correlation_id,
-            strategy_name=strategy_name
+            strategy_name=strategy_name,
         )
-        
+
         # Use centralized strategy discovery and validation
         try:
             validate_strategy_name(strategy_name)
         except ValueError as e:
             raise HTTPException(status_code=404, detail=str(e))
-        
+
         # Load merged config and derive strategy info
         config = load_merged_strategy_config(strategy_name)
         if not config:
             raise HTTPException(
                 status_code=404,
-                detail=f"Strategy config file not found or invalid: {strategy_name}.yaml"
+                detail=f"Strategy config file not found or invalid: {strategy_name}.yaml",
             )
-            
+
         strategy_info = _derive_strategy_info_from_config(strategy_name, config)
-        
-        return StandardResponse(
-            success=True,
-            data=StrategyInfoResponse(**strategy_info)
-        )
-        
+
+        return StandardResponse(success=True, data=StrategyInfoResponse(**strategy_info))
+
     except HTTPException:
         raise
     except Exception as e:
@@ -351,7 +341,7 @@ async def get_strategy(
             "Failed to get strategy details",
             correlation_id=correlation_id,
             strategy_name=strategy_name,
-            error=str(e)
+            error=str(e),
         )
         raise HTTPException(status_code=500, detail=f"Failed to get strategy details: {str(e)}")
 
@@ -376,7 +366,7 @@ async def get_strategy(
     description=(
         "Return the merged configuration for a strategy (infrastructure + scenario), "
         "with optional query params applied, validated against the canonical schema."
-    )
+    ),
 )
 async def get_merged_config(
     strategy_name: str,
@@ -384,7 +374,7 @@ async def get_merged_config(
     start_date: Optional[str] = Query(None, description="Backtest start date YYYY-MM-DD"),
     end_date: Optional[str] = Query(None, description="Backtest end date YYYY-MM-DD"),
     initial_capital: Optional[float] = Query(10000.0, description="Initial capital amount"),
-    share_class: Optional[str] = Query("USDT", description="Share class (ETH or USDT)")
+    share_class: Optional[str] = Query("USDT", description="Share class (ETH or USDT)"),
 ) -> StandardResponse[Dict[str, Any]]:
     correlation_id = getattr(request.state, "correlation_id", "unknown")
     try:
@@ -397,9 +387,11 @@ async def get_merged_config(
             initial_capital=initial_capital,
             share_class=share_class,
         )
-        
+
         # Debug: Log the exact received parameters
-        logger.info(f"DEBUG: Received parameters - initial_capital={initial_capital} (type: {type(initial_capital)})")
+        logger.info(
+            f"DEBUG: Received parameters - initial_capital={initial_capital} (type: {type(initial_capital)})"
+        )
 
         # Validate strategy name and load configs
         try:
@@ -435,7 +427,7 @@ async def get_merged_config(
                 "strategy_name": strategy_name,
                 "config_json": validated,
                 "config_yaml": yaml_text,
-            }
+            },
         )
 
     except HTTPException:
@@ -445,7 +437,7 @@ async def get_merged_config(
             "Failed to build merged config",
             correlation_id=correlation_id,
             strategy_name=strategy_name,
-            error=str(e)
+            error=str(e),
         )
         raise HTTPException(status_code=500, detail=f"Failed to build merged config: {str(e)}")
 
@@ -454,35 +446,27 @@ async def get_merged_config(
     "/modes/{mode_name}",
     response_model=StandardResponse[Dict[str, Any]],
     summary="Get mode configuration",
-    description="Get configuration for a specific mode including target_apy and max_drawdown"
+    description="Get configuration for a specific mode including target_apy and max_drawdown",
 )
-async def get_mode_config(
-    mode_name: str,
-    request: Request
-) -> StandardResponse[Dict[str, Any]]:
+async def get_mode_config(mode_name: str, request: Request) -> StandardResponse[Dict[str, Any]]:
     """
     Get mode configuration including target_apy and max_drawdown.
     """
     correlation_id = getattr(request.state, "correlation_id", "unknown")
-    
+
     try:
         logger.info(
-            "Getting mode configuration",
-            correlation_id=correlation_id,
-            mode_name=mode_name
+            "Getting mode configuration", correlation_id=correlation_id, mode_name=mode_name
         )
-        
+
         # Load mode config from YAML file
         config_path = Path("configs/modes") / f"{mode_name}.yaml"
         if not config_path.exists():
-            raise HTTPException(
-                status_code=404,
-                detail=f"Mode config not found: {mode_name}.yaml"
-            )
-        
-        with open(config_path, 'r') as f:
+            raise HTTPException(status_code=404, detail=f"Mode config not found: {mode_name}.yaml")
+
+        with open(config_path, "r") as f:
             config = yaml.safe_load(f)
-        
+
         # Extract key information for frontend
         mode_info = {
             "mode": config.get("mode", mode_name),
@@ -496,14 +480,11 @@ async def get_mode_config(
                 "staking_enabled": config.get("staking_enabled", False),
                 "leverage_enabled": config.get("leverage_enabled", False),
                 "basis_trade_enabled": config.get("basis_trade_enabled", False),
-            }
+            },
         }
-        
-        return StandardResponse(
-            success=True,
-            data=mode_info
-        )
-        
+
+        return StandardResponse(success=True, data=mode_info)
+
     except HTTPException:
         raise
     except Exception as e:
@@ -511,7 +492,7 @@ async def get_mode_config(
             "Failed to get mode configuration",
             correlation_id=correlation_id,
             mode_name=mode_name,
-            error=str(e)
+            error=str(e),
         )
         raise HTTPException(status_code=500, detail=f"Failed to get mode configuration: {str(e)}")
 
@@ -520,40 +501,38 @@ async def get_mode_config(
     "/modes/",
     response_model=StandardResponse[Dict[str, Any]],
     summary="List available modes",
-    description="Get list of all available modes with their configurations"
+    description="Get list of all available modes with their configurations",
 )
 async def list_modes(
     request: Request,
-    share_class: Optional[str] = Query(None, description="Filter by share class (ETH or USDT)")
+    share_class: Optional[str] = Query(None, description="Filter by share class (ETH or USDT)"),
 ) -> StandardResponse[Dict[str, Any]]:
     """
     List all available modes with their configurations.
     """
     correlation_id = getattr(request.state, "correlation_id", "unknown")
-    
+
     try:
         logger.info(
-            "Listing available modes",
-            correlation_id=correlation_id,
-            share_class_filter=share_class
+            "Listing available modes", correlation_id=correlation_id, share_class_filter=share_class
         )
-        
+
         modes_dir = Path("configs/modes")
         if not modes_dir.exists():
             raise HTTPException(status_code=404, detail="Modes directory not found")
-        
+
         modes = []
         for yaml_file in modes_dir.glob("*.yaml"):
             mode_name = yaml_file.stem
-            
+
             try:
-                with open(yaml_file, 'r') as f:
+                with open(yaml_file, "r") as f:
                     config = yaml.safe_load(f)
-                
+
                 # Apply share class filter
                 if share_class and config.get("share_class") != share_class:
                     continue
-                
+
                 mode_info = {
                     "mode": config.get("mode", mode_name),
                     "description": config.get("description", ""),
@@ -566,25 +545,18 @@ async def list_modes(
                         "staking_enabled": config.get("staking_enabled", False),
                         "leverage_enabled": config.get("leverage_enabled", False),
                         "basis_trade_enabled": config.get("basis_trade_enabled", False),
-                    }
+                    },
                 }
                 modes.append(mode_info)
-                
+
             except Exception as e:
                 logger.warning(f"Failed to load mode config {yaml_file}: {e}")
                 continue
-        
-        return StandardResponse(
-            success=True,
-            data={"modes": modes, "total": len(modes)}
-        )
-        
+
+        return StandardResponse(success=True, data={"modes": modes, "total": len(modes)})
+
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(
-            "Failed to list modes",
-            correlation_id=correlation_id,
-            error=str(e)
-        )
+        logger.error("Failed to list modes", correlation_id=correlation_id, error=str(e))
         raise HTTPException(status_code=500, detail=f"Failed to list modes: {str(e)}")

@@ -139,8 +139,8 @@ class ComponentSignatureValidator:
         return {
             'position_monitor': {
                 '__init__': {
-                    'params': ['self', 'config', 'data_provider', 'utility_manager', 'venue_interface_factory', 'execution_mode', 'initial_capital', 'share_class', 'correlation_id'],
-                    'types': ['self', 'Dict', 'DataProvider', 'UtilityManager', 'VenueInterfaceFactory', 'str', 'float', 'str', 'str']
+                    'params': ['self', 'config', 'data_provider', 'utility_manager', 'venue_interface_factory', 'execution_mode', 'initial_capital', 'share_class', 'correlation_id', 'pid', 'log_dir'],
+                    'types': ['self', 'Dict', 'DataProvider', 'UtilityManager', 'VenueInterfaceFactory', 'str', 'float', 'str', 'str', 'str', 'str']
                 },
                 'get_current_positions': {
                     'params': ['self'],
@@ -156,8 +156,8 @@ class ComponentSignatureValidator:
             },
             'exposure_monitor': {
                 '__init__': {
-                    'params': ['self', 'config', 'data_provider', 'utility_manager', 'correlation_id'],
-                    'types': ['self', 'Dict', 'DataProvider', 'UtilityManager', 'str']
+                    'params': ['self', 'config', 'data_provider', 'utility_manager', 'correlation_id', 'pid', 'log_dir'],
+                    'types': ['self', 'Dict', 'DataProvider', 'UtilityManager', 'str', 'str', 'str']
                 },
                 'calculate_exposure': {
                     'params': ['self', 'timestamp', 'position_snapshot', 'market_data'],
@@ -172,12 +172,12 @@ class ComponentSignatureValidator:
             },
             'risk_monitor': {
                 '__init__': {
-                    'params': ['self', 'config', 'data_provider', 'utility_manager', 'correlation_id'],
-                    'types': ['self', 'Dict', 'DataProvider', 'UtilityManager', 'str']
+                    'params': ['self', 'config', 'data_provider', 'utility_manager', 'correlation_id', 'pid', 'log_dir'],
+                    'types': ['self', 'Dict', 'DataProvider', 'UtilityManager', 'str', 'str', 'str']
                 },
                 'assess_risk': {
-                    'params': ['self', 'exposure_data', 'market_data'],
-                    'types': ['self', 'Dict', 'Dict'],
+                    'params': ['self', 'exposure_data', 'market_data', 'timestamp'],
+                    'types': ['self', 'Dict', 'Dict', 'pd.Timestamp'],
                     'returns': 'Dict[str, Any]'
                 },
                 'get_current_risk_metrics': {
@@ -188,8 +188,8 @@ class ComponentSignatureValidator:
             },
             'pnl_monitor': {
                 '__init__': {
-                    'params': ['self', 'config', 'share_class', 'initial_capital', 'data_provider', 'utility_manager', 'exposure_monitor', 'correlation_id'],
-                    'types': ['self', 'Dict', 'str', 'float', 'DataProvider', 'UtilityManager', 'ExposureMonitor', 'str']
+                    'params': ['self', 'config', 'share_class', 'initial_capital', 'data_provider', 'utility_manager', 'exposure_monitor', 'correlation_id', 'pid', 'log_dir'],
+                    'types': ['self', 'Dict', 'str', 'float', 'DataProvider', 'UtilityManager', 'ExposureMonitor', 'str', 'str', 'str']
                 },
                 'update_state': {
                     'params': ['self', 'timestamp', 'trigger_source'],
@@ -219,8 +219,8 @@ class ComponentSignatureValidator:
             },
             'strategy_manager': {
                 '__init__': {
-                    'params': ['self', 'config', 'data_provider', 'exposure_monitor', 'risk_monitor', 'utility_manager', 'position_monitor', 'event_engine'],
-                    'types': ['self', 'Dict', 'DataProvider', 'ExposureMonitor', 'RiskMonitor', 'UtilityManager', 'PositionMonitor', 'EventEngine']
+                    'params': ['self', 'config', 'data_provider', 'exposure_monitor', 'risk_monitor', 'utility_manager', 'position_monitor', 'event_engine', 'correlation_id', 'pid', 'log_dir'],
+                    'types': ['self', 'Dict', 'DataProvider', 'ExposureMonitor', 'RiskMonitor', 'UtilityManager', 'PositionMonitor', 'EventEngine', 'str', 'str', 'str']
                 },
                 'generate_orders': {
                     'params': ['self', 'timestamp', 'exposure', 'risk_assessment', 'pnl', 'market_data'],
@@ -228,7 +228,7 @@ class ComponentSignatureValidator:
                     'returns': 'List[Order]'
                 }
             },
-            'venue_manager': {
+            'execution_manager': {
                 '__init__': {
                     'params': ['self', 'execution_mode', 'config', 'venue_interface_manager', 'position_update_handler', 'data_provider'],
                     'types': ['self', 'str', 'Dict', 'VenueInterfaceManager', 'PositionUpdateHandler', 'DataProvider']
@@ -241,12 +241,17 @@ class ComponentSignatureValidator:
             },
             'position_update_handler': {
                 '__init__': {
-                    'params': ['self', 'config', 'data_provider', 'position_monitor', 'exposure_monitor', 'risk_monitor', 'pnl_monitor', 'execution_mode'],
-                    'types': ['self', 'Dict', 'DataProvider', 'PositionMonitor', 'ExposureMonitor', 'RiskMonitor', 'PnLCalculator', 'str']
+                    'params': ['self', 'config', 'data_provider', 'execution_mode', 'position_monitor', 'exposure_monitor', 'risk_monitor', 'pnl_monitor', 'correlation_id', 'pid', 'log_dir'],
+                    'types': ['self', 'Dict', 'DataProvider', 'str', 'PositionMonitor', 'ExposureMonitor', 'RiskMonitor', 'PnLMonitor', 'str', 'str', 'str']
                 },
                 'update_state': {
                     'params': ['self', 'timestamp', 'trigger_source', 'execution_deltas'],
                     'types': ['self', 'pd.Timestamp', 'str', 'Dict'],
+                    'returns': 'Dict[str, Any]'
+                },
+                'reconcile_execution_deltas': {
+                    'params': ['self'],
+                    'types': ['self'],
                     'returns': 'Dict[str, Any]'
                 }
             },
@@ -291,7 +296,42 @@ class ComponentSignatureValidator:
                     'returns': 'str'
                 },
                 'get_funding_rate': {
+                    'params': ['self', 'venue', 'token', 'timestamp'],
+                    'types': ['self', 'str', 'str', 'pd.Timestamp'],
+                    'returns': 'float'
+                },
+                'convert_price': {
+                    'params': ['self', 'previous_price', 'current_price', 'amount'],
+                    'types': ['self', 'float', 'float', 'float'],
+                    'returns': 'float'
+                },
+                'calculate_dynamic_ltv_target': {
+                    'params': ['self', 'max_ltv', 'max_stake_spread_move'],
+                    'types': ['self', 'Decimal', 'Decimal'],
+                    'returns': 'Decimal'
+                },
+                'calculate_cex_target_margin': {
+                    'params': ['self', 'initial_margin', 'max_underlying_move'],
+                    'types': ['self', 'Decimal', 'Decimal'],
+                    'returns': 'Decimal'
+                },
+                'get_aave_supply_index': {
+                    'params': ['self', 'token'],
+                    'types': ['self', 'str'],
+                    'returns': 'float'
+                },
+                'get_staking_rate': {
+                    'params': ['self', 'source_token', 'target_token'],
+                    'types': ['self', 'str', 'str'],
+                    'returns': 'float'
+                },
+                'get_liquidity_index': {
                     'params': ['self', 'token', 'timestamp'],
+                    'types': ['self', 'str', 'pd.Timestamp'],
+                    'returns': 'float'
+                },
+                'get_price_for_instrument_key': {
+                    'params': ['self', 'instrument_key', 'timestamp'],
                     'types': ['self', 'str', 'pd.Timestamp'],
                     'returns': 'float'
                 },
@@ -392,6 +432,137 @@ class ComponentSignatureValidator:
                     'params': ['self', 'timestamp', 'order'],
                     'types': ['self', 'pd.Timestamp', 'Order'],
                     'returns': 'Dict[str, Any]'
+                }
+            },
+            'domain_event_logger': {
+                'log_pnl_calculation': {
+                    'params': ['self', 'event'],
+                    'types': ['self', 'Dict'],
+                    'returns': 'None'
+                },
+                'log_reconciliation': {
+                    'params': ['self', 'event'],
+                    'types': ['self', 'Dict'],
+                    'returns': 'None'
+                },
+                'log_risk_assessment': {
+                    'params': ['self', 'event'],
+                    'types': ['self', 'Dict'],
+                    'returns': 'None'
+                },
+                'log_exposure_snapshot': {
+                    'params': ['self', 'event'],
+                    'types': ['self', 'Dict'],
+                    'returns': 'None'
+                },
+                'log_position_snapshot': {
+                    'params': ['self', 'event'],
+                    'types': ['self', 'Dict'],
+                    'returns': 'None'
+                },
+                'log_strategy_decision': {
+                    'params': ['self', 'event'],
+                    'types': ['self', 'Dict'],
+                    'returns': 'None'
+                },
+                'log_order_event': {
+                    'params': ['self', 'event'],
+                    'types': ['self', 'Dict'],
+                    'returns': 'None'
+                },
+                'log_operation_execution': {
+                    'params': ['self', 'event'],
+                    'types': ['self', 'Dict'],
+                    'returns': 'None'
+                },
+                'log_atomic_group': {
+                    'params': ['self', 'event'],
+                    'types': ['self', 'Dict'],
+                    'returns': 'None'
+                },
+                'log_execution_delta': {
+                    'params': ['self', 'event'],
+                    'types': ['self', 'Dict'],
+                    'returns': 'None'
+                },
+                'log_tight_loop_execution': {
+                    'params': ['self', 'event'],
+                    'types': ['self', 'Dict'],
+                    'returns': 'None'
+                }
+            },
+            'risk_data_loader': {
+                'get_aave_ltv_limits': {
+                    'params': ['self', 'mode', 'token'],
+                    'types': ['self', 'str', 'str'],
+                    'returns': 'Dict'
+                },
+                'get_aave_liquidation_bonus': {
+                    'params': ['self', 'mode', 'token'],
+                    'types': ['self', 'str', 'str'],
+                    'returns': 'float'
+                },
+                'get_available_cex_venues': {
+                    'params': ['self'],
+                    'types': ['self'],
+                    'returns': 'List[str]'
+                },
+                'get_cex_margin_requirements': {
+                    'params': ['self', 'venue'],
+                    'types': ['self', 'str'],
+                    'returns': 'Dict'
+                }
+            },
+            'cex_margin_requirements': {
+                'items': {
+                    'params': ['self'],
+                    'types': ['self'],
+                    'returns': 'Dict'
+                },
+                'keys': {
+                    'params': ['self'],
+                    'types': ['self'],
+                    'returns': 'List[str]'
+                }
+            },
+            'cex_target_margins': {
+                'items': {
+                    'params': ['self'],
+                    'types': ['self'],
+                    'returns': 'Dict'
+                }
+            },
+            'ltv_calculator': {
+                'calculate_current_ltv': {
+                    'params': ['self', 'collateral_value', 'debt_value'],
+                    'types': ['self', 'float', 'float'],
+                    'returns': 'float'
+                },
+                'calculate_projected_ltv_after_borrowing': {
+                    'params': ['self', 'current_collateral_value', 'current_debt_value', 'additional_borrowing_usd', 'collateral_efficiency'],
+                    'types': ['self', 'float', 'float', 'float', 'float'],
+                    'returns': 'float'
+                }
+            },
+            'margin_calculator': {
+                'calculate_margin_capacity': {
+                    'params': ['self', 'available_balance', 'margin_requirement', 'safety_buffer'],
+                    'types': ['self', 'float', 'float', 'float'],
+                    'returns': 'float'
+                }
+            },
+            'health_calculator': {
+                'calculate_health_factor': {
+                    'params': ['self', 'collateral_value', 'debt_value', 'liquidation_threshold'],
+                    'types': ['self', 'float', 'float', 'float'],
+                    'returns': 'float'
+                }
+            },
+            'metrics_calculator': {
+                'calculate_metrics': {
+                    'params': ['self', 'portfolio', 'initial_capital', 'timestamp'],
+                    'types': ['self', 'Dict', 'float', 'pd.Timestamp'],
+                    'returns': 'Dict'
                 }
             }
         }
@@ -594,7 +765,10 @@ class ComponentSignatureValidator:
                 'modes', 'share_classes', 'hedge_allocation', 'mode', 'share_class', 'venues', 'errors',
                 'warnings', 'environment', 'log_levels', 'file_logger', 'event_logger',
                 'event_filtering', 'event_categories', 'event_history',
-                'log_retention_policy', 'logged_events'
+                'log_retention_policy', 'logged_events',
+                # Internal implementation details
+                '_data_cache', 'data_dir', 'log_dir', 'events_dir', 'event_files',
+                'last_calculation_timestamp', 'math_utilities_wrapper'
             ]
             if component_ref in standard_objects:
                 return None
@@ -842,7 +1016,9 @@ class ComponentSignatureValidator:
                         execution_mode='backtest',
                         initial_capital=10000.0,
                         share_class='USDT',
-                        correlation_id='test'
+                        correlation_id='test',
+                        pid='test_pid',
+                        log_dir='/tmp/test_logs'
                     )
                 elif component_name == 'exposure_monitor':
                     from basis_strategy_v1.core.components.exposure_monitor import ExposureMonitor
@@ -850,7 +1026,9 @@ class ComponentSignatureValidator:
                         config=mock_config,
                         data_provider=mock_data_provider,
                         utility_manager=mock_utility_manager,
-                        correlation_id='test'
+                        correlation_id='test',
+                        pid='test_pid',
+                        log_dir='/tmp/test_logs'
                     )
                 elif component_name == 'utility_manager':
                     from basis_strategy_v1.core.utilities.utility_manager import UtilityManager

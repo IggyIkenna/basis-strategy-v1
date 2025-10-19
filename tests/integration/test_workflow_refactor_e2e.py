@@ -26,8 +26,8 @@ from backend.src.basis_strategy_v1.core.event_engine.event_driven_strategy_engin
 from backend.src.basis_strategy_v1.core.components.position_monitor import PositionMonitor
 from backend.src.basis_strategy_v1.core.components.exposure_monitor import ExposureMonitor
 from backend.src.basis_strategy_v1.core.components.risk_monitor import RiskMonitor
-from backend.src.basis_strategy_v1.core.components.pnl_monitor import PnLCalculator
-from backend.src.basis_strategy_v1.core.execution.venue_manager import ExecutionManager
+from backend.src.basis_strategy_v1.core.components.pnl_monitor import PnLMonitor
+from backend.src.basis_strategy_v1.core.execution.execution_manager import ExecutionManager
 from backend.src.basis_strategy_v1.core.execution.venue_interface_manager import VenueInterfaceManager
 from backend.src.basis_strategy_v1.core.components.position_update_handler import PositionUpdateHandler
 from backend.src.basis_strategy_v1.infrastructure.logging.event_logger import EventLogger
@@ -178,7 +178,7 @@ class TestWorkflowRefactorE2E:
             assert engine.position_monitor.execution_mode == 'backtest'
             assert engine.position_monitor.initial_capital == 100000
             assert engine.position_update_handler.execution_mode == 'backtest'
-            assert engine.venue_manager.execution_mode == 'backtest'
+            assert engine.execution_manager.execution_mode == 'backtest'
             
             # Verify strategy was called
             assert mock_strategy.decision_count > 0
@@ -210,11 +210,11 @@ class TestWorkflowRefactorE2E:
             }]
             
             # Process orders through ExecutionManager
-            result = engine.venue_manager.process_orders(timestamp, orders)
+            result = engine.execution_manager.process_orders(timestamp, orders)
             
             # Verify orchestration
             assert isinstance(result, list)
-            assert engine.venue_manager.position_update_handler is not None
+            assert engine.execution_manager.position_update_handler is not None
             
             logger.info("✅ Tight loop orchestration test passed")
     
@@ -289,7 +289,7 @@ class TestWorkflowRefactorE2E:
             # Test that execution costs are passed through
             reconciliation_result = engine.position_update_handler.update_state(
                 timestamp=timestamp,
-                trigger_source='venue_manager',
+                trigger_source='execution_manager',
                 execution_deltas=execution_result
             )
             
@@ -328,7 +328,7 @@ class TestWorkflowRefactorE2E:
             
             # Test all 5 triggers
             triggers = [
-                'venue_manager',
+                'execution_manager',
                 'position_refresh', 
                 'initial_capital',
                 'seasonal_rewards',
@@ -340,7 +340,7 @@ class TestWorkflowRefactorE2E:
                 backtest_result = engine_backtest.position_monitor.update_state(
                     timestamp=timestamp,
                     trigger_source=trigger,
-                    execution_deltas={'USDT': 1000} if trigger == 'venue_manager' else None
+                    execution_deltas={'USDT': 1000} if trigger == 'execution_manager' else None
                 )
                 assert isinstance(backtest_result, dict)
                 
@@ -348,7 +348,7 @@ class TestWorkflowRefactorE2E:
                 live_result = engine_live.position_monitor.update_state(
                     timestamp=timestamp,
                     trigger_source=trigger,
-                    execution_deltas={'USDT': 1000} if trigger == 'venue_manager' else None
+                    execution_deltas={'USDT': 1000} if trigger == 'execution_manager' else None
                 )
                 assert isinstance(live_result, dict)
             
@@ -376,7 +376,7 @@ class TestWorkflowRefactorE2E:
             }
             
             # Test retry mechanism
-            retry_result = engine.venue_manager._reconcile_with_retry(
+            retry_result = engine.execution_manager._reconcile_with_retry(
                 timestamp=timestamp,
                 trade_result=execution_result,
                 instruction_number=1
@@ -386,7 +386,7 @@ class TestWorkflowRefactorE2E:
             
             # Test error handling
             try:
-                engine.venue_manager._handle_order_failure(
+                engine.execution_manager._handle_order_failure(
                     order={'id': 'test_order'},
                     execution_result={'error': 'Test error'},
                     order_number=1
@@ -414,12 +414,12 @@ class TestWorkflowRefactorE2E:
             
             # Test system failure trigger
             try:
-                engine.venue_manager._trigger_system_failure("Test system failure")
+                engine.execution_manager._trigger_system_failure("Test system failure")
                 pytest.fail("System failure should have raised SystemExit")
             except SystemExit as e:
                 # Expected behavior
                 assert "SYSTEM FAILURE" in str(e)
-                assert engine.venue_manager.health_status['status'] == 'critical'
+                assert engine.execution_manager.health_status['status'] == 'critical'
             
             logger.info("✅ System failure trigger test passed")
 

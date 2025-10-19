@@ -22,17 +22,18 @@ logger = logging.getLogger(__name__)
 
 # Error codes for Backtest Service
 ERROR_CODES = {
-    'BT-001': 'Backtest request validation failed',
-    'BT-002': 'Config creation failed',
-    'BT-003': 'Strategy engine initialization failed',
-    'BT-004': 'Backtest execution failed',
-    'BT-005': 'Result processing failed'
+    "BT-001": "Backtest request validation failed",
+    "BT-002": "Config creation failed",
+    "BT-003": "Strategy engine initialization failed",
+    "BT-004": "Backtest execution failed",
+    "BT-005": "Result processing failed",
 }
 
 
 @dataclass
 class BacktestRequest:
     """Request object for backtest execution."""
+
     strategy_name: str
     start_date: datetime
     end_date: datetime
@@ -43,39 +44,42 @@ class BacktestRequest:
     request_id: str = field(default_factory=lambda: str(uuid.uuid4()))
     health_status: str = "healthy"
     error_count: int = 0
-    
+
     def _handle_error(self, error: Exception, context: str = "") -> None:
         """Handle errors with structured error handling."""
         self.error_count += 1
         error_code = f"BT_ERROR_{self.error_count:04d}"
-        
-        logger.error(f"Backtest request error {error_code}: {str(error)}", extra={
-            'error_code': error_code,
-            'context': context,
-            'request_id': self.request_id,
-            'strategy_name': self.strategy_name
-        })
-        
+
+        logger.error(
+            f"Backtest request error {error_code}: {str(error)}",
+            extra={
+                "error_code": error_code,
+                "context": context,
+                "request_id": self.request_id,
+                "strategy_name": self.strategy_name,
+            },
+        )
+
         # Update health status based on error count
         if self.error_count > 10:
             self.health_status = "unhealthy"
         elif self.error_count > 5:
             self.health_status = "degraded"
-    
+
     def check_component_health(self) -> Dict[str, Any]:
         """Check component health status."""
         return {
-            'status': self.health_status,
-            'error_count': self.error_count,
-            'request_id': self.request_id,
-            'strategy_name': self.strategy_name
+            "status": self.health_status,
+            "error_count": self.error_count,
+            "request_id": self.request_id,
+            "strategy_name": self.strategy_name,
         }
-    
+
     def _process_config_driven_validation(self, config: Dict[str, Any]) -> bool:
         """Process validation based on configuration settings."""
         try:
             # Apply config-driven logic
-            if config.get('enable_validation', True):
+            if config.get("enable_validation", True):
                 # Validate request based on config
                 if self._validate_request_against_config(config):
                     return True
@@ -84,47 +88,55 @@ class BacktestRequest:
                     return False
             else:
                 return True
-                
+
         except Exception as e:
             self._handle_error(e, f"config_driven_validation")
             return False
-    
+
     def _validate_request_against_config(self, config: Dict[str, Any]) -> bool:
         """Validate request against configuration."""
         # Basic validation logic
-        required_fields = config.get('required_request_fields', ['strategy_name', 'start_date', 'end_date'])
+        required_fields = config.get(
+            "required_request_fields", ["strategy_name", "start_date", "end_date"]
+        )
         return all(hasattr(self, field) for field in required_fields)
-    
+
     def validate(self) -> List[str]:
         """Validate request parameters."""
         errors = []
-        
+
         if not self.strategy_name:
             errors.append("strategy_name is required")
-        
+
         if self.initial_capital <= 0:
             errors.append("initial_capital must be positive")
-        
+
         if self.end_date <= self.start_date:
             errors.append("end_date must be after start_date")
-        
-        if self.share_class not in ['USDT', 'ETH']:
+
+        if self.share_class not in ["USDT", "ETH"]:
             errors.append("share_class must be 'USDT' or 'ETH'")
-        
+
         return errors
 
 
 class BacktestService:
     """Service for running backtests using the new component architecture."""
-    
+
     def __init__(self):
         self.running_backtests: Dict[str, Dict[str, Any]] = {}
         self.completed_backtests: Dict[str, Dict[str, Any]] = {}
-    
-    def create_request(self, strategy_name: str, start_date: datetime, end_date: datetime,
-                      initial_capital: Decimal, share_class: str, 
-                      config_overrides: Dict[str, Any] = None,
-                      debug_mode: bool = False) -> BacktestRequest:
+
+    def create_request(
+        self,
+        strategy_name: str,
+        start_date: datetime,
+        end_date: datetime,
+        initial_capital: Decimal,
+        share_class: str,
+        config_overrides: Dict[str, Any] = None,
+        debug_mode: bool = False,
+    ) -> BacktestRequest:
         """Create a backtest request."""
         return BacktestRequest(
             strategy_name=strategy_name,
@@ -133,13 +145,13 @@ class BacktestService:
             initial_capital=initial_capital,
             share_class=share_class,
             config_overrides=config_overrides or {},
-            debug_mode=debug_mode
+            debug_mode=debug_mode,
         )
-    
+
     async def run_backtest(self, request: BacktestRequest, correlation_id: str = None) -> str:
         """
         Run a backtest using Phase 3 architecture with proper dependency injection.
-        
+
         Phase 4: Uses injected config manager, data provider, and component initialization.
         """
         # Validate request
@@ -147,212 +159,221 @@ class BacktestService:
         if errors:
             logger.error(f"[BT-001] Backtest request validation failed: {', '.join(errors)}")
             raise ValueError(f"Invalid request: {', '.join(errors)}")
-        
+
         try:
             # Phase 4: Use new architecture with proper dependency injection
             from ...infrastructure.config.config_manager import get_config_manager
             from ...infrastructure.data.data_provider_factory import create_data_provider
-            
+
             # Create config with API request parameters applied
             config = self._create_config(request)
-            
+
             # Get data provider (on-demand loading with date validation)
             import os
             from ...infrastructure.config.config_manager import get_config_manager
+
             config_manager = get_config_manager()
-            
+
             # Determine data type from strategy name
-            if request.strategy_name.startswith('ml_'):
-                data_type = 'cefi'
+            if request.strategy_name.startswith("ml_"):
+                data_type = "cefi"
             else:
-                data_type = 'defi'
-            
+                data_type = "defi"
+
             data_provider = create_data_provider(
-                execution_mode=os.getenv('BASIS_EXECUTION_MODE'),
-                data_type=data_type,
-                config=config
+                execution_mode=os.getenv("BASIS_EXECUTION_MODE"), data_type=data_type, config=config
             )
-            
+
             # Phase 3: Initialize strategy engine with proper dependency injection
             strategy_engine = EventDrivenStrategyEngine(
                 config=config,
-                execution_mode=os.getenv('BASIS_EXECUTION_MODE'),
+                execution_mode=os.getenv("BASIS_EXECUTION_MODE"),
                 data_provider=data_provider,
                 initial_capital=float(request.initial_capital),  # From API request
                 share_class=request.share_class,  # From API request
                 debug_mode=request.debug_mode,
-                correlation_id=correlation_id
+                correlation_id=correlation_id,
             )
-            
+
             # Store request info
             self.running_backtests[request.request_id] = {
-                'request': request,
-                'config': config,
-                'strategy_engine': strategy_engine,
-                'status': 'running',
-                'started_at': datetime.utcnow(),
-                'progress': 0
+                "request": request,
+                "config": config,
+                "strategy_engine": strategy_engine,
+                "status": "running",
+                "started_at": datetime.utcnow(),
+                "progress": 0,
             }
-            
-            logger.info(f"✅ Backtest initialized: {request.strategy_name} mode, {request.share_class} share class, {request.initial_capital} capital")
-            
+
+            logger.info(
+                f"✅ Backtest initialized: {request.strategy_name} mode, {request.share_class} share class, {request.initial_capital} capital"
+            )
+
             # Debug: Print initial position monitor state
             if request.debug_mode:
                 strategy_engine.debug_print_position_monitor()
-            
+
             # Execute backtest synchronously (Phase 4: no background tasks)
             results = await self._execute_backtest_sync(request.request_id)
-            
+
             return request.request_id
-            
+
         except Exception as e:
             logger.error(f"[BT-003] Strategy engine initialization failed: {e}")
             raise
-    
+
     async def _execute_backtest_sync(self, request_id: str) -> Dict[str, Any]:
         """
         Execute backtest synchronously using Phase 3 component architecture.
-        
+
         Phase 4: Synchronous execution with real component orchestration.
         """
         if request_id not in self.running_backtests:
             raise ValueError(f"Backtest request not found: {request_id}")
-        
+
         backtest_info = self.running_backtests[request_id]
-        request = backtest_info['request']
-        strategy_engine = backtest_info['strategy_engine']
-        
+        request = backtest_info["request"]
+        strategy_engine = backtest_info["strategy_engine"]
+
         try:
-            logger.info(f"🔄 Executing backtest: {request.strategy_name} from {request.start_date} to {request.end_date}")
-            
+            logger.info(
+                f"🔄 Executing backtest: {request.strategy_name} from {request.start_date} to {request.end_date}"
+            )
+
             # Run backtest using the strategy engine with all components
             results = await strategy_engine.run_backtest(
-                start_date=request.start_date.strftime('%Y-%m-%d'),
-                end_date=request.end_date.strftime('%Y-%m-%d')
+                start_date=request.start_date.strftime("%Y-%m-%d"),
+                end_date=request.end_date.strftime("%Y-%m-%d"),
             )
-            
+
             # Debug: Print final position monitor state
             if request.debug_mode:
                 strategy_engine.debug_print_position_monitor()
-            
+
             # Update status
-            backtest_info['status'] = 'completed'
-            backtest_info['progress'] = 1.0
-            backtest_info['completed_at'] = datetime.utcnow()
-            backtest_info['results'] = results
-            
+            backtest_info["status"] = "completed"
+            backtest_info["progress"] = 1.0
+            backtest_info["completed_at"] = datetime.utcnow()
+            backtest_info["results"] = results
+
             # Move to completed backtests
             self.completed_backtests[request_id] = backtest_info
-            
+
             # Clean up running backtests to free memory and prevent state persistence
             if request_id in self.running_backtests:
                 del self.running_backtests[request_id]
-            
+
             # Save results to filesystem for quality gates
             try:
                 from ...infrastructure.persistence.result_store import ResultStore
+
                 result_store = ResultStore()
-                
+
                 # Create result data in the format expected by ResultStore
-                performance = results.get('performance', {})
+                performance = results.get("performance", {})
                 result_data = {
-                    'request_id': request_id,
-                    'strategy_name': request.strategy_name,
-                    'share_class': request.share_class,
-                    'start_date': request.start_date.isoformat(),
-                    'end_date': request.end_date.isoformat(),
-                    'initial_capital': str(request.initial_capital),
-                    'final_value': str(performance.get('final_value', 0)),
-                    'total_return': str(performance.get('total_return', 0)),
-                    'annualized_return': str(performance.get('annualized_return', 0)),
-                    'sharpe_ratio': str(performance.get('sharpe_ratio', 0)),
-                    'max_drawdown': str(performance.get('max_drawdown', 0)),
-                    'target_apy': performance.get('target_apy'),
-                    'target_max_drawdown': performance.get('target_max_drawdown'),
-                    'apy_vs_target': performance.get('apy_vs_target'),
-                    'drawdown_vs_target': performance.get('drawdown_vs_target'),
-                    'total_trades': performance.get('total_trades', 0),
-                    'winning_trades': performance.get('winning_trades'),
-                    'losing_trades': performance.get('losing_trades'),
-                    'total_fees': str(performance.get('total_fees', 0)),
-                    'equity_curve': performance.get('equity_curve'),
-                    'metrics_summary': performance.get('metrics_summary', {})
+                    "request_id": request_id,
+                    "strategy_name": request.strategy_name,
+                    "share_class": request.share_class,
+                    "start_date": request.start_date.isoformat(),
+                    "end_date": request.end_date.isoformat(),
+                    "initial_capital": str(request.initial_capital),
+                    "final_value": str(performance.get("final_value", 0)),
+                    "total_return": str(performance.get("total_return", 0)),
+                    "annualized_return": str(performance.get("annualized_return", 0)),
+                    "sharpe_ratio": str(performance.get("sharpe_ratio", 0)),
+                    "max_drawdown": str(performance.get("max_drawdown", 0)),
+                    "target_apy": performance.get("target_apy"),
+                    "target_max_drawdown": performance.get("target_max_drawdown"),
+                    "apy_vs_target": performance.get("apy_vs_target"),
+                    "drawdown_vs_target": performance.get("drawdown_vs_target"),
+                    "total_trades": performance.get("total_trades", 0),
+                    "winning_trades": performance.get("winning_trades"),
+                    "losing_trades": performance.get("losing_trades"),
+                    "total_fees": str(performance.get("total_fees", 0)),
+                    "equity_curve": performance.get("equity_curve"),
+                    "metrics_summary": performance.get("metrics_summary", {}),
                 }
-                
+
                 await result_store.save_result(request_id, result_data, full_results=results)
                 logger.info(f"✅ Results saved to filesystem for request {request_id}")
             except Exception as e:
                 logger.warning(f"⚠️ Failed to save results to filesystem: {e}")
                 # Continue without failing the backtest
-            
+
             logger.info(f"✅ Backtest completed successfully: {request_id}")
             return results
-            
+
         except Exception as e:
             # Update status to failed
-            backtest_info['status'] = 'failed'
-            backtest_info['error'] = str(e)
-            backtest_info['completed_at'] = datetime.utcnow()
-            
+            backtest_info["status"] = "failed"
+            backtest_info["error"] = str(e)
+            backtest_info["completed_at"] = datetime.utcnow()
+
             # Clean up running backtests even on failure to free memory
             if request_id in self.running_backtests:
                 del self.running_backtests[request_id]
-            
+
             logger.error(f"❌ Backtest failed: {request_id} - {e}")
             raise ValueError(f"Backtest execution failed: {e}")
-    
+
     def _create_config(self, request: BacktestRequest) -> Dict[str, Any]:
         """Create configuration using existing config infrastructure."""
         try:
             from ...infrastructure.config.config_manager import get_config_manager
-            
+
             # Get config manager
             config_manager = get_config_manager()
-            
+
             # Map strategy name to mode
             mode = self._map_strategy_to_mode(request.strategy_name)
-            
+
             # Load base config for the mode
             base_config = config_manager.get_complete_config(mode=mode)
-            
+
             # Apply user overrides
             if request.config_overrides:
                 base_config = self._deep_merge(base_config, request.config_overrides)
-            
+
             # Add request-specific overrides (API request parameters take precedence)
-            base_config.update({
-                'share_class': request.share_class,
-                'initial_capital': float(request.initial_capital),
-                'strategy_name': request.strategy_name,
-                'start_date': request.start_date,
-                'end_date': request.end_date,
-                'backtest': {
-                    'start_date': request.start_date.isoformat() if hasattr(request.start_date, 'isoformat') else str(request.start_date),
-                    'end_date': request.end_date.isoformat() if hasattr(request.end_date, 'isoformat') else str(request.end_date),
-                    'initial_capital': float(request.initial_capital)
+            base_config.update(
+                {
+                    "share_class": request.share_class,
+                    "initial_capital": float(request.initial_capital),
+                    "strategy_name": request.strategy_name,
+                    "start_date": request.start_date,
+                    "end_date": request.end_date,
+                    "backtest": {
+                        "start_date": request.start_date.isoformat()
+                        if hasattr(request.start_date, "isoformat")
+                        else str(request.start_date),
+                        "end_date": request.end_date.isoformat()
+                        if hasattr(request.end_date, "isoformat")
+                        else str(request.end_date),
+                        "initial_capital": float(request.initial_capital),
+                    },
                 }
-            })
-            
-            
+            )
+
             return base_config
-            
+
         except Exception as e:
             logger.error(f"[BT-002] Config creation failed: {e}")
             raise
-    
+
     def _map_strategy_to_mode(self, strategy_name: str) -> str:
         """Map strategy name to mode."""
         mode_map = {
-            'pure_lending_usdt': 'pure_lending_usdt',
-            'pure_lending_eth': 'pure_lending_eth',
-            'btc_basis': 'btc_basis',
-            'eth_leveraged': 'eth_leveraged',
-            'usdt_market_neutral': 'usdt_market_neutral',
-            'usdt_market_neutral_no_leverage': 'usdt_market_neutral_no_leverage',
-            'eth_staking_only': 'eth_staking_only'
+            "pure_lending_usdt": "pure_lending_usdt",
+            "pure_lending_eth": "pure_lending_eth",
+            "btc_basis": "btc_basis",
+            "eth_leveraged": "eth_leveraged",
+            "usdt_market_neutral": "usdt_market_neutral",
+            "usdt_market_neutral_no_leverage": "usdt_market_neutral_no_leverage",
+            "eth_staking_only": "eth_staking_only",
         }
-        return mode_map.get(strategy_name, 'pure_lending_usdt')
-    
+        return mode_map.get(strategy_name, "pure_lending_usdt")
+
     def _deep_merge(self, base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]:
         """Deep merge two dictionaries."""
         result = base.copy()
@@ -362,236 +383,269 @@ class BacktestService:
             else:
                 result[key] = value
         return result
-    
+
     def _slice_config(self, strategy_name: str) -> Dict[str, Any]:
         """Slice config for strategy mode (never modifies global config)."""
         try:
             from ...infrastructure.config.config_manager import get_config_manager
+
             config_manager = get_config_manager()
             return config_manager.get_complete_config(mode=strategy_name)
         except Exception as e:
             logger.error(f"Failed to slice config for strategy {strategy_name}: {e}")
             raise ValueError(f"Config slicing failed for strategy {strategy_name}: {e}")
-    
-    def _apply_overrides(self, config_slice: Dict[str, Any], overrides: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+
+    def _apply_overrides(
+        self, config_slice: Dict[str, Any], overrides: Optional[Dict[str, Any]]
+    ) -> Dict[str, Any]:
         """Apply overrides to config slice (never modifies global config)."""
         if not overrides:
             return config_slice.copy()
-        
+
         # Deep copy to avoid modifying original
         final_config = config_slice.copy()
-        
+
         # Apply overrides recursively
         for key, value in overrides.items():
-            if key in final_config and isinstance(final_config[key], dict) and isinstance(value, dict):
+            if (
+                key in final_config
+                and isinstance(final_config[key], dict)
+                and isinstance(value, dict)
+            ):
                 final_config[key].update(value)
             else:
                 final_config[key] = value
-        
+
         return final_config
-    
+
     async def _execute_backtest(self, request_id: str):
         """Execute the backtest."""
         try:
             backtest_info = self.running_backtests[request_id]
-            strategy_engine = backtest_info['strategy_engine']
-            request = backtest_info['request']
-            
+            strategy_engine = backtest_info["strategy_engine"]
+            request = backtest_info["request"]
+
             # Update progress
-            backtest_info['progress'] = 0.1
-            
+            backtest_info["progress"] = 0.1
+
             # Data provider initialization handled by strategy engine
-            backtest_info['progress'] = 0.2
-            
+            backtest_info["progress"] = 0.2
+
             # Run the backtest
             result = await strategy_engine.run_backtest(
-                start_date=request.start_date,
-                end_date=request.end_date
+                start_date=request.start_date, end_date=request.end_date
             )
-            
-            backtest_info['progress'] = 0.9
-            
+
+            backtest_info["progress"] = 0.9
+
             # Extract performance data from the result
-            performance = result.get('performance', {})
+            performance = result.get("performance", {})
             logger.info(f"Backtest Service: Event engine result keys = {list(result.keys())}")
             logger.info(f"Backtest Service: Performance data = {performance}")
-            
+
             # Store result
             self.completed_backtests[request_id] = {
-                'request_id': request_id,
-                'strategy_name': request.strategy_name,
-                'start_date': request.start_date,
-                'end_date': request.end_date,
-                'initial_capital': request.initial_capital,
-                'final_value': performance.get('final_value', request.initial_capital),
-                'total_return': performance.get('total_return', 0.0),
-                'annualized_return': performance.get('total_return_pct', 0.0),  # Use total_return_pct as annualized_return
-                'sharpe_ratio': 0.0,  # Not calculated yet
-                'max_drawdown': 0.0,  # Not calculated yet
-                'total_trades': 0,  # Not calculated yet
-                'total_fees': 0.0,  # Not calculated yet
+                "request_id": request_id,
+                "strategy_name": request.strategy_name,
+                "start_date": request.start_date,
+                "end_date": request.end_date,
+                "initial_capital": request.initial_capital,
+                "final_value": performance.get("final_value", request.initial_capital),
+                "total_return": performance.get("total_return", 0.0),
+                "annualized_return": performance.get(
+                    "total_return_pct", 0.0
+                ),  # Use total_return_pct as annualized_return
+                "sharpe_ratio": 0.0,  # Not calculated yet
+                "max_drawdown": 0.0,  # Not calculated yet
+                "total_trades": 0,  # Not calculated yet
+                "total_fees": 0.0,  # Not calculated yet
                 # Performance validation against targets
-                'target_apy': result.get('config', {}).get('strategy', {}).get('target_apy'),
-                'target_max_drawdown': result.get('config', {}).get('strategy', {}).get('max_drawdown'),
-                'apy_vs_target': self._validate_apy_vs_target(performance.get('total_return_pct', 0.0), result.get('config', {}).get('strategy', {}).get('target_apy')),
-                'drawdown_vs_target': self._validate_drawdown_vs_target(0.0, result.get('config', {}).get('strategy', {}).get('max_drawdown')),
-                'metrics_history': result.get('pnl_history', []),
-                'metrics_summary': result.get('metrics_summary', {}),
-                'completed_at': datetime.utcnow()
+                "target_apy": result.get("config", {}).get("strategy", {}).get("target_apy"),
+                "target_max_drawdown": result.get("config", {})
+                .get("strategy", {})
+                .get("max_drawdown"),
+                "apy_vs_target": self._validate_apy_vs_target(
+                    performance.get("total_return_pct", 0.0),
+                    result.get("config", {}).get("strategy", {}).get("target_apy"),
+                ),
+                "drawdown_vs_target": self._validate_drawdown_vs_target(
+                    0.0, result.get("config", {}).get("strategy", {}).get("max_drawdown")
+                ),
+                "metrics_history": result.get("pnl_history", []),
+                "metrics_summary": result.get("metrics_summary", {}),
+                "completed_at": datetime.utcnow(),
             }
-            
+
             # Update status
-            backtest_info['status'] = 'completed'
-            backtest_info['progress'] = 1.0
-            backtest_info['completed_at'] = datetime.utcnow()
-            
+            backtest_info["status"] = "completed"
+            backtest_info["progress"] = 1.0
+            backtest_info["completed_at"] = datetime.utcnow()
+
             logger.info(f"Backtest {request_id} completed successfully")
-            
+
         except Exception as e:
             logger.error(f"[BT-004] Backtest {request_id} failed: {e}", exc_info=True)
             backtest_info = self.running_backtests[request_id]
-            backtest_info['status'] = 'failed'
-            backtest_info['error'] = str(e)
-            backtest_info['completed_at'] = datetime.utcnow()
-    
+            backtest_info["status"] = "failed"
+            backtest_info["error"] = str(e)
+            backtest_info["completed_at"] = datetime.utcnow()
+
     async def get_status(self, request_id: str) -> Dict[str, Any]:
         """Get the status of a backtest."""
         if request_id in self.running_backtests:
             backtest_info = self.running_backtests[request_id]
             return {
-                'status': backtest_info['status'],
-                'progress': backtest_info['progress'],
-                'started_at': backtest_info['started_at'],
-                'completed_at': backtest_info.get('completed_at'),
-                'error': backtest_info.get('error')
+                "status": backtest_info["status"],
+                "progress": backtest_info["progress"],
+                "started_at": backtest_info["started_at"],
+                "completed_at": backtest_info.get("completed_at"),
+                "error": backtest_info.get("error"),
             }
         elif request_id in self.completed_backtests:
             return {
-                'status': 'completed',
-                'progress': 1.0,
-                'started_at': self.completed_backtests[request_id].get('started_at'),
-                'completed_at': self.completed_backtests[request_id]['completed_at']
+                "status": "completed",
+                "progress": 1.0,
+                "started_at": self.completed_backtests[request_id].get("started_at"),
+                "completed_at": self.completed_backtests[request_id]["completed_at"],
             }
         else:
-            return {'status': 'not_found'}
-    
+            return {"status": "not_found"}
+
     async def get_result(self, request_id: str) -> Optional[Dict[str, Any]]:
         """Get the result of a completed backtest."""
         if request_id in self.completed_backtests:
             backtest_info = self.completed_backtests[request_id]
-            
+
             # Extract the actual results from the event engine
-            raw_results = backtest_info.get('results', {})
-            performance = raw_results.get('performance', {})
-            
-            logger.info(f"Backtest Service get_result: raw_results keys = {list(raw_results.keys()) if raw_results else 'None'}")
+            raw_results = backtest_info.get("results", {})
+            performance = raw_results.get("performance", {})
+
+            logger.info(
+                f"Backtest Service get_result: raw_results keys = {list(raw_results.keys()) if raw_results else 'None'}"
+            )
             logger.info(f"Backtest Service get_result: performance = {performance}")
-            
+
             # Return the performance data in the expected format
             return {
-                'request_id': request_id,
-                'strategy_name': backtest_info.get('request', {}).strategy_name if hasattr(backtest_info.get('request', {}), 'strategy_name') else 'pure_lending_usdt',
-                'start_date': backtest_info.get('request', {}).start_date if hasattr(backtest_info.get('request', {}), 'start_date') else None,
-                'end_date': backtest_info.get('request', {}).end_date if hasattr(backtest_info.get('request', {}), 'end_date') else None,
-                'initial_capital': performance.get('initial_capital', 100000),
-                'final_value': performance.get('final_value', 0),
-                'total_return': performance.get('total_return', 0),
-                'annualized_return': performance.get('total_return_pct', 0),
-                'sharpe_ratio': 0.0,  # Not calculated yet
-                'max_drawdown': 0.0,  # Not calculated yet
-                'total_trades': len(raw_results.get('events', [])),
-                'total_fees': 0.0,  # Not calculated yet
-                'metrics_history': raw_results.get('pnl_history', []),
-                'metrics_summary': {}
+                "request_id": request_id,
+                "strategy_name": backtest_info.get("request", {}).strategy_name
+                if hasattr(backtest_info.get("request", {}), "strategy_name")
+                else "pure_lending_usdt",
+                "start_date": backtest_info.get("request", {}).start_date
+                if hasattr(backtest_info.get("request", {}), "start_date")
+                else None,
+                "end_date": backtest_info.get("request", {}).end_date
+                if hasattr(backtest_info.get("request", {}), "end_date")
+                else None,
+                "initial_capital": performance.get("initial_capital", 100000),
+                "final_value": performance.get("final_value", 0),
+                "total_return": performance.get("total_return", 0),
+                "annualized_return": performance.get("total_return_pct", 0),
+                "sharpe_ratio": 0.0,  # Not calculated yet
+                "max_drawdown": 0.0,  # Not calculated yet
+                "total_trades": len(raw_results.get("events", [])),
+                "total_fees": 0.0,  # Not calculated yet
+                "equity_curve": performance.get("equity_curve", []),  # Include equity curve data
+                "metrics_history": raw_results.get("pnl_history", []),
+                "metrics_summary": {},
             }
         elif request_id in self.running_backtests:
             backtest_info = self.running_backtests[request_id]
-            if backtest_info['status'] == 'completed':
-                return await self.get_result(request_id)  # Recursive call to handle completed backtests
+            if backtest_info["status"] == "completed":
+                return await self.get_result(
+                    request_id
+                )  # Recursive call to handle completed backtests
         return None
-    
+
     async def cancel_backtest(self, request_id: str) -> bool:
         """Cancel a running backtest."""
         if request_id in self.running_backtests:
             backtest_info = self.running_backtests[request_id]
-            if backtest_info['status'] == 'running':
-                backtest_info['status'] = 'cancelled'
-                backtest_info['completed_at'] = datetime.utcnow()
+            if backtest_info["status"] == "running":
+                backtest_info["status"] = "cancelled"
+                backtest_info["completed_at"] = datetime.utcnow()
                 return True
         return False
-    
-    def _validate_apy_vs_target(self, actual_apy: float, target_apy: Optional[float]) -> Dict[str, Any]:
+
+    def _validate_apy_vs_target(
+        self, actual_apy: float, target_apy: Optional[float]
+    ) -> Dict[str, Any]:
         """Validate actual APY against target APY."""
         if target_apy is None:
-            return {'status': 'no_target', 'message': 'No target APY specified'}
-        
+            return {"status": "no_target", "message": "No target APY specified"}
+
         if actual_apy >= target_apy:
             return {
-                'status': 'meets_target',
-                'message': f'APY {actual_apy:.2%} meets target {target_apy:.2%}',
-                'actual': actual_apy,
-                'target': target_apy,
-                'difference': actual_apy - target_apy
+                "status": "meets_target",
+                "message": f"APY {actual_apy:.2%} meets target {target_apy:.2%}",
+                "actual": actual_apy,
+                "target": target_apy,
+                "difference": actual_apy - target_apy,
             }
         else:
             return {
-                'status': 'below_target',
-                'message': f'APY {actual_apy:.2%} below target {target_apy:.2%}',
-                'actual': actual_apy,
-                'target': target_apy,
-                'difference': actual_apy - target_apy
+                "status": "below_target",
+                "message": f"APY {actual_apy:.2%} below target {target_apy:.2%}",
+                "actual": actual_apy,
+                "target": target_apy,
+                "difference": actual_apy - target_apy,
             }
-    
-    def _validate_drawdown_vs_target(self, actual_drawdown: float, target_drawdown: Optional[float]) -> Dict[str, Any]:
+
+    def _validate_drawdown_vs_target(
+        self, actual_drawdown: float, target_drawdown: Optional[float]
+    ) -> Dict[str, Any]:
         """Validate actual max drawdown against target max drawdown."""
         if target_drawdown is None:
-            return {'status': 'no_target', 'message': 'No target max drawdown specified'}
-        
+            return {"status": "no_target", "message": "No target max drawdown specified"}
+
         # Convert to positive values for comparison (drawdowns are negative)
         actual_abs = abs(actual_drawdown)
         target_abs = abs(target_drawdown)
-        
+
         if actual_abs <= target_abs:
             return {
-                'status': 'within_target',
-                'message': f'Max drawdown {actual_drawdown:.2%} within target {target_drawdown:.2%}',
-                'actual': actual_drawdown,
-                'target': target_drawdown,
-                'difference': actual_abs - target_abs
+                "status": "within_target",
+                "message": f"Max drawdown {actual_drawdown:.2%} within target {target_drawdown:.2%}",
+                "actual": actual_drawdown,
+                "target": target_drawdown,
+                "difference": actual_abs - target_abs,
             }
         else:
             return {
-                'status': 'exceeds_target',
-                'message': f'Max drawdown {actual_drawdown:.2%} exceeds target {target_drawdown:.2%}',
-                'actual': actual_drawdown,
-                'target': target_drawdown,
-                'difference': actual_abs - target_abs
+                "status": "exceeds_target",
+                "message": f"Max drawdown {actual_drawdown:.2%} exceeds target {target_drawdown:.2%}",
+                "actual": actual_drawdown,
+                "target": target_drawdown,
+                "difference": actual_abs - target_abs,
             }
 
     async def list_backtests(self) -> List[Dict[str, Any]]:
         """List all backtest executions."""
         backtests = []
-        
+
         # Add running backtests
         for request_id, backtest_data in self.running_backtests.items():
-            backtests.append({
-                "request_id": request_id,
-                "status": "running",
-                "strategy_name": backtest_data.get("strategy_name", "unknown"),
-                "started_at": backtest_data.get("started_at"),
-                "progress": backtest_data.get("progress", 0)
-            })
-        
+            backtests.append(
+                {
+                    "request_id": request_id,
+                    "status": "running",
+                    "strategy_name": backtest_data.get("strategy_name", "unknown"),
+                    "started_at": backtest_data.get("started_at"),
+                    "progress": backtest_data.get("progress", 0),
+                }
+            )
+
         # Add completed backtests
         for request_id, backtest_data in self.completed_backtests.items():
-            backtests.append({
-                "request_id": request_id,
-                "status": "completed",
-                "strategy_name": backtest_data.get("strategy_name", "unknown"),
-                "started_at": backtest_data.get("started_at"),
-                "completed_at": backtest_data.get("completed_at"),
-                "result": backtest_data.get("result", {})
-            })
-        
-        return backtests
+            backtests.append(
+                {
+                    "request_id": request_id,
+                    "status": "completed",
+                    "strategy_name": backtest_data.get("strategy_name", "unknown"),
+                    "started_at": backtest_data.get("started_at"),
+                    "completed_at": backtest_data.get("completed_at"),
+                    "result": backtest_data.get("result", {}),
+                }
+            )
 
+        return backtests

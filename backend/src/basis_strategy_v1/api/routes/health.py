@@ -13,13 +13,11 @@ logger = structlog.get_logger()
 router = APIRouter()
 
 
-
-
 @router.get(
     "/",
     response_model=HealthResponse,
     summary="Basic health check",
-    description="Fast heartbeat check (< 50ms) - no authentication required"
+    description="Fast heartbeat check (< 50ms) - no authentication required",
 )
 async def basic_health() -> HealthResponse:
     """
@@ -29,22 +27,22 @@ async def basic_health() -> HealthResponse:
     try:
         health_checker = get_health_checker()
         health_data = health_checker.check_health()
-        
+
         # Convert components list to dict for HealthResponse model
         components_list = health_data.get("components", [])
         components_dict = {}
         for comp in components_list:
             components_dict[comp.get("name", "unknown")] = comp
-        
+
         return HealthResponse(
             status=health_data["status"],
-            timestamp=datetime.fromisoformat(health_data["timestamp"].replace('Z', '+00:00')),
+            timestamp=datetime.fromisoformat(health_data["timestamp"].replace("Z", "+00:00")),
             service=health_data.get("service"),
             execution_mode=health_data.get("execution_mode"),
             uptime_seconds=health_data.get("uptime_seconds"),
             system=health_data.get("system"),
             components=components_dict,
-            summary=health_data.get("summary")
+            summary=health_data.get("summary"),
         )
     except Exception as e:
         logger.error(f"Basic health check failed: {e}")
@@ -52,7 +50,7 @@ async def basic_health() -> HealthResponse:
             status="unhealthy",
             timestamp=datetime.utcnow(),
             service="basis-strategy-v1",
-            error=str(e)
+            error=str(e),
         )
 
 
@@ -60,7 +58,7 @@ async def basic_health() -> HealthResponse:
     "/detailed",
     response_model=HealthResponse,
     summary="Detailed health check",
-    description="Comprehensive health with all components, system metrics, and summary - no authentication required"
+    description="Comprehensive health with all components, system metrics, and summary - no authentication required",
 )
 async def detailed_health(request: Request) -> HealthResponse:
     """
@@ -70,41 +68,34 @@ async def detailed_health(request: Request) -> HealthResponse:
     """
     correlation_id = getattr(request.state, "correlation_id", "unknown")
     try:
-        logger.info(
-            "Detailed health check requested",
-            correlation_id=correlation_id
-        )
-        
+        logger.info("Detailed health check requested", correlation_id=correlation_id)
+
         health_checker = get_health_checker()
         health_data = health_checker.check_detailed_health()
-        
+
         # Convert components list to dict for HealthResponse model
         components_list = health_data.get("components", [])
         components_dict = {}
         for comp in components_list:
             components_dict[comp.get("name", "unknown")] = comp
-        
+
         return HealthResponse(
             status=health_data["status"],
-            timestamp=datetime.fromisoformat(health_data["timestamp"].replace('Z', '+00:00')),
+            timestamp=datetime.fromisoformat(health_data["timestamp"].replace("Z", "+00:00")),
             service="basis-strategy-v1",
             execution_mode=health_data.get("execution_mode"),
             uptime_seconds=health_data.get("uptime_seconds"),
             system=health_data.get("system"),
             components=components_dict,
-            summary=health_data.get("summary")
+            summary=health_data.get("summary"),
         )
     except Exception as e:
-        logger.error(
-            "Detailed health check failed",
-            correlation_id=correlation_id,
-            error=str(e)
-        )
+        logger.error("Detailed health check failed", correlation_id=correlation_id, error=str(e))
         return HealthResponse(
             status="unhealthy",
             timestamp=datetime.utcnow(),
             service="basis-strategy-v1",
-            error=str(e)
+            error=str(e),
         )
 
 
@@ -112,7 +103,7 @@ async def detailed_health(request: Request) -> HealthResponse:
     "/components",
     response_model=HealthResponse,
     summary="Component health check",
-    description="Component-specific health check - no authentication required"
+    description="Component-specific health check - no authentication required",
 )
 async def component_health(request: Request) -> HealthResponse:
     """
@@ -121,39 +112,32 @@ async def component_health(request: Request) -> HealthResponse:
     """
     correlation_id = getattr(request.state, "correlation_id", "unknown")
     try:
-        logger.info(
-            "Component health check requested",
-            correlation_id=correlation_id
-        )
-        
+        logger.info("Component health check requested", correlation_id=correlation_id)
+
         health_checker = get_health_checker()
         health_data = health_checker.check_detailed_health()
-        
+
         # Convert components list to dict for HealthResponse model
         components_list = health_data.get("components", [])
         components_dict = {}
         for comp in components_list:
             components_dict[comp.get("name", "unknown")] = comp
-        
+
         return HealthResponse(
             status=health_data["status"],
-            timestamp=datetime.fromisoformat(health_data["timestamp"].replace('Z', '+00:00')),
+            timestamp=datetime.fromisoformat(health_data["timestamp"].replace("Z", "+00:00")),
             service="basis-strategy-v1",
             execution_mode=health_data.get("execution_mode"),
             uptime_seconds=health_data.get("uptime_seconds"),
             system=health_data.get("system"),
             components=components_dict,
-            summary=health_data.get("summary")
+            summary=health_data.get("summary"),
         )
     except Exception as e:
-        logger.error(
-            "Component health check failed",
-            correlation_id=correlation_id,
-            error=str(e)
-        )
+        logger.error("Component health check failed", correlation_id=correlation_id, error=str(e))
         return HealthResponse(
             status="unhealthy",
             timestamp=datetime.utcnow(),
             service="basis-strategy-v1",
-            error=str(e)
+            error=str(e),
         )

@@ -81,20 +81,24 @@ class StrategyManager(BaseStrategyManager):
         )
         
         # Initialize domain event logger
-        self.domain_event_logger = DomainEventLogger(self.log_dir)
+        self.domain_event_logger = DomainEventLogger(
+            self.log_dir, 
+            correlation_id=self.correlation_id, 
+            pid=self.pid
+        )
         
         # Initialize strategy state
         self.current_strategy_state = {
             'last_action': None,
             'last_timestamp': None,
-            'action_history': [],
+            'ACTION_HISTORY': [],
             'instruction_blocks_generated': 0
         }
         
         # Load strategy configuration
         self.strategy_type = config.get('component_config', {}).get('strategy_manager', {}).get('strategy_type', 'default')
         self.actions = config.get('component_config', {}).get('strategy_manager', {}).get('actions', [])
-        self.rebalancing_triggers = config.get('component_config', {}).get('strategy_manager', {}).get('rebalancing_triggers', [])
+        self.rebalancing_triggers = config.get('component_config', {}).get('strategy_manager', {}).get('REBALANCING_TRIGGERS', [])
         
         self.logger.info(f"StrategyManager initialized with strategy_type: {self.strategy_type}")
     
@@ -123,7 +127,7 @@ class StrategyManager(BaseStrategyManager):
             'status': self.health_status,
             'error_count': self.error_count,
             'strategy_type': self.strategy_type,
-            'actions_count': len(self.actions),
+            'ACTIONS_COUNT': len(self.actions),
             'rebalancing_triggers_count': len(self.rebalancing_triggers),
             'component': self.__class__.__name__
         }
@@ -136,7 +140,7 @@ class StrategyManager(BaseStrategyManager):
             order_params: Order parameters including operation, amount, venue, tokens, etc.
             
         Returns:
-            Dict[str, float]: Expected position deltas (position_key -> delta_amount)
+            Dict[str, float]: Expected position deltas (instrument_key -> delta_amount)
         """
         try:
             operation = order_params.get('operation')
@@ -513,7 +517,7 @@ class StrategyManager(BaseStrategyManager):
             elif "rebalance" in action.lower():
                 decision_type = "rebalance"
             elif "emergency" in action.lower():
-                decision_type = "emergency_exit"
+                decision_type = "EMERGENCY_EXIT"
             
             # Create strategy decision event
             decision_event = StrategyDecision(
@@ -567,7 +571,9 @@ class StrategyManager(BaseStrategyManager):
             self.logger.info(f"Strategy Manager: Updating state from {trigger_source}")
             
             # Query data using shared clock
-            market_data = self.data_provider.get_data(timestamp)
+            if not self.utility_manager:
+                raise ValueError("utility_manager is required but not provided")
+            market_data = self.utility_manager.data_provider.get_data(timestamp)
             
             # Access other components via references
             current_exposure = self.exposure_monitor.get_current_exposure()
@@ -598,9 +604,9 @@ class StrategyManager(BaseStrategyManager):
             
             # Update strategy state
             self.current_strategy_state.update({
-                'last_action': action,
-                'last_timestamp': timestamp,
-                'action_history': self.current_strategy_state['action_history'][-9:] + [action],  # Keep last 10 actions
+                'LAST_ACTION': action,
+                'LAST_TIMESTAMP': timestamp,
+                'ACTION_HISTORY': self.current_strategy_state['ACTION_HISTORY'][-9:] + [action],  # Keep last 10 actions
                 'instruction_blocks_generated': self.current_strategy_state['instruction_blocks_generated'] + len(instruction_blocks)
             })
             
@@ -615,7 +621,7 @@ class StrategyManager(BaseStrategyManager):
             )
             return []
     
-    def generate_orders(self, timestamp: pd.Timestamp, exposure: Dict, risk_assessment: Dict, pnl: Dict, market_data: Dict) -> List[Order]:
+    def generate_orders(self, timestamp: pd.Timestamp, exposure: Dict, risk_assessment: Dict, pnl: Dict, market_data: Dict, position_snapshot: Dict = None) -> List[Order]:
         """
         Generate orders based on current market conditions, exposure, risk assessment, and PnL.
         
@@ -623,7 +629,7 @@ class StrategyManager(BaseStrategyManager):
             timestamp: Current timestamp
             exposure: Current exposure data from ExposureMonitor
             risk_assessment: Current risk metrics from RiskMonitor
-            pnl: Current PnL data from PnLCalculator
+            pnl: Current PnL data from PnLMonitor
             market_data: Current market data from data provider
             
         Returns:
@@ -654,7 +660,8 @@ class StrategyManager(BaseStrategyManager):
                 exposure=exposure,
                 risk_assessment=risk_assessment,
                 pnl=pnl,
-                market_data=market_data
+                market_data=market_data,
+                position_snapshot=position_snapshot
             )
             
             # Log the generated orders
@@ -689,7 +696,7 @@ class StrategyManager(BaseStrategyManager):
                 pid=self.pid,
                 order_id=order.operation_id,
                 operation_id=order.operation_id,
-                operation_type=order.operation.value,
+                operation_type=order.operation.value if hasattr(order.operation, 'value') else str(order.operation),
                 venue=order.venue,
                 source_venue=order.source_venue,
                 target_venue=order.target_venue,
@@ -767,9 +774,9 @@ class StrategyManager(BaseStrategyManager):
         try:
             return {
                 'strategy_type': self.strategy_type,
-                'current_state': self.current_strategy_state,
+                'CURRENT_STATE': self.current_strategy_state,
                 'available_actions': self.actions,
-                'rebalancing_triggers': self.rebalancing_triggers,
+                'REBALANCING_TRIGGERS': self.rebalancing_triggers,
                 'mode_agnostic': True
             }
         except Exception as e:
@@ -780,6 +787,6 @@ class StrategyManager(BaseStrategyManager):
             )
             return {
                 'strategy_type': self.strategy_type,
-                'current_state': {},
+                'CURRENT_STATE': {},
                 'error': str(e)
             }

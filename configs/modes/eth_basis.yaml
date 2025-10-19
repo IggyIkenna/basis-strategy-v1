@@ -6,14 +6,10 @@ borrowing_enabled: false
 leverage_enabled: false
 enable_market_impact: true
 share_class: USDT
-asset: ETH
 lst_type: null
 rewards_mode: base_only
 funding_threshold: 0.0001
-hedge_venues:
-- binance
-- bybit
-- okx
+
 position_deviation_threshold: 0.02
 margin_ratio_target: 0.8
 venues:
@@ -45,7 +41,6 @@ venues:
     - WALLET-TRANSFER
     order_types:
     - transfer
-delta_tolerance: 0.005
 data_requirements:
 - eth_prices
 - eth_futures
@@ -84,7 +79,6 @@ event_logger:
   log_retention_policy:
     retention_days: 30
     max_file_size_mb: 100
-    rotation_frequency: daily
     compression_after_days: 7
   logging_requirements:
     structured_logging: true

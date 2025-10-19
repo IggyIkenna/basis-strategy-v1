@@ -4,7 +4,7 @@
 **Status**: ✅ COMPLETE - Comprehensive system documentation with all workflow patterns  
 **Updated**: January 2025  
 **Last Reviewed**: January 2025  
-**Status**: ✅ Aligned with canonical architectural principles
+**Status**: ✅ Aligned with canonical architectural principles and actual implementation
 
 ---
 
@@ -195,7 +195,7 @@ The system supports four main types of workflow triggers:
 
 - **Time Triggers**: Handle most business logic (deposits, withdrawals, risk checks) every 60 seconds
 - **Trade Flows**: Drive fast component chains only when needed
-- **Position Updates**: Logged for analytics but don't trigger separate workflows
+- **Position Updates**: Trigger automatic settlements in backtest mode (initial capital, funding, rewards, M2M PnL)
 - **Start/Stop**: Trigger different initialization workflows
 
 This keeps the architecture simple while maintaining all required functionality.
@@ -399,40 +399,55 @@ graph TD
 
 ### **7. Error Handling Workflow**
 
-**Trigger**: API errors or network failures
+**Trigger**: API errors, network failures, or component execution errors
 
 ```mermaid
 graph TD
-    A[API Error] --> B[Check Error Type]
+    A[Error Detected] --> B[Check Error Type]
     B --> C{Error Category?}
-    C -->|Network| D[Show Network Error]
-    C -->|Authentication| E[Redirect to Login]
-    C -->|Validation| F[Show Field Errors]
-    C -->|Server| G[Show Server Error]
-    D --> H[Retry Button]
-    E --> I[Clear Auth State]
-    F --> J[Highlight Invalid Fields]
-    G --> K[Contact Support Message]
-    H --> L[Retry API Call]
-    I --> M[Login Page]
-    J --> N[User Fixes Input]
-    K --> O[User Contacts Support]
+    C -->|Frontend API| D[Show User Error]
+    C -->|Backend Component| E[Component Error Handler]
+    C -->|Execution Failure| F[Execution Error Handler]
+    C -->|System Failure| G[System Error Handler]
+    
+    D --> H[User Action Required]
+    E --> I[Log & Continue/Retry]
+    F --> J[Handle Execution Failure]
+    G --> K[Trigger System Failure]
+    
+    H --> L[User Fixes/Retries]
+    I --> M[Continue Processing]
+    J --> N[Log Error & Continue]
+    K --> O[Restart/Shutdown]
     
     style A fill:#ffebee
     style D fill:#ffebee
-    style E fill:#ffebee
-    style F fill:#fff3e0
+    style E fill:#fff3e0
+    style F fill:#ffebee
     style G fill:#ffebee
     style L fill:#e3f2fd
-    style M fill:#e3f2fd
+    style M fill:#e8f5e8
     style N fill:#fff3e0
-    style O fill:#fff3e0
+    style O fill:#ffebee
 ```
 
-**Frontend Components**:
+**Error Handling Patterns**:
+
+**Frontend Errors**:
 - **ErrorBoundary**: React error boundary for component errors
 - **ErrorMessage**: Consistent error message display
 - **RetryButton**: Retry functionality for failed operations
+
+**Backend Component Errors**:
+- **ValueError/KeyError**: Fail-fast propagation for critical errors
+- **Non-critical Errors**: Log warning and continue processing
+- **Execution Failures**: Check failed trades, log error, continue timestep
+- **System Failures**: Trigger system failure and restart via health system
+
+**Error Recovery**:
+- **Execution Failures**: Log error event, continue to next timestep
+- **Component Errors**: Log error, attempt graceful degradation
+- **System Failures**: Health system triggers restart or shutdown
 
 ---
 
@@ -595,7 +610,7 @@ graph TD
     style G fill:#e8f5e8
 ```
 
-**Note**: Position updates are logged for analytics but don't trigger immediate workflows. They're processed during the next time-triggered workflow.
+**Note**: Position updates trigger automatic settlements in backtest mode (initial capital, funding, rewards, M2M PnL) and query real positions in live mode. They're processed during the next time-triggered workflow.
 
 ### **8. Health Check Workflows**
 
@@ -1501,7 +1516,7 @@ graph TD
     F --> G[Initialize EventLogger]
     G --> H[Initialize ExposureMonitor]
     H --> I[Initialize RiskMonitor]
-    I --> J[Initialize PnLCalculator]
+    I --> J[Initialize PnLMonitor]
     J --> K[Initialize StrategyManager]
     K --> L[Initialize CEXExecutionManager]
     L --> M[Initialize OnChainExecutionManager]
@@ -1790,136 +1805,81 @@ graph TD
 
 ### **Complete Component Chain Workflow**
 
+**Core Timestep Processing** (`_process_timestep`):
+
 ```mermaid
 graph TD
-    A[Data Provider] --> B[Position Monitor]
-    B --> C[Exposure Monitor]
-    C --> D[Risk Monitor]
-    D --> E[P&L Monitor]
-    E --> F[Strategy Manager]
-    F --> G[Execution Manager]
-    G --> H[Execution Interfaces]
-    H --> I[Event Logger]
-    I --> J[Position Monitor Update]
-    J --> K[Next Iteration]
+    A[1. Refresh Positions] --> B[2. Calculate Exposure]
+    B --> C[3. Assess Risk]
+    C --> D[4. Generate Strategy Orders]
+    D --> E{Orders Generated?}
+    E -->|Yes| F[5. Execute Orders]
+    E -->|No| G[6. Calculate P&L]
+    F --> H{Execution Success?}
+    H -->|Yes| G
+    H -->|No| I[Handle Execution Failure]
+    G --> J[7. Log Events]
+    J --> K[8. Store Results]
+    K --> L[Next Timestep]
+    I --> M[Log Error & Continue]
+    M --> L
     
-    style A fill:#e3f2fd
+    style A fill:#fff3e0
     style B fill:#fff3e0
     style C fill:#fff3e0
-    style D fill:#fff3e0
-    style E fill:#fff3e0
-    style F fill:#e8f5e8
-    style G fill:#fce4ec
-    style H fill:#fce4ec
-    style I fill:#f1f8e9
-    style J fill:#fff3e0
-    style K fill:#e3f2fd
+    style D fill:#e8f5e8
+    style F fill:#fce4ec
+    style G fill:#fff3e0
+    style I fill:#ffebee
+    style J fill:#f1f8e9
+    style K fill:#e1f5fe
+    style L fill:#e3f2fd
 ```
 
-## 🔄 **Tight Loop Architecture (MANDATORY)**
+**Component Details**:
+- **Step 1**: Position Monitor refreshes positions from all venues
+- **Step 2**: Exposure Monitor calculates asset exposures and converts to share class
+- **Step 3**: Risk Monitor assesses liquidation risk and margin requirements  
+- **Step 4**: Strategy Manager generates orders based on exposure and risk
+- **Step 5**: Execution Manager processes orders through venue interfaces
+- **Step 6**: P&L Monitor calculates performance after execution
+- **Step 7**: Event Logger records all events for audit trail
+- **Step 8**: Results Store persists timestep data
 
-### **NEW TIGHT LOOP DEFINITION - Execution Reconciliation Pattern**
+## 🔄 **Architecture Integration**
 
-**CRITICAL REDEFINITION**: Tight loop is now the execution reconciliation pattern that ensures position updates are verified before proceeding to the next instruction.
+### **Full Loop Architecture**
 
-**NEW TIGHT LOOP**:
-```mermaid
-graph TD
-    A[Execution Manager] --> B[Send Instruction]
-    B --> C[Position Monitor Updates]
-    C --> D[Verify Reconciliation]
-    D --> E{Position Matches Expected?}
-    E -->|Yes| F[Next Instruction]
-    E -->|No| G[Retry/Error]
-    F --> H[Continue Execution]
-    G --> I[Handle Error]
-    
-    style A fill:#fce4ec
-    style B fill:#fce4ec
-    style C fill:#fff3e0
-    style D fill:#fff3e0
-    style E fill:#e1f5fe
-    style F fill:#e8f5e8
-    style G fill:#ffebee
-    style H fill:#e8f5e8
+**CANONICAL REFERENCE**: [FULL_LOOP_ARCHITECTURE.md](FULL_LOOP_ARCHITECTURE.md)
+
+The full loop orchestrates all 11 components in a coordinated sequence:
+- **Complete System State Update**: Position refresh, exposure calculation, risk assessment
+- **Strategy Decision Making**: Generate trading instructions based on current state  
+- **Execution with Tight Loop Integration**: Process trades through venue interfaces
+- **Performance Updates**: Calculate P&L and maintain audit trails
+
+### **Tight Loop Architecture**
+
+**CANONICAL REFERENCE**: [TIGHT_LOOP_ARCHITECTURE.md](TIGHT_LOOP_ARCHITECTURE.md)
+
+The tight loop ensures execution reconciliation:
+- **Execution Reconciliation Pattern**: Order → Execution → Reconciliation
+- **Position Update Verification**: Ensures position updates are verified before proceeding
+- **Retry Logic**: 3 attempts with exponential backoff in live mode
+- **System Failure Handling**: Triggers system restart on critical failures
+
+### **Integration Pattern**
+
+```
+FULL LOOP = Time-Based Workflow + Embedded Tight Loops
 ```
 
-### **Full Loop Pattern - Time-Based Workflow with Embedded Tight Loops**
-
-**FULL LOOP** = Time-Based Workflow with Embedded Tight Loops:
-
-```mermaid
-graph TD
-    A[Time Trigger 60s] --> B[Position Monitor]
-    B --> C[Exposure Monitor]
-    C --> D[Risk Monitor]
-    D --> E[Strategy Decision]
-    E --> F{Need Execution?}
-    F -->|Yes| G[Instruction 1]
-    F -->|No| H[P&L Calculator]
-    G --> I[Tight Loop 1: execution_manager → execution_interface_manager → position_update_handler → position_monitor → reconciliation_component]
-    I --> J[Instruction 2]
-    J --> K[Tight Loop 2: execution_manager → execution_interface_manager → position_update_handler → position_monitor → reconciliation_component]
-    K --> L[Instruction N]
-    L --> M[Tight Loop N: execution_manager → execution_interface_manager → position_update_handler → position_monitor → reconciliation_component]
-    M --> N[P&L Calculator: Calculate P&L on Final Positions]
-    H --> O[Results Store: Persist Results]
-    N --> O
-    O --> P[Full Loop Complete]
-    
-    style A fill:#e3f2fd
-    style B fill:#e8f5e8
-    style D fill:#fff3e0
-    style F fill:#fff3e0
-    style O fill:#e1f5fe
-    style P fill:#e8f5e8
-    style H fill:#fff3e0
-    style I fill:#e8f5e8
-```
-
-### **DEPRECATED MONITORING CASCADE (NO LONGER USED)**
-
-**OLD CONCEPT** (DEPRECATED):
-```
-position_monitor → exposure_monitor → risk_monitor → pnl_monitor
-```
-
-**Why Deprecated**:
-- Nothing triggers this cascade anymore
-- Components may exist independently for reporting/analytics
-- NOT part of the execution flow
-
-### **Tight Loop Component Responsibilities**
-
-| Component | Method | Purpose | Input | Output |
-|-----------|--------|---------|-------|--------|
-| **Position Monitor** | `get_current_positions()` | Get current positions | None | Position dict |
-| **Exposure Monitor** | `calculate_exposure()` | Convert to share class | timestamp, position, market_data | Exposure dict |
-| **Risk Monitor** | `assess_risk()` | Calculate risk metrics | exposure, market_data | Risk dict |
-| **P&L Monitor** | `get_current_pnl()` | Calculate performance | timestamp, trigger_source, market_data | P&L dict |
-
-### **State Persistence Requirements**
-
-**CRITICAL**: All components must maintain state across runs without resetting:
-- **Position monitor**: Maintains position state across all timesteps
-- **Exposure monitor**: Maintains exposure calculations
-- **Risk monitor**: Maintains risk assessments  
-- **P&L monitor**: Maintains P&L calculations and history
-
-### **Atomic Transaction Handling**
-
-**Special Handling for Atomic Transactions**:
-- **Blockchain chain**: Essential one blockchain chain of transactions
-- **All or nothing**: Happen at same time or all fail
-- **Bypass iteration**: Skip normal iteration for atomic transactions
-- **Complete or rollback**: Entire transaction sequence must complete or fail
+The full loop contains multiple tight loops during execution phases, ensuring atomic order processing and consistency across all venue operations.
 
 ### **Code References**
-- **Tight Loop Processing**: `backend/src/basis_strategy_v1/core/event_engine/event_driven_strategy_engine.py:_process_timestep()`
-- **Position Monitor**: `backend/src/basis_strategy_v1/core/strategies/components/position_monitor.py:get_current_positions()`
-- **Exposure Monitor**: `backend/src/basis_strategy_v1/core/strategies/components/exposure_monitor.py:calculate_exposure()`
-- **Risk Monitor**: `backend/src/basis_strategy_v1/core/strategies/components/risk_monitor.py:assess_risk()`
-- **P&L Monitor**: `backend/src/basis_strategy_v1/core/math/pnl_calculator.py:get_current_pnl()`
+- **Full Loop Implementation**: `backend/src/basis_strategy_v1/core/event_engine/event_driven_strategy_engine.py:_process_timestep()`
+- **Tight Loop Implementation**: `backend/src/basis_strategy_v1/core/execution/execution_manager.py:process_orders()`
+- **Component Integration**: See [FULL_LOOP_ARCHITECTURE.md](FULL_LOOP_ARCHITECTURE.md) for detailed component responsibilities
 
 ---
 
@@ -2361,14 +2321,17 @@ graph TD
 Config Loading → Data Provider → Event Engine → Execution Interfaces → Event Logging
 ```
 
-### **2. Tight Loop Pattern (MANDATORY)**
-```
-Position Monitor → Exposure Monitor → Risk Monitor → P&L Monitor → [Strategy Manager] → Execution Managers
-```
+### **2. Architecture Patterns**
 
-**Two Execution Paths**:
-- **Strategy Path**: Include Strategy Manager for decision-making
-- **Tight Loop Path**: Bypass Strategy Manager for pre-planned execution sequences
+**Full Loop Pattern**: See [FULL_LOOP_ARCHITECTURE.md](FULL_LOOP_ARCHITECTURE.md)
+- **Complete System Orchestration**: All 11 components in coordinated sequence
+- **Strategy Decision Making**: Generate trading instructions based on current state
+- **Execution Integration**: Process trades through venue interfaces
+
+**Tight Loop Pattern**: See [TIGHT_LOOP_ARCHITECTURE.md](TIGHT_LOOP_ARCHITECTURE.md)
+- **Execution Reconciliation**: Order → Execution → Reconciliation
+- **Position Update Verification**: Ensures consistency before proceeding
+- **Retry Logic**: 3 attempts with exponential backoff in live mode
 
 ### **3. Mode-Agnostic Component Pattern**
 ```
@@ -2547,7 +2510,8 @@ graph TD
 - Transfer manager for cross-venue operations
 
 **❌ CRITICAL ARCHITECTURAL VIOLATIONS**:
-- **Missing Tight Loop Architecture**: Current implementation doesn't follow mandatory tight loop pattern
+- **Missing Tight Loop Architecture**: Current implementation doesn't follow mandatory tight loop pattern (see [TIGHT_LOOP_ARCHITECTURE.md](TIGHT_LOOP_ARCHITECTURE.md))
+- **Missing Full Loop Architecture**: Current implementation doesn't follow mandatory full loop pattern (see [FULL_LOOP_ARCHITECTURE.md](FULL_LOOP_ARCHITECTURE.md))
 - **Mode-Specific P&L Logic**: P&L calculator has different logic for backtest vs live modes
 - **Utility Methods in Execution Interfaces**: `_get_liquidity_index` should be centralized
 - **Missing Utility Manager**: No centralized utility manager for shared methods
@@ -2565,24 +2529,29 @@ graph TD
 
 ### **CRITICAL FIXES REQUIRED**
 
-1. **Implement Tight Loop Architecture**:
-   - Enforce mandatory sequential component chain: `position_monitor → exposure_monitor → risk_monitor → pnl_monitor`
-   - Support both execution paths (strategy and tight loop bypass)
-   - Implement atomic transaction special handling
+1. **Implement Full Loop Architecture** (see [FULL_LOOP_ARCHITECTURE.md](FULL_LOOP_ARCHITECTURE.md)):
+   - Enforce mandatory 11-component orchestration sequence
+   - Integrate tight loops during execution phases
+   - Support all execution and strategy mode deviations
 
-2. **Make P&L Monitor Mode-Agnostic**:
+2. **Implement Tight Loop Architecture** (see [TIGHT_LOOP_ARCHITECTURE.md](TIGHT_LOOP_ARCHITECTURE.md)):
+   - Enforce mandatory execution reconciliation pattern: Order → Execution → Reconciliation
+   - Implement retry logic with exponential backoff in live mode
+   - Add system failure handling with SystemExit triggers
+
+3. **Make P&L Monitor Mode-Agnostic**:
    - Remove mode-specific P&L calculation logic
    - Implement universal balance calculation across all venues
    - Create generic P&L attribution system
    - Ensure no mode-specific if statements
 
-3. **Create Centralized Utility Manager**:
+4. **Create Centralized Utility Manager** (see [specs/20_UTILITY_MANAGER.md](specs/20_UTILITY_MANAGER.md)):
    - Move utility methods out of execution interfaces
    - Centralize liquidity index, market price, and conversion methods
    - Ensure all components use shared utility manager
    - Remove duplicated utility methods across components
 
-4. **Fix State Persistence**:
+5. **Fix State Persistence** (see [FULL_LOOP_ARCHITECTURE.md](FULL_LOOP_ARCHITECTURE.md)):
    - Ensure all components maintain state across runs
    - Remove any state clearing or resetting methods
    - Implement proper component lifecycle without state manipulation

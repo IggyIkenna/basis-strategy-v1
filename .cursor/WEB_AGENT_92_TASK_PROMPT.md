@@ -148,7 +148,7 @@ Start with Task 01: Environment file switching & fail-fast validation.
 1. **Reference sections are law** - Never violate patterns in task Reference sections
 2. **ADR compliance** - All fixes must follow Architectural Decision Records
 3. **No backward compatibility** - Break cleanly, update all references
-4. **Server management** - Use `./platform.sh backtest` to start, `./platform.sh stop-local` to stop
+4. **Server management** - Use `./platform.sh backtest` to start, `./platform.sh stop` to stop
 5. **Error handling** - 10-minute timeout per command, max 3 retries, restart backend if needed
 6. **Target repository structure** - Strictly follow `docs/TARGET_REPOSITORY_STRUCTURE.md` - DO NOT create random files unless clearly defined in docs/
 7. **Post-refactor compliance check** - Run implementation gap quality gate after any component refactor: `python scripts/test_implementation_gap_quality_gates.py`
@@ -244,8 +244,8 @@ Start with Task 01: Environment file switching & fail-fast validation.
    - Success: Strategy management, inheritance-based architecture
 
 6. **Task 16**: Venue Manager Unit Quality Gate
-   - File: `.cursor/tasks/16_venue_manager_unit_quality_gate.md`
-   - Quality Gate: `tests/unit/test_venue_manager_unit.py`
+   - File: `.cursor/tasks/16_execution_manager_unit_quality_gate.md`
+   - Quality Gate: `tests/unit/test_execution_manager_unit.py`
    - Success: Venue management, venue interface management
 
 7. **Task 17**: Event Logger Unit Quality Gate
@@ -535,7 +535,7 @@ node --version     # Requires Node.js 16+
 ./platform.sh backtest
 
 # Stop services
-./platform.sh stop-local
+./platform.sh stop
 
 # Check status
 ./platform.sh status

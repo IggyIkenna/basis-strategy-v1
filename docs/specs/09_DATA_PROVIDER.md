@@ -71,12 +71,16 @@ def get_data(self, timestamp: pd.Timestamp) -> Dict[str, Any]:
                 'aWETH': 1.02,   # AAVE WETH supply index
                 'debtWETH': 1.01 # AAVE WETH borrow index
             },
-            'oracle_prices': {
-                'weETH/ETH': 1.0256,  # weETH to ETH conversion rate
-                'weETH/USD': 3076.8,  # weETH to USD conversion rate
-                'wstETH/ETH': 1.0150, # wstETH to ETH conversion rate
-                'wstETH/USD': 3045.0  # wstETH to USD conversion rate
-            },
+        'oracle_prices': {
+            'weETH/ETH': 1.0256,  # weETH to ETH conversion rate (AAVE oracle)
+            'weETH/USD': 3076.8,  # weETH to USD conversion rate (AAVE oracle)
+            'wstETH/ETH': 1.0150, # wstETH to ETH conversion rate (AAVE oracle)
+            'wstETH/USD': 3045.0  # wstETH to USD conversion rate (AAVE oracle)
+        },
+        'market_prices': {
+            'weETH/ETH': 1.0240,  # weETH to ETH market rate (DEX/CEX)
+            'wstETH/ETH': 1.0145  # wstETH to ETH market rate (DEX/CEX)
+        },
             'staking_rewards': {
                 'etherfi_weETH': 0.04,  # EtherFi weETH APY
                 'lido_wstETH': 0.035    # Lido wstETH APY
@@ -94,6 +98,30 @@ def get_data(self, timestamp: pd.Timestamp) -> Dict[str, Any]:
         }
     }
 ```
+
+## LST Pricing Data Sources
+
+### AAVE Oracle Pricing (Execution - Entry)
+**Purpose**: Instant staking via atomic transactions
+**Data Location**: `data/protocol_data/aave/oracle/`
+**Files**:
+- `weETH_ETH_oracle_2024-01-01_2025-09-18.csv`
+- `weETH_USD_oracle_2024-01-01_2025-09-18.csv`
+- `wstETH_ETH_oracle_2024-01-01_2025-09-18.csv`
+- `wstETH_USD_oracle_2024-01-01_2025-09-18.csv`
+
+### DEX Market Pricing (Execution - Exit)
+**Purpose**: Market exit pricing for trading
+**Data Location**: `data/market_data/spot_prices/lst_eth_ratios/`
+**Files**:
+- `curve_weETHWETH_1h_2024-05-12_2025-09-27.csv`
+- `uniswapv3_wstETHWETH_1h_2024-05-12_2025-09-27.csv`
+
+### Usage Patterns
+- **Entry**: Use AAVE oracle pricing for instant staking
+- **Exit**: Use DEX market pricing for trading
+- **PnL Attribution**: Use oracle pricing for yield calculation
+- **Position Monitoring**: Use market pricing for current value
 
 **Data Key Format Standards**:
 
@@ -1506,7 +1534,29 @@ class LiveDataProvider:
 | **AAVE Rates** | `aave_v3_*_rates_*.csv` | AAVE API | `protocol_data.aave_rates` | `/api/v1/protocol-data` |
 | **Funding Rates** | `*_funding_rates_*.csv` | CEX APIs | `market_data.funding_rates` | `/fapi/v1/premiumIndex` |
 | **Gas Prices** | `ethereum_gas_prices_*.csv` | Etherscan API | `blockchain_data.gas_prices` | `/api?module=gastracker&action=gasoracle` |
-| **Oracle Prices** | `*_oracle_*.csv` | Chainlink API | `protocol_data.oracle_prices` | `/v1/feeds/{feed_id}/latest` |
+| **Oracle Prices** | `*_oracle_*.csv` | AAVE Oracle | `protocol_data.oracle_prices` | AAVE V3 Oracle |
+| **LST Market Prices** | `*_WETH_*.csv` | DEX/CEX APIs | `protocol_data.market_prices` | Curve/Uniswap |
+
+### **LST Pricing Data Sources**
+
+**Two-Price System for LST Tokens**:
+
+1. **Oracle Prices** (Entry/Staking):
+   - **Data Source**: AAVE V3 Oracle
+   - **Files**: `data/protocol_data/aave/oracle/{token}_{quote_currency}_oracle_*.csv`
+   - **Usage**: Entry pricing (going directly to staking protocol)
+   - **Examples**: `weETH_ETH_oracle_*.csv`, `wstETH_USD_oracle_*.csv`
+
+2. **Market Prices** (Exit/Trading):
+   - **Data Source**: DEX/CEX markets
+   - **Files**: `data/market_data/spot_prices/lst_eth_ratios/{venue}_{token}WETH_*.csv`
+   - **Usage**: Exit pricing (trading on DEX/CEX)
+   - **Examples**: `curve_weETHWETH_*.csv`, `uniswapv3_wstETHWETH_*.csv`
+
+**Strategy Usage**:
+- **Entry**: Use oracle pricing for atomic blockchain transactions
+- **Exit**: Use market pricing for trading/redemption
+- **PnL Attribution**: Track both prices for yield calculation
 
 ### **Date Range Validation with Environment Variables**
 The system uses environment variables to define available data ranges and validate backtest requests:

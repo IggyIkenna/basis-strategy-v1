@@ -19,9 +19,7 @@ def mock_config():
     return {
         'mode': 'usdt_eth_staking_hedged_simple',
         'share_class': 'USDT',
-        'asset': 'ETH',
-        'usdt_allocation': 0.5,  # 50% allocation to USDT
-        'eth_allocation': 0.5,   # 50% allocation to ETH
+        'stake_allocation_percentage': 0.5,  # 50% for staking, 50% for hedging
         'leverage_multiplier': 1.0,  # No leverage
         'lst_type': 'etherfi',  # Liquid staking type
         'lending_protocol': 'aave_v3',  # Lending protocol

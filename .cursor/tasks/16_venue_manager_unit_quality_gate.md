@@ -4,7 +4,7 @@
 Validate venue manager unit quality gate by running existing test suite.
 
 ## Quality Gate
-**Quality Gate Script**: `tests/unit/test_venue_manager_unit.py`
+**Quality Gate Script**: `tests/unit/test_execution_manager_unit.py`
 **Validation**: Venue management, venue interface management, unit tests
 **Status**: ✅ IMPLEMENTED
 
@@ -24,13 +24,13 @@ Validate venue manager unit quality gate by running existing test suite.
 
 ## Reference
 - Canonical Spec: `docs/specs/06_VENUE_MANAGER.md`
-- Backend Structure: `core/execution/venue_manager.py` per TARGET_REPOSITORY_STRUCTURE.md
+- Backend Structure: `core/execution/execution_manager.py` per TARGET_REPOSITORY_STRUCTURE.md
 - Documentation: `docs/REFERENCE_ARCHITECTURE_CANONICAL.md` Section II
 
 ## Execution
 ```bash
 # Run the quality gate
-python -m pytest tests/unit/test_venue_manager_unit.py -v
+python -m pytest tests/unit/test_execution_manager_unit.py -v
 
 # Verify via run_quality_gates.py
 python scripts/run_quality_gates.py --category unit

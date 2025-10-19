@@ -67,37 +67,69 @@
   "execution_phases": {
     "day_1": {
       "focus": "Foundation - Environment, Config, Data Loading",
-      "tasks": ["01_environment_file_switching", "02_config_loading_validation", "03_data_loading_quality_gate"],
+      "tasks": [
+        "01_environment_file_switching",
+        "02_config_loading_validation",
+        "03_data_loading_quality_gate"
+      ],
       "duration": "8 hours",
       "success_criteria": "Environment switching, config validation, data loading working"
     },
     "day_2": {
       "focus": "Core Architecture Refactors",
-      "tasks": ["07_fix_async_await_violations", "10_reference_based_architecture", "11_singleton_pattern", "06_strategy_manager_refactor", "08_mode_agnostic_architecture", "09_fail_fast_configuration"],
+      "tasks": [
+        "07_fix_async_await_violations",
+        "10_reference_based_architecture",
+        "11_singleton_pattern",
+        "06_strategy_manager_refactor",
+        "08_mode_agnostic_architecture",
+        "09_fail_fast_configuration"
+      ],
       "duration": "12-16 hours",
       "success_criteria": "All architectural violations fixed, components follow canonical patterns"
     },
     "day_3": {
       "focus": "Component Integration & Quality Gates",
-      "tasks": ["12_tight_loop_architecture", "13_consolidate_duplicate_risk_monitors", "14_component_data_flow_architecture", "04_complete_api_endpoints", "05_health_logging_structure"],
+      "tasks": [
+        "12_tight_loop_architecture",
+        "13_consolidate_duplicate_risk_monitors",
+        "14_component_data_flow_architecture",
+        "04_complete_api_endpoints",
+        "05_health_logging_structure"
+      ],
       "duration": "12-16 hours",
       "success_criteria": "Component integration complete, APIs working, health system unified"
     },
     "day_4": {
       "focus": "Strategy Mode Validation - Simple to Complex",
-      "tasks": ["15_pure_lending_usdt_quality_gates", "16_btc_basis_quality_gates", "17_eth_basis_quality_gates"],
+      "tasks": [
+        "15_pure_lending_usdt_quality_gates",
+        "16_btc_basis_quality_gates",
+        "17_eth_basis_quality_gates"
+      ],
       "duration": "12-16 hours",
       "success_criteria": "3 strategy modes E2E passing, APY fixed (3-8% not 1166%)"
     },
     "day_5": {
       "focus": "Complex Modes & Component Unit Tests",
-      "tasks": ["18_usdt_market_neutral_quality_gates", "19_position_monitor_unit_tests", "20_exposure_monitor_unit_tests", "21_risk_monitor_unit_tests", "22_strategy_manager_unit_tests", "23_pnl_monitor_unit_tests"],
+      "tasks": [
+        "18_usdt_market_neutral_quality_gates",
+        "19_position_monitor_unit_tests",
+        "20_exposure_monitor_unit_tests",
+        "21_risk_monitor_unit_tests",
+        "22_strategy_manager_unit_tests",
+        "23_pnl_monitor_unit_tests"
+      ],
       "duration": "12-16 hours",
       "success_criteria": "Complex strategy working, 80% unit test coverage achieved"
     },
     "day_6": {
       "focus": "Frontend & Live Mode Completion",
-      "tasks": ["24_frontend_implementation", "25_live_mode_quality_gates", "26_comprehensive_quality_gates"],
+      "tasks": [
+        "24_frontend_implementation",
+        "25_live_mode_quality_gates",
+        "26_comprehensive_quality_gates"
+      ],
       "duration": "12-16 hours",
       "success_criteria": "Frontend complete, live mode ready, 20/24 quality gates passing"
     }
@@ -117,7 +149,7 @@
     ],
     "server_management": {
       "start_backend": "./platform.sh backtest",
-      "stop_services": "./platform.sh stop-local",
+      "stop_services": "./platform.sh stop",
       "check_status": "./platform.sh status",
       "health_check": "curl -s http://localhost:8001/health/"
     }
@@ -144,7 +176,7 @@
     "adr_compliance": "All fixes must follow Architectural Decision Records",
     "no_backward_compatibility": "Break cleanly, update all references",
     "autonomous_execution": "No approval requests between tasks, quality gates are checkpoints",
-    "server_management": "Use ./platform.sh backtest to start, ./platform.sh stop-local to stop",
+    "server_management": "Use ./platform.sh backtest to start, ./platform.sh stop to stop",
     "error_handling": "10-minute timeout per command, max 3 retries, restart backend if needed"
   },
   "success_metrics": {

@@ -17,12 +17,11 @@ from backend.src.basis_strategy_v1.core.models.venues import Venue
 def mock_config():
     """Mock configuration for ETH Basis strategy."""
     return {
-        'mode': 'eth_basis',
-        'share_class': 'USDT',
-        'asset': 'ETH',
-        'eth_allocation': 0.8,  # 80% allocation to ETH
-        'max_leverage': 1.0,   # No leverage for basis trading
-        'component_config': {
+    'mode': 'eth_basis',
+    'share_class': 'USDT',
+    'max_leverage': 1.0,   # No leverage for basis trading
+    'eth_allocation': 0.8,  # 80% allocation to ETH
+    'component_config': {
             'position_monitor': {
                 'position_subscriptions': [
                     'wallet:BaseToken:USDT',
@@ -113,7 +112,6 @@ class TestETHBasisStrategyInit:
     def test_init_success_with_valid_config(self, strategy):
         """Test successful initialization with valid config."""
         assert strategy.share_class == 'USDT'
-        assert strategy.asset == 'ETH'
         assert strategy.entry_instrument == 'wallet:BaseToken:ETH'
         assert strategy.spot_instrument == 'binance:BaseToken:ETH'
         assert strategy.perp_instrument == 'binance:Perp:ETHUSDT'

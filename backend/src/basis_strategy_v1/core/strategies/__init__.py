@@ -18,16 +18,16 @@ from .ml_btc_directional_btc_margin_strategy import MLBTCDirectionalBTCMarginStr
 from .ml_btc_directional_usdt_margin_strategy import MLBTCDirectionalUSDTMarginStrategy
 
 __all__ = [
-    'BaseStrategyManager',
-    'StrategyFactory',
-    'PureLendingUSDTStrategy',
-    'PureLendingETHStrategy',
-    'BTCBasisStrategy',
-    'ETHBasisStrategy',
-    'ETHStakingOnlyStrategy',
-    'ETHLeveragedStrategy',
-    'USDTETHStakingHedgedSimpleStrategy',
-    'USDTETHStakingHedgedLeveragedStrategy',
-    'MLBTCDirectionalBTCMarginStrategy',
-    'MLBTCDirectionalUSDTMarginStrategy'
+    "BaseStrategyManager",
+    "StrategyFactory",
+    "PureLendingUSDTStrategy",
+    "PureLendingETHStrategy",
+    "BTCBasisStrategy",
+    "ETHBasisStrategy",
+    "ETHStakingOnlyStrategy",
+    "ETHLeveragedStrategy",
+    "USDTETHStakingHedgedSimpleStrategy",
+    "USDTETHStakingHedgedLeveragedStrategy",
+    "MLBTCDirectionalBTCMarginStrategy",
+    "MLBTCDirectionalUSDTMarginStrategy",
 ]

@@ -1,7 +1,7 @@
 # Reference Architecture - Canonical Source
 
 **Status**: ⭐ **CANONICAL SOURCE** - Single source of truth for all architectural principles and patterns  
-**Updated**: October 13, 2025  
+**Updated**: October 18, 2025  
 **Purpose**: Comprehensive architectural reference for basis-strategy-v1 platform
 
 ---
@@ -32,9 +32,9 @@ All components follow the **Reference-Based Architecture** pattern where compone
 - **position_monitor**: PositionMonitor instance
 - **exposure_monitor**: ExposureMonitor instance
 - **risk_monitor**: RiskMonitor instance
-- **pnl_calculator**: PnLCalculator instance
+- **pnl_calculator**: PnLMonitor instance
 - **strategy_manager**: StrategyManager instance
-- **venue_manager**: VenueManager instance
+- **execution_manager**: VenueManager instance
 
 These references are stored in `__init__` and used throughout component lifecycle. Components NEVER receive these as method parameters during runtime.
 
@@ -439,7 +439,7 @@ class ModeAgnosticComponent:
 
 **TIGHT LOOP DEFINITION**:
 ```
-execution_manager → execution_interface_manager → position_update_handler → position_monitor → reconciliation_component
+execution_manager → execution_interface_manager → position_update_handler (includes reconciliation) → position_monitor
 ```
 
 **Key Principles**:
@@ -458,7 +458,7 @@ time trigger → position_monitor → exposure_monitor → risk_monitor → stra
 
 **Tight Loop Pattern** (Only When Execution Happens):
 ```
-execution_manager → execution_interface_manager → position_update_handler → position_monitor → reconciliation_component
+execution_manager → execution_interface_manager → position_update_handler (includes reconciliation) → position_monitor
 ```
 
 ### 5. Unified Order/Trade System
@@ -495,6 +495,28 @@ def make_strategy_decision(
 2. VenueManager processes orders and returns `List[Trade]`
 3. Position updates based on trade results
 4. Reconciliation ensures position accuracy
+
+**Order Creation Patterns (Updated October 18, 2025)**:
+
+**Multi-Venue Strategies**:
+- Pure Lending strategies create separate orders for each venue (AAVE + Morpho)
+- Each venue gets venue-specific instrument keys (`aave_v3:aToken:aUSDT`, `morpho:aToken:mUSDT`)
+- Order creation methods iterate through `lending_venues` list
+
+**Strategy-Specific Parameters**:
+- **ML Strategies**: Require `signal` parameter for order creation methods
+- **Leveraged Strategies**: Require `target_ltv` parameter for order creation
+- **Basis Strategies**: Use allocation factors (`btc_allocation`, `eth_allocation`)
+
+**Instrument Key Standards**:
+- **Canonical Format**: `venue:position_type:symbol` (e.g., `etherfi:BaseToken:WEETH`)
+- **Position Returns**: Use full instrument keys in `calculate_target_position()` returns
+- **Test Assertions**: Must match actual strategy return formats, not simplified keys
+
+**Method Signatures**:
+- **Generate Orders**: `generate_orders(timestamp, exposure, risk_assessment, market_data)` + optional `pnl`
+- **Order Creation**: Strategy-specific parameters based on strategy type
+- **Error Handling**: Use `self.logger.error(message, error_code, exc_info, **context)`
 
 **Atomic vs Sequential Execution**:
 - **Sequential**: Orders execute one after another (default for most operations)
@@ -1024,7 +1046,6 @@ def update_state(self, timestamp: pd.Timestamp, trigger_source: str):
 - **Results Store**: [specs/18_RESULTS_STORE.md](specs/18_RESULTS_STORE.md)
 - **Data Provider**: [specs/09_DATA_PROVIDER.md](specs/09_DATA_PROVIDER.md)
 - **Position Update Handler**: [specs/11_POSITION_UPDATE_HANDLER.md](specs/11_POSITION_UPDATE_HANDLER.md)
-- **Reconciliation Component**: [specs/10_RECONCILIATION_COMPONENT.md](specs/10_RECONCILIATION_COMPONENT.md)
 - **Configuration**: [specs/19_CONFIGURATION.md](specs/19_CONFIGURATION.md)
 - **Health Error Systems**: [specs/17_HEALTH_ERROR_SYSTEMS.md](specs/17_HEALTH_ERROR_SYSTEMS.md)
 

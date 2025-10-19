@@ -6,8 +6,10 @@ basis_trade_enabled: false
 borrowing_enabled: false
 leverage_enabled: false
 share_class: USDT
-asset: USDT
 lst_type: null
+
+# Protocol configuration
+lending_protocol: aave_v3
 margin_ratio_target: 0.8
 venues:
   aave_v3:
@@ -60,7 +62,6 @@ event_logger:
   log_retention_policy:
     retention_days: 30
     max_file_size_mb: 100
-    rotation_frequency: daily
     compression_after_days: 7
   logging_requirements:
     structured_logging: true

@@ -37,7 +37,7 @@ Complete the refactoring of basis-strategy-v1 platform to use unified Order/Trad
 
 ### 2. Update Execution Components
 **Files to update:**
-- `backend/src/basis_strategy_v1/core/execution/venue_manager.py`
+- `backend/src/basis_strategy_v1/core/execution/execution_manager.py`
 - All files in `backend/src/basis_strategy_v1/core/execution/interfaces/`
 - `backend/src/basis_strategy_v1/core/components/strategy_manager.py`
 

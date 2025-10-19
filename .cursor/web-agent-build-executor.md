@@ -118,7 +118,7 @@ You are an autonomous web-based background agent executing the 26-step Basis Str
 
 ### Server Management
 - **Use `./platform.sh backtest`** to start backend in backtest mode
-- **Use `./platform.sh stop-local`** before restarting
+- **Use `./platform.sh stop`** before restarting
 - **Restart server before long-running tests** if needed
 - **Check server status** with `ps aux | grep python` if commands hang
 
@@ -173,7 +173,7 @@ You are an autonomous web-based background agent executing the 26-step Basis Str
 ./platform.sh backtest
 
 # Stop services
-./platform.sh stop-local
+./platform.sh stop
 
 # Check status
 ./platform.sh status

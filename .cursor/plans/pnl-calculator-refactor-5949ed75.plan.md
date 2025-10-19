@@ -277,7 +277,7 @@ Add new tests for read-only methods:
 ```python
 def test_get_latest_pnl_without_calculation(self, mock_config, mock_data_provider, mock_utility_manager):
     """Test read-only access to latest P&L."""
-    pnl_monitor = PnLCalculator(...)
+    pnl_monitor = PnLMonitor(...)
     
     # Should return None before any calculation
     assert pnl_monitor.get_latest_pnl() is None
@@ -292,7 +292,7 @@ def test_get_latest_pnl_without_calculation(self, mock_config, mock_data_provide
 
 def test_get_pnl_history(self, mock_config, mock_data_provider, mock_utility_manager):
     """Test P&L history retrieval."""
-    pnl_monitor = PnLCalculator(...)
+    pnl_monitor = PnLMonitor(...)
     
     # Calculate multiple P&L values
     for value in [100000, 101000, 102000]:
@@ -304,7 +304,7 @@ def test_get_pnl_history(self, mock_config, mock_data_provider, mock_utility_man
 
 def test_get_cumulative_attribution(self, mock_config, mock_data_provider, mock_utility_manager):
     """Test cumulative attribution access."""
-    pnl_monitor = PnLCalculator(...)
+    pnl_monitor = PnLMonitor(...)
     
     attribution = pnl_monitor.get_cumulative_attribution()
     assert isinstance(attribution, dict)

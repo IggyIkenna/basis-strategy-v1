@@ -1,9 +1,15 @@
 # Event Logger Component Specification
 
-**Last Reviewed**: October 11, 2025
+**Last Reviewed**: January 2025
 
 ## Purpose
 Detailed audit-grade event tracking with balance snapshots for debugging and audit trails using config-driven, mode-agnostic architecture.
+
+## Implementation Architecture
+
+**Dual Logger Pattern**:
+- **`StructuredLogger`**: Component-specific `.log` files with structured JSON logging
+- **`DomainEventLogger`**: Domain events to JSONL files in `events/` subdirectory with global ordering
 
 ## 📚 **Canonical Sources**
 
@@ -522,8 +528,35 @@ Per ADR-006 Synchronous Component Execution, EventLogger is an explicit exceptio
 - **Sequential awaits guarantee event ordering**: Global event ordering is maintained through async locks
 - **No race conditions due to single-threaded event loop**: All async operations are sequential
 
-### Allowed Async Patterns
+### Global Event Ordering Implementation
 ```python
+class DomainEventLogger:
+    """Domain event logger with global ordering for audit trails"""
+    
+    def __init__(self, log_dir: Path):
+        self._global_order = 0
+        self._order_lock = asyncio.Lock()
+    
+    async def _get_next_global_order(self) -> int:
+        """Get next global order number for audit trails"""
+        async with self._order_lock:
+            self._global_order += 1
+            return self._global_order
+    
+    async def log_position_snapshot_async(self, event: PositionSnapshot) -> None:
+        """Log position snapshot with global ordering"""
+        event.order = await self._get_next_global_order()
+        await self._write_event_async("positions", event)
+```
+
+### Async I/O Performance Patterns
+```python
+# Async file I/O using asyncio.to_thread for performance
+async def _write_event_async(self, event_type: str, event: any) -> None:
+    """Write event asynchronously using asyncio.to_thread"""
+    event_json = event.model_dump_json()
+    await asyncio.to_thread(self._write_to_file, file_path, event_json)
+
 # All EventLogger methods are async per ADR-006
 async def log_event(self, event_type: str, data: Dict[str, Any], timestamp: pd.Timestamp) -> Dict[str, Any]:
     """Log event with global ordering"""
@@ -532,10 +565,6 @@ async def log_event(self, event_type: str, data: Dict[str, Any], timestamp: pd.T
         event = await self._process_event(event_type, data, timestamp)
         await self._write_event_to_storage(event)
         return event
-
-async def log_gas_fee(self, gas_fee_data: Dict[str, Any], timestamp: pd.Timestamp) -> Dict[str, Any]:
-    """Log gas fee event"""
-    return await self.log_event('gas_fee', gas_fee_data, timestamp)
 ```
 
 ### API Call Queueing
@@ -1223,8 +1252,7 @@ def test_balance_snapshots_included():
 - [Execution Manager Specification](06_EXECUTION_MANAGER.md) - Logs execution events
 - [Execution Interface Manager Specification](07_EXECUTION_INTERFACE_MANAGER.md) - Logs execution routing events
 - [Data Provider Specification](09_DATA_PROVIDER.md) - Logs data loading events
-- [Reconciliation Component Specification](10_RECONCILIATION_COMPONENT.md) - Logs reconciliation events
-- [Position Update Handler Specification](11_POSITION_UPDATE_HANDLER.md) - Logs position update orchestration events
+- [Position Update Handler Specification](11_POSITION_UPDATE_HANDLER.md) - Logs reconciliation and position update orchestration events
 
 ### **Quality Gate Status**
 - **Current Status**: FAIL (missing implementation)

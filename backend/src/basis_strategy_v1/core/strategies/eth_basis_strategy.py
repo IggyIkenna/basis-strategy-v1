@@ -72,16 +72,17 @@ class ETHBasisStrategy(BaseStrategyManager):
         )
 
         # Validate required configuration at startup (fail-fast)
-        required_keys = ["eth_allocation", "max_leverage"]
+        required_keys = ["max_leverage"]
         for key in required_keys:
             if key not in config:
                 raise KeyError(f"Missing required configuration: {key}")
 
         # ETH-specific configuration (fail-fast access)
-        self.asset = "ETH"  # ETH for this strategy
-        self.eth_allocation = config["eth_allocation"]  # 80% to ETH
         self.max_leverage = config["max_leverage"]  # No leverage for basis trading
-        self.share_class = config.get("share_class", "ETH")  # Share class currency
+        self.share_class = config.get("share_class", "USDT")  # Share class currency
+
+        # For basis trading, allocate 100% to ETH
+        self.eth_allocation = config.get("eth_allocation", 1.0)
 
         # Define and validate instrument keys
         self.entry_instrument = f"{Venue.WALLET.value}:BaseToken:ETH"
@@ -411,8 +412,8 @@ class ETHBasisStrategy(BaseStrategyManager):
                         metadata={
                             "eth_balance": eth_balance,
                             "eth_short": eth_short,
-                            "scaling_factor": scaling_factor,
-                            "close_position": True,
+                            "SCALING_FACTOR": scaling_factor,
+                            "CLOSE_POSITION": True,
                         },
                     )
                 )
@@ -434,8 +435,8 @@ class ETHBasisStrategy(BaseStrategyManager):
                         metadata={
                             "eth_balance": eth_balance,
                             "eth_short": eth_short,
-                            "scaling_factor": scaling_factor,
-                            "close_position": True,
+                            "SCALING_FACTOR": scaling_factor,
+                            "CLOSE_POSITION": True,
                         },
                     )
                 )
@@ -542,7 +543,7 @@ class ETHBasisStrategy(BaseStrategyManager):
             return {
                 "strategy_type": "eth_basis",
                 "share_class": self.share_class,
-                "asset": self.asset,
+                "asset": self.delta_tracking_asset,
                 "eth_allocation": self.eth_allocation,
                 "max_leverage": self.max_leverage,
                 "description": "ETH funding rate arbitrage with spot/perpetual basis trading",
@@ -553,7 +554,7 @@ class ETHBasisStrategy(BaseStrategyManager):
             return {
                 "strategy_type": "eth_basis",
                 "share_class": self.share_class,
-                "asset": self.asset,
+                "asset": self.delta_tracking_asset,
                 "equity": 0.0,
                 "error": str(e),
             }

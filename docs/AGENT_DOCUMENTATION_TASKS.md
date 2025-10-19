@@ -164,7 +164,6 @@ Component logs the following business events:
 - `docs/specs/06_EXECUTION_MANAGER.md`
 - `docs/specs/07A_CEX_EXECUTION_INTERFACE.md`
 - `docs/specs/07B_EXECUTION_INTERFACES.md`
-- `docs/specs/10_RECONCILIATION_COMPONENT.md`
 - `docs/specs/11_SHARE_CLASS_MANAGER.md`
 - `docs/specs/15_EVENT_DRIVEN_STRATEGY_ENGINE.md`
 

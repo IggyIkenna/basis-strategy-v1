@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 """
-Data Files Quality Gates
+Data Files Quality Gates - Consolidated
 
 Validates that all required data files exist and are accessible.
 Simple validation that doesn't depend on complex imports.
 
-Reference: data/ directory structure
+Consolidated from:
+- test_data_files_quality_gates.py
+- test_data_availability_quality_gates.py (file existence parts)
 """
 
 import os
@@ -41,6 +43,19 @@ class DataFilesQualityGates:
             'analysis',
             'manual_sources'
         ]
+        
+        # Critical data files that must exist
+        self.critical_files = [
+            'market_data/spot_prices/btc_usd/binance_BTCUSDT_1h_2024-01-01_2025-09-30.csv',
+            'market_data/spot_prices/eth_usd/binance_ETHUSDT_1h_2020-01-01_2025-09-26.csv',
+            'market_data/derivatives/funding_rates/binance_BTCUSDT_funding_rates_2024-01-01_2025-09-30.csv',
+            'ml_data/predictions/btc_predictions.csv',
+            'ml_data/predictions/usdt_predictions.csv',
+            'market_data/derivatives/futures_ohlcv/binance_BTCUSDT_perp_1h_2024-01-01_2025-09-30.csv',
+            'execution_costs/execution_cost_simulation_results.csv',
+            'market_data/spot_prices/protocol_tokens/binance_EIGENUSDT_1h_2024-10-05_2025-09-30.csv',
+            'market_data/spot_prices/protocol_tokens/binance_ETHFIUSDT_1h_2024-06-01_2025-09-30.csv'
+        ]
     
     def validate_data_directories(self) -> Dict[str, Any]:
         """Validate that all required data directories exist."""
@@ -49,194 +64,142 @@ class DataFilesQualityGates:
         directory_results = {}
         missing_directories = []
         
-        for dir_name in self.required_directories:
-            dir_path = self.data_dir / dir_name
+        for directory in self.required_directories:
+            dir_path = self.data_dir / directory
+            exists = dir_path.exists()
+            directory_results[directory] = {
+                'exists': exists,
+                'path': str(dir_path)
+            }
             
-            if dir_path.exists() and dir_path.is_dir():
-                # Count files in directory
-                file_count = len(list(dir_path.glob('*')))
-                directory_results[dir_name] = {
-                    'status': 'PASS',
-                    'path': str(dir_path),
-                    'file_count': file_count
-                }
-                print(f"  ✅ {dir_name}: {file_count} files")
+            if not exists:
+                missing_directories.append(directory)
+                print(f"  ❌ Missing directory: {directory}")
             else:
-                directory_results[dir_name] = {
-                    'status': 'FAIL',
-                    'path': str(dir_path),
-                    'error': 'Directory not found'
-                }
-                missing_directories.append(dir_name)
-                print(f"  ❌ {dir_name}: Directory not found")
+                print(f"  ✅ Directory exists: {directory}")
         
-        result = {
-            'total_directories': len(self.required_directories),
-            'existing_directories': len(self.required_directories) - len(missing_directories),
-            'missing_directories': missing_directories,
-            'directory_results': directory_results,
-            'status': 'PASS' if len(missing_directories) == 0 else 'FAIL'
-        }
+        self.results['data_directories'] = directory_results
         
-        print(f"  📊 Data Directories: {result['status']}")
-        print(f"     Existing: {result['existing_directories']}/{result['total_directories']}")
-        print(f"     Missing: {len(missing_directories)}")
-        
-        return result
+        if missing_directories:
+            print(f"❌ Missing {len(missing_directories)} required directories")
+            return {'status': 'FAILED', 'missing_directories': missing_directories}
+        else:
+            print("✅ All required directories exist")
+            return {'status': 'PASSED', 'missing_directories': []}
     
-    def validate_required_files(self) -> Dict[str, Any]:
-        """Validate that critical data files exist."""
-        print("🔍 Validating required data files...")
-        
-        # Critical files that should exist
-        critical_files = [
-            'data/market_data/spot_prices/btc_usd/binance_BTCUSDT_1h_2024-01-01_2025-09-30.csv',
-            'data/market_data/spot_prices/eth_usd/binance_ETHUSDT_1h_2020-01-01_2025-09-26.csv',
-            'data/market_data/derivatives/funding_rates/binance_BTCUSDT_funding_rates_2024-01-01_2025-09-30.csv',
-            'data/market_data/derivatives/futures_ohlcv/binance_BTCUSDT_perp_1h_2024-01-01_2025-09-30.csv',
-            'data/protocol_data/aave/rates/aave_v3_aave-v3-ethereum_USDT_rates_2024-01-01_2025-09-18_hourly.csv'
-        ]
+    def validate_critical_files(self) -> Dict[str, Any]:
+        """Validate that all critical data files exist."""
+        print("🔍 Validating critical data files...")
         
         file_results = {}
         missing_files = []
         
-        for file_path in critical_files:
-            full_path = self.project_root / file_path
+        for file_path in self.critical_files:
+            full_path = self.data_dir / file_path
+            exists = full_path.exists()
+            size = full_path.stat().st_size if exists else 0
             
-            if full_path.exists() and full_path.is_file():
-                file_size = full_path.stat().st_size
-                file_results[file_path] = {
-                    'status': 'PASS',
-                    'size_bytes': file_size,
-                    'size_mb': round(file_size / (1024 * 1024), 2)
-                }
-                print(f"  ✅ {file_path}: {file_results[file_path]['size_mb']} MB")
-            else:
-                file_results[file_path] = {
-                    'status': 'FAIL',
-                    'error': 'File not found'
-                }
+            file_results[file_path] = {
+                'exists': exists,
+                'size_bytes': size,
+                'size_mb': round(size / (1024 * 1024), 2) if exists else 0
+            }
+            
+            if not exists:
                 missing_files.append(file_path)
-                print(f"  ❌ {file_path}: File not found")
+                print(f"  ❌ Missing file: {file_path}")
+            else:
+                print(f"  ✅ {file_path}: {file_results[file_path]['size_mb']} MB")
         
-        result = {
-            'total_files': len(critical_files),
-            'existing_files': len(critical_files) - len(missing_files),
-            'missing_files': missing_files,
-            'file_results': file_results,
-            'status': 'PASS' if len(missing_files) == 0 else 'FAIL'
-        }
+        self.results['required_files'] = file_results
         
-        print(f"  📊 Required Files: {result['status']}")
-        print(f"     Existing: {result['existing_files']}/{result['total_files']}")
-        print(f"     Missing: {len(missing_files)}")
-        
-        return result
+        if missing_files:
+            print(f"❌ Missing {len(missing_files)} critical files")
+            return {'status': 'FAILED', 'missing_files': missing_files}
+        else:
+            print("✅ All critical files exist")
+            return {'status': 'PASSED', 'missing_files': []}
     
     def validate_file_accessibility(self) -> Dict[str, Any]:
-        """Validate that data files are readable."""
+        """Validate that files are readable."""
         print("🔍 Validating file accessibility...")
-        
-        # Test reading a few key files
-        test_files = [
-            'data/market_data/spot_prices/btc_usd/binance_BTCUSDT_1h_2024-01-01_2025-09-30.csv',
-            'data/market_data/spot_prices/eth_usd/binance_ETHUSDT_1h_2020-01-01_2025-09-26.csv'
-        ]
         
         accessibility_results = {}
         inaccessible_files = []
         
-        for file_path in test_files:
-            full_path = self.project_root / file_path
-            
-            try:
-                if full_path.exists():
+        for file_path in self.critical_files:
+            full_path = self.data_dir / file_path
+            if full_path.exists():
+                try:
                     with open(full_path, 'r') as f:
-                        # Read first few lines to test accessibility
-                        lines = [f.readline() for _ in range(3)]
-                        line_count = len([line for line in lines if line.strip()])
-                    
-                    accessibility_results[file_path] = {
-                        'status': 'PASS',
-                        'readable': True,
-                        'sample_lines': line_count
-                    }
-                    print(f"  ✅ {file_path}: Readable ({line_count} sample lines)")
-                else:
-                    accessibility_results[file_path] = {
-                        'status': 'SKIP',
-                        'readable': False,
-                        'error': 'File not found'
-                    }
-                    print(f"  ⚠️  {file_path}: File not found (skipped)")
-            except Exception as e:
-                accessibility_results[file_path] = {
-                    'status': 'FAIL',
-                    'readable': False,
-                    'error': str(e)
-                }
+                        # Try to read first line
+                        f.readline()
+                    accessible = True
+                except Exception as e:
+                    accessible = False
+                    inaccessible_files.append(file_path)
+                    print(f"  ❌ Cannot read {file_path}: {e}")
+            else:
+                accessible = False
                 inaccessible_files.append(file_path)
-                print(f"  ❌ {file_path}: Not accessible - {e}")
+                print(f"  ❌ File does not exist: {file_path}")
+            
+            accessibility_results[file_path] = {
+                'accessible': accessible,
+                'path': str(full_path)
+            }
         
-        result = {
-            'total_test_files': len(test_files),
-            'accessible_files': len([r for r in accessibility_results.values() if r['status'] == 'PASS']),
-            'inaccessible_files': inaccessible_files,
-            'accessibility_results': accessibility_results,
-            'status': 'PASS' if len(inaccessible_files) == 0 else 'FAIL'
-        }
+        self.results['file_accessibility'] = accessibility_results
         
-        print(f"  📊 File Accessibility: {result['status']}")
-        print(f"     Accessible: {result['accessible_files']}/{result['total_test_files']}")
-        print(f"     Inaccessible: {len(inaccessible_files)}")
-        
-        return result
+        if inaccessible_files:
+            print(f"❌ {len(inaccessible_files)} files are not accessible")
+            return {'status': 'FAILED', 'inaccessible_files': inaccessible_files}
+        else:
+            print("✅ All files are accessible")
+            return {'status': 'PASSED', 'inaccessible_files': []}
     
-    def run_validation(self) -> bool:
-        """Run complete data files validation."""
-        print("\n" + "="*80)
-        print("🔍 DATA FILES QUALITY GATES")
-        print("="*80)
+    def run_all_checks(self) -> Dict[str, Any]:
+        """Run all data file quality gate checks."""
+        print("🚀 Starting data files quality gate test...")
+        print("=" * 80)
         
-        # Run all validations
-        directories = self.validate_data_directories()
-        required_files = self.validate_required_files()
-        accessibility = self.validate_file_accessibility()
-        
-        # Store results
-        self.results['data_directories'] = directories
-        self.results['required_files'] = required_files
-        self.results['file_accessibility'] = accessibility
+        # Run all checks
+        directory_check = self.validate_data_directories()
+        file_check = self.validate_critical_files()
+        accessibility_check = self.validate_file_accessibility()
         
         # Determine overall status
         all_passed = (
-            directories['status'] == 'PASS' and
-            required_files['status'] == 'PASS' and
-            accessibility['status'] == 'PASS'
+            directory_check['status'] == 'PASSED' and
+            file_check['status'] == 'PASSED' and
+            accessibility_check['status'] == 'PASSED'
         )
         
-        self.results['overall_status'] = 'PASS' if all_passed else 'FAIL'
+        self.results['overall_status'] = 'PASSED' if all_passed else 'FAILED'
         
         # Print summary
-        print(f"\n📊 DATA FILES SUMMARY:")
-        print(f"  Data Directories: {directories['status']} ({directories['existing_directories']}/{directories['total_directories']})")
-        print(f"  Required Files: {required_files['status']} ({required_files['existing_files']}/{required_files['total_files']})")
-        print(f"  File Accessibility: {accessibility['status']} ({accessibility['accessible_files']}/{accessibility['total_test_files']})")
+        print("=" * 80)
+        print("📊 DATA FILES QUALITY GATE SUMMARY")
+        print("=" * 80)
+        print(f"📁 Data Directories: {directory_check['status']}")
+        print(f"📄 Critical Files: {file_check['status']}")
+        print(f"🔓 File Accessibility: {accessibility_check['status']}")
+        print(f"📈 Overall Status: {self.results['overall_status']}")
         
-        if all_passed:
-            print(f"\n🎉 SUCCESS: All data files quality gates passed!")
-            return True
-        else:
-            print(f"\n❌ FAILURE: Data files quality gates failed!")
+        if not all_passed:
+            print("\n❌ FAILURE: Data files quality gates failed!")
             return False
+        else:
+            print("\n✅ SUCCESS: All data files quality gates passed!")
+            return True
 
 
 def main():
-    """Main function."""
-    validator = DataFilesQualityGates()
-    success = validator.run_validation()
-    return 0 if success else 1
+    """Main entry point for data files quality gates."""
+    checker = DataFilesQualityGates()
+    success = checker.run_all_checks()
+    sys.exit(0 if success else 1)
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    main()

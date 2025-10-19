@@ -67,7 +67,7 @@ The platform is being refactored from a complex multi-abstraction system (Strate
 ### Phase 2: Execution Component Updates (Priority: High)
 
 #### 2.1 Update VenueManager
-**File**: `backend/src/basis_strategy_v1/core/execution/venue_manager.py`
+**File**: `backend/src/basis_strategy_v1/core/execution/execution_manager.py`
 
 **Changes Required**:
 1. Update `_send_instruction()` method to accept `Order` objects

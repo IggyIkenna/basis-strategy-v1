@@ -19,7 +19,7 @@ Complete architectural alignment fixing 10 critical conflicts between documentat
 
 ### 1.1 VenueManager Refactor
 
-**File**: `backend/src/basis_strategy_v1/core/execution/venue_manager.py`
+**File**: `backend/src/basis_strategy_v1/core/execution/execution_manager.py`
 
 **Remove**:
 
@@ -443,7 +443,7 @@ Update all strategy specs:
 
 **Files**:
 
-- `tests/unit/test_venue_manager_unit.py`
+- `tests/unit/test_execution_manager_unit.py`
 - `tests/unit/test_venue_interface_manager_unit.py`
 - `tests/unit/test_position_monitor_unit.py`
 - `tests/unit/test_position_update_handler_unit.py`
@@ -684,7 +684,7 @@ Update all strategy specs:
 
 **Backend Code** (~20 files):
 
-- Core execution: 3 files (venue_manager, venue_interface_manager, wallet_transfer_executor)
+- Core execution: 3 files (execution_manager, venue_interface_manager, wallet_transfer_executor)
 - Components: 3 files (position_monitor, position_update_handler, reconciliation_component)
 - Event engine: 1 file (event_driven_strategy_engine)
 - Execution interfaces: 6 files (base, cex, onchain, transfer, dex, + delete wallet_transfer_executor)
@@ -734,7 +734,7 @@ Update all strategy specs:
 - [ ] Update 17 additional documentation files - DEPLOYMENT_GUIDE, QUALITY_GATES, CODE_STRUCTURE_PATTERNS, etc. - search and replace old patterns
 - [ ] Update all README files (root, backend, tests, docs, scripts) with architecture diagrams and correct component descriptions
 - [ ] Update all Python docstrings across codebase - remove CrossVenueTransferManager, execution manager, incorrect tight loop, async internal, market_data references
-- [ ] Update 8 unit test files - venue_manager, venue_interface_manager, position_monitor, position_update_handler, reconciliation, transfer_execution_interface, event_engine, execution_instructions
+- [ ] Update 8 unit test files - execution_manager, venue_interface_manager, position_monitor, position_update_handler, reconciliation, transfer_execution_interface, event_engine, execution_instructions
 - [ ] Update 8 integration test files - tight_loop_reconciliation, execution_flow, venue_position, position_exposure_risk, strategy_execution, data_flow, event_logging, full_loop
 - [ ] Run all 12 quality gates - 7 mandatory (mode_agnostic, modes_intention, singleton, utility_manager, implementation_gap, docs_link, component_data_flow) + 5 additional (async_await, component_signature, config_usage, reference_architecture, venue_config)
 - [ ] Create new workflow_architecture_quality_gates.py and integrate into run_quality_gates.py with command-line execution

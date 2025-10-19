@@ -109,7 +109,7 @@ Reference: `docs/specs/03_RISK_MONITOR.md`
 
 #### 1.5: P&L Calculator Unit Test (`test_pnl_monitor_unit.py`)
 
-Test ONLY PnLCalculator with mocked data:
+Test ONLY PnLMonitor with mocked data:
 
 - **Test 1**: Unrealized P&L calculation
 - **Test 2**: Attribution P&L (lending vs funding vs staking)

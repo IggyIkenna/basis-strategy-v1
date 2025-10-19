@@ -73,15 +73,32 @@ class QualityGateValidator:
                 'critical': False
             },
             'unit': {
-                'description': 'Unit Tests - Component Isolation (67 tests)',
+                'description': 'Unit Tests - Component Isolation (70+ tests)',
                 'scripts': [
-                    # Original 15 unit tests
-                    'tests/unit/test_position_monitor_unit.py',
-                    'tests/unit/test_exposure_monitor_unit.py',
-                    'tests/unit/test_risk_monitor_unit.py',
-                    'tests/unit/test_pnl_monitor_unit.py',
-                    'tests/unit/test_strategy_manager_unit.py',
-                    'tests/unit/test_venue_manager_unit.py',
+                    # EventDrivenStrategyEngine Components (8 tests)
+                    'tests/unit/components/test_position_monitor_unit.py',
+                    'tests/unit/components/test_exposure_monitor_unit.py',
+                    'tests/unit/components/test_risk_monitor_unit.py',
+                    'tests/unit/components/test_pnl_monitor_unit.py',
+                    'tests/unit/components/test_strategy_manager_unit.py',
+                    'tests/unit/components/test_position_update_handler_unit.py',
+                    'tests/unit/components/test_position_monitor_refactor_unit.py',
+                    'tests/unit/test_execution_manager_unit.py',
+                    # Calculator Components (5 tests)
+                    'tests/unit/calculators/test_health_calculator_unit.py',
+                    'tests/unit/calculators/test_ltv_calculator_unit.py',
+                    'tests/unit/calculators/test_margin_calculator_unit.py',
+                    'tests/unit/calculators/test_metrics_calculator_unit.py',
+                    'tests/unit/calculators/test_pnl_monitor_unit.py',
+                    # Data Components (1 test)
+                    'tests/unit/data/test_ml_data_generation_unit.py',
+                    # Engine Components (1 test)
+                    'tests/unit/engines/test_event_driven_strategy_engine_unit.py',
+                    # Pricing Components (3 tests)
+                    'tests/unit/pricing/test_centralized_pricing_unit.py',
+                    'tests/unit/pricing/test_centralized_pricing_simple_unit.py',
+                    'tests/unit/pricing/test_centralized_pricing_validation_unit.py',
+                    # Infrastructure Components (10 tests)
                     'tests/unit/test_data_provider_unit.py',
                     'tests/unit/test_config_manager_unit.py',
                     'tests/unit/test_event_logger_unit.py',
@@ -89,8 +106,9 @@ class QualityGateValidator:
                     'tests/unit/test_health_system_unit.py',
                     'tests/unit/test_api_endpoints_unit.py',
                     'tests/unit/test_environment_switching_unit.py',
-                    'tests/unit/test_config_validation_unit.py',
                     'tests/unit/test_live_data_validation_unit.py',
+                    'tests/unit/infrastructure/test_domain_event_logger_async_unit.py',
+                    'tests/unit/infrastructure/test_async_io_quality_gates_unit.py',
                     # API Routes unit tests (9 tests)
                     'tests/unit/test_auth_routes_unit.py',
                     'tests/unit/test_backtest_routes_unit.py',
@@ -106,7 +124,8 @@ class QualityGateValidator:
                     'tests/unit/test_eth_basis_strategy_unit.py',
                     'tests/unit/test_eth_leveraged_strategy_unit.py',
                     'tests/unit/test_eth_staking_only_strategy_unit.py',
-                    'tests/unit/test_pure_lending_usdt_strategy_unit.py',
+                    'tests/unit/strategies/test_pure_lending_eth_strategy_unit.py',
+                    'tests/unit/strategies/test_pure_lending_usdt_strategy_unit.py',
                     'tests/unit/test_strategy_factory_unit.py',
                     'tests/unit/test_usdt_market_neutral_strategy_unit.py',
                     'tests/unit/test_usdt_market_neutral_no_leverage_strategy_unit.py',
@@ -122,11 +141,6 @@ class QualityGateValidator:
                     'tests/unit/test_ml_directional_data_provider_unit.py',
                     'tests/unit/test_usdt_market_neutral_data_provider_unit.py',
                     'tests/unit/test_usdt_market_neutral_no_leverage_data_provider_unit.py',
-                    # Core Math unit tests (4 tests)
-                    'tests/unit/test_health_calculator_unit.py',
-                    'tests/unit/test_ltv_calculator_unit.py',
-                    'tests/unit/test_margin_calculator_unit.py',
-                    'tests/unit/test_metrics_calculator_unit.py',
                     # Execution Interfaces unit tests (3 tests)
                     'tests/unit/test_cex_execution_interface_unit.py',
                     'tests/unit/test_onchain_execution_interface_unit.py',
@@ -140,14 +154,14 @@ class QualityGateValidator:
                     'tests/unit/test_utility_manager_unit.py',
                     'tests/unit/test_error_code_registry_unit.py',
                     'tests/unit/test_execution_instructions_unit.py',
-                    'tests/unit/test_reconciliation_component_unit.py',
                     'tests/unit/test_api_call_queue_unit.py',
                     'tests/unit/test_chart_storage_visualization_unit.py',
-                    # Additional orphaned tests (3 tests)
+                    # Additional tests (7 tests)
                     'tests/unit/test_chart_storage_unit.py',
                     'tests/unit/test_config_loading_unit.py',
                     'tests/unit/test_data_loading_quality_gate.py',
                     'tests/unit/test_venue_interface_factory_position.py',
+                    'tests/unit/models/test_domain_events.py',
                     'tests/unit/test_position_interfaces.py',
                     'tests/unit/test_position_monitor_live_integration.py'
                 ],
@@ -162,7 +176,7 @@ class QualityGateValidator:
                 'critical': True
             },
             'integration_data_flows': {
-                'description': 'Integration Tests - Component Data Flows (14 tests)',
+                'description': 'Integration Tests - Component Data Flows (19 tests)',
                 'scripts': [
                     'tests/integration/test_data_flow_position_to_exposure.py',
                     'tests/integration/test_data_flow_exposure_to_risk.py',
@@ -176,9 +190,14 @@ class QualityGateValidator:
                     'tests/integration/test_live_mode_quality_gates.py',
                     'tests/integration/test_live_trading_ui_quality_gates.py',
                     'tests/integration/test_frontend_implementation_quality_gates.py',
-                    # Additional orphaned integration tests (2 tests)
+                    # Additional integration tests (5 tests)
                     'tests/integration/test_venue_interface_factory_extensions.py',
-                    'tests/integration/test_position_monitor_live_workflow.py'
+                    'tests/integration/test_position_monitor_live_workflow.py',
+                    'tests/integration/test_atomic_operations.py',
+                    'tests/integration/test_complete_workflow_integration.py',
+                    'tests/integration/test_execution_flow.py',
+                    'tests/integration/test_structured_logging.py',
+                    'tests/integration/test_workflow_refactor_integration.py'
                 ],
                 'critical': True,
                 'timeout': 60
@@ -186,7 +205,7 @@ class QualityGateValidator:
             'e2e_strategies': {
                 'description': 'E2E Strategy Tests - Full Execution (8 tests)',
                 'scripts': [
-                    'tests/e2e/test_pure_lending_usdt_e2e.py',
+                    'tests/e2e/test_pure_lending_e2e.py',
                     'tests/e2e/test_btc_basis_e2e.py',
                     'tests/e2e/test_eth_basis_e2e.py',
                     'tests/e2e/test_usdt_market_neutral_e2e.py',
@@ -201,7 +220,7 @@ class QualityGateValidator:
             'e2e_quality_gates': {
                 'description': 'E2E Quality Gates Tests (Legacy - 4 tests)',
                 'scripts': [
-                    'tests/e2e/test_pure_lending_usdt_quality_gates.py',
+                    'tests/e2e/test_pure_lending_quality_gates.py',
                     'tests/e2e/test_btc_basis_quality_gates.py',
                     'tests/e2e/test_eth_basis_quality_gates.py',
                     'tests/e2e/test_usdt_market_neutral_quality_gates.py'
@@ -295,6 +314,27 @@ class QualityGateValidator:
                 'description': 'Position Key Format Compliance',
                 'scripts': [
                     'quality_gates/validate_position_key_format.py'
+                ],
+                'critical': True
+            },
+            'atomic_operations': {
+                'description': 'Atomic Flash Loan Operations and Execution Flow',
+                'scripts': [
+                    'test_atomic_operations_quality_gates.py'
+                ],
+                'critical': True
+            },
+            'execution_flow': {
+                'description': 'Order → ExecutionHandshake → Reconciliation Flow',
+                'scripts': [
+                    'test_execution_flow_quality_gates.py'
+                ],
+                'critical': True
+            },
+            'tight_loop': {
+                'description': 'Tight Loop Architecture and Component Integration',
+                'scripts': [
+                    'test_tight_loop_quality_gates.py'
                 ],
                 'critical': True
             }
@@ -2044,7 +2084,7 @@ async def main():
     import argparse
     
     parser = argparse.ArgumentParser(description='Quality Gates Validation - Single Entry Point')
-    parser.add_argument('--category', choices=['docs_validation', 'docs', 'health', 'performance', 'configuration', 'integration', 'coverage', 'env_config_sync', 'repo_structure', 'data_loading', 'data_architecture', 'components', 'strategy_validation', 'position_key_format'],
+    parser.add_argument('--category', choices=['docs_validation', 'docs', 'health', 'performance', 'configuration', 'integration', 'integration_data_flows', 'unit', 'e2e_strategies', 'e2e_quality_gates', 'coverage', 'env_config_sync', 'repo_structure', 'data_loading', 'data_architecture', 'components', 'strategy_validation', 'position_key_format'],
                        help='Run specific category of quality gates')
     parser.add_argument('--docs', action='store_true',
                        help='Run documentation link validation quality gates')

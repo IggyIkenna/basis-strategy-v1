@@ -102,16 +102,15 @@ class BacktestService:
         position_monitor = PositionMonitor(config, data_provider, execution_mode)
         exposure_monitor = ExposureMonitor(config, data_provider, execution_mode, position_monitor)
         risk_monitor = RiskMonitor(config, data_provider, execution_mode, position_monitor, exposure_monitor)
-        pnl_calculator = PnLCalculator(config, data_provider, execution_mode, 
+        pnl_calculator = PnLMonitor(config, data_provider, execution_mode, 
                                       position_monitor, exposure_monitor, risk_monitor)
         strategy_manager = StrategyManager(config, data_provider, execution_mode, 
                                           exposure_monitor, risk_monitor)
-        reconciliation_component = ReconciliationComponent(config, data_provider, execution_mode, position_monitor)
         position_update_handler = PositionUpdateHandler(config, data_provider, execution_mode,
                                                        position_monitor, exposure_monitor, risk_monitor, 
-                                                       pnl_calculator, reconciliation_component)
+                                                       pnl_calculator)
         execution_manager = ExecutionManager(config, data_provider, execution_mode,
-                                            position_update_handler, reconciliation_component)
+                                            position_update_handler)
         execution_interface_manager = ExecutionInterfaceManager(config, data_provider, execution_mode)
         event_logger = EventLogger(execution_mode)
         

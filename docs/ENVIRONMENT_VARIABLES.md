@@ -28,6 +28,18 @@
 
 **Core Configuration**: Environment variables control system startup, execution mode, and environment-specific credential routing.
 
+### **Legacy Environment Variables (Deprecated)**
+
+Some components still use legacy environment variable names. These are being migrated to the new dynamic pattern:
+
+**Legacy Variables** (will be removed in future versions):
+- `BYBIT_API_KEY` → Use `BASIS_{ENVIRONMENT}__CEX__BYBIT_API_KEY`
+- `BYBIT_API_SECRET` → Use `BASIS_{ENVIRONMENT}__CEX__BYBIT_SECRET`
+- `OKX_API_SECRET` → Use `BASIS_{ENVIRONMENT}__CEX__OKX_SECRET`
+- `OKX_PASSPHRASE` → Use `BASIS_{ENVIRONMENT}__CEX__OKX_PASSPHRASE`
+
+**Migration Status**: These legacy variables are still supported but will be removed in a future version. Please use the new dynamic pattern for new deployments.
+
 ### **Environment File Switching**
 
 The platform supports multiple environment configurations through override files:

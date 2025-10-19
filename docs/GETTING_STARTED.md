@@ -1,8 +1,8 @@
 # Getting Started - Complete Setup Guide 🚀
 
 **Get the platform running and test your first strategy in under 10 minutes**  
-**Updated**: October 9, 2025 - Backend fully functional  
-**Last Reviewed**: October 9, 2025  
+**Updated**: January 15, 2025 - Test organization consolidated and platform.sh commands added  
+**Last Reviewed**: January 15, 2025  
 **Status**: ✅ Aligned with canonical architectural principles
 
 ---
@@ -166,14 +166,28 @@ A **live and backtesting framework** for multi-strategy yield generation with:
 ```bash
 # From project root
 ./platform.sh start        # Backend + Frontend (uses env file BASIS_EXECUTION_MODE to decide backtest or live)
-./platform.sh backend      # Backend only (uses env file BASIS_EXECUTION_MODE)
-./platform.sh backtest     # Backend only (FORCES backtest mode, overrides env file)
+./platform.sh dev          # Backend only (dev mode, uses env.dev overrides)
 ./platform.sh stop         # Stop all services
 ```
 
+**Backend-Only Development Options**:
+```bash
+# Dev mode (backend only, uses env.dev overrides)
+./platform.sh dev
+
+# Backend only with environment variables
+SKIP_FRONTEND=true ./platform.sh start
+
+# Skip quality gates for rapid development
+SKIP_QUALITY_GATES=true ./platform.sh dev
+
+# Both options combined
+SKIP_FRONTEND=true SKIP_QUALITY_GATES=true ./platform.sh start
+```
+
 **Execution Mode Behavior**:
-- **`./platform.sh start`** and **`./platform.sh backend`**: Use `BASIS_EXECUTION_MODE` from environment files
-- **`./platform.sh backtest`**: **Always forces backtest mode** regardless of env file setting
+- **`./platform.sh start`**: Uses `BASIS_EXECUTION_MODE` from environment files
+- **`./platform.sh dev`**: **Always uses dev mode** with env.dev overrides
 - **Default env files**: `dev` and `staging` = backtest, `production` = live
 
 ### **Option B: Docker (All Environments)**
@@ -185,10 +199,16 @@ cd docker && ./deploy.sh local backend start # Backend only
 
 **What starts**:
 - ✅ Backend API (port 8001) - **CORE COMPONENTS WORKING**
-- 🔧 Frontend UI (port 5173) - Backend integration working
+- 🔧 Frontend UI (port 5173) - Backend integration working (only with `./platform.sh start`)
 
 **Access**:
-- Frontend: http://localhost:5173
+- Frontend: http://localhost:5173 (only with `./platform.sh start`)
+- API Docs: http://localhost:8001/docs
+- Health: http://localhost:8001/health
+- Detailed Health: http://localhost:8001/health/detailed
+- Strategies: http://localhost:8001/api/v1/strategies/
+
+**Backend-Only Access** (with `./platform.sh dev`):
 - API Docs: http://localhost:8001/docs
 - Health: http://localhost:8001/health
 - Detailed Health: http://localhost:8001/health/detailed
@@ -438,11 +458,31 @@ aave_weeth_supply_usd       # × ETH price
 - **80% target** overall unit/integration coverage
 - **100% target** e2e coverage
 
-**Test infrastructure**:
-- Unit tests: `tests/unit/`
-- Integration tests: `tests/integration/`
-- E2E tests: `tests/e2e/`
-- Quality gates: `scripts/run_quality_gates.py`
+### **Test Commands (NEW)**
+The platform now includes dedicated test commands for different areas:
+
+```bash
+# Test specific areas
+./platform.sh config-test     # Configuration validation only
+./platform.sh data-test       # Data validation only  
+./platform.sh workflow-test   # Workflow integration only
+./platform.sh component-test  # Component architecture only
+./platform.sh e2e-test        # End-to-end testing only
+
+# Run comprehensive tests
+./platform.sh test            # All quality gates
+```
+
+### **Test Infrastructure**
+- **Centralized Orchestration**: All tests run through `scripts/run_quality_gates.py`
+- **Organized Structure**: Tests grouped by functional area in `tests/`
+  - `tests/unit/components/` - EventDrivenStrategyEngine components
+  - `tests/unit/calculators/` - Math and calculation components
+  - `tests/unit/data/` - Data-related components
+  - `tests/unit/engines/` - Engine components
+  - `tests/unit/pricing/` - Pricing components
+  - `tests/integration/` - Integration tests
+  - `tests/e2e/` - End-to-end tests
 
 **See**: [tests/README.md](../tests/README.md) for testing guidelines
 
@@ -479,4 +519,4 @@ aave_weeth_supply_usd       # × ETH price
 
 **Status**: Getting started complete! You should have your first backtest results! ✅
 
-*Last Updated: October 9, 2025*
+*Last Updated: January 15, 2025*

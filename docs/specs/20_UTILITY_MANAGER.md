@@ -37,12 +37,68 @@ Components NEVER receive these as method parameters during runtime.
 
 ## Public Methods
 
-### `get_instrument_type(position_key: str) -> str`
+### `get_price_for_instrument_key(instrument_key: str, timestamp: pd.Timestamp, quote_currency: str = 'USD') -> float`
 
-**Purpose**: Get instrument type classification from position key for PnL aggregation, reporting, plotting, equity calculation, and LTV calculation.
+**Purpose**: Get price for any instrument with automatic currency conversion. This is the primary method for accessing market prices.
 
 **Parameters**:
-- `position_key`: Position key in format "venue:position_type:symbol" (e.g., "binance:BaseToken:BTC")
+- `instrument_key`: Instrument key in format "venue:position_type:symbol" (e.g., "binance:BaseToken:BTC")
+- `timestamp`: Timestamp for price lookup
+- `quote_currency`: Desired quote currency ('USD', 'ETH', 'BTC')
+
+**Returns**: Price in specified quote currency
+
+**Currency Conversion Logic**:
+- If instrument is already in requested quote currency, return directly
+- If conversion needed, use cross-currency conversion (e.g., BTC/ETH via BTC/USD and ETH/USD)
+- Always maintains USD, ETH, and BTC quote currency pairs
+
+### `get_liquidity_index(token: str, timestamp: pd.Timestamp) -> float`
+
+**Purpose**: Convert aTokens/debtTokens to underlying equivalent for PnL attribution and result plotting.
+
+**Parameters**:
+- `token`: Token symbol (e.g., 'aUSDT', 'debtWETH')
+- `timestamp`: Timestamp for index lookup
+
+**Returns**: Liquidity index value (e.g., 1.05 for 5% growth)
+
+### `get_funding_rate(venue: str, symbol: str, timestamp: pd.Timestamp) -> float`
+
+**Purpose**: Get funding rates for perpetual contracts for PnL attribution and result plotting.
+
+**Parameters**:
+- `venue`: Venue name (e.g., 'binance', 'bybit', 'okx')
+- `symbol`: Perpetual symbol (e.g., 'BTCUSDT')
+- `timestamp`: Timestamp for funding rate lookup
+
+**Returns**: Funding rate (e.g., 0.0001 for 0.01%)
+
+### `get_oracle_price(token: str, quote_currency: str, timestamp: pd.Timestamp) -> float`
+
+**Purpose**: Get AAVE oracle prices for LST tokens. Used for execution pricing (buy at oracle, sell at market).
+
+**Parameters**:
+- `token`: LST token symbol (e.g., 'weETH', 'wstETH')
+- `quote_currency`: Quote currency ('USD' or 'ETH')
+- `timestamp`: Timestamp for oracle price lookup
+
+**Returns**: Oracle price in specified quote currency
+
+**Data Sources**:
+- **Oracle Data**: `data/protocol_data/aave/oracle/{token}_{quote_currency}_oracle_*.csv`
+- **Market Data**: `data/market_data/spot_prices/lst_eth_ratios/{venue}_{token}WETH_*.csv`
+
+**Usage**:
+- **Entry**: Use oracle pricing (represents going directly to staking protocol)
+- **Exit**: Use market pricing (represents trading on DEX/CEX)
+
+### `get_instrument_type(instrument_key: str) -> str`
+
+**Purpose**: Get instrument type classification from instrument key for PnL aggregation, reporting, plotting, equity calculation, and LTV calculation.
+
+**Parameters**:
+- `instrument_key`: Instrument key in format "venue:position_type:symbol" (e.g., "binance:BaseToken:BTC")
 
 **Returns**: Instrument type classification:
 - `'asset'`: BaseToken, aToken, LST positions (owned value)

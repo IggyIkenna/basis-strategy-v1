@@ -29,6 +29,33 @@ See: 19_CONFIGURATION.md for complete mode configs, REFERENCE_ARCHITECTURE_CANON
 
 **ADR References**: ADR-052 (config-driven components), ADR-056 (component architecture)
 
+### Testing Patterns and Instrument Key Formats
+
+**Updated October 18, 2025** - Based on comprehensive test suite validation:
+
+#### Instrument Key Format Standards
+- **Canonical Format**: `venue:position_type:symbol` (e.g., `aave_v3:aToken:aUSDT`)
+- **Position Keys**: Use full instrument keys in `calculate_target_position()` returns
+- **Test Expectations**: Tests must match actual strategy return formats, not simplified keys
+
+#### Multi-Venue Strategy Patterns
+- **Pure Lending Strategies**: Create orders for AAVE only (no Morpho lending data available)
+- **Flash Loan Strategies**: Use Morpho for atomic leveraged staking operations only
+- **Order Creation**: Each venue gets separate orders with venue-specific instrument keys
+- **Test Mocking**: Position monitors must be mocked for exit order tests
+- **Venue Names**: Use actual venue names (`aave_v3`, `morpho`) not enum values
+
+#### Strategy-Specific Patterns
+- **ETH Staking**: Returns `etherfi:BaseToken:WEETH` not `weeth_balance`
+- **ML Strategies**: Require `signal` parameter for order creation methods
+- **Leveraged Strategies**: Require `target_ltv` parameter for order creation
+- **Basis Strategies**: Use allocation factors (e.g., `btc_allocation: 0.8`)
+
+#### Error Message Patterns
+- **Instrument Validation**: "Required instrument X not in position_subscriptions" (not "Invalid format")
+- **Method Signatures**: `generate_orders(timestamp, exposure, risk_assessment, market_data)` + optional `pnl`
+- **Logging**: Use `self.logger.error(message, error_code, exc_info, **context)` not `self.log_error()`
+
 ### Execution Venue Mapping
 **Venue Selection Rules**:
 - **Spot Trades**: Binance spot (preferred) unless part of atomic on-chain transaction (then DEX)
@@ -40,7 +67,8 @@ See: 19_CONFIGURATION.md for complete mode configs, REFERENCE_ARCHITECTURE_CANON
 
 **Available Venues**:
 - **CEX**: Binance, Bybit, OKX (spot + perps)
-- **DeFi**: AAVE V3, Lido, EtherFi, Morpho (flash loans)
+- **DeFi**: AAVE V3, Lido, EtherFi
+- **Flash Loans**: Morpho (via Instadapp middleware for atomic leveraged staking only)
 - **Infrastructure**: Alchemy (Web3), Uniswap (DEX swaps), Instadapp (atomic transaction middleware)
 
 ### Capital Allocation Logic

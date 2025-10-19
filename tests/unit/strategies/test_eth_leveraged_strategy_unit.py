@@ -19,8 +19,6 @@ def mock_config():
     return {
         'mode': 'eth_leveraged',
         'share_class': 'ETH',
-        'asset': 'ETH',
-        'eth_allocation': 0.8,  # 80% allocation to ETH
         'max_leverage': 2.0,   # 2x leverage
         'lst_type': 'weeth',   # Required for ETH strategies
         'staking_protocol': 'etherfi',  # Required for ETH strategies
@@ -124,7 +122,6 @@ class TestETHLeveragedStrategyInit:
     def test_init_success_with_valid_config(self, strategy):
         """Test successful initialization with valid config."""
         assert strategy.share_class == 'ETH'
-        assert strategy.asset == 'ETH'
         assert strategy.entry_instrument == 'wallet:BaseToken:ETH'
         assert strategy.staking_instrument == 'etherfi:LST:weETH'
         assert strategy.lending_instrument == 'aave_v3:aToken:aWETH'

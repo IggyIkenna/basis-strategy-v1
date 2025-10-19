@@ -16,7 +16,6 @@ class TestExecutionHandshake:
     
     def test_successful_cex_trade(self):
         """Test successful CEX spot trade execution."""
-        # TODO: Implement after Phase 5 completes venue interfaces
         handshake = ExecutionHandshake(
             operation_id="spot_001",
             status=ExecutionStatus.CONFIRMED,
@@ -41,7 +40,6 @@ class TestExecutionHandshake:
     
     def test_failed_defi_operation(self):
         """Test failed DeFi supply operation."""
-        # TODO: Implement after Phase 5 completes venue interfaces
         handshake = ExecutionHandshake(
             operation_id="supply_001",
             status=ExecutionStatus.FAILED,
@@ -59,13 +57,34 @@ class TestExecutionHandshake:
     
     def test_pending_operation(self):
         """Test pending operation status."""
-        # TODO: Implement after Phase 5 completes venue interfaces
-        pass
+        handshake = ExecutionHandshake(
+            operation_id="pending_001",
+            status=ExecutionStatus.PENDING,
+            actual_deltas={},
+            execution_details={},
+            submitted_at=datetime.now(),
+            simulated=True
+        )
+        
+        assert handshake.status == ExecutionStatus.PENDING
+        assert not handshake.was_successful()
+        assert not handshake.was_failed()
     
     def test_rolled_back_operation(self):
         """Test atomic group rollback."""
-        # TODO: Implement after Phase 5 completes venue interfaces
-        pass
+        handshake = ExecutionHandshake(
+            operation_id="rollback_001",
+            status=ExecutionStatus.ROLLED_BACK,
+            actual_deltas={},
+            execution_details={},
+            submitted_at=datetime.now(),
+            executed_at=datetime.now(),
+            simulated=True
+        )
+        
+        assert handshake.status == ExecutionStatus.ROLLED_BACK
+        assert not handshake.was_successful()
+        assert not handshake.was_failed()
 
 # TODO: Add tests for:
 # - validation errors

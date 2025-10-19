@@ -27,12 +27,12 @@ sys.path.append(str(Path(__file__).parent.parent.parent / 'backend' / 'src'))
 
 from basis_strategy_v1.core.event_engine.event_driven_strategy_engine import EventDrivenStrategyEngine
 from basis_strategy_v1.core.components.position_update_handler import PositionUpdateHandler
-from basis_strategy_v1.core.execution.venue_manager import ExecutionManager
+from basis_strategy_v1.core.execution.execution_manager import ExecutionManager
 from basis_strategy_v1.core.execution.venue_interface_manager import VenueInterfaceManager
 from basis_strategy_v1.core.components.position_monitor import PositionMonitor
 from basis_strategy_v1.core.components.exposure_monitor import ExposureMonitor
 from basis_strategy_v1.core.components.risk_monitor import RiskMonitor
-from basis_strategy_v1.core.components.pnl_monitor import PnLCalculator
+from basis_strategy_v1.core.components.pnl_monitor import PnLMonitor
 from basis_strategy_v1.core.strategies.pure_lending_usdt_strategy import PureLendingStrategy
 
 
@@ -141,7 +141,7 @@ class TestCompleteWorkflowIntegration:
         position_monitor = PositionMonitor(mock_config, mock_data_provider, None)
         exposure_monitor = ExposureMonitor(mock_config, mock_data_provider, None)
         risk_monitor = RiskMonitor(mock_config, mock_data_provider, None)
-        pnl_monitor = PnLCalculator(mock_config, None)
+        pnl_monitor = PnLMonitor(mock_config, None)
         
         # Create PositionUpdateHandler
         position_update_handler = PositionUpdateHandler(
@@ -163,7 +163,7 @@ class TestCompleteWorkflowIntegration:
         assert result is not None, "PositionUpdateHandler update_state must return result"
         print("✅ PositionUpdateHandler tight loop ownership validated")
     
-    def test_venue_manager_execution_flow(self, mock_config, mock_data_provider):
+    def test_execution_manager_execution_flow(self, mock_config, mock_data_provider):
         """Test ExecutionManager → VenueInterfaceManager → Execution Interface flow."""
         print("\n🔍 Testing ExecutionManager execution flow...")
         
@@ -177,7 +177,7 @@ class TestCompleteWorkflowIntegration:
         position_monitor = PositionMonitor(mock_config, mock_data_provider, None)
         exposure_monitor = ExposureMonitor(mock_config, mock_data_provider, None)
         risk_monitor = RiskMonitor(mock_config, mock_data_provider, None)
-        pnl_monitor = PnLCalculator(mock_config, None)
+        pnl_monitor = PnLMonitor(mock_config, None)
         
         position_update_handler = PositionUpdateHandler(
             config=mock_config,
@@ -189,7 +189,7 @@ class TestCompleteWorkflowIntegration:
         )
         
         # Create ExecutionManager
-        venue_manager = ExecutionManager(
+        execution_manager = ExecutionManager(
             config=mock_config,
             venue_interface_manager=venue_interface_manager,
             position_update_handler=position_update_handler,
@@ -197,12 +197,12 @@ class TestCompleteWorkflowIntegration:
         )
         
         # Check that ExecutionManager has process_orders method
-        assert hasattr(venue_manager, 'process_orders'), "ExecutionManager must have process_orders method"
+        assert hasattr(execution_manager, 'process_orders'), "ExecutionManager must have process_orders method"
         
         # Check that ExecutionManager does NOT have tight loop methods
         tight_loop_methods = ['_execute_venue_loop', '_send_instruction', '_execute_wallet_transfer']
         for method in tight_loop_methods:
-            assert not hasattr(venue_manager, method), f"ExecutionManager must NOT have {method} (tight loop method)"
+            assert not hasattr(execution_manager, method), f"ExecutionManager must NOT have {method} (tight loop method)"
         
         print("✅ ExecutionManager execution flow validated")
     
@@ -235,7 +235,7 @@ class TestCompleteWorkflowIntegration:
         position_monitor = PositionMonitor(mock_config, mock_data_provider, None)
         exposure_monitor = ExposureMonitor(mock_config, mock_data_provider, None)
         risk_monitor = RiskMonitor(mock_config, mock_data_provider, None)
-        pnl_monitor = PnLCalculator(mock_config, "USDT", 100000)
+        pnl_monitor = PnLMonitor(mock_config, "USDT", 100000)
         strategy_manager = PureLendingStrategy(mock_config, risk_monitor, position_monitor, None)
         
         # Create PositionUpdateHandler
@@ -355,7 +355,7 @@ class TestCompleteWorkflowIntegration:
         required_tests = [
             "test_strategy_to_execution_to_reconciliation_flow",
             "test_tight_loop_orchestration_by_position_update_handler", 
-            "test_venue_manager_to_venue_interface_manager_flow",
+            "test_execution_manager_to_venue_interface_manager_flow",
             "test_position_monitor_simulated_vs_real_reconciliation",
             "test_complete_pnl_calculation_flow",
             "test_event_engine_orchestration_sequence",

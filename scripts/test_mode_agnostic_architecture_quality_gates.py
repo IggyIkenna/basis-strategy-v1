@@ -27,7 +27,7 @@ from basis_strategy_v1.core.utilities.utility_manager import UtilityManager
 from basis_strategy_v1.core.components.position_monitor import PositionMonitor
 from basis_strategy_v1.core.components.risk_monitor import RiskMonitor
 from basis_strategy_v1.core.components.exposure_monitor import ExposureMonitor
-from basis_strategy_v1.core.components.pnl_monitor import PnLCalculator
+from basis_strategy_v1.core.components.pnl_monitor import PnLMonitor
 from basis_strategy_v1.core.strategies.pure_lending_usdt_strategy import PureLendingStrategy
 
 # Configure logging
@@ -124,12 +124,12 @@ class ModeAgnosticArchitectureQualityGates:
                 return False
             
             # Test P&L Calculator
-            pnl_monitor = PnLCalculator(config, 'USDT', 1000.0, None, None)
+            pnl_monitor = PnLMonitor(config, 'USDT', 1000.0, None, None)
             
             if hasattr(pnl_monitor, 'utility_manager'):
-                self.log_test_result("PnLCalculator.utility_manager", True, "Uses utility manager")
+                self.log_test_result("PnLMonitor.utility_manager", True, "Uses utility manager")
             else:
-                self.log_test_result("PnLCalculator.utility_manager", False, "Missing utility manager")
+                self.log_test_result("PnLMonitor.utility_manager", False, "Missing utility manager")
                 return False
             
             return True
@@ -244,13 +244,13 @@ class ModeAgnosticArchitectureQualityGates:
         try:
             # Test P&L Calculator initialization
             config = {'mode': 'test', 'share_class': 'USDT', 'asset': 'USDT'}
-            pnl_monitor = PnLCalculator(config, 'USDT', 1000.0, None, None)
+            pnl_monitor = PnLMonitor(config, 'USDT', 1000.0, None, None)
             
             # Check that P&L Calculator has share_class awareness
             if hasattr(pnl_monitor, 'share_class') and pnl_monitor.share_class == 'USDT':
-                self.log_test_result("PnLCalculator share_class awareness", True, f"Share class: {pnl_monitor.share_class}")
+                self.log_test_result("PnLMonitor share_class awareness", True, f"Share class: {pnl_monitor.share_class}")
             else:
-                self.log_test_result("PnLCalculator share_class awareness", False, "Missing or incorrect share_class")
+                self.log_test_result("PnLMonitor share_class awareness", False, "Missing or incorrect share_class")
                 return False
             
             # Check that P&L Calculator doesn't have mode-specific logic
@@ -258,10 +258,10 @@ class ModeAgnosticArchitectureQualityGates:
             mode_specific_methods = [method for method in pnl_methods if 'mode' in method.lower() or 'strategy' in method.lower()]
             
             if mode_specific_methods:
-                self.log_test_result("PnLCalculator mode-specific methods", False, f"Found: {mode_specific_methods}")
+                self.log_test_result("PnLMonitor mode-specific methods", False, f"Found: {mode_specific_methods}")
                 return False
             else:
-                self.log_test_result("PnLCalculator mode-specific methods", True, "No mode-specific methods found")
+                self.log_test_result("PnLMonitor mode-specific methods", True, "No mode-specific methods found")
             
             # Test that P&L Calculator can calculate P&L for different modes
             test_exposure = {
@@ -275,12 +275,12 @@ class ModeAgnosticArchitectureQualityGates:
             try:
                 pnl_result = pnl_monitor.calculate_pnl(test_exposure, timestamp=pd.Timestamp.now())
                 if isinstance(pnl_result, dict):
-                    self.log_test_result("PnLCalculator calculation", True, "P&L calculation works")
+                    self.log_test_result("PnLMonitor calculation", True, "P&L calculation works")
                 else:
-                    self.log_test_result("PnLCalculator calculation", False, "Invalid P&L result")
+                    self.log_test_result("PnLMonitor calculation", False, "Invalid P&L result")
                     return False
             except Exception as e:
-                self.log_test_result("PnLCalculator calculation", False, f"Calculation error: {e}")
+                self.log_test_result("PnLMonitor calculation", False, f"Calculation error: {e}")
                 return False
             
             return True

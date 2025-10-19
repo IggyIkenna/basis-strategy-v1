@@ -21,7 +21,7 @@ import json
 # Add the backend src to the path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'backend', 'src'))
 
-from basis_strategy_v1.core.components.pnl_monitor import PnLCalculator
+from basis_strategy_v1.core.components.pnl_monitor import PnLMonitor
 from unittest.mock import Mock
 
 def create_mock_config(attribution_types: List[str] = None) -> Dict[str, Any]:
@@ -140,7 +140,7 @@ def test_pnl_monitor():
     data_provider = create_mock_data_provider()
     
     # Initialize PnL Monitor
-    pnl_monitor = PnLCalculator(
+    pnl_monitor = PnLMonitor(
         config=config,
         share_class='USDT',
         initial_capital=100000.0,

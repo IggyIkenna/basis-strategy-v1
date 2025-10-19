@@ -12,6 +12,7 @@ T = TypeVar("T")
 
 class ResponseStatus(str, Enum):
     """Response status values."""
+
     SUCCESS = "success"
     ERROR = "error"
     PENDING = "pending"
@@ -22,86 +23,62 @@ class ResponseStatus(str, Enum):
 
 class StandardResponse(BaseModel, Generic[T]):
     """Standard API response wrapper."""
-    
-    success: bool = Field(
-        ...,
-        description="Whether the request was successful"
-    )
-    
-    data: Optional[T] = Field(
-        default=None,
-        description="Response data if successful"
-    )
-    
+
+    success: bool = Field(..., description="Whether the request was successful")
+
+    data: Optional[T] = Field(default=None, description="Response data if successful")
+
     error: Optional[Dict[str, Any]] = Field(
-        default=None,
-        description="Error details if unsuccessful"
+        default=None, description="Error details if unsuccessful"
     )
-    
-    timestamp: datetime = Field(
-        default_factory=datetime.utcnow,
-        description="Response timestamp"
-    )
-    
+
+    timestamp: datetime = Field(default_factory=datetime.utcnow, description="Response timestamp")
+
     class Config:
         json_schema_extra = {
             "example": {
                 "success": True,
                 "data": {"result": "example"},
                 "error": None,
-                "timestamp": "2025-10-13T12:34:25Z"
+                "timestamp": "2025-10-13T12:34:25Z",
             }
         }
 
 
 class BacktestResponse(BaseModel):
     """Backtest submission response."""
-    
-    request_id: str = Field(
-        ...,
-        description="Unique request ID for tracking"
-    )
-    
-    status: ResponseStatus = Field(
-        ...,
-        description="Current status of the backtest"
-    )
-    
-    strategy_name: str = Field(
-        ...,
-        description="Strategy being backtested"
-    )
-    
+
+    request_id: str = Field(..., description="Unique request ID for tracking")
+
+    status: ResponseStatus = Field(..., description="Current status of the backtest")
+
+    strategy_name: str = Field(..., description="Strategy being backtested")
+
     estimated_time_seconds: Optional[int] = Field(
-        default=None,
-        description="Estimated completion time in seconds"
+        default=None, description="Estimated completion time in seconds"
     )
-    
+
     class Config:
         json_schema_extra = {
             "example": {
                 "request_id": "bt_20251013_123425_abc123",
                 "status": "pending",
                 "strategy_name": "usdt_market_neutral",
-                "estimated_time_seconds": 45
+                "estimated_time_seconds": 45,
             }
         }
 
 
 class BacktestStatusResponse(BaseModel):
     """Backtest status check response."""
-    
+
     request_id: str
     status: ResponseStatus
-    progress: float = Field(
-        ge=0,
-        le=1,
-        description="Progress percentage (0-1)"
-    )
+    progress: float = Field(ge=0, le=1, description="Progress percentage (0-1)")
     started_at: datetime
     completed_at: Optional[datetime] = None
     error_message: Optional[str] = None
-    
+
     class Config:
         json_schema_extra = {
             "example": {
@@ -110,72 +87,52 @@ class BacktestStatusResponse(BaseModel):
                 "progress": 0.65,
                 "started_at": "2025-10-13T12:34:25Z",
                 "completed_at": None,
-                "error_message": None
+                "error_message": None,
             }
         }
 
 
-class BacktestResultResponse(BaseModel): 
+class BacktestResultResponse(BaseModel):
     """Complete backtest result."""
-    
+
     request_id: str
     strategy_name: str
     start_date: datetime
     end_date: datetime
     initial_capital: Decimal
     final_value: Decimal
-    
+
     # Performance metrics
-    total_return: Decimal = Field(
-        ...,
-        description="Total return percentage"
-    )
-    annualized_return: Decimal = Field(
-        ...,
-        description="Annualized return percentage"
-    )
-    sharpe_ratio: Decimal = Field(
-        ...,
-        description="Risk-adjusted return metric"
-    )
-    max_drawdown: Decimal = Field(
-        ...,
-        description="Maximum drawdown percentage"
-    )
+    total_return: Decimal = Field(..., description="Total return percentage")
+    annualized_return: Decimal = Field(..., description="Annualized return percentage")
+    sharpe_ratio: Decimal = Field(..., description="Risk-adjusted return metric")
+    max_drawdown: Decimal = Field(..., description="Maximum drawdown percentage")
     target_apy: Optional[Decimal] = Field(
-        None,
-        description="Target APY from strategy configuration"
+        None, description="Target APY from strategy configuration"
     )
     target_max_drawdown: Optional[Decimal] = Field(
-        None,
-        description="Target max drawdown from strategy configuration"
+        None, description="Target max drawdown from strategy configuration"
     )
     apy_vs_target: Optional[Dict[str, Any]] = Field(
-        None,
-        description="APY validation against target"
+        None, description="APY validation against target"
     )
     drawdown_vs_target: Optional[Dict[str, Any]] = Field(
-        None,
-        description="Max drawdown validation against target"
+        None, description="Max drawdown validation against target"
     )
-    
+
     # Trading statistics
     total_trades: int
     winning_trades: Optional[int] = None
     losing_trades: Optional[int] = None
     total_fees: Decimal
-    
+
     # Time series data
     equity_curve: Optional[List[Dict[str, Any]]] = Field(
-        default=None,
-        description="Equity curve time series"
+        default=None, description="Equity curve time series"
     )
-    
-    metrics_summary: Dict[str, Any] = Field(
-        default_factory=dict,
-        description="Additional metrics"
-    )
-    
+
+    metrics_summary: Dict[str, Any] = Field(default_factory=dict, description="Additional metrics")
+
     class Config:
         json_schema_extra = {
             "example": {
@@ -198,30 +155,24 @@ class BacktestResultResponse(BaseModel):
                     "avg_trade_return": 0.0035,
                     "win_rate": 0.75,
                     "max_consecutive_wins": 5,
-                    "max_consecutive_losses": 2
-                }
+                    "max_consecutive_losses": 2,
+                },
             }
         }
 
 
 class StrategyInfoResponse(BaseModel):
     """Strategy information response."""
-    
+
     name: str
     description: str
     share_class: str
-    risk_level: str = Field(
-        ...,
-        description="Risk level: low, medium, high"
-    )
-    expected_return: str = Field(
-        ...,
-        description="Expected return range"
-    )
+    risk_level: str = Field(..., description="Risk level: low, medium, high")
+    expected_return: str = Field(..., description="Expected return range")
     minimum_capital: Optional[Decimal] = None
     supported_venues: List[str]
     parameters: Dict[str, Any]
-    
+
     class Config:
         json_schema_extra = {
             "example": {
@@ -235,18 +186,18 @@ class StrategyInfoResponse(BaseModel):
                 "parameters": {
                     "rebalancing_enabled": True,
                     "max_leverage": 2.0,
-                    "funding_rate_threshold": 0.01
-                }
+                    "funding_rate_threshold": 0.01,
+                },
             }
         }
 
 
 class StrategyListResponse(BaseModel):
     """List of available strategies."""
-    
+
     strategies: List[StrategyInfoResponse]
     total: int
-    
+
     class Config:
         json_schema_extra = {
             "example": {
@@ -259,7 +210,7 @@ class StrategyListResponse(BaseModel):
                         "expected_return": "8-15% APY",
                         "minimum_capital": 10000,
                         "supported_venues": ["AAVE", "Bybit", "Binance"],
-                        "parameters": {}
+                        "parameters": {},
                     },
                     {
                         "name": "eth_leveraged",
@@ -269,76 +220,48 @@ class StrategyListResponse(BaseModel):
                         "expected_return": "12-25% APY",
                         "minimum_capital": 5000,
                         "supported_venues": ["EigenLayer", "Bybit"],
-                        "parameters": {}
-                    }
+                        "parameters": {},
+                    },
                 ],
-                "total": 2
+                "total": 2,
             }
         }
 
 
 class ErrorResponse(BaseModel):
     """Error response model."""
-    
-    code: str = Field(
-        ...,
-        description="Error code"
-    )
-    message: str = Field(
-        ...,
-        description="Human-readable error message"
-    )
-    details: Optional[Dict[str, Any]] = Field(
-        default=None,
-        description="Additional error details"
-    )
-    
+
+    code: str = Field(..., description="Error code")
+    message: str = Field(..., description="Human-readable error message")
+    details: Optional[Dict[str, Any]] = Field(default=None, description="Additional error details")
+
     class Config:
         json_schema_extra = {
             "example": {
                 "code": "VALIDATION_ERROR",
                 "message": "Invalid request parameters",
-                "details": {
-                    "field": "initial_capital",
-                    "error": "Must be greater than 0"
-                }
+                "details": {"field": "initial_capital", "error": "Must be greater than 0"},
             }
         }
 
 
 class LiveTradingResponse(BaseModel):
     """Live trading start response."""
-    
+
     request_id: str = Field(
-        ...,
-        description="Unique request ID for tracking the live trading strategy"
+        ..., description="Unique request ID for tracking the live trading strategy"
     )
-    
-    status: ResponseStatus = Field(
-        ...,
-        description="Current status of the live trading strategy"
-    )
-    
-    strategy_name: str = Field(
-        ...,
-        description="Strategy being run live"
-    )
-    
-    share_class: str = Field(
-        ...,
-        description="Share class (USDT or ETH)"
-    )
-    
-    initial_capital: Decimal = Field(
-        ...,
-        description="Initial capital allocated to the strategy"
-    )
-    
-    message: Optional[str] = Field(
-        default=None,
-        description="Additional status message"
-    )
-    
+
+    status: ResponseStatus = Field(..., description="Current status of the live trading strategy")
+
+    strategy_name: str = Field(..., description="Strategy being run live")
+
+    share_class: str = Field(..., description="Share class (USDT or ETH)")
+
+    initial_capital: Decimal = Field(..., description="Initial capital allocated to the strategy")
+
+    message: Optional[str] = Field(default=None, description="Additional status message")
+
     class Config:
         json_schema_extra = {
             "example": {
@@ -347,71 +270,48 @@ class LiveTradingResponse(BaseModel):
                 "strategy_name": "usdt_market_neutral",
                 "share_class": "USDT",
                 "initial_capital": 100000,
-                "message": "Live trading started successfully"
+                "message": "Live trading started successfully",
             }
         }
 
 
 class LiveTradingStatusResponse(BaseModel):
     """Live trading status response."""
-    
-    request_id: str = Field(
-        ...,
-        description="Unique request ID for tracking"
-    )
-    
-    status: ResponseStatus = Field(
-        ...,
-        description="Current status of the live trading strategy"
-    )
-    
+
+    request_id: str = Field(..., description="Unique request ID for tracking")
+
+    status: ResponseStatus = Field(..., description="Current status of the live trading strategy")
+
     progress: Optional[float] = Field(
-        default=None,
-        ge=0,
-        le=1,
-        description="Progress percentage (0-1) if applicable"
+        default=None, ge=0, le=1, description="Progress percentage (0-1) if applicable"
     )
-    
+
     started_at: Optional[datetime] = Field(
-        default=None,
-        description="When the strategy was started"
+        default=None, description="When the strategy was started"
     )
-    
+
     completed_at: Optional[datetime] = Field(
-        default=None,
-        description="When the strategy was completed/stopped"
+        default=None, description="When the strategy was completed/stopped"
     )
-    
+
     last_heartbeat: Optional[datetime] = Field(
-        default=None,
-        description="Last heartbeat from the strategy"
+        default=None, description="Last heartbeat from the strategy"
     )
-    
-    total_trades: Optional[int] = Field(
-        default=None,
-        description="Total number of trades executed"
-    )
-    
-    total_pnl: Optional[Decimal] = Field(
-        default=None,
-        description="Total P&L in strategy currency"
-    )
-    
+
+    total_trades: Optional[int] = Field(default=None, description="Total number of trades executed")
+
+    total_pnl: Optional[Decimal] = Field(default=None, description="Total P&L in strategy currency")
+
     current_drawdown: Optional[Decimal] = Field(
-        default=None,
-        description="Current drawdown percentage"
+        default=None, description="Current drawdown percentage"
     )
-    
+
     risk_breaches: Optional[List[Dict[str, Any]]] = Field(
-        default=None,
-        description="List of risk limit breaches"
+        default=None, description="List of risk limit breaches"
     )
-    
-    error: Optional[str] = Field(
-        default=None,
-        description="Error message if strategy failed"
-    )
-    
+
+    error: Optional[str] = Field(default=None, description="Error message if strategy failed")
+
     class Config:
         json_schema_extra = {
             "example": {
@@ -425,64 +325,36 @@ class LiveTradingStatusResponse(BaseModel):
                 "total_pnl": 1250.50,
                 "current_drawdown": -0.025,
                 "risk_breaches": [],
-                "error": None
+                "error": None,
             }
         }
 
 
 class LiveTradingPerformanceResponse(BaseModel):
     """Live trading performance metrics response."""
-    
-    request_id: str = Field(
-        ...,
-        description="Unique request ID for tracking"
-    )
-    
-    initial_capital: Decimal = Field(
-        ...,
-        description="Initial capital allocated"
-    )
-    
-    current_value: Decimal = Field(
-        ...,
-        description="Current portfolio value"
-    )
-    
-    total_pnl: Decimal = Field(
-        ...,
-        description="Total P&L in strategy currency"
-    )
-    
-    return_pct: Decimal = Field(
-        ...,
-        description="Total return percentage"
-    )
-    
-    total_trades: int = Field(
-        ...,
-        description="Total number of trades executed"
-    )
-    
-    current_drawdown: Decimal = Field(
-        ...,
-        description="Current drawdown percentage"
-    )
-    
-    uptime_hours: float = Field(
-        ...,
-        description="Strategy uptime in hours"
-    )
-    
+
+    request_id: str = Field(..., description="Unique request ID for tracking")
+
+    initial_capital: Decimal = Field(..., description="Initial capital allocated")
+
+    current_value: Decimal = Field(..., description="Current portfolio value")
+
+    total_pnl: Decimal = Field(..., description="Total P&L in strategy currency")
+
+    return_pct: Decimal = Field(..., description="Total return percentage")
+
+    total_trades: int = Field(..., description="Total number of trades executed")
+
+    current_drawdown: Decimal = Field(..., description="Current drawdown percentage")
+
+    uptime_hours: float = Field(..., description="Strategy uptime in hours")
+
     engine_status: Optional[Dict[str, Any]] = Field(
-        default=None,
-        description="Status of the strategy engine components"
+        default=None, description="Status of the strategy engine components"
     )
-    
-    last_heartbeat: Optional[datetime] = Field(
-        default=None,
-        description="Last heartbeat timestamp"
-    )
-    
+
+    last_heartbeat: Optional[datetime] = Field(default=None, description="Last heartbeat timestamp")
+
     class Config:
         json_schema_extra = {
             "example": {
@@ -499,10 +371,10 @@ class LiveTradingPerformanceResponse(BaseModel):
                     "components": {
                         "position_monitor": "active",
                         "risk_monitor": "active",
-                        "strategy_manager": "active"
-                    }
+                        "strategy_manager": "active",
+                    },
                 },
-                "last_heartbeat": "2025-10-13T12:39:25Z"
+                "last_heartbeat": "2025-10-13T12:39:25Z",
             }
         }
 
@@ -512,17 +384,11 @@ class LiveTradingPerformanceResponse(BaseModel):
 
 class LiveTradingStrategiesResponse(BaseModel):
     """List of running live trading strategies response."""
-    
-    strategies: List[Dict[str, Any]] = Field(
-        ...,
-        description="List of running strategies"
-    )
-    
-    count: int = Field(
-        ...,
-        description="Total number of running strategies"
-    )
-    
+
+    strategies: List[Dict[str, Any]] = Field(..., description="List of running strategies")
+
+    count: int = Field(..., description="Total number of running strategies")
+
     class Config:
         json_schema_extra = {
             "example": {
@@ -533,27 +399,33 @@ class LiveTradingStrategiesResponse(BaseModel):
                         "share_class": "USDT",
                         "status": "running",
                         "started_at": "2025-10-13T12:34:25Z",
-                        "last_heartbeat": "2025-10-13T12:39:25Z"
+                        "last_heartbeat": "2025-10-13T12:39:25Z",
                     }
                 ],
-                "count": 1
+                "count": 1,
             }
         }
 
 
 class HealthResponse(BaseModel):
     """Unified health check response."""
-    
+
     status: str = Field(..., description="Overall health status: healthy, degraded, unhealthy")
     timestamp: datetime = Field(..., description="Health check timestamp")
     service: Optional[str] = Field(default="basis-strategy-v1", description="Service name")
-    execution_mode: Optional[str] = Field(default=None, description="Current execution mode: backtest or live")
+    execution_mode: Optional[str] = Field(
+        default=None, description="Current execution mode: backtest or live"
+    )
     uptime_seconds: Optional[float] = Field(default=None, description="Service uptime in seconds")
-    system: Optional[Dict[str, Any]] = Field(default=None, description="System metrics (CPU, memory, disk)")
-    components: Optional[Dict[str, Any]] = Field(default=None, description="Component health status (mode-filtered)")
+    system: Optional[Dict[str, Any]] = Field(
+        default=None, description="System metrics (CPU, memory, disk)"
+    )
+    components: Optional[Dict[str, Any]] = Field(
+        default=None, description="Component health status (mode-filtered)"
+    )
     summary: Optional[Dict[str, Any]] = Field(default=None, description="Health summary statistics")
     error: Optional[str] = Field(default=None, description="Error message if health check failed")
-    
+
     class Config:
         json_schema_extra = {
             "example": {
@@ -562,11 +434,7 @@ class HealthResponse(BaseModel):
                 "service": "basis-strategy-v1",
                 "execution_mode": "backtest",
                 "uptime_seconds": 3600,
-                "system": {
-                    "cpu_percent": 15.2,
-                    "memory_percent": 45.8,
-                    "memory_available_gb": 8.5
-                },
+                "system": {"cpu_percent": 15.2, "memory_percent": 45.8, "memory_available_gb": 8.5},
                 "components": {
                     "position_monitor": {
                         "status": "healthy",
@@ -574,17 +442,14 @@ class HealthResponse(BaseModel):
                         "readiness_checks": {
                             "initialized": True,
                             "cache_available": True,
-                            "snapshot_available": True
-                        }
+                            "snapshot_available": True,
+                        },
                     }
                 },
                 "summary": {
                     "total_components": 9,
                     "healthy_components": 9,
-                    "unhealthy_components": 0
-                }
+                    "unhealthy_components": 0,
+                },
             }
         }
-
-
-

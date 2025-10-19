@@ -13,8 +13,10 @@ leverage_enabled: false
 
 # Asset configuration
 share_class: "ETH"
-asset: "ETH"
 margin_currency: "ETH"
+
+# Protocol configuration
+lending_protocol: "aave_v3"
 lst_type: null
 
 # Risk parameters
@@ -97,7 +99,6 @@ component_config:
     actions: ["entry_full", "entry_partial", "exit_full", "exit_partial", "sell_dust"]
     position_calculation:
       target_position: "aeth_position"
-      max_position_size: 1.0
   
   # Execution management
   execution_manager:
@@ -144,7 +145,6 @@ event_logger:
   log_retention_policy:
     retention_days: 30
     max_file_size_mb: 100
-    rotation_frequency: "daily"
     compression_after_days: 7
   logging_requirements:
     structured_logging: true

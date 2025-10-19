@@ -175,14 +175,14 @@ def check_architecture_compliance(components: Dict[str, List[str]]) -> Dict[str,
             'position_monitors': 1,
             'exposure_monitors': 1,
             'strategy_managers': 1,
-            'execution_managers': 0,  # Not implemented yet - see IMPLEMENTATION_GAP_REPORT.md
+            'execution_managers': 1,  # Now implemented
             'data_providers': 7,  # One per strategy mode
             'event_loggers': 1,
             'pnl_monitors': 1,
             'utility_managers': 1,
             'config_managers': 1,
             'health_monitors': 1,
-            'reconciliation_managers': 1
+            'reconciliation_managers': 0  # Reconciliation logic is in PositionUpdateHandler
         },
         'compliance_status': {},
         'overall_compliance': True

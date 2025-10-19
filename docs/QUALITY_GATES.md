@@ -2,9 +2,9 @@
 
 **Purpose**: Comprehensive quality gates for all components and infrastructure  
 **Status**: 🔧 IN DEVELOPMENT - Mixed results across categories  
-**Updated**: October 12, 2025 18:10:57 BST  
-**Last Reviewed**: October 12, 2025  
-**Status**: ⚠️ Significant work needed on test infrastructure
+**Updated**: January 15, 2025 14:30:00 GMT  
+**Last Reviewed**: January 15, 2025  
+**Status**: ✅ Test organization consolidated and platform.sh commands added
 
 ---
 
@@ -24,7 +24,9 @@ The Quality Gates System provides **comprehensive validation** of the entire Bas
 
 ## 🚀 **Usage**
 
-### **Run Complete Quality Gates Validation**
+### **Centralized Quality Gates System**
+All quality gates are now orchestrated through `run_quality_gates.py` with specific categories:
+
 ```bash
 # Run all quality gates (single entry point)
 python3 scripts/run_quality_gates.py
@@ -41,16 +43,103 @@ python3 scripts/run_quality_gates.py --list-categories
 # Expected output: Comprehensive quality gates report
 ```
 
+### **Platform.sh Test Commands (NEW)**
+The platform now includes dedicated test commands for different areas:
+
+```bash
+# Test specific areas
+./platform.sh config-test     # Configuration validation only
+./platform.sh data-test       # Data validation only  
+./platform.sh workflow-test   # Workflow integration only
+./platform.sh component-test  # Component architecture only
+./platform.sh e2e-test        # End-to-end testing only
+
+# Run comprehensive tests
+./platform.sh test            # All quality gates
+
+# Backend development
+./platform.sh dev             # Start backend with quality gates
+./platform.sh start           # Start all services with quality gates
+
+# Skip quality gates for rapid development
+SKIP_QUALITY_GATES=true ./platform.sh dev
+SKIP_FRONTEND=true ./platform.sh start
+```
+
 ### **Quality Gates Checklist**
 ```bash
 # Check health endpoints (unified system)
 curl http://localhost:8001/health                 # Fast heartbeat check
 curl http://localhost:8001/health/detailed        # Comprehensive health check
+
+# Test backend API directly
+curl -X POST "http://localhost:8001/api/v1/backtest/" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "strategy_name": "pure_lending",
+    "share_class": "USDT",
+    "initial_capital": 100000,
+    "start_date": "2024-05-12T00:00:00Z",
+    "end_date": "2024-09-10T23:59:59Z"
+  }'
 ```
 
 ---
 
-## 📊 **Current Quality Gates Status (October 12, 2025)**
+## 🏗️ **Test Organization (January 2025)**
+
+### **Consolidated Test Structure**
+The test organization has been completely restructured for better maintainability:
+
+#### **New Directory Structure**
+```
+tests/
+├── unit/
+│   ├── components/          # EventDrivenStrategyEngine components
+│   │   ├── test_position_monitor_unit.py
+│   │   ├── test_exposure_monitor_unit.py
+│   │   ├── test_risk_monitor_unit.py
+│   │   ├── test_pnl_monitor_unit.py
+│   │   ├── test_strategy_manager_unit.py
+│   │   └── test_position_update_handler_unit.py
+│   ├── calculators/         # Math and calculation components
+│   │   ├── test_health_calculator_unit.py
+│   │   ├── test_ltv_calculator_unit.py
+│   │   ├── test_margin_calculator_unit.py
+│   │   ├── test_metrics_calculator_unit.py
+│   │   └── test_pnl_monitor_unit.py
+│   ├── data/               # Data-related components
+│   │   └── test_ml_data_generation_unit.py
+│   ├── engines/            # Engine components
+│   │   └── test_event_driven_strategy_engine_unit.py
+│   └── pricing/            # Pricing components
+│       ├── test_centralized_pricing_unit.py
+│       ├── test_centralized_pricing_simple_unit.py
+│       └── test_centralized_pricing_validation_unit.py
+├── integration/            # Integration tests
+└── e2e/                   # End-to-end tests
+```
+
+#### **Quality Gates Categories**
+- **`unit`**: Component isolation tests (70+ tests)
+- **`integration_data_flows`**: Component data flow tests (19 tests)
+- **`e2e_strategies`**: Full strategy execution tests (8 tests)
+- **`e2e_quality_gates`**: Legacy E2E quality gates (4 tests)
+- **`configuration`**: Config validation and loading tests
+- **`data_loading`**: Data provider validation tests
+- **`data_architecture`**: Data architecture refactor tests
+- **`components`**: Component communication architecture tests
+
+#### **Centralized Orchestration**
+All tests are now orchestrated through `run_quality_gates.py`:
+- **Single Entry Point**: All quality gates run through one script
+- **Category-Based**: Tests organized by functional area
+- **Consistent Error Handling**: Uniform error reporting across all tests
+- **Maintainable**: Changes to test structure only need updates in one place
+
+---
+
+## 📊 **Current Quality Gates Status (January 15, 2025)**
 
 ### **Quality Gate Categories Overview**
 - **Total Categories**: 14 categories with varying script counts

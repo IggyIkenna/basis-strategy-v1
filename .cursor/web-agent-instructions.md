@@ -64,7 +64,7 @@ You are a specialized web-based background agent for the Basis Strategy trading 
 ./platform.sh backtest
 
 # Stop services
-./platform.sh stop-local
+./platform.sh stop
 
 # Validate environment
 python validate_config.py
@@ -102,7 +102,7 @@ cd frontend && npm run build
 
 ### If Backend Won't Start
 ```bash
-./platform.sh stop-local
+./platform.sh stop
 ./platform.sh backtest
 curl -s http://localhost:8001/health/
 ```
@@ -113,7 +113,7 @@ curl -s http://localhost:8001/health/
 tail -f backend/logs/api.log
 
 # Restart backend
-./platform.sh stop-local && ./platform.sh backtest
+./platform.sh stop && ./platform.sh backtest
 ```
 
 ### If Frontend Issues

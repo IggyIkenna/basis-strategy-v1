@@ -22,6 +22,7 @@ logger = structlog.get_logger()
 
 class DependencyError(Exception):
     """Raised when dependency injection fails."""
+
     pass
 
 
@@ -51,10 +52,7 @@ def get_backtest_service():
         return BacktestService()
 
     except (ImportError, TypeError) as e:
-        logger.error(
-            "BacktestService failed to initialize",
-            error=str(e)
-        )
+        logger.error("BacktestService failed to initialize", error=str(e))
         raise DependencyError(f"BacktestService initialization failed: {e}")
 
 
@@ -74,10 +72,7 @@ def get_live_trading_service():
         return LiveTradingService()
 
     except (ImportError, TypeError) as e:
-        logger.warning(
-            "LiveTradingService not yet implemented, returning stub",
-            error=str(e)
-        )
+        logger.warning("LiveTradingService not yet implemented, returning stub", error=str(e))
         # Return stub implementation until service is built
         return StubLiveTradingService()
 
@@ -85,12 +80,12 @@ def get_live_trading_service():
 def get_data_provider(mode: str = None, start_date: str = None, end_date: str = None):
     """
     Get data provider instance using factory pattern with on-demand data loading.
-    
+
     Args:
         mode: Strategy mode for data provider
         start_date: Start date for backtest (YYYY-MM-DD format)
         end_date: End date for backtest (YYYY-MM-DD format)
-        
+
     Returns:
         Appropriate data provider based on execution_mode and data_mode:
         - backtest + csv: HistoricalDataProvider (loads data on-demand)
@@ -99,20 +94,20 @@ def get_data_provider(mode: str = None, start_date: str = None, end_date: str = 
     """
     import os
     from ..infrastructure.config.config_manager import get_config_manager
-    
+
     try:
         cm = get_config_manager()
         data_dir = cm.get_data_directory()
-        execution_mode = os.getenv('BASIS_EXECUTION_MODE')
-        data_mode = os.getenv('BASIS_DATA_MODE')
-        
+        execution_mode = os.getenv("BASIS_EXECUTION_MODE")
+        data_mode = os.getenv("BASIS_DATA_MODE")
+
         if not execution_mode:
             raise ValueError("BASIS_EXECUTION_MODE environment variable must be set")
         if not data_mode:
             raise ValueError("BASIS_DATA_MODE environment variable must be set")
-        
+
         # Get appropriate config based on execution mode
-        if execution_mode == 'backtest':
+        if execution_mode == "backtest":
             # For backtest: use mode-specific config (includes data_requirements)
             if mode:
                 config = cm.get_complete_config(mode=mode)
@@ -120,7 +115,7 @@ def get_data_provider(mode: str = None, start_date: str = None, end_date: str = 
                 # Default to base config if no mode specified
                 config = cm.get_complete_config()
                 logger.warning("No mode specified for backtest mode, using base config")
-        elif execution_mode == 'live':
+        elif execution_mode == "live":
             # For live: use mode-specific config (includes data_requirements)
             if mode:
                 config = cm.get_complete_config(mode=mode)
@@ -130,7 +125,7 @@ def get_data_provider(mode: str = None, start_date: str = None, end_date: str = 
                 logger.warning("No mode specified for live mode, using base config")
         else:
             raise ValueError(f"Unknown execution_mode: {execution_mode}")
-        
+
         # Use factory to create appropriate provider
         provider = create_data_provider(
             data_dir=data_dir,
@@ -139,20 +134,20 @@ def get_data_provider(mode: str = None, start_date: str = None, end_date: str = 
             config=config,
             mode=mode,
             backtest_start_date=start_date,
-            backtest_end_date=end_date
+            backtest_end_date=end_date,
         )
-        
+
         # For backtest mode, load data on-demand
-        if execution_mode == 'backtest' and data_mode == 'csv' and mode and start_date and end_date:
+        if execution_mode == "backtest" and data_mode == "csv" and mode and start_date and end_date:
             provider.load_data_for_backtest(mode, start_date, end_date)
-        
+
         return provider
 
     except Exception as e:
         logger.error("DataProvider failed, using stub", error=str(e))
-        return StubDataProvider(data_dir=cm.get_data_directory() if 'cm' in locals() else './data', mode=mode or "stub")
-
-
+        return StubDataProvider(
+            data_dir=cm.get_data_directory() if "cm" in locals() else "./data", mode=mode or "stub"
+        )
 
 
 # Filesystem-only mode: disable external result store and return None.
@@ -181,11 +176,11 @@ def get_health_checker():
             try:
                 # Get database client
                 from ..infrastructure.persistence.database import get_database_client
+
                 database = await get_database_client()
                 logger.info("Database client injected into HealthChecker")
             except Exception as e:
-                logger.warning(
-                    f"Database client unavailable for health checks: {e}")
+                logger.warning(f"Database client unavailable for health checks: {e}")
 
             # Redis removed - using direct method calls for component communication
 
@@ -194,21 +189,19 @@ def get_health_checker():
                 data_provider = get_data_provider()
                 logger.info("Data provider injected into HealthChecker")
             except Exception as e:
-                logger.warning(
-                    f"Data provider unavailable for health checks: {e}")
+                logger.warning(f"Data provider unavailable for health checks: {e}")
 
             return database, cache, data_provider
 
         # For now, create with None dependencies and log that async injection is needed
         # This will be properly handled in the async dependency injection
         logger.info(
-            "HealthChecker created - async dependency injection will be handled per request")
+            "HealthChecker created - async dependency injection will be handled per request"
+        )
         return HealthChecker()
 
     except (ImportError, TypeError) as e:
-        logger.warning(
-            "HealthChecker not available, returning stub",
-            error=str(e))
+        logger.warning("HealthChecker not available, returning stub", error=str(e))
         return StubHealthChecker()
 
 
@@ -227,9 +220,11 @@ async def get_unified_health_manager():
         try:
             # Only inject database when explicitly configured for database storage
             import os
-            storage_type = os.getenv('BASIS_STORAGE_TYPE', 'filesystem')
-            if storage_type == 'database':
+
+            storage_type = os.getenv("BASIS_STORAGE_TYPE", "filesystem")
+            if storage_type == "database":
                 from ..infrastructure.persistence.database import get_database_client
+
                 database = await get_database_client()
                 logger.info("Database client injected into UnifiedHealthManager")
             else:
@@ -249,6 +244,7 @@ async def get_unified_health_manager():
         try:
             # Inject live trading service if available
             from ..core.services.live_service import live_trading_service
+
             live_trading_service = live_trading_service
             logger.info("Live trading service injected into UnifiedHealthManager")
         except Exception as e:
@@ -259,22 +255,18 @@ async def get_unified_health_manager():
             database=database,
             cache=cache,
             data_provider=data_provider,
-            live_trading_service=live_trading_service
+            live_trading_service=live_trading_service,
         )
 
         return unified_health_manager
 
     except (ImportError, TypeError) as e:
-        logger.warning(
-            "UnifiedHealthManager not available, returning stub",
-            error=str(e))
+        logger.warning("UnifiedHealthManager not available, returning stub", error=str(e))
         return StubUnifiedHealthManager()
 
 
 # Strategy registry removed - using config-driven approach in
 # routes/strategies.py
-
-
 
 
 class StubDataProvider:
@@ -292,25 +284,21 @@ class StubDataProvider:
     async def get_price(self, token: str, timestamp=None):
         """Get mock price for token."""
         prices = {
-            'ETH': 3300.0,
-            'USDT': 1.0,
-            'stETH': 3290.0,
-            'wstETH': 3850.0,
-            'eETH': 3295.0,
-            'weETH': 3540.0
+            "ETH": 3300.0,
+            "USDT": 1.0,
+            "stETH": 3290.0,
+            "wstETH": 3850.0,
+            "eETH": 3295.0,
+            "weETH": 3540.0,
         }
         return prices.get(token.upper(), 1.0)
 
-    async def get_lending_rate(
-            self,
-            token: str,
-            timestamp=None,
-            rate_type: str = 'supply'):
+    async def get_lending_rate(self, token: str, timestamp=None, rate_type: str = "supply"):
         """Get mock lending rate."""
-        if rate_type == 'supply':
-            rates = {'USDT': 0.0502}
+        if rate_type == "supply":
+            rates = {"USDT": 0.0502}
         else:  # borrow
-            rates = {'USDT': 0.0699, 'ETH': 0.0273}
+            rates = {"USDT": 0.0699, "ETH": 0.0273}
         return rates.get(token.upper(), 0.05)
 
     async def get_staking_yield(self, timestamp=None):
@@ -330,16 +318,15 @@ class StubMetricsCalculator:
             return {"sharpe_ratio": 0.0, "total_return": 0.0}
 
         # Simple metrics calculation
-        initial_value = portfolio_history[0].get('total_value', 100000)
-        final_value = portfolio_history[-1].get('total_value', 100000)
-        total_return = (final_value - initial_value) / \
-            initial_value if initial_value > 0 else 0.0
+        initial_value = portfolio_history[0].get("total_value", 100000)
+        final_value = portfolio_history[-1].get("total_value", 100000)
+        total_return = (final_value - initial_value) / initial_value if initial_value > 0 else 0.0
 
         return {
             "sharpe_ratio": max(0.0, total_return * 2),  # Simple approximation
             "total_return": total_return,
             "final_value": final_value,
-            "max_drawdown": 0.02  # Conservative estimate
+            "max_drawdown": 0.02,  # Conservative estimate
         }
 
 
@@ -353,14 +340,14 @@ class StubResultStore:
 
     async def save_result(self, result):
         """Save result to in-memory store."""
-        request_id = result.get('request_id', 'unknown')
+        request_id = result.get("request_id", "unknown")
         self.results[request_id] = result
         logger.info(f"Saved result to stub store: {request_id}")
         return True
 
     async def save(self, request_id: str, result):
         """Alternative save method signature."""
-        result['request_id'] = request_id
+        result["request_id"] = request_id
         return await self.save_result(result)
 
     async def get_result(self, result_id):
@@ -395,14 +382,14 @@ class StubLiveTradingService:
             "share_class": kwargs.get("share_class", "USDT"),
             "config_overrides": kwargs.get("config_overrides", {}),
             "risk_limits": kwargs.get("risk_limits", {}),
-            "request_id": f"stub-live-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+            "request_id": f"stub-live-{datetime.now().strftime('%Y%m%d%H%M%S')}",
         }
 
     async def start_live_trading(self, request):
         """Start stub live trading."""
         request_id = request.get(
-            "request_id",
-            f"stub-live-{datetime.now().strftime('%Y%m%d%H%M%S')}")
+            "request_id", f"stub-live-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+        )
         self.running_strategies[request_id] = {
             "request": request,
             "status": "running",
@@ -411,7 +398,7 @@ class StubLiveTradingService:
             "total_trades": 0,
             "total_pnl": 0.0,
             "current_drawdown": 0.0,
-            "risk_breaches": []
+            "risk_breaches": [],
         }
         return request_id
 
@@ -447,7 +434,7 @@ class StubLiveTradingService:
                 "current_drawdown": -0.02,
                 "uptime_hours": 1.0,
                 "engine_status": {"mode": "stub"},
-                "last_heartbeat": datetime.now()
+                "last_heartbeat": datetime.now(),
             }
         return None
 
@@ -467,10 +454,10 @@ class StubLiveTradingService:
                     "strategy_name": info["request"]["strategy_name"],
                     "is_healthy": True,
                     "last_heartbeat": info["last_heartbeat"],
-                    "time_since_heartbeat_seconds": 0
+                    "time_since_heartbeat_seconds": 0,
                 }
                 for req_id, info in self.running_strategies.items()
-            ]
+            ],
         }
 
     async def get_all_running_strategies(self):
@@ -482,7 +469,7 @@ class StubLiveTradingService:
                 "share_class": info["request"]["share_class"],
                 "status": info["status"],
                 "started_at": info["started_at"],
-                "last_heartbeat": info["last_heartbeat"]
+                "last_heartbeat": info["last_heartbeat"],
             }
             for req_id, info in self.running_strategies.items()
         ]
@@ -496,7 +483,9 @@ class StubUnifiedHealthManager:
         self.execution_mode = "backtest"
         logger.info("StubUnifiedHealthManager initialized")
 
-    def set_infrastructure_dependencies(self, database=None, cache=None, data_provider=None, live_trading_service=None):
+    def set_infrastructure_dependencies(
+        self, database=None, cache=None, data_provider=None, live_trading_service=None
+    ):
         """Set infrastructure dependencies (stub implementation)."""
         pass
 
@@ -508,11 +497,7 @@ class StubUnifiedHealthManager:
             "service": "basis-strategy-v1",
             "execution_mode": self.execution_mode,
             "uptime_seconds": (datetime.utcnow() - self.start_time).total_seconds(),
-            "system": {
-                "cpu_percent": 10.0,
-                "memory_percent": 50.0,
-                "memory_available_gb": 4.0
-            }
+            "system": {"cpu_percent": 10.0, "memory_percent": 50.0, "memory_available_gb": 4.0},
         }
 
     async def check_detailed_health(self):
@@ -529,7 +514,7 @@ class StubUnifiedHealthManager:
                     "error_message": None,
                     "readiness_checks": {"initialized": True},
                     "metrics": {},
-                    "dependencies": []
+                    "dependencies": [],
                 }
             },
             "system": {
@@ -537,13 +522,13 @@ class StubUnifiedHealthManager:
                 "memory_percent": 50.0,
                 "memory_available_gb": 4.0,
                 "disk_percent": 25.0,
-                "uptime_seconds": (datetime.utcnow() - self.start_time).total_seconds()
+                "uptime_seconds": (datetime.utcnow() - self.start_time).total_seconds(),
             },
             "summary": {
                 "total_components": 1,
                 "healthy_components": 1,
                 "unhealthy_components": 0,
                 "not_ready_components": 0,
-                "unknown_components": 0
-            }
+                "unknown_components": 0,
+            },
         }

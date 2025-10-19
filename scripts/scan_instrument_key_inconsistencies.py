@@ -274,7 +274,7 @@ def main():
     report = generate_report(flat_results)
     
     # Write to file
-    output_file = repo_root / 'INSTRUMENT_KEY_INCONSISTENCIES_REPORT.md'
+    output_file = repo_root / 'instrument_key_INCONSISTENCIES_REPORT.md'
     with open(output_file, 'w') as f:
         f.write(report)
     

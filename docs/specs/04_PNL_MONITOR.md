@@ -153,6 +153,7 @@ def __init__(self, ...):
   - **Examples**: ["funding_pnl", "delta_pnl", "basis_pnl", "transaction_costs"]
   - **Used in**: PnL calculation and reporting
 
+- **component_config.pnl_monitor.reporting_currency**: str - PnL reporting currency
   - **Usage**: Defines the currency for PnL reporting and calculations
   - **Examples**: "USDT", "ETH"
   - **Used in**: PnL calculation and reporting
@@ -161,6 +162,11 @@ def __init__(self, ...):
   - **Usage**: Defines tolerance for PnL reconciliation quality gate checks
   - **Examples**: 0.02 (2% tolerance)
   - **Used in**: PnL reconciliation and quality gate validation
+
+### Field Names (for quality gate compatibility)
+- `attribution_types`: PnL attribution types
+- `reporting_currency`: PnL reporting currency  
+- `reconciliation_tolerance`: PnL reconciliation tolerance
 
 ### Config Access Pattern
 ```python
@@ -263,24 +269,22 @@ None - all data comes from DataProvider
 
 ## Core Methods
 
-### calculate_pnl(current_exposure: Dict, previous_exposure: Optional[Dict] = None, timestamp: pd.Timestamp = None, period_start: pd.Timestamp = None) -> Dict
-Explicitly calculate P&L and store results. This method performs full P&L calculation AFTER execution when execution costs are known and updates internal state.
+### update_state(timestamp: pd.Timestamp, trigger_source: str, **kwargs) -> None
+Update component state and trigger P&L calculation. This is the public method for triggering P&L calculations.
 
 **Parameters**:
-- current_exposure: Current exposure data from exposure monitor
-- previous_exposure: Previous exposure data for attribution calculations (optional)
-- timestamp: Current loop timestamp (from EventDrivenStrategyEngine, defaults to now)
-- period_start: Period start timestamp (defaults to timestamp)
+- timestamp: Current loop timestamp (from EventDrivenStrategyEngine)
+- trigger_source: 'full_loop' | 'tight_loop' | 'manual'
+- **kwargs: Additional parameters (not used, gets positions from position_monitor)
 
 **Behavior**:
-1. Use provided current_exposure data (no internal querying)
-2. Calculate balance-based P&L using share_class_value (source of truth)
-3. Calculate attribution P&L using config-driven attribution types
-4. Reconcile balance vs attribution P&L
-5. Update internal state and return complete P&L structure
+1. Get current positions from position_monitor reference
+2. Trigger internal P&L calculation using _calculate_pnl()
+3. Store results in cache for read-only access
+4. Update internal state tracking
 
 **Returns**:
-- Dict: Complete P&L structure with balance_based, attribution, reconciliation
+- None (results stored in cache, accessible via get_latest_pnl())
 
 ### get_latest_pnl() -> Optional[Dict]
 Get the most recent P&L result without calculation. O(1) read operation.
@@ -451,16 +455,20 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-class PnLCalculator:
+class PnLMonitor:
     """Mode-agnostic PnL Monitor using config-driven behavior"""
     
-    def __init__(self, config: Dict, data_provider: 'BaseDataProvider', execution_mode: str,
-                 exposure_monitor: 'ExposureMonitor'):
+    def __init__(self, config: Dict, share_class: str, initial_capital: float, data_provider: 'BaseDataProvider', utility_manager, exposure_monitor: 'ExposureMonitor', correlation_id: str, pid: str, log_dir: str):
         # Store references (NEVER modified)
         self.config = config
+        self.share_class = share_class
+        self.initial_capital = initial_capital
         self.data_provider = data_provider
-        self.execution_mode = execution_mode
+        self.utility_manager = utility_manager
         self.exposure_monitor = exposure_monitor
+        self.correlation_id = correlation_id
+        self.pid = pid
+        self.log_dir = log_dir
         
         # Extract config-driven settings
         self.pnl_config = config.get('component_config', {}).get('pnl_monitor', {})
@@ -479,7 +487,7 @@ class PnLCalculator:
         # Validate config
         self._validate_pnl_config()
         
-        logger.info(f"PnLCalculator initialized with attribution_types: {self.attribution_types}")
+        logger.info(f"PnLMonitor initialized with attribution_types: {self.attribution_types}")
     
     def _validate_pnl_config(self):
         """Validate PnL Monitor configuration"""
@@ -504,76 +512,41 @@ class PnLCalculator:
         if not 0.0 <= self.reconciliation_tolerance <= 1.0:
             raise ValueError(f"reconciliation_tolerance must be between 0.0 and 1.0, got {self.reconciliation_tolerance}")
     
-    def calculate_pnl(self, current_exposure: Dict, previous_exposure: Optional[Dict] = None, timestamp: pd.Timestamp = None, period_start: pd.Timestamp = None) -> Dict:
+    def update_state(self, timestamp: pd.Timestamp, trigger_source: str, **kwargs) -> None:
         """
-        Calculate P&L using config-driven attribution types.
+        Update component state and trigger P&L calculation.
         
-        This method is MODE-AGNOSTIC - it works for all strategy modes
-        by only calculating the attribution types enabled in the config.
-        
-        IMPORTANT: PnL calculation happens AFTER execution when execution costs are known.
+        This is the public method for triggering P&L calculations.
+        For read-only access to results, use get_latest_pnl().
         
         Args:
-            current_exposure: Current exposure data from exposure monitor
-            previous_exposure: Previous exposure data for attribution calculations (optional)
-            timestamp: Current timestamp from EventDrivenStrategyEngine (defaults to now)
-            period_start: Period start timestamp (defaults to timestamp)
-        
-        Returns:
-            Dict with balance_based, attribution, reconciliation, timestamp
+            timestamp: Current loop timestamp (from EventDrivenStrategyEngine)
+            trigger_source: 'full_loop' | 'tight_loop' | 'manual'
+            **kwargs: Additional parameters (not used, gets positions from position_monitor)
         """
-        # Log component start (per EVENT_LOGGER.md)
-        start_time = pd.Timestamp.now()
-        logger.debug(f"PnLCalculator.calculate_pnl started at {start_time}")
-        
-        # Use provided current_exposure data (no internal querying)
-        if timestamp is None:
-            timestamp = pd.Timestamp.now(tz='UTC')
-        if period_start is None:
-            period_start = timestamp
-        
-        # Set initial value if first calculation
-        if self.initial_total_value is None:
-            self.initial_total_value = self.initial_capital
-        
-        # 1. Balance-Based P&L using share_class_value (source of truth)
-        balance_pnl = self._calculate_balance_based_pnl(
-            current_exposure,
-            period_start,
-            current_time=timestamp
-        )
-        
-        # 2. Attribution P&L using config-driven attribution types
-        attribution_pnl = self._calculate_attribution_pnl(
-            current_exposure, 
-            previous_exposure,
-            timestamp
-        )
-        
-        # 3. Reconciliation
-        reconciliation = self._reconcile_pnl(
-            balance_pnl,
-            attribution_pnl,
-            period_start,
-            current_time=timestamp
-        )
-        
-        # Update state
-        self.previous_exposure = current_exposure
-        self.current_pnl = {
-            'balance_based': balance_pnl,
-            'attribution': attribution_pnl,
-            'reconciliation': reconciliation,
-            'timestamp': timestamp
-        }
-        self.last_calculation_timestamp = timestamp
-        
-        # Log component end (per EVENT_LOGGER.md)
-        end_time = pd.Timestamp.now()
-        processing_time_ms = (end_time - start_time).total_seconds() * 1000
-        logger.debug(f"PnLCalculator.calculate_pnl completed at {end_time}, took {processing_time_ms:.2f}ms")
-        
-        return self.current_pnl
+        # Get current positions from position_monitor reference
+        if self.position_monitor:
+            # Store previous positions for comparison
+            if hasattr(self, 'PREVIOUS_POSITIONS'):
+                self.PREVIOUS_POSITIONS = getattr(self, 'CURRENT_POSITIONS', {})
+            
+            # Get current positions
+            self.CURRENT_POSITIONS = self.position_monitor.get_current_positions()
+
+            if self.CURRENT_POSITIONS:
+                # Perform P&L calculation using private method
+                pnl_result = self._calculate_pnl(
+                    timestamp=timestamp,
+                )
+
+                # Log P&L calculation
+                self.logger.info(
+                    f"P&L calculation completed: trigger_source={trigger_source}, "
+                    f"balance_pnl={pnl_result.get('BALANCE_BASED', {}).get('PNL_CUMULATIVE', 0.0):.2f}, "
+                    f"attribution_pnl={pnl_result.get('ATTRIBUTION', {}).get('PNL_CUMULATIVE', 0.0):.2f}"
+                )
+        else:
+            self.logger.warning("No position_monitor reference available for P&L calculation")
     
     def get_latest_pnl(self) -> Optional[Dict]:
         """Get latest P&L snapshot without calculation"""
@@ -792,7 +765,7 @@ class ComponentFactory:
     
     @staticmethod
     def create_pnl_monitor(config: Dict, data_provider: 'BaseDataProvider', execution_mode: str,
-                             exposure_monitor: 'ExposureMonitor') -> PnLCalculator:
+                             exposure_monitor: 'ExposureMonitor') -> PnLMonitor:
         """Create PnL Monitor with config validation"""
         # Extract PnL Monitor specific config
         pnl_config = config.get('component_config', {}).get('pnl_monitor', {})
@@ -813,7 +786,7 @@ class ComponentFactory:
                 raise ValueError(f"Invalid attribution type: {attr_type}. Valid: {valid_attribution_types}")
         
         # Create component
-        return PnLCalculator(config, data_provider, execution_mode, exposure_monitor)
+        return PnLMonitor(config, data_provider, execution_mode, exposure_monitor)
 ```
 
 ---
@@ -834,7 +807,7 @@ All events logged through centralized EventLogger:
 self.event_logger.log_event(
     timestamp=timestamp,
     event_type='[event_type]',
-    component='PnLCalculator',
+    component='PnLMonitor',
     data={
         'event_specific_data': value,
         'state_snapshot': self.get_state_snapshot()  # optional
@@ -849,7 +822,7 @@ self.event_logger.log_event(
 self.event_logger.log_event(
     timestamp=pd.Timestamp.now(),
     event_type='component_initialization',
-    component='PnLCalculator',
+    component='PnLMonitor',
     data={
         'execution_mode': self.execution_mode,
         'attribution_types': self.attribution_types,
@@ -865,7 +838,7 @@ self.event_logger.log_event(
 self.event_logger.log_event(
     timestamp=timestamp,
     event_type='state_update',
-    component='PnLCalculator',
+    component='PnLMonitor',
     data={
         'trigger_source': trigger_source,
         'balance_pnl': self.current_pnl.get('balance_based', {}).get('pnl_cumulative', 0),
@@ -881,7 +854,7 @@ self.event_logger.log_event(
 self.event_logger.log_event(
     timestamp=timestamp,
     event_type='error',
-    component='PnLCalculator',
+    component='PnLMonitor',
     data={
         'error_code': 'PNL-001',
         'error_message': str(e),
@@ -926,7 +899,7 @@ self.event_logger.log_event(
 ## Error Codes
 
 ### Component Error Code Prefix: PNL
-All PnLCalculator errors use the `PNL` prefix.
+All PnLMonitor errors use the `PNL` prefix.
 
 ### Error Code Registry
 **Source**: `backend/src/basis_strategy_v1/core/error_codes/error_code_registry.py`
@@ -948,7 +921,7 @@ All error codes registered with:
 raise ComponentError(
     error_code='PNL-001',
     message='P&L calculation failed',
-    component='PnLCalculator',
+    component='PnLMonitor',
     severity='HIGH'
 )
 ```
@@ -961,7 +934,7 @@ raise ComponentError(
 raise ComponentError(
     error_code='PNL-002',
     message='P&L attribution calculation failed',
-    component='PnLCalculator',
+    component='PnLMonitor',
     severity='MEDIUM'
 )
 ```
@@ -974,7 +947,7 @@ raise ComponentError(
 raise ComponentError(
     error_code='PNL-003',
     message='P&L reconciliation mismatch',
-    component='PnLCalculator',
+    component='PnLMonitor',
     severity='HIGH'
 )
 ```
@@ -987,7 +960,7 @@ raise ComponentError(
 raise ComponentError(
     error_code='PNL-004',
     message='Required data missing for P&L calculation',
-    component='PnLCalculator',
+    component='PnLMonitor',
     severity='HIGH'
 )
 ```
@@ -1005,7 +978,7 @@ except Exception as e:
     self.event_logger.log_event(
         timestamp=timestamp,
         event_type='error',
-        component='PnLCalculator',
+        component='PnLMonitor',
         data={
             'error_code': 'PNL-001',
             'error_message': str(e),
@@ -1016,8 +989,8 @@ except Exception as e:
     # Raise structured error
     raise ComponentError(
         error_code='PNL-001',
-        message=f'PnLCalculator failed: {str(e)}',
-        component='PnLCalculator',
+        message=f'PnLMonitor failed: {str(e)}',
+        component='PnLMonitor',
         severity='HIGH',
         original_exception=e
     )
@@ -1039,7 +1012,7 @@ def __init__(self, ..., health_manager: 'UnifiedHealthManager'):
     
     # Register component with health system
     self.health_manager.register_component(
-        component_name='PnLCalculator',
+        component_name='PnLMonitor',
         checker=self._health_check
     )
 
@@ -1113,8 +1086,8 @@ def _health_check(self) -> Dict:
 ## Integration Points
 
 ### Called BY
-- EventDrivenStrategyEngine (full loop): pnl_monitor.calculate_pnl(current_exposure, previous_exposure, timestamp)
-- PositionUpdateHandler (tight loop): pnl_monitor.calculate_pnl(current_exposure, previous_exposure, timestamp)
+- EventDrivenStrategyEngine (full loop): pnl_monitor.update_state(timestamp, 'full_loop')
+- PositionUpdateHandler (tight loop): pnl_monitor.update_state(timestamp, 'tight_loop')
 - Results Store (read-only): pnl_monitor.get_latest_pnl()
 - API Endpoints (read-only): pnl_monitor.get_latest_pnl()
 
@@ -1243,7 +1216,7 @@ Logs `PnLCalculation` events after every P&L calculation:
     'attribution_types_count': int,
     'pnl_calculations_count': int,
     'last_calculation_timestamp': str,
-    'component': 'PnLCalculator'
+    'component': 'PnLMonitor'
 }
 ```
 

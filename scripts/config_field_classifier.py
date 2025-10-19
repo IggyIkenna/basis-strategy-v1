@@ -132,7 +132,19 @@ class ConfigFieldClassifier:
                     'component_config.results_store.delta_tracking_assets', 'component_config.results_store.funding_tracking_venues',
                     'component_config.results_store.dust_tracking_tokens',
                     # Strategy factory fields
-                    'component_config.strategy_factory.timeout', 'component_config.strategy_factory.max_retries', 'component_config.strategy_factory.validation_strict'
+                    'component_config.strategy_factory.timeout', 'component_config.strategy_factory.max_retries', 'component_config.strategy_factory.validation_strict',
+                    # Settlement fields
+                    'component_config.settlement', 'component_config.settlement.funding_enabled', 'component_config.settlement.seasonal_rewards_enabled',
+                    'component_config.settlement.margin_pnl_enabled', 'component_config.settlement.seasonal_rewards_frequency',
+                    # Live trading service fields
+                    'component_config.live_trading_service', 'component_config.live_trading_service.execution_timeout', 'component_config.live_trading_service.timeout',
+                    # Position update handler fields
+                    'component_config.position_update_handler', 'component_config.position_update_handler.reconciliation_tolerance',
+                    # ML config fields
+                    'ml_config.signal_granularity', 'ml_config.sd_cap_bps', 'ml_config.take_profit_sd', 'ml_config.sd_floor_bps', 'ml_config.stop_loss_sd',
+                    # Strategy config fields (legacy)
+                    'strategy_config', 'strategy_config.signal_threshold', 'strategy_config.max_position_size', 'strategy_config.stop_loss_pct',
+                    'strategy_config.delta_tracking_asset', 'strategy_config.target_ltv', 'strategy_config.position_deviation_threshold'
                 ]
             },
             'trading_fees': {

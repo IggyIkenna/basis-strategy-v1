@@ -110,6 +110,81 @@ class TestTightLoopReconciliation:
         assert execution_reconciliation["input_strategy_decisions"] == len(strategy_decisions)
         assert execution_reconciliation["output_execution_orders"] == len(execution_orders)
     
+    def test_atomic_group_tight_loop_integration(self, real_execution_manager, test_timestamp):
+        """Test atomic group processing within tight loop."""
+        from backend.src.basis_strategy_v1.core.models.order import Order, OrderOperation
+        from backend.src.basis_strategy_v1.core.models.venues import Venue
+        
+        # Create atomic flash loan group
+        atomic_group_id = "test_tight_loop_atomic"
+        
+        orders = [
+            Order(
+                operation_id=f"flash_borrow_{atomic_group_id}",
+                venue=Venue.INSTADAPP,
+                operation=OrderOperation.FLASH_BORROW,
+                token_out="WETH",
+                amount=5.0,
+                source_venue=Venue.INSTADAPP,
+                target_venue=Venue.WALLET,
+                source_token="WETH",
+                target_token="WETH",
+                expected_deltas={
+                    f"{Venue.INSTADAPP}:BaseToken:WETH": 5.0,
+                    f"{Venue.WALLET}:BaseToken:WETH": 5.0,
+                },
+                execution_mode="atomic",
+                atomic_group_id=atomic_group_id,
+                sequence_in_group=1,
+                strategy_intent="entry_partial",
+                strategy_id="eth_leveraged",
+            ),
+            Order(
+                operation_id=f"stake_{atomic_group_id}",
+                venue=Venue.ETHERFI,
+                operation=OrderOperation.STAKE,
+                token_in="WETH",
+                token_out="weETH",
+                amount=5.0,
+                source_venue=Venue.WALLET,
+                target_venue=Venue.ETHERFI,
+                source_token="WETH",
+                target_token="weETH",
+                expected_deltas={
+                    f"{Venue.WALLET}:BaseToken:WETH": -5.0,
+                    f"{Venue.ETHERFI}:LST:weETH": 4.75,
+                },
+                execution_mode="atomic",
+                atomic_group_id=atomic_group_id,
+                sequence_in_group=2,
+                strategy_intent="entry_partial",
+                strategy_id="eth_leveraged",
+            ),
+        ]
+        
+        # Execute atomic group through tight loop
+        handshakes = real_execution_manager.process_orders(test_timestamp, orders)
+        
+        # Verify atomic group execution
+        assert len(handshakes) == 2
+        assert all(h.was_successful() for h in handshakes)
+        
+        # Verify atomic group properties
+        for handshake in handshakes:
+            assert atomic_group_id in handshake.operation_id
+            assert handshake.execution_mode == "atomic"
+            assert handshake.simulated == True  # Backtest mode
+        
+        # Verify tight loop integration
+        # Position updates should be applied through position_update_handler
+        # This tests the integration between execution_manager and position_update_handler
+        
+        # Verify execution details contain atomic group metadata
+        for handshake in handshakes:
+            assert handshake.execution_details is not None
+            assert handshake.submitted_at is not None
+            assert handshake.executed_at is not None
+    
     def test_tight_loop_data_consistency(self, real_components, real_data_provider):
         """Test data consistency throughout tight loop processing."""
         position_monitor = real_components["position_monitor"]

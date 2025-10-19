@@ -48,10 +48,10 @@ def analyze_pnl_monitor_separation() -> Dict[str, any]:
     violations = []
     recommendations = []
     
-    # Find the PnLCalculator class
+    # Find the PnLMonitor class
     pnl_monitor_class = None
     for node in ast.walk(tree):
-        if isinstance(node, ast.ClassDef) and node.name == 'PnLCalculator':
+        if isinstance(node, ast.ClassDef) and node.name == 'PnLMonitor':
             pnl_monitor_class = node
             break
     
@@ -59,7 +59,7 @@ def analyze_pnl_monitor_separation() -> Dict[str, any]:
         violations.append({
             'type': 'MISSING_CLASS',
             'severity': 'HIGH',
-            'message': 'PnLCalculator class not found',
+            'message': 'PnLMonitor class not found',
             'line': 0
         })
         return {
@@ -68,7 +68,7 @@ def analyze_pnl_monitor_separation() -> Dict[str, any]:
             'recommendations': recommendations
         }
     
-    # Analyze methods in PnLCalculator class
+    # Analyze methods in PnLMonitor class
     methods = []
     for node in pnl_monitor_class.body:
         if isinstance(node, ast.FunctionDef):

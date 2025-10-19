@@ -48,11 +48,12 @@ class DataProviderCanonicalAccessQualityGates:
         
         # Canonical patterns to validate
         self.canonical_patterns = {
-            'get_data_call': r'data_provider\.get_data\(|self\.data_provider\.get_data\(',
-            'standardized_structure': r"data\['market_data'\]|data\['protocol_data'\]|data\['execution_data'\]|data\['staking_data'\]",
-            'market_data_access': r"data\['market_data'\]\['prices'\]|data\['market_data'\]\['rates'\]",
-            'protocol_data_access': r"data\['protocol_data'\]\['aave_indexes'\]|data\['protocol_data'\]\['oracle_prices'\]",
-            'execution_data_access': r"data\['execution_data'\]\['wallet_balances'\]|data\['execution_data'\]\['gas_costs'\]"
+            'get_data_call': r'data_provider\.get_data\(|self\.data_provider\.get_data\(|\.data_provider\.get_data\(',
+            'standardized_structure': r"data\['market_data'\]|data\['protocol_data'\]|data\['execution_data'\]|data\['staking_data'\]|data\['ml_data'\]|data\[\"market_data\"\]|data\[\"protocol_data\"\]|data\[\"execution_data\"\]|data\[\"staking_data\"\]|data\[\"ml_data\"\]",
+            'market_data_access': r"data\['market_data'\]\['prices'\]|data\['market_data'\]\['rates'\]|data\[\"market_data\"\]\[\"prices\"\]|data\[\"market_data\"\]\[\"rates\"\]",
+            'protocol_data_access': r"data\['protocol_data'\]\['aave_indexes'\]|data\['protocol_data'\]\['oracle_prices'\]|data\[\"protocol_data\"\]\[\"aave_indexes\"\]|data\[\"protocol_data\"\]\[\"oracle_prices\"\]",
+            'execution_data_access': r"data\['execution_data'\]\['wallet_balances'\]|data\['execution_data'\]\['gas_costs'\]|data\[\"execution_data\"\]\[\"wallet_balances\"\]|data\[\"execution_data\"\]\[\"gas_costs\"\]",
+            'ml_data_access': r"data\['ml_data'\]\['predictions'\]|data\[\"ml_data\"\]\[\"predictions\"\]"
         }
     
     def run_all_tests(self) -> Dict[str, Any]:

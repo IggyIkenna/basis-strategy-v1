@@ -103,11 +103,11 @@
 
 ### Rename and Refactor VenueManager
 
-**File**: `backend/src/basis_strategy_v1/core/execution/venue_manager.py` → `execution_manager.py`
+**File**: `backend/src/basis_strategy_v1/core/execution/execution_manager.py` → `execution_manager.py`
 
 **Changes**:
 
-- **RENAME** file: `venue_manager.py` → `execution_manager.py`
+- **RENAME** file: `execution_manager.py` → `execution_manager.py`
 - **RENAME** class: `VenueManager` → `ExecutionManager`
 - **REMOVE** all Trade imports (line 19: `from ...core.models.trade import Trade`)
 - Update `__init__` to accept `correlation_id`, `pid`, `log_dir`
@@ -143,7 +143,7 @@
 
 **Changes**:
 
-- Remove `from .venue_manager import VenueManager`
+- Remove `from .execution_manager import VenueManager`
 - Add `from .execution_manager import ExecutionManager`
 - Update `__all__` export list
 
@@ -297,7 +297,7 @@ self.log_dir = LogDirectoryManager.create_run_logs(
 ```
 
 - Pass `correlation_id`, `pid`, `log_dir` to ALL component initializations
-- **RENAME** attribute: `self.venue_manager` → `self.execution_manager`
+- **RENAME** attribute: `self.execution_manager` → `self.execution_manager`
 - **UPDATE** import: `from ..execution.execution_manager import ExecutionManager`
 - Remove Trade imports
 - Update `_process_strategy_decision()` to handle `List[ExecutionHandshake]`
@@ -354,14 +354,14 @@ self.log_dir = LogDirectoryManager.create_run_logs(
 
 **Changes** (all files):
 
-- Rename `venue_manager:` → `execution_manager:` in component_config
+- Rename `execution_manager:` → `execution_manager:` in component_config
 - Keep all timeout/retry parameters unchanged
 
 **Example**:
 
 ```yaml
 component_config:
-  execution_manager:  # RENAMED FROM venue_manager
+  execution_manager:  # RENAMED FROM execution_manager
     execution_timeout: 30
     max_retries: 3
 ```
@@ -525,7 +525,7 @@ component_config:
 
 ### Pure Lending USDT End-to-End Test
 
-1. Stop any running servers: `./platform.sh stop-local`
+1. Stop any running servers: `./platform.sh stop`
 2. Start backend: `./platform.sh backtest`
 3. Run backtest via curl (from test_initial_capital_logging.sh)
 4. Verify log structure exists: `logs/{correlation_id}/{pid}/`
@@ -569,11 +569,11 @@ python tests/quality_gates/run_quality_gates.py --all
 
 - [ ] Update StrategyManager with correlation_id/pid/log_dir, add all _calculate_*_deltas methods, integrate DomainEventLogger
 - [ ] Update all 10 strategy implementations to calculate expected_deltas and populate new Order fields
-- [ ] Rename venue_manager.py to execution_manager.py, remove Trade imports, update to ExecutionHandshake, add domain event logging
+- [ ] Rename execution_manager.py to execution_manager.py, remove Trade imports, update to ExecutionHandshake, add domain event logging
 - [ ] Update all 6 venue interface files to remove Trade and return ExecutionHandshake
 - [ ] Update all 6 core components with correlation_id/pid/log_dir, integrate DomainEventLogger, add error codes
 - [ ] Update EventDrivenStrategyEngine with correlation_id generation and log directory creation, update services and API
-- [ ] Update all 10 mode YAML configs to rename venue_manager to execution_manager, update .gitignore
+- [ ] Update all 10 mode YAML configs to rename execution_manager to execution_manager, update .gitignore
 - [ ] Update 14 component spec docs with domain event logging, ExecutionManager rename, error codes
 - [ ] Update 9 strategy spec docs with expected_deltas examples and ExecutionHandshake flow
 - [ ] Create LOGGING_GUIDE.md and update 12 root documentation files with new architecture

@@ -26,8 +26,11 @@ class PositionSnapshot(BaseModel):
     correlation_id: str = Field(..., description="Run correlation ID")
     pid: int = Field(..., description="Process ID")
     
+    # Global ordering for audit trails
+    order: Optional[int] = Field(None, description="Global event order for audit trails")
+    
     # Position data
-    positions: Dict[str, float] = Field(..., description="position_key -> amount")
+    positions: Dict[str, float] = Field(..., description="instrument_key -> amount")
     total_value_usd: float = Field(..., description="Total portfolio value in USD")
     position_type: str = Field(..., description="'simulated' or 'real'")
     
@@ -47,6 +50,9 @@ class ExposureSnapshot(BaseModel):
     real_utc_time: str = Field(..., description="Actual UTC time when logged")
     correlation_id: str = Field(..., description="Run correlation ID")
     pid: int = Field(..., description="Process ID")
+    
+    # Global ordering for audit trails
+    order: Optional[int] = Field(None, description="Global event order for audit trails")
     
     # Exposure data
     net_delta_usd: float = Field(..., description="Net delta exposure in USD")
@@ -73,6 +79,9 @@ class RiskAssessment(BaseModel):
     correlation_id: str = Field(..., description="Run correlation ID")
     pid: int = Field(..., description="Process ID")
     
+    # Global ordering for audit trails
+    order: Optional[int] = Field(None, description="Global event order for audit trails")
+    
     # Risk metrics
     health_factor: Optional[float] = Field(None, description="AAVE health factor")
     ltv_ratio: Optional[float] = Field(None, description="Loan-to-value ratio")
@@ -92,13 +101,16 @@ class PnLCalculation(BaseModel):
     """
     P&L calculation at a specific point in time.
     
-    Logged by: PnLCalculator
+    Logged by: PnLMonitor
     File: logs/{correlation_id}/{pid}/events/pnl_calculations.jsonl
     """
     timestamp: str = Field(..., description="Engine timestamp (ISO format)")
     real_utc_time: str = Field(..., description="Actual UTC time when logged")
     correlation_id: str = Field(..., description="Run correlation ID")
     pid: int = Field(..., description="Process ID")
+    
+    # Global ordering for audit trails
+    order: Optional[int] = Field(None, description="Global event order for audit trails")
     
     # P&L data
     realized_pnl: float = Field(..., description="Realized P&L")
@@ -126,6 +138,9 @@ class OrderEvent(BaseModel):
     real_utc_time: str = Field(..., description="Actual UTC time when logged")
     correlation_id: str = Field(..., description="Run correlation ID")
     pid: int = Field(..., description="Process ID")
+    
+    # Global ordering for audit trails
+    order: Optional[int] = Field(None, description="Global event order for audit trails")
     
     # Order identification
     order_id: str = Field(..., description="Unique order ID (same as operation_id)")
@@ -171,6 +186,9 @@ class OperationExecutionEvent(BaseModel):
     correlation_id: str = Field(..., description="Run correlation ID")
     pid: int = Field(..., description="Process ID")
     
+    # Global ordering for audit trails
+    order: Optional[int] = Field(None, description="Global event order for audit trails")
+    
     # Core execution data
     operation_id: str = Field(..., description="Unique operation identifier")
     order_id: str = Field(..., description="Original order ID (links to OrderEvent)")
@@ -202,8 +220,8 @@ class OperationExecutionEvent(BaseModel):
         description="List of position deltas with context"
     )
     # Example: [
-    #   {position_key: "binance:BaseToken:BTC", delta_amount: 0.5, source: "spot_trade", price: 50000, fee: 0.0},
-    #   {position_key: "binance:BaseToken:USDT", delta_amount: -25025.0, source: "spot_trade", price: 50000, fee: 25.0}
+    #   {instrument_key: "binance:BaseToken:BTC", delta_amount: 0.5, source: "spot_trade", price: 50000, fee: 0.0},
+    #   {instrument_key: "binance:BaseToken:USDT", delta_amount: -25025.0, source: "spot_trade", price: 50000, fee: 25.0}
     # ]
     
     # Execution results
@@ -304,8 +322,8 @@ class ExecutionDeltaEvent(BaseModel):
     # Deltas with context
     deltas: List[Dict[str, Any]] = Field(..., description="Position deltas with full context")
     # Example: [
-    #   {position_key: "binance:BaseToken:BTC", delta_amount: 1.0, source: "trade", price: 50000.0, fee: 25.0},
-    #   {position_key: "binance:BaseToken:USDT", delta_amount: -50025.0, source: "trade", price: 50000.0, fee: 0.0}
+    #   {instrument_key: "binance:BaseToken:BTC", delta_amount: 1.0, source: "trade", price: 50000.0, fee: 25.0},
+    #   {instrument_key: "binance:BaseToken:USDT", delta_amount: -50025.0, source: "trade", price: 50000.0, fee: 0.0}
     # ]
     
     # Metadata
@@ -330,7 +348,7 @@ class ReconciliationEvent(BaseModel):
     # Reconciliation context
     trigger_source: str = Field(
         ..., 
-        description="'venue_manager' (tight loop) or 'position_refresh' (discovery)"
+        description="'execution_manager' (tight loop) or 'position_refresh' (discovery)"
     )
     reconciliation_type: str = Field(..., description="'tight_loop' or 'position_discovery'")
     
@@ -338,11 +356,11 @@ class ReconciliationEvent(BaseModel):
     success: bool = Field(..., description="True if positions match within tolerance")
     
     # Position comparison
-    simulated_positions: Dict[str, float] = Field(..., description="position_key -> simulated amount")
-    real_positions: Dict[str, float] = Field(..., description="position_key -> real amount")
+    simulated_positions: Dict[str, float] = Field(..., description="instrument_key -> simulated amount")
+    real_positions: Dict[str, float] = Field(..., description="instrument_key -> real amount")
     mismatches: List[Dict[str, Any]] = Field(
         default_factory=list,
-        description="List of mismatches: {position_key, simulated, real, diff, percentage}"
+        description="List of mismatches: {instrument_key, simulated, real, diff, percentage}"
     )
     
     # Retry information
@@ -373,6 +391,9 @@ class TightLoopExecutionEvent(BaseModel):
     real_utc_time: str = Field(..., description="Actual UTC time when logged")
     correlation_id: str = Field(..., description="Run correlation ID")
     pid: int = Field(..., description="Process ID")
+    
+    # Global ordering for audit trails
+    order: Optional[int] = Field(None, description="Global event order for audit trails")
     
     # Batch context
     batch_id: str = Field(..., description="Batch identifier for group of orders")

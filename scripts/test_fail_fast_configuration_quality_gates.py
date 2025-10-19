@@ -314,7 +314,7 @@ class FailFastConfigurationQualityGates:
             # This validates that the configuration structure is correct
             
             from basis_strategy_v1.core.components.risk_monitor import RiskMonitor
-            from basis_strategy_v1.core.components.pnl_monitor import PnLCalculator
+            from basis_strategy_v1.core.components.pnl_monitor import PnLMonitor
             from basis_strategy_v1.core.components.exposure_monitor import ExposureMonitor
             from basis_strategy_v1.core.components.position_monitor import PositionMonitor
             
@@ -343,7 +343,7 @@ class FailFastConfigurationQualityGates:
             
             # Test component instantiation (should work with proper config)
             risk_monitor = RiskMonitor(config, data_provider, utility_manager)
-            pnl_calculator = PnLCalculator(config, 'USDT', 100000.0, data_provider, utility_manager)
+            pnl_calculator = PnLMonitor(config, 'USDT', 100000.0, data_provider, utility_manager)
             exposure_monitor = ExposureMonitor(config, data_provider, utility_manager)
             position_monitor = PositionMonitor(config, data_provider, utility_manager)
             

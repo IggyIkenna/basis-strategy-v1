@@ -14,15 +14,15 @@ Use `sed` for bulk replacements across all documentation files to save context t
 ```bash
 # Strategy specs
 find docs/specs/strategies -name "*.md" -exec sed -i '' 's/VenueManager/ExecutionManager/g' {} +
-find docs/specs/strategies -name "*.md" -exec sed -i '' 's/venue_manager/execution_manager/g' {} +
+find docs/specs/strategies -name "*.md" -exec sed -i '' 's/execution_manager/execution_manager/g' {} +
 
 # Component specs
 find docs/specs -maxdepth 1 -name "*.md" -exec sed -i '' 's/VenueManager/ExecutionManager/g' {} +
-find docs/specs -maxdepth 1 -name "*.md" -exec sed -i '' 's/venue_manager/execution_manager/g' {} +
+find docs/specs -maxdepth 1 -name "*.md" -exec sed -i '' 's/execution_manager/execution_manager/g' {} +
 
 # Root docs
 find docs -maxdepth 1 -name "*.md" -exec sed -i '' 's/VenueManager/ExecutionManager/g' {} +
-find docs -maxdepth 1 -name "*.md" -exec sed -i '' 's/venue_manager/execution_manager/g' {} +
+find docs -maxdepth 1 -name "*.md" -exec sed -i '' 's/execution_manager/execution_manager/g' {} +
 ```
 
 ### 1.2 Update Trade → ExecutionHandshake
@@ -41,7 +41,7 @@ find docs/specs -name "*.md" -exec sed -i '' 's/List\[Trade\]/List[ExecutionHand
 
 ```bash
 # Count remaining occurrences (should be 0 or minimal)
-grep -r "VenueManager\|venue_manager" docs/specs --count
+grep -r "VenueManager\|execution_manager" docs/specs --count
 grep -r "class Trade\|return Trade" docs/specs --count
 ```
 
@@ -210,7 +210,7 @@ grep -n "^## Responsibilities$" docs/specs/strategies/*.md | head -20
 grep -n "^## State$" docs/specs/strategies/*.md | head -20
 
 # No old terminology
-grep -r "VenueManager\|venue_manager" docs/specs/strategies
+grep -r "VenueManager\|execution_manager" docs/specs/strategies
 grep -r "class Trade\|return Trade" docs/specs/strategies
 
 # Verify Expected Deltas sections exist

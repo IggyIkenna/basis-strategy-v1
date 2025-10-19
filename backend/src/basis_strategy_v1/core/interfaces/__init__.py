@@ -11,8 +11,8 @@ from .onchain_execution_interface import OnChainExecutionInterface
 from .transfer_execution_interface import TransferExecutionInterface
 
 __all__ = [
-    'BaseExecutionInterface',
-    'CEXExecutionInterface', 
-    'OnChainExecutionInterface',
-    'TransferExecutionInterface'
+    "BaseExecutionInterface",
+    "CEXExecutionInterface",
+    "OnChainExecutionInterface",
+    "TransferExecutionInterface",
 ]

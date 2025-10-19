@@ -466,7 +466,7 @@ class ExposureMonitorHealthChecker(ComponentHealthChecker):
         return "EXP-003", "Exposure Monitor readiness check failed"
 
 
-class PnLCalculatorHealthChecker(ComponentHealthChecker):
+class PnLMonitorHealthChecker(ComponentHealthChecker):
     """Health checker for PnL Monitor."""
     
     def __init__(self, pnl_monitor):
@@ -546,18 +546,18 @@ class StrategyManagerHealthChecker(ComponentHealthChecker):
 class ExecutionManagerHealthChecker(ComponentHealthChecker):
     """Health checker for Execution Manager."""
     
-    def __init__(self, venue_manager):
-        super().__init__("venue_manager")
-        self.venue_manager = venue_manager
+    def __init__(self, execution_manager):
+        super().__init__("execution_manager")
+        self.execution_manager = execution_manager
     
     def _perform_readiness_checks(self) -> Dict[str, bool]:
         """Check Venue Manager readiness."""
         checks = {}
         
         try:
-            checks["initialized"] = hasattr(self.venue_manager, 'config')
-            checks["config_available"] = bool(self.venue_manager.config)
-            checks["has_venue_interface_manager"] = hasattr(self.venue_manager, 'venue_interface_manager')
+            checks["initialized"] = hasattr(self.execution_manager, 'config')
+            checks["config_available"] = bool(self.execution_manager.config)
+            checks["has_venue_interface_manager"] = hasattr(self.execution_manager, 'venue_interface_manager')
             
         except Exception as e:
             logger.error(f"Venue Manager readiness check failed: {e}")
@@ -569,15 +569,15 @@ class ExecutionManagerHealthChecker(ComponentHealthChecker):
         """Get Venue Manager metrics."""
         try:
             return {
-                "has_config": hasattr(self.venue_manager, 'config'),
-                "execution_mode": getattr(self.venue_manager, 'execution_mode', 'unknown')
+                "has_config": hasattr(self.execution_manager, 'config'),
+                "execution_mode": getattr(self.execution_manager, 'execution_mode', 'unknown')
             }
         except:
             return {"error": "Could not get metrics"}
     
     def _get_error_info(self) -> tuple[Optional[str], Optional[str]]:
         """Get Venue Manager error information."""
-        if not hasattr(self.venue_manager, 'config'):
+        if not hasattr(self.execution_manager, 'config'):
             return "VENUE-001", "Venue Manager not initialized"
         return "VENUE-003", "Venue Manager readiness check failed"
 

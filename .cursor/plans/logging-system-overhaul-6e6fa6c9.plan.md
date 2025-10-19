@@ -1159,7 +1159,7 @@ Verify:
 ### 14.3 Run Quality Gates
 
 ```bash
-python tests/quality_gates/run_quality_gates.py --all
+python tests/quity_gates/run_quality_gates.py --all
 ```
 
 Verify all gates pass.

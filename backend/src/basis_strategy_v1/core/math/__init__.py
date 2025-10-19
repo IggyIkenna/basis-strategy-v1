@@ -7,12 +7,9 @@ from .metrics_calculator import MetricsCalculator
 from .math_utilities_wrapper import MathUtilities
 
 __all__ = [
-    'LTVCalculator',
-    'MarginCalculator',
-    'HealthCalculator',
-    'MetricsCalculator',
-    'MathUtilities',
+    "LTVCalculator",
+    "MarginCalculator",
+    "HealthCalculator",
+    "MetricsCalculator",
+    "MathUtilities",
 ]
-
-
-

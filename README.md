@@ -33,6 +33,8 @@
 - **80% target** unit and integration test coverage overall
 - **100% target** e2e test coverage
 - **Audit-grade** logging and reconciliation
+- **Centralized Testing**: All tests orchestrated through `run_quality_gates.py`
+- **Platform Commands**: Dedicated test commands for different areas
 
 ---
 
@@ -41,19 +43,25 @@
 ### **Environment Setup**
 ```bash
 # Development environment (default)
-./platform.sh backtest
+./platform.sh dev
 
 # Staging environment
-BASIS_ENVIRONMENT=staging ./platform.sh backtest
+BASIS_ENVIRONMENT=staging ./platform.sh start
 
 # Production environment
-BASIS_ENVIRONMENT=prod ./platform.sh backtest
+BASIS_ENVIRONMENT=prod ./platform.sh start
+
+# Test specific areas
+./platform.sh config-test     # Configuration validation
+./platform.sh data-test       # Data validation
+./platform.sh workflow-test   # Workflow integration
+./platform.sh component-test  # Component architecture
+./platform.sh e2e-test        # End-to-end testing
 ```
 
 ### **Documentation**
 - **[Getting Started](docs/GETTING_STARTED.md)** - Complete setup guide
-- **[Deployment Guide](docs/DEPLOYMENT_GUIDE.md)** - Environment and deployment management
-- **[Environment Variables](docs/ENVIRONMENT_VARIABLES.md)** - Configuration reference
+- **[Test Organization](docs/TEST_ORGANIZATION.md)** - Test structure and platform commands
 - **[Quality Gates](docs/QUALITY_GATES.md)** - Implementation priorities and quality gates
 - **[Component Specs](docs/specs/)** - Detailed component implementation guides
 - **[Documentation Hub](docs/README.md)** - Complete documentation index
@@ -62,60 +70,64 @@ BASIS_ENVIRONMENT=prod ./platform.sh backtest
 
 ## 📊 **Current Status**
 
-### **✅ Completed (9/18 tasks)**
+### **✅ Completed (January 2025)**
 - **Core Components**: Position Monitor, Event Logger, Exposure Monitor, Risk Monitor, P&L Calculator
 - **Execution Components**: Strategy Manager, VenueManager, VenueInterfaceManager, Data Provider
+- **Test Organization**: Consolidated test structure with centralized orchestration
+- **Platform Commands**: 6 dedicated test commands for different areas
+- **Quality Gates**: Centralized quality gates system with category-based organization
 
-### **🔄 Major Refactor In Progress**
-- **Configuration System**: Implementing unified config manager with fail-fast environment loading
-- **Data Provider**: Removing minimal data creation, implementing comprehensive startup data loading
-- **API Layer**: Adding structured logging, health checks, and synchronous backtest execution
-- **Platform Scripts**: Updating for local deployment without Docker while maintaining Docker compatibility
+### **🔄 Recent Improvements**
+- **Test Consolidation**: Moved 15 orphaned tests to proper directories
+- **Platform Commands**: Added config-test, data-test, workflow-test, component-test, e2e-test
+- **Centralized Testing**: All tests now run through `run_quality_gates.py`
+- **Documentation**: Updated all relevant docs with new test organization
 
-### **📋 Refactor Phases**
-1. **Phase 1**: Environment and Configuration (In Progress)
-2. **Phase 2**: Data Provider Updates (Pending)
-3. **Phase 3**: Component Updates (Pending)
-4. **Phase 4**: API and Platform (Pending)
-5. **Phase 5**: Documentation and Cleanup (Pending)
-
-**Total Remaining Work**: 5-7 days for refactor completion
+### **📋 Current Focus**
+1. **Test Infrastructure**: Fix remaining test execution issues
+2. **Strategy Naming**: Update strategy tests to match new naming conventions
+3. **Test Coverage**: Work towards 80% coverage target
+4. **Integration Testing**: Complete component interaction validation
 
 ---
 
-## 🔄 **Current Refactor**
+## 🧪 **Testing System**
 
-### **Why We're Refactoring**
-The current system has some architectural issues that need to be addressed before moving to production:
-- **Configuration Management**: Too many config files with overlapping responsibilities
-- **Data Loading**: Minimal data creation instead of comprehensive data loading
-- **Error Handling**: Inconsistent error handling and logging
-- **Local Deployment**: Requires Docker, no local development option
-- **Component Initialization**: No proper dependency tracking or health checking
+### **Test Organization (January 2025)**
+The test system has been completely restructured for better maintainability:
 
-### **Refactor Goals**
-- ✅ **Fail-Fast Configuration**: No defaults, clear error messages pointing to actual locations
-- ✅ **Comprehensive Data Loading**: Load ALL data at startup, validate for all modes
-- ✅ **Structured Logging**: Error codes, stack traces, component health tracking
-- ✅ **Local Deployment**: `./platform.sh start` without Docker
-- ✅ **Clean Architecture**: Single responsibility, no duplicates, no backward compatibility
-
-### **Refactor Phases**
-1. **Environment & Configuration** - Unified config manager, fail-fast env loading
-2. **Data Provider Updates** - Remove minimal data, implement comprehensive loading
-3. **Component Updates** - Proper dependency tracking, health checking
-4. **API & Platform** - Structured logging, local deployment scripts
-5. **Documentation & Cleanup** - Update docs, remove deprecated files
-
-### **Quality Gates**
-Each phase must pass specific quality gates before proceeding:
-```bash
-# Check current phase
-python scripts/run_quality_gates.py --phase 1
-
-# Check all phases
-python scripts/run_quality_gates.py --all --strict
+#### **New Directory Structure**
 ```
+tests/
+├── unit/
+│   ├── components/          # EventDrivenStrategyEngine components
+│   ├── calculators/         # Math and calculation components
+│   ├── data/               # Data-related components
+│   ├── engines/            # Engine components
+│   └── pricing/            # Pricing components
+├── integration/            # Integration tests
+└── e2e/                   # End-to-end tests
+```
+
+#### **Platform Commands**
+```bash
+# Test specific areas
+./platform.sh config-test     # Configuration validation
+./platform.sh data-test       # Data validation
+./platform.sh workflow-test   # Workflow integration
+./platform.sh component-test  # Component architecture
+./platform.sh e2e-test        # End-to-end testing
+
+# Run comprehensive tests
+./platform.sh test            # All quality gates
+```
+
+### **Centralized Orchestration**
+All tests are now orchestrated through `run_quality_gates.py`:
+- **Single Entry Point**: All quality gates run through one script
+- **Category-Based**: Tests organized by functional area
+- **Consistent Error Handling**: Uniform error reporting across all tests
+- **Maintainable**: Changes to test structure only need updates in one place
 
 ---
 
@@ -139,43 +151,40 @@ python scripts/run_quality_gates.py --all --strict
 
 ## 🚀 **Getting Started**
 
-### **For Developers (After Refactor)**
+### **For Developers**
 ```bash
 # Clone and setup
 git clone <repository>
 cd basis-strategy-v1
-git checkout agent-implementation
 
-# Setup environment (after refactor)
-./platform.sh start
+# Setup environment
+./platform.sh dev
 
 # Run tests
-pytest
+./platform.sh test
+
+# Test specific areas
+./platform.sh component-test  # After component changes
+./platform.sh config-test     # After config changes
+./platform.sh data-test       # After data changes
 
 # Start development
 cd frontend && npm run dev
 # Backend will be running via platform.sh
 ```
 
-### **For Agents (Current Refactor)**
+### **For Agents**
 ```bash
-# Phase 1: Environment and Configuration
-cursor --agent-task config_manager_implementation
+# Test organization and platform commands (completed)
+# Current focus: Fix test infrastructure and strategy naming
 
-# Phase 2: Data Provider Updates
-cursor --agent-task data_provider_refactor
+# Run quality gates
+python scripts/run_quality_gates.py
 
-# Phase 3: Component Updates
-cursor --agent-task component_updates
-
-# Phase 4: API and Platform
-cursor --agent-task api_platform_updates
-
-# Phase 5: Documentation and Cleanup
-cursor --agent-task documentation_cleanup
-
-# Check progress
-python scripts/run_quality_gates.py --phase 1
+# Test specific areas
+./platform.sh config-test
+./platform.sh data-test
+./platform.sh component-test
 ```
 
 ---
@@ -203,29 +212,29 @@ python scripts/run_quality_gates.py --phase 1
 
 ## 🧪 **Testing**
 
-### **Test Organization**
-- **Unit Tests** - `tests/unit/` - Component-level tests
-- **Integration Tests** - `tests/integration/` - Component coordination
+### **Test Organization (Updated January 2025)**
+- **Unit Tests** - `tests/unit/` - Organized by functional area (components, calculators, data, engines, pricing)
+- **Integration Tests** - `tests/integration/` - Component coordination and data flows
 - **E2E Tests** - `tests/e2e/` - Full workflow tests
-- **Quality Gates** - `scripts/run_quality_gates.py` - Comprehensive validation
+- **Quality Gates** - `scripts/run_quality_gates.py` - Centralized orchestration
 
 ### **Run Tests**
 ```bash
-# All tests
-pytest
+# Platform commands (recommended)
+./platform.sh test            # All quality gates
+./platform.sh config-test     # Configuration validation
+./platform.sh data-test       # Data validation
+./platform.sh workflow-test   # Workflow integration
+./platform.sh component-test  # Component architecture
+./platform.sh e2e-test        # End-to-end testing
 
-# By category
-# Quality gates (comprehensive testing)
+# Direct quality gates
 python scripts/run_quality_gates.py
 
-# Unit tests
-python -m pytest tests/unit/
-
-# Integration tests  
-python -m pytest tests/integration/
-
-# E2E tests
-python -m pytest tests/e2e/
+# Specific categories
+python scripts/run_quality_gates.py --category unit
+python scripts/run_quality_gates.py --category integration_data_flows
+python scripts/run_quality_gates.py --category e2e_strategies
 ```
 
 ---
@@ -275,57 +284,63 @@ curl http://localhost:8001/health/
 - **[Quality Gates](docs/QUALITY_GATES.md)** - Implementation priorities and quality gates
 - **[Component Specs](docs/specs/)** - Detailed component implementation guides
 
-### **Key Metrics**
-- **Components**: 9/9 implemented ✅ (all tests passing)
-- **Refactor Phases**: 1/5 in progress (Environment and Configuration)
-- **Tests**: 9/9 component tests passing, integration tests need async fixes
-- **Documentation**: 29 files, 6,000+ lines
-- **Architecture**: Component-based, event-driven (being enhanced)
+### **Key Metrics (January 2025)**
+- **Components**: 9/9 implemented ✅ (core components working)
+- **Test Organization**: ✅ Consolidated and organized
+- **Platform Commands**: 6/6 test commands implemented ✅
+- **Quality Gates**: Centralized system with category-based organization ✅
+- **Documentation**: 30+ files, comprehensive coverage
+- **Architecture**: Component-based, event-driven
 - **Frontend**: 50% complete (wizard components exist, needs integration)
 
 ### **Quality Gates**
 ```bash
-# Check current phase progress
-python scripts/run_quality_gates.py --phase 1
+# Run all quality gates
+python scripts/run_quality_gates.py
 
-# Check all phases
-python scripts/run_quality_gates.py --all
+# Test specific areas
+./platform.sh config-test
+./platform.sh data-test
+./platform.sh workflow-test
+./platform.sh component-test
+./platform.sh e2e-test
 
-# Check specific phase range
-python scripts/run_quality_gates.py --phase-range 1-3
+# List all available categories
+python scripts/run_quality_gates.py --list-categories
 ```
 
 ---
 
 ## 🤝 **Contributing**
 
-### **Agent Workflow (Refactor)**
-1. Read the [Refactor Plan](REFACTOR_PLAN.md) for current phase
-2. Follow strict implementation requirements (no fallbacks, fail-fast)
-3. Search existing codebase before implementing (no assumptions)
-4. Implement with comprehensive tests (80% coverage minimum)
-5. Run quality gates for current phase: `python scripts/run_quality_gates.py --phase X`
-6. Update progress and commit with descriptive messages
+### **Agent Workflow**
+1. Read the [Test Organization Guide](docs/TEST_ORGANIZATION.md) for current test structure
+2. Follow testing guidelines with 80% coverage minimum
+3. Use platform commands for testing: `./platform.sh component-test`
+4. Run quality gates: `python scripts/run_quality_gates.py`
+5. Update progress and commit with descriptive messages
 
 ### **Development Workflow**
-1. Create feature branch from `agent-implementation`
-2. Follow testing guidelines in `docs/TESTING_GUIDE.md`
-3. Ensure all tests pass
-4. Submit pull request with clear description
+1. Create feature branch from main
+2. Follow testing guidelines in `docs/TEST_ORGANIZATION.md`
+3. Use platform commands for testing specific areas
+4. Ensure all tests pass: `./platform.sh test`
+5. Submit pull request with clear description
 
 ---
 
 ## 📞 **Support**
 
 ### **Documentation**
-- **[FAQ](docs/FAQ.md)** - Frequently asked questions
-- **[Troubleshooting](docs/TROUBLESHOOTING.md)** - Common issues and solutions
+- **[Test Organization](docs/TEST_ORGANIZATION.md)** - Test structure and platform commands
+- **[Quality Gates](docs/QUALITY_GATES.md)** - Implementation priorities and quality gates
+- **[Getting Started](docs/GETTING_STARTED.md)** - Complete setup guide
 - **[Architecture Decisions](docs/REFERENCE_ARCHITECTURE_CANONICAL.md)** - Design rationale
 
 ### **Agent Support**
-- **[Agent Setup](AGENT_SETUP.md)** - Environment configuration
-- **[Progress Monitoring](check_agent_progress.sh)** - Status checking
-- **[Validation](validate_completion.py)** - Task completion validation
+- **[Test Organization Guide](docs/TEST_ORGANIZATION.md)** - Current test structure
+- **[Quality Gates](docs/QUALITY_GATES.md)** - Quality gates and validation
+- **[Component Specs](docs/specs/)** - Detailed component implementation guides
 
 ---
 
@@ -347,7 +362,7 @@ Build a production-ready yield generation platform with:
 - **Production Ready**: Local and Docker deployment, GCP, monitoring, automated execution
 
 **Strategy**: Ethena-style enhanced with share classes, and advanced rebalancing  
-**Current Focus**: Major refactor for improved architecture and local deployment  
-**Next Steps**: Complete refactor → 100% working backtesting system → Staging simulation → Live trading
+**Current Focus**: Test infrastructure fixes and strategy naming updates  
+**Next Steps**: Fix test execution → Achieve 80% coverage → Complete integration testing → Live trading
 
-**Ready for refactor completion and end-to-end implementation!** 🚀
+**Test organization complete! Ready for infrastructure fixes and full implementation!** 🚀

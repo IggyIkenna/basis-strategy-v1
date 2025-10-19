@@ -428,14 +428,14 @@ logger = logging.getLogger(__name__)
 class RiskMonitor:
     """Mode-agnostic risk monitor using config-driven behavior"""
     
-    def __init__(self, config: Dict, data_provider: 'BaseDataProvider', execution_mode: str,
-                 position_monitor: 'PositionMonitor', exposure_monitor: 'ExposureMonitor'):
+    def __init__(self, config: Dict, data_provider: 'BaseDataProvider', utility_manager, correlation_id: str, pid: str, log_dir: str):
         # Store references (NEVER modified)
         self.config = config
         self.data_provider = data_provider
-        self.execution_mode = execution_mode
-        self.position_monitor = position_monitor
-        self.exposure_monitor = exposure_monitor
+        self.utility_manager = utility_manager
+        self.correlation_id = correlation_id
+        self.pid = pid
+        self.log_dir = log_dir
         
         # Extract config-driven settings
         self.risk_config = config.get('component_config', {}).get('risk_monitor', {})
@@ -478,7 +478,7 @@ class RiskMonitor:
             self.target_ltv = max_ltv * (1 - max_stake_spread_move)
             logger.info(f"Target LTV calculated: {self.target_ltv:.4f} (max_ltv={max_ltv}, max_stake_spread_move={max_stake_spread_move})")
     
-    def assess_risk(self, exposure_data: Dict, market_data: Dict) -> Dict:
+    def assess_risk(self, exposure_data: Dict, market_data: Dict, timestamp: pd.Timestamp) -> Dict:
         """
         Assess risk using config-driven risk types.
         

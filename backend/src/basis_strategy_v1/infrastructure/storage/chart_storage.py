@@ -12,11 +12,7 @@ logger = logging.getLogger(__name__)
 class ChartStorageManager:
     """Simple chart storage management with cleanup and archival."""
 
-    def __init__(
-            self,
-            base_dir: str = "results",
-            max_results: int = 50,
-            max_age_days: int = 30):
+    def __init__(self, base_dir: str = "results", max_results: int = 50, max_age_days: int = 30):
         """
         Initialize chart storage manager.
 
@@ -33,17 +29,14 @@ class ChartStorageManager:
         self.base_dir.mkdir(parents=True, exist_ok=True)
 
         logger.info(
-            f"ChartStorageManager initialized: {base_dir}, max_results={max_results}, max_age_days={max_age_days}")
+            f"ChartStorageManager initialized: {base_dir}, max_results={max_results}, max_age_days={max_age_days}"
+        )
 
     def get_chart_directory(self, request_id: str, strategy_name: str) -> Path:
         """Get the chart directory for a specific request."""
         return self.base_dir / f"{request_id}_{strategy_name}"
 
-    def get_chart_path(
-            self,
-            request_id: str,
-            strategy_name: str,
-            chart_name: str) -> Path:
+    def get_chart_path(self, request_id: str, strategy_name: str, chart_name: str) -> Path:
         """Get the full path for a specific chart file."""
         chart_dir = self.get_chart_directory(request_id, strategy_name)
         return chart_dir / f"{request_id}_{strategy_name}_{chart_name}.html"
@@ -61,21 +54,22 @@ class ChartStorageManager:
                         request_id, strategy_name = parts
 
                         # Get creation time and file count
-                        created_at = datetime.fromtimestamp(
-                            item.stat().st_mtime)
+                        created_at = datetime.fromtimestamp(item.stat().st_mtime)
                         chart_files = list(item.glob("*.html"))
 
-                        result_sets.append({
-                            "request_id": request_id,
-                            "strategy_name": strategy_name,
-                            "directory": str(item),
-                            "created_at": created_at,
-                            "chart_count": len(chart_files),
-                            "total_size_mb": sum(f.stat().st_size for f in item.iterdir()) / (1024 * 1024)
-                        })
+                        result_sets.append(
+                            {
+                                "request_id": request_id,
+                                "strategy_name": strategy_name,
+                                "directory": str(item),
+                                "created_at": created_at,
+                                "chart_count": len(chart_files),
+                                "total_size_mb": sum(f.stat().st_size for f in item.iterdir())
+                                / (1024 * 1024),
+                            }
+                        )
                 except Exception as e:
-                    logger.warning(
-                        f"Could not parse result set {item.name}: {e}")
+                    logger.warning(f"Could not parse result set {item.name}: {e}")
 
         # Sort by creation time (newest first)
         result_sets.sort(key=lambda x: x["created_at"], reverse=True)
@@ -104,33 +98,38 @@ class ChartStorageManager:
                     removed_count += 1
                     removed_size_mb += result_set["total_size_mb"]
                     logger.info(
-                        f"Removed old result set: {result_set['request_id']} (age: {(datetime.now() - result_set['created_at']).days} days)")
+                        f"Removed old result set: {result_set['request_id']} (age: {(datetime.now() - result_set['created_at']).days} days)"
+                    )
                 except Exception as e:
-                    logger.error(
-                        f"Failed to remove {result_set['directory']}: {e}")
+                    logger.error(f"Failed to remove {result_set['directory']}: {e}")
 
         # Remove excess results (keep only max_results newest)
-        remaining_sets = [rs for rs in result_sets if datetime.fromtimestamp(
-            Path(rs["directory"]).stat().st_mtime) >= cutoff_date]
+        remaining_sets = [
+            rs
+            for rs in result_sets
+            if datetime.fromtimestamp(Path(rs["directory"]).stat().st_mtime) >= cutoff_date
+        ]
 
         if len(remaining_sets) > self.max_results:
-            excess_sets = remaining_sets[self.max_results:]
+            excess_sets = remaining_sets[self.max_results :]
             for result_set in excess_sets:
                 try:
                     shutil.rmtree(result_set["directory"])
                     removed_count += 1
                     removed_size_mb += result_set["total_size_mb"]
                     logger.info(
-                        f"Removed excess result set: {result_set['request_id']} (count limit exceeded)")
+                        f"Removed excess result set: {result_set['request_id']} (count limit exceeded)"
+                    )
                 except Exception as e:
-                    logger.error(
-                        f"Failed to remove {result_set['directory']}: {e}")
+                    logger.error(f"Failed to remove {result_set['directory']}: {e}")
 
         stats = {
             "removed_count": removed_count,
             "removed_size_mb": round(removed_size_mb, 2),
             "remaining_count": len(result_sets) - removed_count,
-            "total_size_mb": round(sum(rs["total_size_mb"] for rs in result_sets[:self.max_results]), 2)
+            "total_size_mb": round(
+                sum(rs["total_size_mb"] for rs in result_sets[: self.max_results]), 2
+            ),
         }
 
         logger.info(f"Cleanup completed: {stats}")
@@ -145,16 +144,18 @@ class ChartStorageManager:
             "total_size_mb": round(sum(rs["total_size_mb"] for rs in result_sets), 2),
             "oldest_result": result_sets[-1]["created_at"] if result_sets else None,
             "newest_result": result_sets[0]["created_at"] if result_sets else None,
-            "average_size_mb": round(sum(rs["total_size_mb"] for rs in result_sets) / len(result_sets), 2) if result_sets else 0,
+            "average_size_mb": round(
+                sum(rs["total_size_mb"] for rs in result_sets) / len(result_sets), 2
+            )
+            if result_sets
+            else 0,
             "max_results_limit": self.max_results,
-            "max_age_days": self.max_age_days
+            "max_age_days": self.max_age_days,
         }
 
     def archive_result_set(
-            self,
-            request_id: str,
-            strategy_name: str,
-            archive_dir: Optional[str] = None) -> bool:
+        self, request_id: str, strategy_name: str, archive_dir: Optional[str] = None
+    ) -> bool:
         """
         Archive a specific result set to long-term storage.
 
@@ -173,8 +174,7 @@ class ChartStorageManager:
                 return False
 
             # Create archive directory
-            archive_path = Path(
-                archive_dir) if archive_dir else self.base_dir / "archive"
+            archive_path = Path(archive_dir) if archive_dir else self.base_dir / "archive"
             archive_path.mkdir(parents=True, exist_ok=True)
 
             # Move to archive with timestamp

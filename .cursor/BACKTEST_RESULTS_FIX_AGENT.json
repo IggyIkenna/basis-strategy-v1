@@ -1,0 +1,190 @@
+{
+  "name": "Backtest Results Fix Agent",
+  "description": "Fix backtest results generation to provide proper equity curve data and correct timestamps for charts",
+  "version": "1.0.0",
+  "created": "2025-01-19",
+  "status": "active",
+  "priority": "high",
+  "category": "bug_fix",
+  "tags": ["backtest", "results", "charts", "equity_curve", "timestamps"],
+  "problem_statement": "Backtest results show profit in summary but charts display flat lines with today's date instead of backtest data. The equity_curve data is missing from results, causing charts to fall back to placeholder data.",
+  "root_cause_analysis": {
+    "primary_issue": "EventDrivenStrategyEngine._calculate_final_results() does not generate equity_curve time series data",
+    "secondary_issues": [
+      "Chart generation falls back to datetime.now() when equity_curve is empty",
+      "Results structure mismatch between what's generated and what frontend expects",
+      "Missing equity curve data collection during backtest timesteps"
+    ],
+    "impact": "Charts show incorrect data (today's date, flat lines) while summary shows correct profit metrics"
+  },
+  "solution_approach": {
+    "phase_1": "Fix equity curve data generation in EventDrivenStrategyEngine",
+    "phase_2": "Ensure proper data structure alignment with frontend expectations", 
+    "phase_3": "Update chart generation to use backtest timestamps",
+    "phase_4": "Add comprehensive testing and validation"
+  },
+  "detailed_instructions": {
+    "phase_1_equity_curve_generation": {
+      "title": "Fix Equity Curve Data Generation",
+      "steps": [
+        {
+          "step": 1,
+          "action": "Modify EventDrivenStrategyEngine to collect equity curve data during timesteps",
+          "details": "Add equity curve data collection in _process_timestep method to track portfolio value over time",
+          "files_to_modify": [
+            "backend/src/basis_strategy_v1/core/event_engine/event_driven_strategy_engine.py"
+          ],
+          "implementation": {
+            "add_equity_curve_tracking": "Add self.equity_curve_data = [] in __init__ and collect data in _process_timestep",
+            "data_structure": "Each point should have: timestamp, net_value, gross_value, positions dict",
+            "collection_point": "After exposure calculation in _process_timestep, before risk assessment"
+          }
+        },
+        {
+          "step": 2,
+          "action": "Update _calculate_final_results to include equity_curve in performance data",
+          "details": "Ensure equity_curve data is included in the final results structure",
+          "files_to_modify": [
+            "backend/src/basis_strategy_v1/core/event_engine/event_driven_strategy_engine.py"
+          ],
+          "implementation": {
+            "add_to_performance": "Include equity_curve in performance dict",
+            "data_format": "Array of objects with timestamp, net_value, gross_value, positions",
+            "validation": "Ensure at least 2 data points (start and end)"
+          }
+        }
+      ]
+    },
+    "phase_2_data_structure_alignment": {
+      "title": "Align Data Structure with Frontend Expectations",
+      "steps": [
+        {
+          "step": 1,
+          "action": "Verify frontend expects equity_curve in results.performance",
+          "details": "Check frontend code to ensure data structure matches what we generate",
+          "files_to_check": [
+            "frontend/src/types/index.ts",
+            "frontend/src/mocks/data/backtest/result.json"
+          ]
+        },
+        {
+          "step": 2,
+          "action": "Update BacktestResultResponse model if needed",
+          "details": "Ensure API response model includes equity_curve field",
+          "files_to_modify": [
+            "backend/src/basis_strategy_v1/api/models/responses.py"
+          ]
+        }
+      ]
+    },
+    "phase_3_chart_generation_fixes": {
+      "title": "Fix Chart Generation to Use Backtest Timestamps",
+      "steps": [
+        {
+          "step": 1,
+          "action": "Update chart generation to use backtest start/end dates instead of datetime.now()",
+          "details": "Modify fallback logic in chart_generator.py to use actual backtest dates",
+          "files_to_modify": [
+            "backend/src/basis_strategy_v1/infrastructure/visualization/chart_generator.py"
+          ],
+          "implementation": {
+            "fallback_dates": "Use results.start_date and results.end_date instead of datetime.now()",
+            "fallback_values": "Use initial_capital and final_value from results",
+            "validation": "Ensure dates are properly formatted for Plotly"
+          }
+        },
+        {
+          "step": 2,
+          "action": "Add better error handling and logging for missing equity curve data",
+          "details": "Improve debugging information when equity curve data is missing",
+          "files_to_modify": [
+            "backend/src/basis_strategy_v1/infrastructure/visualization/chart_generator.py"
+          ]
+        }
+      ]
+    },
+    "phase_4_testing_and_validation": {
+      "title": "Add Comprehensive Testing and Validation",
+      "steps": [
+        {
+          "step": 1,
+          "action": "Create unit tests for equity curve data generation",
+          "details": "Test that equity curve data is properly collected during backtest",
+          "files_to_create": [
+            "tests/unit/test_equity_curve_generation.py"
+          ]
+        },
+        {
+          "step": 2,
+          "action": "Add integration tests for chart generation",
+          "details": "Test that charts are generated with correct timestamps and data",
+          "files_to_create": [
+            "tests/integration/test_chart_generation.py"
+          ]
+        },
+        {
+          "step": 3,
+          "action": "Run end-to-end backtest and verify results",
+          "details": "Execute full backtest and verify equity curve data and charts are correct",
+          "test_command": "./platform.sh dev && curl -X POST 'http://localhost:8001/api/v1/backtest/' -H 'Content-Type: application/json' -d '{\"strategy_name\": \"pure_lending\", \"share_class\": \"USDT\", \"initial_capital\": 100000, \"start_date\": \"2024-05-12T00:00:00Z\", \"end_date\": \"2024-09-10T23:59:59Z\"}'"
+        }
+      ]
+    }
+  },
+  "expected_outcomes": {
+    "functional_requirements": [
+      "Equity curve data is collected during backtest execution",
+      "Charts display correct backtest timestamps instead of today's date",
+      "Charts show actual portfolio value progression instead of flat lines",
+      "Summary metrics match chart data (no discrepancy between profit and flat charts)"
+    ],
+    "technical_requirements": [
+      "EventDrivenStrategyEngine generates equity_curve time series data",
+      "Chart generation uses backtest dates in fallback scenarios",
+      "Data structure matches frontend expectations",
+      "Comprehensive test coverage for equity curve functionality"
+    ],
+    "quality_requirements": [
+      "All existing tests pass",
+      "New tests cover equity curve generation",
+      "Charts are visually correct and informative",
+      "Performance impact is minimal"
+    ]
+  },
+  "success_criteria": [
+    "Backtest results show both correct summary metrics AND correct charts",
+    "Charts display backtest date range instead of today's date",
+    "Equity curve shows actual portfolio progression over time",
+    "No flat lines in PnL, equity curve, or other time series charts",
+    "Frontend can properly display the results",
+    "All tests pass including new equity curve tests"
+  ],
+  "validation_commands": [
+    "Run backtest: curl -X POST 'http://localhost:8001/api/v1/backtest/' -H 'Content-Type: application/json' -d '{\"strategy_name\": \"pure_lending\", \"share_class\": \"USDT\", \"initial_capital\": 100000, \"start_date\": \"2024-05-12T00:00:00Z\", \"end_date\": \"2024-09-10T23:59:59Z\"}'",
+    "Check results: curl 'http://localhost:8001/api/v1/backtest/{request_id}/result'",
+    "Verify charts: Check generated HTML files in results/ directory",
+    "Run tests: python -m pytest tests/unit/test_equity_curve_generation.py -v",
+    "Run integration tests: python -m pytest tests/integration/test_chart_generation.py -v"
+  ],
+  "dependencies": [
+    "EventDrivenStrategyEngine",
+    "ChartGenerator", 
+    "BacktestResultResponse",
+    "Frontend result types",
+    "Plotly chart generation"
+  ],
+  "risks_and_mitigations": {
+    "risk_1": "Performance impact from collecting equity curve data every timestep",
+    "mitigation_1": "Use efficient data structures and only collect essential data points",
+    "risk_2": "Breaking existing functionality during refactoring",
+    "mitigation_2": "Maintain backward compatibility and comprehensive testing",
+    "risk_3": "Data structure mismatch with frontend",
+    "mitigation_3": "Verify frontend expectations and update models accordingly"
+  },
+  "notes": [
+    "This is a critical bug that affects the core backtest functionality",
+    "The issue is in the data generation, not just the visualization",
+    "Need to ensure both backtest and live modes work correctly",
+    "Consider adding configuration options for equity curve data collection frequency"
+  ]
+}

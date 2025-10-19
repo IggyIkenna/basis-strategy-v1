@@ -585,11 +585,16 @@ binance:Perp:BTCUSDT → data['market_data']['funding_rates']['BTC_binance']
 bybit:Perp:ETHUSDT → data['protocol_data']['perp_prices']['ETH_bybit']
 ```
 
-#### LST → Oracle Prices
+#### LST → Oracle Prices & Market Prices (Two-Price System)
 ```
+# Oracle pricing (entry/staking)
 etherfi:LST:weETH → data['protocol_data']['oracle_prices']['weETH/USD']
 etherfi:LST:weETH → data['protocol_data']['oracle_prices']['weETH/ETH']
 lido:LST:wstETH → data['protocol_data']['oracle_prices']['wstETH/USD']
+
+# Market pricing (exit/trading)
+curve:LST:weETH → data['protocol_data']['market_prices']['weETH/ETH']
+uniswapv3:LST:wstETH → data['protocol_data']['market_prices']['wstETH/ETH']
 ```
 
 #### aToken/debtToken → AAVE Indexes
@@ -606,6 +611,24 @@ All conversion rates use BASE/QUOTE format:
 - **Value**: Amount of QUOTE per 1 unit of BASE
 
 Example: `weETH/ETH = 1.05` means 1 weETH = 1.05 ETH
+
+### Data Access Patterns
+
+**Market Data Access (Public Feed)**:
+```python
+# Use UtilityManager for market data
+price = self.utility_manager.get_price_for_instrument_key(instrument_key, timestamp, quote_currency='USD')
+funding_rate = self.utility_manager.get_funding_rate(venue, symbol, timestamp)
+oracle_price = self.utility_manager.get_oracle_price(token, quote_currency, timestamp)
+liquidity_index = self.utility_manager.get_liquidity_index(token, timestamp)
+```
+
+**Position/Balance Data Access (Private Feed)**:
+```python
+# Use Position Interfaces for account data
+balances = self.position_interface.get_balances(timestamp)
+positions = self.position_interface.get_positions(timestamp)
+```
 
 ### Validation Rules
 

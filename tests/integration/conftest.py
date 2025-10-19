@@ -78,7 +78,7 @@ def real_components(real_data_provider):
         from basis_strategy_v1.core.components.position_monitor import PositionMonitor
         from basis_strategy_v1.core.components.exposure_monitor import ExposureMonitor
         from basis_strategy_v1.core.components.risk_monitor import RiskMonitor
-        from basis_strategy_v1.core.components.pnl_monitor import PnLCalculator
+        from basis_strategy_v1.core.components.pnl_monitor import PnLMonitor
         from basis_strategy_v1.core.strategies.strategy_factory import StrategyFactory
         from basis_strategy_v1.core.execution.execution_manager import ExecutionManager
         from basis_strategy_v1.core.utilities.utility_manager import UtilityManager
@@ -147,7 +147,7 @@ def real_components(real_data_provider):
             utility_manager=utility_manager
         )
         
-        pnl_monitor = PnLCalculator(
+        pnl_monitor = PnLMonitor(
             config=test_config,
             share_class='USDT',
             initial_capital=100000.0,
@@ -203,6 +203,19 @@ def real_components(real_data_provider):
             'available': False,
             'error': str(e)
         }
+
+
+@pytest.fixture
+def real_execution_manager(real_components):
+    """Real execution manager for integration tests."""
+    if not real_components['available']:
+        pytest.skip("Real components not available - skipping integration tests")
+    
+    execution_manager = real_components['execution_manager']
+    if execution_manager is None:
+        pytest.skip("Execution manager not available - skipping integration tests")
+    
+    return execution_manager
 
 
 @pytest.fixture

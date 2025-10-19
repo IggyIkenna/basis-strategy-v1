@@ -24,13 +24,25 @@
 ```bash
 # From project root
 pip install -r requirements.txt
-./platform.sh backtest     # Backend only
+./platform.sh dev          # Backend only (dev mode)
 ./platform.sh start        # Backend + Frontend
 ./platform.sh stop         # Stop all services
 ```
 
 **Environments**: dev, staging, production  
 **Use Case**: Development, testing, simple deployments
+
+**Backend-Only Options**:
+```bash
+# Dev mode (backend only, uses env.dev overrides)
+./platform.sh dev
+
+# Backend only with environment variables
+SKIP_FRONTEND=true ./platform.sh start
+
+# Skip quality gates for rapid development
+SKIP_QUALITY_GATES=true ./platform.sh dev
+```
 
 ### **Docker Deployment** (Containerized)
 ```bash
@@ -224,11 +236,14 @@ The frontend uses the same unified environment structure as the backend:
 
 **Backend-Only Mode**:
 ```bash
-# Platform.sh - backend only (uses env file BASIS_EXECUTION_MODE)
-./platform.sh backend
+# Platform.sh - dev mode (backend only, uses env.dev overrides)
+./platform.sh dev
 
-# Platform.sh - force backtest mode (overrides env file)
-./platform.sh backtest
+# Platform.sh - backend only (uses env file BASIS_EXECUTION_MODE)
+SKIP_FRONTEND=true ./platform.sh start
+
+# Platform.sh - skip quality gates for rapid development
+SKIP_QUALITY_GATES=true ./platform.sh dev
 
 # Docker - backend only
 cd docker && ./deploy.sh backend
@@ -352,11 +367,23 @@ BASIS_API_CORS_ORIGINS=http://localhost:5173,http://localhost:3000
 ### **Commands**
 ```bash
 ./platform.sh start        # Start backend + frontend
-./platform.sh backtest     # Start backend only (backtest mode)
+./platform.sh dev          # Start backend only (dev mode)
 ./platform.sh stop         # Stop all services
 ./platform.sh restart      # Restart all services
 ./platform.sh status       # Show service status
 ./platform.sh logs backend # Show backend logs
+```
+
+### **Environment Variables for Backend-Only Development**
+```bash
+# Skip frontend startup
+SKIP_FRONTEND=true ./platform.sh start
+
+# Skip quality gates for rapid development
+SKIP_QUALITY_GATES=true ./platform.sh dev
+
+# Both options combined
+SKIP_FRONTEND=true SKIP_QUALITY_GATES=true ./platform.sh start
 ```
 
 ---

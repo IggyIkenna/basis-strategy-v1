@@ -1,7 +1,7 @@
 """
 Unit Tests for P&L Calculator Component
 
-Tests P&L Calculator in isolation with mocked dependencies.
+Tests P&L Monitor in isolation with mocked dependencies.
 Focuses on P&L calculation, attribution, and error propagation.
 """
 
@@ -10,10 +10,10 @@ import pandas as pd
 from unittest.mock import Mock, patch
 
 # Import the component under test
-from basis_strategy_v1.core.components.pnl_monitor import PnLCalculator
+from basis_strategy_v1.core.components.pnl_monitor import PnLMonitor
 
 
-class TestPnLCalculatorUnit:
+class TestPnLMonitorUnit:
     """Unit tests for P&L Calculator component."""
     
     def _add_pnl_config(self, config):
@@ -39,7 +39,7 @@ class TestPnLCalculatorUnit:
             'timestamp': pd.Timestamp.now()
         }
         
-        pnl_monitor = PnLCalculator(
+        pnl_monitor = PnLMonitor(
             config=test_config,
             share_class='USDT',
             initial_capital=100000.0,
@@ -74,7 +74,7 @@ class TestPnLCalculatorUnit:
             'reconciliation_tolerance': 0.02
         }
         
-        pnl_monitor = PnLCalculator(
+        pnl_monitor = PnLMonitor(
             config=test_config,
             share_class='USDT',
             initial_capital=100000.0,
@@ -134,7 +134,7 @@ class TestPnLCalculatorUnit:
         test_config_usdt['share_class'] = 'USDT'
         test_config_usdt['initial_capital'] = 100000.0
         
-        pnl_monitor_usdt = PnLCalculator(
+        pnl_monitor_usdt = PnLMonitor(
             config=test_config_usdt,
             share_class='USDT',
             initial_capital=100000.0,
@@ -165,7 +165,7 @@ class TestPnLCalculatorUnit:
         test_config_eth['share_class'] = 'ETH'
         test_config_eth['initial_capital'] = 100000.0
         
-        pnl_monitor_eth = PnLCalculator(
+        pnl_monitor_eth = PnLMonitor(
             config=test_config_eth,
             share_class='ETH',
             initial_capital=100000.0,
@@ -198,7 +198,7 @@ class TestPnLCalculatorUnit:
         test_config['share_class'] = 'USDT'
         test_config['initial_capital'] = 100000.0
         
-        pnl_monitor = PnLCalculator(
+        pnl_monitor = PnLMonitor(
             config=test_config,
             share_class='USDT',
             initial_capital=100000.0,
@@ -237,7 +237,7 @@ class TestPnLCalculatorUnit:
         staking_pnl = 0.0  # No staking in pure lending
         gas_costs = -100.0
         
-        pnl_monitor = PnLCalculator(
+        pnl_monitor = PnLMonitor(
             config=test_config,
             share_class='USDT',
             initial_capital=100000.0,
@@ -282,7 +282,7 @@ class TestPnLCalculatorUnit:
         staking_pnl = 0.0  # No staking in basis trading
         gas_costs = -200.0
         
-        pnl_monitor = PnLCalculator(
+        pnl_monitor = PnLMonitor(
             config=test_config,
             share_class='USDT',
             initial_capital=100000.0,
@@ -321,7 +321,7 @@ class TestPnLCalculatorUnit:
         staking_pnl = 3000.0  # Positive staking rewards
         gas_costs = -150.0
         
-        pnl_monitor = PnLCalculator(
+        pnl_monitor = PnLMonitor(
             config=test_config,
             share_class='ETH',
             initial_capital=100000.0,
@@ -356,7 +356,7 @@ class TestPnLCalculatorUnit:
         # Mock gas costs
         total_gas_costs = -500.0  # Cumulative gas costs
         
-        pnl_monitor = PnLCalculator(
+        pnl_monitor = PnLMonitor(
             config=test_config,
             share_class='USDT',
             initial_capital=100000.0,
@@ -387,7 +387,7 @@ class TestPnLCalculatorUnit:
         test_config['share_class'] = 'USDT'
         test_config['initial_capital'] = 100000.0
         
-        pnl_monitor = PnLCalculator(
+        pnl_monitor = PnLMonitor(
             config=test_config,
             share_class='USDT',
             initial_capital=100000.0,
@@ -427,7 +427,7 @@ class TestPnLCalculatorUnit:
         # Mock utility manager to return error code
         mock_utility_manager.create_error_code.return_value = 'PNL_CALC_ERROR'
         
-        pnl_monitor = PnLCalculator(
+        pnl_monitor = PnLMonitor(
             config=test_config,
             share_class='USDT',
             initial_capital=100000.0,
@@ -458,7 +458,7 @@ class TestPnLCalculatorUnit:
         usdt_config = self._add_pnl_config(mock_config.copy())
         usdt_config['share_class'] = 'USDT'
         
-        pnl_monitor = PnLCalculator(
+        pnl_monitor = PnLMonitor(
             config=usdt_config,
             share_class='USDT',
             initial_capital=100000.0,
@@ -480,7 +480,7 @@ class TestPnLCalculatorUnit:
         eth_config = self._add_pnl_config(mock_config.copy())
         eth_config['share_class'] = 'ETH'
         
-        pnl_monitor = PnLCalculator(
+        pnl_monitor = PnLMonitor(
             config=eth_config,
             share_class='ETH',
             initial_capital=100000.0,
@@ -505,7 +505,7 @@ class TestPnLCalculatorUnit:
         pure_lending_usdt_config['mode'] = 'pure_lending_usdt'
         pure_lending_usdt_config['share_class'] = 'USDT'
         
-        pnl_monitor = PnLCalculator(
+        pnl_monitor = PnLMonitor(
             config=pure_lending_usdt_config,
             share_class='USDT',
             initial_capital=100000.0,
@@ -521,7 +521,7 @@ class TestPnLCalculatorUnit:
         eth_basis_config['mode'] = 'eth_basis'
         eth_basis_config['share_class'] = 'USDT'
         
-        pnl_monitor = PnLCalculator(
+        pnl_monitor = PnLMonitor(
             config=eth_basis_config,
             share_class='USDT',
             initial_capital=100000.0,
@@ -538,7 +538,7 @@ class TestPnLCalculatorUnit:
         mock_data_provider.get_price.side_effect = Exception("Data provider error")
         
         test_config = self._add_pnl_config(mock_config.copy())
-        pnl_monitor = PnLCalculator(
+        pnl_monitor = PnLMonitor(
             config=test_config,
             share_class='USDT',
             initial_capital=100000.0,
@@ -566,7 +566,7 @@ class TestPnLCalculatorUnit:
         """Test P&L Calculator performance with multiple calculations."""
         # Arrange
         test_config = self._add_pnl_config(mock_config.copy())
-        pnl_monitor = PnLCalculator(
+        pnl_monitor = PnLMonitor(
             config=test_config,
             share_class='USDT',
             initial_capital=100000.0,
@@ -599,7 +599,7 @@ class TestPnLCalculatorUnit:
         """Test P&L Calculator edge cases."""
         # Arrange
         test_config = self._add_pnl_config(mock_config.copy())
-        pnl_monitor = PnLCalculator(
+        pnl_monitor = PnLMonitor(
             config=test_config,
             share_class='USDT',
             initial_capital=100000.0,
@@ -644,7 +644,7 @@ class TestPnLCalculatorUnit:
         """Test read-only access to latest P&L."""
         # Arrange
         test_config = self._add_pnl_config(mock_config.copy())
-        pnl_monitor = PnLCalculator(
+        pnl_monitor = PnLMonitor(
             config=test_config,
             share_class='USDT',
             initial_capital=100000.0,
@@ -679,7 +679,7 @@ class TestPnLCalculatorUnit:
         """Test P&L history retrieval."""
         # Arrange
         test_config = self._add_pnl_config(mock_config.copy())
-        pnl_monitor = PnLCalculator(
+        pnl_monitor = PnLMonitor(
             config=test_config,
             share_class='USDT',
             initial_capital=100000.0,
@@ -708,7 +708,7 @@ class TestPnLCalculatorUnit:
         """Test cumulative attribution access."""
         # Arrange
         test_config = self._add_pnl_config(mock_config.copy())
-        pnl_monitor = PnLCalculator(
+        pnl_monitor = PnLMonitor(
             config=test_config,
             share_class='USDT',
             initial_capital=100000.0,
@@ -729,7 +729,7 @@ class TestPnLCalculatorUnit:
         """Test P&L summary formatting."""
         # Arrange
         test_config = self._add_pnl_config(mock_config.copy())
-        pnl_monitor = PnLCalculator(
+        pnl_monitor = PnLMonitor(
             config=test_config,
             share_class='USDT',
             initial_capital=100000.0,

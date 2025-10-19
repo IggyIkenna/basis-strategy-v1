@@ -40,45 +40,43 @@ class CapitalResponse(BaseModel):
 
 @router.post("/deposit", response_model=ApiResponse[CapitalResponse])
 async def deposit_capital(
-    request: DepositRequest,
-    token_payload: Dict[str, Any] = Depends(verify_token)
+    request: DepositRequest, token_payload: Dict[str, Any] = Depends(verify_token)
 ):
     """
     Queue a capital deposit request.
-    
+
     - **amount**: Amount to deposit (must be > 0)
     - **currency**: Currency for deposit (default: USDT)
     - **share_class**: Share class for deposit (default: usdt)
     - **source**: Source of deposit (default: manual)
-    
+
     Returns confirmation of queued deposit request.
     """
     # Validate amount
     if request.amount <= 0:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Deposit amount must be greater than 0"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Deposit amount must be greater than 0"
         )
-    
+
     # Validate share class
     if request.share_class not in ["usdt", "eth"]:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Share class must be either 'usdt' or 'eth'"
+            detail="Share class must be either 'usdt' or 'eth'",
         )
-    
+
     # Generate request ID
     request_id = f"deposit_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{int(request.amount)}"
-    
+
     # TODO: In a real implementation, this would:
     # 1. Queue the deposit request for next timestep processing
     # 2. Trigger rebalancing after deposit
     # 3. Update total equity tracking
     # 4. Log the transaction
-    
+
     # For MVP, simulate the response
     new_total_equity = 100000.0 + request.amount  # Mock current equity + deposit
-    
+
     return ApiResponse(
         success=True,
         data=CapitalResponse(
@@ -88,51 +86,50 @@ async def deposit_capital(
             share_class=request.share_class,
             status="queued",
             new_total_equity=new_total_equity,
-            timestamp=datetime.now().isoformat()
+            timestamp=datetime.now().isoformat(),
         ),
-        message=f"Deposit of {request.amount} {request.currency} queued successfully"
+        message=f"Deposit of {request.amount} {request.currency} queued successfully",
     )
 
 
 @router.post("/withdraw", response_model=ApiResponse[CapitalResponse])
 async def withdraw_capital(
-    request: WithdrawRequest,
-    token_payload: Dict[str, Any] = Depends(verify_token)
+    request: WithdrawRequest, token_payload: Dict[str, Any] = Depends(verify_token)
 ):
     """
     Queue a capital withdrawal request.
-    
+
     - **amount**: Amount to withdraw (must be > 0)
     - **currency**: Currency for withdrawal (default: USDT)
     - **share_class**: Share class for withdrawal (default: usdt)
     - **withdrawal_type**: Withdrawal type - 'fast' (from reserves) or 'slow' (unwind positions)
-    
+
     Returns confirmation of queued withdrawal request.
     """
     # Validate amount
     if request.amount <= 0:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Withdrawal amount must be greater than 0"
+            detail="Withdrawal amount must be greater than 0",
         )
-    
+
     # Validate share class
     if request.share_class not in ["usdt", "eth"]:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Share class must be either 'usdt' or 'eth'"
+            detail="Share class must be either 'usdt' or 'eth'",
         )
-    
+
     # Validate withdrawal type
     if request.withdrawal_type not in ["fast", "slow"]:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Withdrawal type must be either 'fast' or 'slow'"
+            detail="Withdrawal type must be either 'fast' or 'slow'",
         )
-    
+
     # Generate request ID
     request_id = f"withdraw_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{int(request.amount)}"
-    
+
     # TODO: In a real implementation, this would:
     # 1. Check available balance for withdrawal
     # 2. Queue the withdrawal request for next timestep processing
@@ -141,10 +138,10 @@ async def withdraw_capital(
     # 5. Trigger rebalancing after withdrawal
     # 6. Update total equity tracking
     # 7. Log the transaction
-    
+
     # For MVP, simulate the response
     new_total_equity = 100000.0 - request.amount  # Mock current equity - withdrawal
-    
+
     return ApiResponse(
         success=True,
         data=CapitalResponse(
@@ -154,8 +151,7 @@ async def withdraw_capital(
             share_class=request.share_class,
             status="queued",
             new_total_equity=new_total_equity,
-            timestamp=datetime.now().isoformat()
+            timestamp=datetime.now().isoformat(),
         ),
-        message=f"Withdrawal of {request.amount} {request.currency} queued successfully"
+        message=f"Withdrawal of {request.amount} {request.currency} queued successfully",
     )
-

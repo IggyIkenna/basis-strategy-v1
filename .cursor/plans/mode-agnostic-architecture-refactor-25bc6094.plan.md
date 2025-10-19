@@ -94,7 +94,7 @@ Update `backend/src/basis_strategy_v1/infrastructure/config/models.py`:
 - Add DataRequirementsModel schema
 - Add RiskMonitorConfigModel schema
 - Add ExposureMonitorConfigModel schema
-- Add PnLCalculatorConfigModel schema
+- Add PnLMonitorConfigModel schema
 - Add StrategyManagerConfigModel schema
 - Add VenueManagerConfigModel schema
 - Add ResultsStoreConfigModel schema

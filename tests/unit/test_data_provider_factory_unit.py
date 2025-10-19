@@ -2,6 +2,7 @@
 Unit tests for Data Provider Factory.
 
 Tests data provider factory pattern and provider creation logic in isolation.
+These tests are orchestrated by the main quality gate scripts.
 """
 
 import pytest

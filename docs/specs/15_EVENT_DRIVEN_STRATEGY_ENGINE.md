@@ -236,7 +236,8 @@ async def execute_tight_loop(self, timestamp: pd.Timestamp, market_data: Dict[st
     self.components['risk_monitor'].calculate_risk(timestamp, market_data)
     
     # 4. Update P&L based on new positions and market data
-    self.components['pnl_calculator'].get_current_pnl(timestamp, 'tight_loop', market_data)
+    self.components['pnl_calculator'].update_state(timestamp, 'tight_loop')
+    pnl_data = self.components['pnl_calculator'].get_latest_pnl()
 ```
 
 ### **Sequence Selection Logic**
@@ -931,7 +932,7 @@ Manages component lifecycle and dependency injection.
         'position_monitor': PositionMonitor,
         'exposure_monitor': ExposureMonitor,
         'risk_monitor': RiskMonitor,
-        'pnl_calculator': PnLCalculator,
+        'pnl_calculator': PnLMonitor,
         'strategy_manager': StrategyManager,
         'cex_execution_manager': CEXExecutionManager,
         'onchain_execution_manager': OnChainExecutionManager,
@@ -996,7 +997,7 @@ async def initialize_engine(config: Dict[str, Any], execution_mode: str):
     risk_monitor = RiskMonitor(config, position_monitor, exposure_monitor, data_provider)
     
     # 6. Initialize P&L Calculator
-    pnl_calculator = PnLCalculator(config, position_monitor, exposure_monitor, risk_monitor)
+    pnl_calculator = PnLMonitor(config, position_monitor, exposure_monitor, risk_monitor)
     
     # 7. Initialize Strategy Manager
     strategy_manager = StrategyManager(config, exposure_monitor, risk_monitor)
@@ -1036,7 +1037,8 @@ async def execute_tight_loop(self, timestamp: pd.Timestamp, market_data: Dict[st
     risk_data = await self.risk_monitor.assess_risk(exposure_data, market_data)
     
     # 4. Calculate P&L
-    pnl_data = await self.pnl_calculator.get_current_pnl(exposure_data, timestamp)
+    self.pnl_calculator.update_state(timestamp, 'full_loop')
+    pnl_data = self.pnl_calculator.get_latest_pnl()
     
     # 5. Make strategy decision
     strategy_decision = await self.strategy_manager.make_decision(exposure_data, risk_data, market_data)
@@ -1142,7 +1144,8 @@ class PositionUpdateHandler:
         risk = await self.risk_monitor.assess_risk(exposure, self.current_timestamp)
         
         # Calculate P&L
-        pnl = await self.pnl_calculator.get_current_pnl(exposure, risk, self.current_timestamp)
+        self.pnl_calculator.update_state(self.current_timestamp, 'tight_loop')
+        pnl = self.pnl_calculator.get_latest_pnl()
 ```
 
 ---
@@ -1217,7 +1220,7 @@ class EventDrivenStrategyEngine:
         )
         
         # 5. P&L Calculator (depends on all monitoring components) - SINGLE INSTANCE
-        self.pnl_calculator = PnLCalculator(
+        self.pnl_calculator = PnLMonitor(
             config=self.config,  # Shared config instance
             position_monitor=self.position_monitor,  # Shared position monitor instance
             exposure_monitor=self.exposure_monitor,  # Shared exposure monitor instance
@@ -1533,7 +1536,8 @@ while True:
 position = await engine.position_monitor.get_snapshot()
 exposure = await engine.exposure_monitor.calculate_exposure(position, timestamp)
 risk = await engine.risk_monitor.assess_risk(exposure, timestamp)
-pnl = await engine.pnl_calculator.get_current_pnl(exposure, risk, timestamp)
+engine.pnl_calculator.update_state(timestamp, 'full_loop')
+pnl = engine.pnl_calculator.get_latest_pnl()
 
 # Execute strategy decision
 decision = await engine.strategy_manager.make_decision(timestamp, market_data)

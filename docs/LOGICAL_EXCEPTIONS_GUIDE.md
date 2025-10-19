@@ -97,11 +97,24 @@ strategy_mode = config['strategy_mode']  # Not config.get('strategy_mode', 'defa
 These operations are async because they involve external I/O that can be slow:
 
 ```python
-# EventLogger: All methods are async per ADR-006
-async def log_event(self, event_type: str, data: Dict[str, Any], timestamp: pd.Timestamp):
-    """Log event with global ordering"""
+# DomainEventLogger: Async event logging with global ordering
+async def log_position_snapshot_async(self, event: PositionSnapshot) -> None:
+    """Log position snapshot with global ordering for audit trails"""
+    event.order = await self._get_next_global_order()
+    await self._write_event_async("positions", event)
+
+# Global event ordering: Thread-safe ordering for audit trails
+async def _get_next_global_order(self) -> int:
+    """Get next global order number for audit trails"""
     async with self._order_lock:
-        await self._write_event_to_storage(event)
+        self._global_order += 1
+        return self._global_order
+
+# Async file I/O: Performance-optimized file writing
+async def _write_event_async(self, event_type: str, event: any) -> None:
+    """Write event asynchronously using asyncio.to_thread"""
+    event_json = event.model_dump_json()
+    await asyncio.to_thread(self._write_to_file, file_path, event_json)
 
 # ResultsStore: Queue-based async operations
 async def store_result(self, result_type: str, data: Dict[str, Any], timestamp: pd.Timestamp):
@@ -124,6 +137,30 @@ async def fetch_price_data(self, symbol: str) -> Dict[str, Any]:
     async with aiohttp.ClientSession() as session:
         async with session.get(f'/api/price/{symbol}') as response:
             return await response.json()
+```
+
+### Required: Global Event Ordering
+
+All domain events must be globally ordered for audit trails:
+
+```python
+class DomainEventLogger:
+    """Domain event logger with global ordering for audit trails"""
+    
+    def __init__(self, log_dir: Path):
+        self._global_order = 0
+        self._order_lock = asyncio.Lock()
+    
+    async def _get_next_global_order(self) -> int:
+        """Get next global order number for audit trails"""
+        async with self._order_lock:
+            self._global_order += 1
+            return self._global_order
+    
+    async def log_position_snapshot_async(self, event: PositionSnapshot) -> None:
+        """Log position snapshot with global ordering"""
+        event.order = await self._get_next_global_order()
+        await self._write_event_async("positions", event)
 ```
 
 ### Required: API Call Queueing
@@ -171,7 +208,7 @@ def update_state(self, timestamp: pd.Timestamp, trigger_source: str):
     await self.event_logger.log_event('state_update', data, timestamp)
 
 # Internal calculations: Must be synchronous
-def get_current_pnl(self, data: Dict[str, Any]) -> float:
+def get_latest_pnl(self) -> Optional[Dict]:
     """Calculate PnL synchronously"""
     return self._compute_pnl(data)
 
@@ -194,7 +231,9 @@ The `test_logical_exceptions_quality_gates.py` script validates:
 
 1. **Fail-Fast Exceptions**: Checks `.get()` usage against documented exceptions
 2. **Async/Await Exceptions**: Validates async patterns against ADR-006 exceptions
-3. **API Call Queueing**: Ensures concurrent API calls are properly queued
+3. **Global Event Ordering**: Ensures domain events have proper ordering for audit trails
+4. **API Call Queueing**: Ensures concurrent API calls are properly queued
+5. **Async I/O Patterns**: Validates asyncio.to_thread usage for file I/O operations
 
 ### Mode-Agnostic Design Validator
 
@@ -223,9 +262,32 @@ class ExposureMonitor:
         return self.exposures.get(asset, 0)
 ```
 
-### Good: Async I/O with Queueing
+### Good: Async I/O with Global Event Ordering
 
 ```python
+class DomainEventLogger:
+    """Domain event logger with async I/O and global ordering"""
+    
+    def __init__(self, log_dir: Path):
+        self._global_order = 0
+        self._order_lock = asyncio.Lock()
+    
+    async def log_position_snapshot_async(self, event: PositionSnapshot) -> None:
+        """Log position snapshot with global ordering for audit trails"""
+        event.order = await self._get_next_global_order()
+        await self._write_event_async("positions", event)
+    
+    async def _get_next_global_order(self) -> int:
+        """Get next global order number for audit trails"""
+        async with self._order_lock:
+            self._global_order += 1
+            return self._global_order
+    
+    async def _write_event_async(self, event_type: str, event: any) -> None:
+        """Write event asynchronously using asyncio.to_thread"""
+        event_json = event.model_dump_json()
+        await asyncio.to_thread(self._write_to_file, file_path, event_json)
+
 class DataProvider:
     """Data provider with async I/O and queueing"""
     

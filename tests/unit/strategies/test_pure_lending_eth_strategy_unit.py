@@ -107,7 +107,6 @@ class TestPureLendingETHStrategyInit:
     def test_init_success_with_valid_config(self, strategy):
         """Test successful initialization with valid config."""
         assert strategy.share_class == 'ETH'
-        assert strategy.asset == 'ETH'
         assert strategy.entry_instrument == 'wallet:BaseToken:ETH'
         assert strategy.lending_instrument == 'aave_v3:aToken:aWETH'
         assert len(strategy.available_instruments) == 2
@@ -144,16 +143,16 @@ class TestPureLendingETHStrategyActions:
         with patch.object(strategy, '_get_asset_price', return_value=3000.0):
             orders = strategy._create_entry_full_orders(1.0)
             
-            assert len(orders) == 2
+            assert len(orders) == 1  # AAVE only
             order = orders[0]
             assert isinstance(order, Order)
-            assert order.venue == 'aave'
+            assert order.venue == 'aave_v3'
             assert order.operation == OrderOperation.SUPPLY
             assert order.token_in == 'ETH'
             assert order.token_out == 'aETH'
-            assert order.amount == 0.5
+            assert order.amount == 1.0
             assert order.source_venue == Venue.WALLET
-            assert order.target_venue == 'aave'
+            assert order.target_venue == 'aave_v3'
             assert order.source_token == 'ETH'
             assert order.target_token == 'aETH'
             assert order.strategy_intent == 'entry_full'
@@ -164,12 +163,12 @@ class TestPureLendingETHStrategyActions:
         with patch.object(strategy, '_get_asset_price', return_value=3000.0):
             orders = strategy._create_entry_partial_orders(0.5)
             
-            assert len(orders) == 2
+            assert len(orders) == 1  # AAVE only
             order = orders[0]
             assert isinstance(order, Order)
-            assert order.venue == 'aave'
+            assert order.venue == 'aave_v3'
             assert order.operation == OrderOperation.SUPPLY
-            assert order.amount == 0.25
+            assert order.amount == 0.5
             assert order.strategy_intent == 'entry_partial'
     
     def test_create_exit_full_orders(self, strategy):
@@ -181,14 +180,14 @@ class TestPureLendingETHStrategyActions:
              }):
             orders = strategy._create_exit_full_orders(1.0)
             
-            assert len(orders) == 2  # One for each lending venue (aave, morpho)
+            assert len(orders) == 1  # AAVE only
             for order in orders:
                 assert isinstance(order, Order)
-                assert order.venue in ['aave', 'morpho']
+                assert order.venue == 'aave_v3'
                 assert order.operation == OrderOperation.WITHDRAW
                 assert order.token_in == 'aETH'
                 assert order.token_out == 'ETH'
-                assert order.amount == 0.5  # Split between 2 venues
+                assert order.amount == 1.0  # Full amount to AAVE
                 assert order.strategy_intent == 'exit_full'
     
     def test_create_exit_partial_orders(self, strategy):
@@ -196,12 +195,12 @@ class TestPureLendingETHStrategyActions:
         with patch.object(strategy, '_get_asset_price', return_value=3000.0):
             orders = strategy._create_exit_partial_orders(0.5)
             
-            assert len(orders) == 2
+            assert len(orders) == 1  # AAVE only
             order = orders[0]
             assert isinstance(order, Order)
-            assert order.venue == 'aave'
+            assert order.venue == 'aave_v3'
             assert order.operation == OrderOperation.WITHDRAW
-            assert order.amount == 0.25
+            assert order.amount == 0.5
             assert order.strategy_intent == 'exit_partial'
     
     def test_create_dust_sell_orders(self, strategy):

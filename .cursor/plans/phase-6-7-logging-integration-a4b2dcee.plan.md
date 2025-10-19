@@ -291,7 +291,7 @@ Update all Phase 6 core components and Phase 7 Event Engine to use the new unifi
   
   # Initialize structured logger
   self.logger = StructuredLogger(
-      component_name="PnLCalculator",
+      component_name="PnLMonitor",
       correlation_id=self.correlation_id,
       pid=self.pid,
       log_dir=self.log_dir,
@@ -501,7 +501,7 @@ Update all Phase 6 core components and Phase 7 Event Engine to use the new unifi
   )
   
   # PnL Calculator
-  self.pnl_calculator = PnLCalculator(
+  self.pnl_calculator = PnLMonitor(
       self.config,
       self.data_provider,
       self.utility_manager,
@@ -522,9 +522,9 @@ Update all Phase 6 core components and Phase 7 Event Engine to use the new unifi
   # Execution Manager (already renamed from VenueManager in Phase 4)
   ```
 
-- **RENAME** attribute (line ~34): `self.venue_manager` → `self.execution_manager`
+- **RENAME** attribute (line ~34): `self.execution_manager` → `self.execution_manager`
 - **UPDATE** import (line ~34): `from ..execution.execution_manager import ExecutionManager`
-- **UPDATE** all references to `self.venue_manager` → `self.execution_manager`
+- **UPDATE** all references to `self.execution_manager` → `self.execution_manager`
 - **UPDATE** error logging throughout with error codes (ENGINE-001 through ENGINE-004)
 
 ---
@@ -567,7 +567,7 @@ Update all Phase 6 core components and Phase 7 Event Engine to use the new unifi
 1. **Phase 6.1**: PositionMonitor (foundation component)
 2. **Phase 6.2**: ExposureMonitor (depends on positions)
 3. **Phase 6.3**: RiskMonitor (depends on positions/exposures)
-4. **Phase 6.4**: PnLCalculator (depends on positions)
+4. **Phase 6.4**: PnLMonitor (depends on positions)
 5. **Phase 6.5**: PositionUpdateHandler (depends on position monitor)
 6. **Phase 6.6**: Components **init** cleanup
 7. **Phase 7.1**: EventDrivenStrategyEngine (orchestrates all components)

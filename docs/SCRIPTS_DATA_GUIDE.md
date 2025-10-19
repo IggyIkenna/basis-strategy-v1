@@ -39,7 +39,7 @@ python scripts/orchestrators/download_all.py --start-date 2024-01-01 --end-date 
 **Mode-specific**:
 
 **Pure Lending**:
-- AAVE USDT rates
+- AAVE USDT rates (AAVE only - no Morpho lending data available)
 
 **BTC Basis**:
 - BTC spot prices
@@ -48,10 +48,18 @@ python scripts/orchestrators/download_all.py --start-date 2024-01-01 --end-date 
 
 **ETH Leveraged**:
 - AAVE weETH/wstETH rates
+- LST oracle prices (AAVE) - Entry pricing for staking
+- LST market prices (DEX/CEX) - Exit pricing for trading
 - AAVE WETH rates
 - weETH/wstETH oracle prices
 - Staking yields
 - Seasonal rewards (if rewards_mode != 'base_only')
+
+**LST Pricing Architecture**:
+- **Two-Price System**: Oracle prices (entry/staking) vs Market prices (exit/trading)
+- **Oracle Data**: `data/protocol_data/aave/oracle/{token}_{quote_currency}_oracle_*.csv`
+- **Market Data**: `data/market_data/spot_prices/lst_eth_ratios/{venue}_{token}WETH_*.csv`
+- **Usage**: Entry uses oracle, exit uses market pricing
 
 **USDT Market-Neutral** (needs everything!):
 - All ETH leveraged data +
@@ -199,6 +207,32 @@ python scripts/orchestrators/download_all.py --quick-test
 # Individual component test
 python scripts/orchestrators/fetch_cex_data.py --start-date 2024-09-01 --end-date 2024-09-07 --quick-test
 ```
+
+---
+
+## 🏦 **LST Pricing Data Sources**
+
+### AAVE Oracle Pricing (Execution - Entry)
+**Purpose**: Instant staking via atomic transactions
+**Data Location**: `data/protocol_data/aave/oracle/`
+**Files**:
+- `weETH_ETH_oracle_2024-01-01_2025-09-18.csv`
+- `weETH_USD_oracle_2024-01-01_2025-09-18.csv`
+- `wstETH_ETH_oracle_2024-01-01_2025-09-18.csv`
+- `wstETH_USD_oracle_2024-01-01_2025-09-18.csv`
+
+### DEX Market Pricing (Execution - Exit)
+**Purpose**: Market exit pricing for trading
+**Data Location**: `data/market_data/spot_prices/lst_eth_ratios/`
+**Files**:
+- `curve_weETHWETH_1h_2024-05-12_2025-09-27.csv`
+- `uniswapv3_wstETHWETH_1h_2024-05-12_2025-09-27.csv`
+
+### Usage Patterns
+- **Entry**: Use AAVE oracle pricing for instant staking
+- **Exit**: Use DEX market pricing for trading
+- **PnL Attribution**: Use oracle pricing for yield calculation
+- **Position Monitoring**: Use market pricing for current value
 
 ---
 

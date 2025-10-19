@@ -4,7 +4,7 @@ from . import backtest, health, results, strategies, charts, live_trading, auth,
 
 __all__ = [
     "backtest",
-    "health", 
+    "health",
     "results",
     "strategies",
     "charts",
@@ -12,5 +12,3 @@ __all__ = [
     "auth",
     "capital",
 ]
-
-

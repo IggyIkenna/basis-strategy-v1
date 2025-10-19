@@ -17,9 +17,7 @@ router = APIRouter()
 security = HTTPBearer()
 
 # Simple in-memory user store for MVP
-USERS: Dict[str, str] = {
-    "admin": "admin123"
-}
+USERS: Dict[str, str] = {"admin": "admin123"}
 
 # JWT configuration
 SECRET_KEY = os.getenv("JWT_SECRET_KEY", "dev-secret-key-change-in-production")
@@ -54,7 +52,7 @@ def create_access_token(data: Dict[str, Any], expires_delta: timedelta = None) -
         expire = datetime.utcnow() + expires_delta
     else:
         expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    
+
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
@@ -84,10 +82,10 @@ def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)) 
 async def login(request: LoginRequest):
     """
     Authenticate user and return JWT token.
-    
+
     - **username**: Username for authentication
     - **password**: Password for authentication
-    
+
     Returns JWT access token on successful authentication.
     """
     # Verify credentials
@@ -97,21 +95,21 @@ async def login(request: LoginRequest):
             detail="Invalid username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
+
     # Create access token
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data={"sub": request.username}, expires_delta=access_token_expires
     )
-    
+
     return ApiResponse(
         success=True,
         data=LoginResponse(
             access_token=access_token,
             token_type="bearer",
-            expires_in=ACCESS_TOKEN_EXPIRE_MINUTES * 60  # Convert to seconds
+            expires_in=ACCESS_TOKEN_EXPIRE_MINUTES * 60,  # Convert to seconds
         ),
-        message="Login successful"
+        message="Login successful",
     )
 
 
@@ -119,14 +117,14 @@ async def login(request: LoginRequest):
 async def logout(token_payload: Dict[str, Any] = Depends(verify_token)):
     """
     Logout user and invalidate token.
-    
+
     Note: In a production system, you would maintain a blacklist of invalidated tokens.
     For MVP, we rely on token expiration.
     """
     return ApiResponse(
         success=True,
         data=LogoutResponse(message="Successfully logged out"),
-        message="Logout successful"
+        message="Logout successful",
     )
 
 
@@ -134,17 +132,13 @@ async def logout(token_payload: Dict[str, Any] = Depends(verify_token)):
 async def get_current_user(token_payload: Dict[str, Any] = Depends(verify_token)):
     """
     Get current authenticated user information.
-    
+
     Returns user details for the authenticated user.
     """
     username = token_payload.get("sub")
-    
+
     return ApiResponse(
         success=True,
-        data=UserResponse(
-            username=username,
-            authenticated=True
-        ),
-        message="User information retrieved successfully"
+        data=UserResponse(username=username, authenticated=True),
+        message="User information retrieved successfully",
     )
-

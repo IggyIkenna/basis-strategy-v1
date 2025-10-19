@@ -234,7 +234,7 @@ class ConfigAlignmentValidator:
         mode_status = "✅ PASS" if len(mode_orphaned_config) == 0 and len(mode_orphaned_model) == 0 else "❌ FAIL"
         print(f"    Modes: {len(all_mode_config_fields)} config fields, {len(model_fields)} model fields - {mode_status}")
         if mode_orphaned_config:
-            print(f"    ⚠️  {len(mode_orphaned_config)} orphaned config fields: {list(mode_orphaned_config)[:5]}...")
+            print(f"    ⚠️  {len(mode_orphaned_config)} orphaned config fields: {list(mode_orphaned_config)}")
         if mode_orphaned_model:
             print(f"    ⚠️  {len(mode_orphaned_model)} orphaned model fields: {list(mode_orphaned_model)[:5]}...")
         
@@ -385,43 +385,43 @@ class ConfigAlignmentValidator:
             # Define mode requirements
             MODE_REQUIREMENTS = {
                 'btc_basis': {
-                    'required_fields': ['mode', 'share_class', 'asset', 'basis_trade_enabled', 'venues', 'hedge_venues'],
+                    'required_fields': ['mode', 'share_class', 'basis_trade_enabled', 'venues', 'hedge_venues'],
                     'optional_fields': ['lending_enabled', 'staking_enabled', 'borrowing_enabled']
                 },
                 'eth_basis': {
-                    'required_fields': ['mode', 'share_class', 'asset', 'basis_trade_enabled', 'venues', 'hedge_venues'],
+                    'required_fields': ['mode', 'share_class', 'basis_trade_enabled', 'venues', 'hedge_venues'],
                     'optional_fields': ['lending_enabled', 'staking_enabled', 'borrowing_enabled']
                 },
                 'eth_leveraged': {
-                    'required_fields': ['mode', 'share_class', 'asset', 'staking_enabled', 'borrowing_enabled', 'lst_type', 'venues'],
+                    'required_fields': ['mode', 'share_class', 'staking_enabled', 'borrowing_enabled', 'lst_type', 'venues'],
                     'optional_fields': ['lending_enabled', 'basis_trade_enabled']
                 },
                 'eth_staking_only': {
-                    'required_fields': ['mode', 'share_class', 'asset', 'staking_enabled', 'lst_type', 'venues'],
+                    'required_fields': ['mode', 'share_class', 'staking_enabled', 'lst_type', 'venues'],
                     'optional_fields': ['lending_enabled', 'basis_trade_enabled', 'borrowing_enabled']
                 },
                 'pure_lending_usdt': {
-                    'required_fields': ['mode', 'share_class', 'asset', 'lending_enabled', 'venues'],
+                    'required_fields': ['mode', 'share_class', 'lending_enabled', 'venues'],
                     'optional_fields': ['staking_enabled', 'basis_trade_enabled', 'borrowing_enabled']
                 },
                 'usdt_market_neutral': {
-                    'required_fields': ['mode', 'share_class', 'asset', 'staking_enabled', 'borrowing_enabled', 'lst_type', 'venues', 'hedge_venues'],
+                    'required_fields': ['mode', 'share_class', 'staking_enabled', 'borrowing_enabled', 'lst_type', 'venues', 'hedge_venues'],
                     'optional_fields': ['lending_enabled', 'basis_trade_enabled']
                 },
                 'usdt_market_neutral_no_leverage': {
-                    'required_fields': ['mode', 'share_class', 'asset', 'staking_enabled', 'venues', 'hedge_venues'],
+                    'required_fields': ['mode', 'share_class', 'staking_enabled', 'venues', 'hedge_venues'],
                     'optional_fields': ['lending_enabled', 'basis_trade_enabled', 'borrowing_enabled']
                 },
                 'ml_btc_directional_usdt_margin': {
-                    'required_fields': ['mode', 'share_class', 'asset', 'venues'],
+                    'required_fields': ['mode', 'share_class', 'venues'],
                     'optional_fields': ['lending_enabled', 'staking_enabled', 'basis_trade_enabled', 'borrowing_enabled']
                 },
                 'ml_usdt_directional_usdt_margin': {
-                    'required_fields': ['mode', 'share_class', 'asset', 'venues'],
+                    'required_fields': ['mode', 'share_class', 'venues'],
                     'optional_fields': ['lending_enabled', 'staking_enabled', 'basis_trade_enabled', 'borrowing_enabled']
                 },
                 'ml_btc_directional_btc_margin': {
-                    'required_fields': ['mode', 'share_class', 'asset', 'venues', 'borrowing_enabled', 'leverage_enabled', 'margin_currency'],
+                    'required_fields': ['mode', 'share_class', 'venues', 'borrowing_enabled', 'leverage_enabled', 'margin_currency'],
                     'optional_fields': ['lending_enabled', 'staking_enabled', 'basis_trade_enabled', 'max_ltv']
                 }
             }

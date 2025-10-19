@@ -36,7 +36,7 @@ if TYPE_CHECKING:
     from .position_monitor import PositionMonitor
     from .exposure_monitor import ExposureMonitor
     from .risk_monitor import RiskMonitor
-    from .pnl_monitor import PnLCalculator
+    from .pnl_monitor import PnLMonitor
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +60,7 @@ class PositionUpdateHandler:
     
     def __init__(self, config: Dict, data_provider: Any, execution_mode: str,
                  position_monitor: 'PositionMonitor', exposure_monitor: 'ExposureMonitor',
-                 risk_monitor: 'RiskMonitor', pnl_monitor: 'PnLCalculator',
+                 risk_monitor: 'RiskMonitor', pnl_monitor: 'PnLMonitor',
                  correlation_id: str = None, pid: int = None, log_dir: Path = None):
         """
         Initialize position update handler.
@@ -83,26 +83,7 @@ class PositionUpdateHandler:
         self.risk_monitor = risk_monitor
         self.pnl_monitor = pnl_monitor
         
-        # Get position subscriptions from config
-        position_config = config.get('component_config', {}).get('position_monitor', {})
-        self.position_subscriptions = position_config.get('position_subscriptions', [])
-        
-        logger.info(f"PositionUpdateHandler subscribed to {len(self.position_subscriptions)} positions")
-        
-        # Initialize component-specific state
-        self.tight_loop_active = False
-        self.current_loop_timestamp = None
-        self.loop_execution_count = 0
-        
-        # Health integration
-        self.health_status = {
-            'status': 'healthy',
-            'last_check': datetime.now(),
-            'error_count': 0,
-            'success_count': 0
-        }
-        
-        # Initialize logging infrastructure
+        # Initialize logging infrastructure first
         self.correlation_id = correlation_id or str(uuid.uuid4().hex)
         self.pid = pid or os.getpid()
         self.log_dir = log_dir
@@ -116,14 +97,37 @@ class PositionUpdateHandler:
             engine=None
         )
         
-        # Initialize domain event logger
-        self.domain_event_logger = DomainEventLogger(self.log_dir) if self.log_dir else None
+        # Get position subscriptions from config
+        position_config = config.get('component_config', {}).get('position_monitor', {})
+        self.position_subscriptions = position_config.get('position_subscriptions', [])
         
-        logger.info(f"PositionUpdateHandler initialized (mode-agnostic)")
+        self.logger.info(f"PositionUpdateHandler subscribed to {len(self.position_subscriptions)} positions")
+        
+        # Initialize component-specific state
+        self.tight_loop_active = False
+        self.current_loop_timestamp = None
+        self.loop_execution_count = 0
+        
+        # Health integration
+        self.health_status = {
+            'status': 'healthy',
+            'last_check': datetime.now(),
+            'ERROR_COUNT': 0,
+            'success_count': 0
+        }
+        
+        # Initialize domain event logger
+        self.domain_event_logger = DomainEventLogger(
+            self.log_dir, 
+            correlation_id=self.correlation_id, 
+            pid=self.pid
+        ) if self.log_dir else None
+        
+        self.logger.info(f"PositionUpdateHandler initialized (mode-agnostic)")
     
     def _handle_error(self, error: Exception, context: str = "") -> None:
         """Handle errors with structured error handling."""
-        self.health_status['error_count'] += 1
+        self.health_status['ERROR_COUNT'] += 1
         
         # Determine error code based on context
         if 'reconciliation' in context.lower():
@@ -133,15 +137,15 @@ class PositionUpdateHandler:
         elif 'orchestration' in context.lower():
             error_code = 'PUH-003'
         else:
-            error_code = f"PUH-ERROR_{self.health_status['error_count']:04d}"
+            error_code = f"PUH-ERROR_{self.health_status['ERROR_COUNT']:04d}"
         
         # Log structured error
-        self.log_error(error, context={'error_code': error_code, 'component': 'PositionUpdateHandler'})
+        self.logger.error(str(error), error_code=error_code, exc_info=error)
         
         # Update health status based on error count
-        if self.health_status['error_count'] > 10:
+        if self.health_status.get('error_count', 0) > 10:
             self.health_status['status'] = "unhealthy"
-        elif self.health_status['error_count'] > 5:
+        elif self.health_status.get('error_count', 0) > 5:
             self.health_status['status'] = "degraded"
         
         # Raise ComponentError
@@ -207,14 +211,14 @@ class PositionUpdateHandler:
         PUBLIC METHOD - main entry point for position updates.
         
         This method orchestrates the tight loop with 2-trigger system per WORKFLOW_GUIDE.md:
-        1. venue_manager: Tight loop orchestration with execution deltas
+        1. execution_manager: Tight loop orchestration with execution deltas
         2. position_refresh: Periodic position refresh (60s interval)
         
         Args:
             changes: Position changes to apply (execution deltas)
             timestamp: Current timestamp
             market_data: Market data for calculations
-            trigger_component: Component that triggered the update ('venue_manager' or 'position_refresh')
+            trigger_component: Component that triggered the update ('execution_manager' or 'position_refresh')
             
         Returns:
             Dictionary with updated exposure, risk, and P&L data
@@ -234,14 +238,14 @@ class PositionUpdateHandler:
             self.loop_execution_count += 1
             
             # Route to appropriate trigger handler
-            if trigger_component == 'venue_manager':
-                result = self._handle_venue_manager_trigger(timestamp, changes, market_data)
+            if trigger_component == 'execution_manager':
+                result = self._handle_execution_manager_trigger(timestamp, changes)
             elif trigger_component == 'position_refresh':
-                result = self._handle_position_refresh_trigger(timestamp, market_data)
+                result = self._handle_position_refresh_trigger(timestamp)
             else:
                 raise ComponentError(
                     error_code='PUH-001',
-                    message=f'Unknown trigger_component: {trigger_component}. Must be venue_manager or position_refresh',
+                    message=f'Unknown trigger_component: {trigger_component}. Must be execution_manager or position_refresh',
                     component='PositionUpdateHandler',
                     severity='HIGH'
                 )
@@ -269,42 +273,45 @@ class PositionUpdateHandler:
         finally:
             self.tight_loop_active = False
     
-    def _handle_venue_manager_trigger(self, timestamp: pd.Timestamp, changes: Dict, market_data: Dict) -> Dict:
-        """Handle venue_manager trigger - tight loop orchestration with execution deltas."""
+    def _handle_execution_manager_trigger(self, timestamp: pd.Timestamp, changes: Dict) -> Dict:
+        """Handle execution_manager trigger - tight loop orchestration with execution deltas."""
         if self.execution_mode == 'backtest':
             # Backtest: Apply deltas + copy simulated to real
-            self.position_monitor.update_state(timestamp, 'venue_manager', changes)
+            self.position_monitor.update_state(timestamp, 'execution_manager', changes)
             # Simulated = Real in backtest (deep copy)
             self.position_monitor.real_positions = self.position_monitor.simulated_positions.copy()
             reconciliation_result = {'success': True, 'type': 'backtest_simulation'}
         else:  # live mode
             # Live: Apply deltas + query real positions + reconcile
-            self.position_monitor.update_state(timestamp, 'venue_manager', changes)
+            self.position_monitor.update_state(timestamp, 'execution_manager', changes)
             self.position_monitor.update_state(timestamp, 'position_refresh', None)
             reconciliation_result = self._reconcile_positions()
         
         # Continue with component chain
-        return self._orchestrate_component_chain(timestamp, reconciliation_result, market_data)
+        return self._orchestrate_component_chain(timestamp, reconciliation_result)
     
-    def _handle_position_refresh_trigger(self, timestamp: pd.Timestamp, market_data: Dict) -> Dict:
-        """Handle position_refresh trigger - periodic position refresh."""
+    def _handle_position_refresh_trigger(self, timestamp: pd.Timestamp) -> Dict:
+        """Handle position_refresh trigger - periodic position refresh with automatic settlements."""
         if self.execution_mode == 'backtest':
-            # Backtest: No-op (positions are path-dependent)
-            return {'success': True, 'type': 'backtest_noop'}
+            # Backtest: Apply automatic settlements (initial capital, funding, rewards, M2M PnL)
+            self.position_monitor.update_state(timestamp, 'position_refresh', None)
+            return {'success': True, 'type': 'backtest_settlements'}
         else:  # live mode
-            # Live: Query real positions from venues
+            # Live: Query real positions from venues (settlements handled by exchange)
             self.position_monitor.update_state(timestamp, 'position_refresh', None)
             return {'success': True, 'type': 'live_refresh'}
     
-    def _orchestrate_component_chain(self, timestamp: pd.Timestamp, reconciliation_result: Dict, market_data: Dict) -> Dict:
+    def _orchestrate_component_chain(self, timestamp: pd.Timestamp, reconciliation_result: Dict, market_data: Dict = None) -> Dict:
         """Orchestrate the component chain: position → exposure → risk → pnl."""
         try:
             # Get current positions
             position_snapshot = self.position_monitor.get_current_positions()
             
-            # Query market data if not provided
+            # Market data is not needed for tight loop reconciliation
+            # It's only needed when ExposureMonitor/RiskMonitor/PnLMonitor need to calculate values
+            # For now, skip market data in tight loop and let components handle it
             if market_data is None:
-                market_data = self.data_provider.get_data(timestamp)
+                market_data = {}  # Empty market data for tight loop execution
             
             # Step 1: Calculate exposure
             exposure = self.exposure_monitor.calculate_exposure(
@@ -315,6 +322,7 @@ class PositionUpdateHandler:
             
             # Step 2: Assess risk
             risk = self.risk_monitor.assess_risk(
+                timestamp=timestamp,
                 exposure_data=exposure,
                 market_data=market_data
             )
@@ -371,8 +379,8 @@ class PositionUpdateHandler:
                     if difference > tolerance:
                         mismatches.append({
                             'asset': asset,
-                            'simulated_amount': sim_amount,
-                            'real_amount': real_amount,
+                            'SIMULATED_AMOUNT': sim_amount,
+                            'REAL_AMOUNT': real_amount,
                             'difference': difference,
                             'tolerance': tolerance
                         })
@@ -387,7 +395,7 @@ class PositionUpdateHandler:
                     
                     # Log reconciliation event
                     self._log_reconciliation_event(
-                        trigger_source="venue_manager",
+                        trigger_source="execution_manager",
                         reconciliation_type="live_mismatch",
                         success=False,
                         simulated_positions=self.position_monitor.simulated_positions,
@@ -409,7 +417,7 @@ class PositionUpdateHandler:
                     
                     # Log reconciliation event
                     self._log_reconciliation_event(
-                        trigger_source="venue_manager",
+                        trigger_source="execution_manager",
                         reconciliation_type="live_success",
                         success=True,
                         simulated_positions=self.position_monitor.simulated_positions,
@@ -426,4 +434,41 @@ class PositionUpdateHandler:
         except Exception as e:
             self._handle_error(e, "reconciliation")
     
+    def execution_deltas(self, execution_handshake: Any) -> Dict[str, float]:
+        """
+        Extract execution deltas from ExecutionHandshake.
+        
+        Args:
+            execution_handshake: ExecutionHandshake object
+            
+        Returns:
+            Dict[str, float]: Position deltas from execution
+        """
+        try:
+            if hasattr(execution_handshake, 'actual_deltas'):
+                return execution_handshake.actual_deltas
+            else:
+                return {}
+        except Exception as e:
+            self._handle_error(e, "execution_deltas")
+            return {}
+    
+    def actual_deltas(self, execution_handshake: Any) -> Dict[str, float]:
+        """
+        Extract actual deltas from ExecutionHandshake.
+        
+        Args:
+            execution_handshake: ExecutionHandshake object
+            
+        Returns:
+            Dict[str, float]: Actual position deltas from execution
+        """
+        try:
+            if hasattr(execution_handshake, 'actual_deltas'):
+                return execution_handshake.actual_deltas
+            else:
+                return {}
+        except Exception as e:
+            self._handle_error(e, "actual_deltas")
+            return {}
     

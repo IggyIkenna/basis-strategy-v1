@@ -9,12 +9,12 @@ from .data_provider_factory import create_data_provider, get_data_provider_for_m
 from .data_validator import DataValidator
 
 __all__ = [
-    'HistoricalDeFiDataProvider',
-    'HistoricalCeFiDataProvider', 
-    'LiveDeFiDataProvider',
-    'LiveCeFiDataProvider',
-    'MLService',
-    'create_data_provider',
-    'get_data_provider_for_mode',
-    'DataValidator'
+    "HistoricalDeFiDataProvider",
+    "HistoricalCeFiDataProvider",
+    "LiveDeFiDataProvider",
+    "LiveCeFiDataProvider",
+    "MLService",
+    "create_data_provider",
+    "get_data_provider_for_mode",
+    "DataValidator",
 ]

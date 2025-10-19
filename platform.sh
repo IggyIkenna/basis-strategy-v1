@@ -197,38 +197,45 @@ run_quality_gates() {
         return 1
     fi
     
-    # Run environment variable validation
-    echo -e "${BLUE}  🔧 Running environment variable validation...${NC}"
-    python3 scripts/run_quality_gates.py --category env_config_sync
-    if [ $? -ne 0 ]; then
-        echo -e "${RED}❌ Environment variable validation failed${NC}"
-        return 1
-    fi
-    
     # Run data validation
     echo -e "${BLUE}  📊 Running data validation...${NC}"
-    python3 scripts/test_data_files_quality_gates.py
+    python3 scripts/run_quality_gates.py --category data_loading
     if [ $? -ne 0 ]; then
         echo -e "${RED}❌ Data validation failed${NC}"
         return 1
     fi
     
-    # Run data provider canonical access validation
-    echo -e "${BLUE}  🔍 Running data provider canonical access validation...${NC}"
-    python3 scripts/test_data_provider_canonical_access_quality_gates_simple.py
+    # Run data architecture validation
+    echo -e "${BLUE}  🏗️ Running data architecture validation...${NC}"
+    python3 scripts/run_quality_gates.py --category data_architecture
     if [ $? -ne 0 ]; then
-        echo -e "${RED}❌ Data provider canonical access validation failed${NC}"
+        echo -e "${RED}❌ Data architecture validation failed${NC}"
         return 1
     fi
     
     # Run component communication architecture validation
     echo -e "${BLUE}  🏗️ Running component communication architecture validation...${NC}"
-    python3 scripts/test_component_data_flow_architecture_quality_gates.py
+    python3 scripts/run_quality_gates.py --category components
     if [ $? -ne 0 ]; then
         echo -e "${RED}❌ Component communication architecture validation failed${NC}"
         return 1
     fi
     
+    # Run unit tests (critical components only)
+    echo -e "${BLUE}  🧪 Running critical unit tests...${NC}"
+    python3 scripts/run_quality_gates.py --category unit
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}❌ Critical unit tests failed${NC}"
+        return 1
+    fi
+    
+    # Run integration tests
+    echo -e "${BLUE}  🔗 Running integration tests...${NC}"
+    python3 scripts/run_quality_gates.py --category integration_data_flows
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}❌ Integration tests failed${NC}"
+        return 1
+    fi
     
     echo -e "${GREEN}✅ All critical quality gates passed${NC}"
     return 0
@@ -264,7 +271,7 @@ start_backend() {
     
     # Start API server in background from root directory (so configs/ is accessible)
     echo -e "${BLUE}🌐 Starting FastAPI server on port $BACKEND_PORT...${NC}"
-    mkdir -p backend/logs
+    mkdir -p logs
     
     # Start with timeout handling (using background process)
     local reload_flag=""
@@ -276,7 +283,7 @@ start_backend() {
     fi
     
     export PYTHONPATH=backend/src
-    python3 -m uvicorn backend.src.basis_strategy_v1.api.main:app --host 0.0.0.0 --port $BACKEND_PORT $reload_flag > backend/logs/api.log 2>&1 &
+    python3 -m uvicorn backend.src.basis_strategy_v1.api.main:app --host 0.0.0.0 --port $BACKEND_PORT $reload_flag > logs/api.log 2>&1 &
     BACKEND_PID=$!
     
     # Wait for backend to start with timeout
@@ -296,7 +303,7 @@ start_backend() {
         
         # Check if process is still running
         if ! kill -0 $BACKEND_PID 2>/dev/null; then
-            echo -e "${RED}❌ Backend process died. Check logs: tail -f backend/logs/api.log${NC}"
+            echo -e "${RED}❌ Backend process died. Check logs: tail -f logs/api.log${NC}"
             return 1
         fi
         
@@ -308,7 +315,7 @@ start_backend() {
     echo -e "${RED}❌ Backend startup timeout after ${max_timeout}s${NC}"
     echo -e "${RED}❌ Killing backend process (PID: $BACKEND_PID)${NC}"
     kill $BACKEND_PID 2>/dev/null || true
-    echo -e "${YELLOW}💡 Check logs: tail -f backend/logs/api.log${NC}"
+    echo -e "${YELLOW}💡 Check logs: tail -f logs/api.log${NC}"
     echo -e "${YELLOW}💡 Try: ./platform.sh stop && ./platform.sh start${NC}"
     return 1
 }
@@ -408,7 +415,7 @@ start_dev() {
     
     # Start backend in dev mode
     echo -e "${BLUE}🚀 Starting backend in dev mode...${NC}"
-    mkdir -p backend/logs
+    mkdir -p logs
     
     local reload_flag=""
     if [ "${BASIS_HOT_RELOAD:-false}" = "true" ]; then
@@ -419,7 +426,7 @@ start_dev() {
     fi
     
     export PYTHONPATH=backend/src
-    nohup python3 -m uvicorn backend.src.basis_strategy_v1.api.main:app --host 0.0.0.0 --port $BACKEND_PORT $reload_flag > backend/logs/api.log 2>&1 &
+    nohup python3 -m uvicorn backend.src.basis_strategy_v1.api.main:app --host 0.0.0.0 --port $BACKEND_PORT $reload_flag > logs/api.log 2>&1 &
     BACKEND_PID=$!
     
     # Wait for backend to start
@@ -434,7 +441,7 @@ start_dev() {
         # Start health monitor
         start_health_monitor
     else
-        echo -e "${RED}❌ Backend failed to start. Check logs: tail -f backend/logs/api.log${NC}"
+        echo -e "${RED}❌ Backend failed to start. Check logs: tail -f logs/api.log${NC}"
         return 1
     fi
 }
@@ -507,7 +514,7 @@ show_logs() {
     case $service in
         "backend"|"api")
             echo -e "${BLUE}📋 Backend logs:${NC}"
-            tail -f backend/logs/api.log
+            tail -f logs/api.log
             ;;
         "frontend"|"react")
             echo -e "${BLUE}📋 Frontend logs:${NC}"
@@ -515,7 +522,7 @@ show_logs() {
             ;;
         "all")
             echo -e "${BLUE}📋 All logs:${NC}"
-            tail -f backend/logs/api.log logs/frontend.log
+            tail -f logs/api.log logs/frontend.log
             ;;
         *)
             echo -e "${YELLOW}Usage: $0 logs [backend|frontend|all]${NC}"
@@ -533,8 +540,8 @@ run_tests() {
         return 1
     fi
     
-    # Run backend tests
-    echo -e "${BLUE}🔧 Running backend tests...${NC}"
+    # Run comprehensive quality gates
+    echo -e "${BLUE}🔧 Running comprehensive quality gates...${NC}"
     python3 scripts/run_quality_gates.py
     
     # Run frontend tests
@@ -544,6 +551,140 @@ run_tests() {
     cd ..
     
     echo -e "${GREEN}✅ All tests completed${NC}"
+}
+
+# Function to run configuration quality gates
+run_config_quality_gates() {
+    echo -e "${BLUE}📋 Running configuration-related quality gates...${NC}"
+    
+    # Load environment variables
+    if ! load_environment; then
+        echo -e "${RED}❌ Failed to load environment variables${NC}"
+        return 1
+    fi
+    
+    # Run configuration validation
+    echo -e "${BLUE}  📋 Running configuration validation...${NC}"
+    python3 scripts/run_quality_gates.py --category configuration
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}❌ Configuration validation failed${NC}"
+        return 1
+    fi
+    
+    echo -e "${GREEN}✅ All configuration quality gates passed${NC}"
+    return 0
+}
+
+# Function to run data quality gates
+run_data_quality_gates() {
+    echo -e "${BLUE}📊 Running data-related quality gates...${NC}"
+    
+    # Load environment variables
+    if ! load_environment; then
+        echo -e "${RED}❌ Failed to load environment variables${NC}"
+        return 1
+    fi
+    
+    # Run data loading validation
+    echo -e "${BLUE}  📊 Running data loading validation...${NC}"
+    python3 scripts/run_quality_gates.py --category data_loading
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}❌ Data loading validation failed${NC}"
+        return 1
+    fi
+    
+    # Run data architecture validation
+    echo -e "${BLUE}  🏗️ Running data architecture validation...${NC}"
+    python3 scripts/run_quality_gates.py --category data_architecture
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}❌ Data architecture validation failed${NC}"
+        return 1
+    fi
+    
+    echo -e "${GREEN}✅ All data quality gates passed${NC}"
+    return 0
+}
+
+# Function to run workflow quality gates
+run_workflow_quality_gates() {
+    echo -e "${BLUE}🔄 Running workflow-related quality gates...${NC}"
+    
+    # Load environment variables
+    if ! load_environment; then
+        echo -e "${RED}❌ Failed to load environment variables${NC}"
+        return 1
+    fi
+    
+    # Run integration tests for workflow
+    echo -e "${BLUE}  🔗 Running workflow integration tests...${NC}"
+    python3 scripts/run_quality_gates.py --category integration_data_flows
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}❌ Workflow integration tests failed${NC}"
+        return 1
+    fi
+    
+    echo -e "${GREEN}✅ All workflow quality gates passed${NC}"
+    return 0
+}
+
+# Function to run component quality gates
+run_component_quality_gates() {
+    echo -e "${BLUE}🧩 Running component-related quality gates...${NC}"
+    
+    # Load environment variables
+    if ! load_environment; then
+        echo -e "${RED}❌ Failed to load environment variables${NC}"
+        return 1
+    fi
+    
+    # Run component architecture validation
+    echo -e "${BLUE}  🏗️ Running component architecture validation...${NC}"
+    python3 scripts/run_quality_gates.py --category components
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}❌ Component architecture validation failed${NC}"
+        return 1
+    fi
+    
+    # Run unit tests for components
+    echo -e "${BLUE}  🧪 Running component unit tests...${NC}"
+    python3 scripts/run_quality_gates.py --category unit
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}❌ Component unit tests failed${NC}"
+        return 1
+    fi
+    
+    echo -e "${GREEN}✅ All component quality gates passed${NC}"
+    return 0
+}
+
+# Function to run E2E quality gates
+run_e2e_quality_gates() {
+    echo -e "${BLUE}🎯 Running end-to-end quality gates...${NC}"
+    
+    # Load environment variables
+    if ! load_environment; then
+        echo -e "${RED}❌ Failed to load environment variables${NC}"
+        return 1
+    fi
+    
+    # Run E2E strategy tests
+    echo -e "${BLUE}  🎯 Running E2E strategy tests...${NC}"
+    python3 scripts/run_quality_gates.py --category e2e_strategies
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}❌ E2E strategy tests failed${NC}"
+        return 1
+    fi
+    
+    # Run E2E quality gates tests
+    echo -e "${BLUE}  🚦 Running E2E quality gates tests...${NC}"
+    python3 scripts/run_quality_gates.py --category e2e_quality_gates
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}❌ E2E quality gates tests failed${NC}"
+        return 1
+    fi
+    
+    echo -e "${GREEN}✅ All E2E quality gates passed${NC}"
+    return 0
 }
 
 # Function to set environment
@@ -711,6 +852,11 @@ show_help() {
     echo -e "  ${BLUE}status${NC}       Show service status"
     echo -e "  ${BLUE}logs${NC}         Show logs [backend|frontend|all]"
     echo -e "  ${BLUE}test${NC}         Run all tests"
+    echo -e "  ${BLUE}config-test${NC}  Run configuration-related quality gates only"
+    echo -e "  ${BLUE}data-test${NC}    Run data-related quality gates only"
+    echo -e "  ${BLUE}workflow-test${NC} Run workflow integration tests only"
+    echo -e "  ${BLUE}component-test${NC} Run component architecture and unit tests only"
+    echo -e "  ${BLUE}e2e-test${NC}     Run end-to-end strategy tests only"
     echo -e "  ${BLUE}env${NC}          Set environment (dev|prod)"
     echo -e "  ${BLUE}help${NC}         Show this help message"
     echo ""
@@ -727,6 +873,12 @@ show_help() {
     echo -e "  ${BLUE}$0 env prod${NC}        # Set production environment"
     echo -e "  ${BLUE}$0 start${NC}           # Start all services"
     echo -e "  ${BLUE}$0 dev${NC}             # Start in dev mode"
+    echo -e "  ${BLUE}$0 test${NC}            # Run all tests"
+    echo -e "  ${BLUE}$0 config-test${NC}     # Run configuration-related quality gates only"
+    echo -e "  ${BLUE}$0 data-test${NC}       # Run data-related quality gates only"
+    echo -e "  ${BLUE}$0 workflow-test${NC}   # Run workflow integration tests only"
+    echo -e "  ${BLUE}$0 component-test${NC}  # Run component architecture and unit tests only"
+    echo -e "  ${BLUE}$0 e2e-test${NC}        # Run end-to-end strategy tests only"
     echo -e "  ${BLUE}$0 logs backend${NC}    # Show backend logs"
     echo -e "  ${BLUE}$0 status${NC}          # Check service status"
 }
@@ -764,6 +916,21 @@ case "${1:-help}" in
         ;;
     "test")
         run_tests
+        ;;
+    "config-test")
+        run_config_quality_gates
+        ;;
+    "data-test")
+        run_data_quality_gates
+        ;;
+    "workflow-test")
+        run_workflow_quality_gates
+        ;;
+    "component-test")
+        run_component_quality_gates
+        ;;
+    "e2e-test")
+        run_e2e_quality_gates
         ;;
     "env")
         set_environment "$2"

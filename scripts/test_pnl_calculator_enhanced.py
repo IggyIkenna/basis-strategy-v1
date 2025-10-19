@@ -22,7 +22,7 @@ import json
 # Add the backend src to the path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'backend', 'src'))
 
-from basis_strategy_v1.core.components.pnl_monitor import PnLCalculator
+from basis_strategy_v1.core.components.pnl_monitor import PnLMonitor
 from unittest.mock import Mock
 
 def create_enhanced_mock_config() -> Dict[str, Any]:
@@ -268,7 +268,7 @@ def test_enhanced_pnl_monitor():
     mock_exposure_monitor.get_current_exposure = get_current_exposure
     
     # Initialize PnL Monitor
-    pnl_monitor = PnLCalculator(
+    pnl_monitor = PnLMonitor(
         config=config,
         share_class='USDT',
         initial_capital=100000.0,

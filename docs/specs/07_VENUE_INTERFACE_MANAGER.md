@@ -313,7 +313,7 @@ def update_state(self, timestamp: pd.Timestamp, trigger_source: str, instruction
 
 ### Backtest Mode
 ```python
-def route_to_venue(self, timestamp: pd.Timestamp, instruction_block: Dict):
+    def route_to_venue(self, timestamp: pd.Timestamp, order: Order) -> ExecutionHandshake:
     if self.execution_mode == 'backtest':
         # Simulate execution with historical data
         return self._simulate_venue_execution(instruction_block)
@@ -321,7 +321,7 @@ def route_to_venue(self, timestamp: pd.Timestamp, instruction_block: Dict):
 
 ### Live Mode
 ```python
-def route_to_venue(self, timestamp: pd.Timestamp, instruction_block: Dict):
+    def route_to_venue(self, timestamp: pd.Timestamp, order: Order) -> ExecutionHandshake:
     elif self.execution_mode == 'live':
         # Execute with real venue APIs
         return self._execute_live_venue(instruction_block)
@@ -932,7 +932,7 @@ CEX spot or perp trades
 
 Components query data using shared clock:
 ```python
-def route_to_venue(self, timestamp: pd.Timestamp, instruction_block: Dict):
+    def route_to_venue(self, timestamp: pd.Timestamp, order: Order) -> ExecutionHandshake:
     # Query data with timestamp (data <= timestamp guaranteed)
     market_data = self.data_provider.get_data(timestamp)
     

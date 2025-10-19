@@ -29,6 +29,32 @@ This directory contains the complete test suite for the Basis Strategy project, 
 - **Execution Time**: Slow (~120s for all E2E tests)
 - **Critical**: No - only run when unit + integration tests pass
 
+## Strategy Testing Patterns
+
+**Updated October 18, 2025** - Based on comprehensive test suite validation:
+
+### Multi-Venue Strategy Testing
+- **Pure Lending Strategies**: Test that 2 orders are created (AAVE + Morpho)
+- **Venue Mocking**: Mock position monitors for exit order tests
+- **Instrument Keys**: Use full format `venue:position_type:symbol` in assertions
+
+### Strategy-Specific Test Patterns
+- **ETH Staking**: Assert `etherfi:BaseToken:WEETH` not `weeth_balance`
+- **ML Strategies**: Pass `signal` parameter to order creation methods
+- **Leveraged Strategies**: Pass `target_ltv` parameter to order creation
+- **Basis Strategies**: Use allocation factors in test configs
+
+### Common Test Fixes Applied
+- **Method Signatures**: `generate_orders(timestamp, exposure, risk_assessment, market_data)`
+- **Error Messages**: "Required instrument X not in position_subscriptions"
+- **Logging**: Use `self.logger.error(message, error_code, exc_info, **context)`
+- **Order Counts**: Multi-venue strategies create multiple orders per action
+
+### Test Configuration Requirements
+- **Required Fields**: `lst_type`, `staking_protocol`, `btc_allocation`, `eth_allocation`
+- **Mock Data**: Position monitors must return realistic position data
+- **Venue Names**: Use actual venue names (`aave_v3`, `morpho`) not enum values
+
 ## Directory Structure
 
 ```

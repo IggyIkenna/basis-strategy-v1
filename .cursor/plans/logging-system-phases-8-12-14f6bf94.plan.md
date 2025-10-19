@@ -53,7 +53,7 @@ class ExecutionManagerConfig(BaseModel):
 ```yaml
 # OLD:
 component_config:
-  venue_manager:
+  execution_manager:
     max_retry_attempts: 3
     tight_loop_timeout: 120
     # ...
@@ -68,7 +68,7 @@ component_config:
 
 **Search & Replace Pattern**:
 
-- Find: `venue_manager:` (under component_config)
+- Find: `execution_manager:` (under component_config)
 - Replace: `execution_manager:`
 - Keep all nested fields unchanged
 
@@ -169,7 +169,7 @@ def update_state(self, timestamp, trigger_source, execution_deltas=None):
 
 1. **Rename file**: `06_VENUE_MANAGER.md` → `06_EXECUTION_MANAGER.md`
 2. **Global replace**: `VenueManager` → `ExecutionManager`
-3. **Global replace**: `venue_manager` → `execution_manager`
+3. **Global replace**: `execution_manager` → `execution_manager`
 4. **Update title**: "Venue Manager Component Specification" → "Execution Manager Component Specification"
 5. **Update Purpose section**: Replace with ExecutionManager purpose
 6. **Remove all Trade references**: Replace with ExecutionHandshake
@@ -907,7 +907,7 @@ df.to_csv("results/{backtest_id}/positions.csv", index=False)
 
 **Changes**:
 
-- Update config examples: venue_manager → execution_manager
+- Update config examples: execution_manager → execution_manager
 - Update execution flow references
 
 #### COMPONENT_SPECS_INDEX.md
@@ -1408,7 +1408,7 @@ class TestAtomicOperations:
 
 - `Trade` (model)
 - `VenueManager` (class)
-- `venue_manager` (variable)
+- `execution_manager` (variable)
 
 **Replace with**:
 
@@ -1426,7 +1426,7 @@ class TestAtomicOperations:
 
 ```python
 # OLD mock return value
-mock_venue_manager.process_orders.return_value = [Mock(Trade)]
+mock_execution_manager.process_orders.return_value = [Mock(Trade)]
 
 # NEW mock return value
 mock_execution_manager.process_orders.return_value = [Mock(ExecutionHandshake)]
@@ -1447,7 +1447,7 @@ mock_execution_manager.process_orders.return_value = [Mock(ExecutionHandshake)]
 ### Phase 8 Complete
 
 - [ ] ExecutionManagerConfig class renamed in models.py
-- [ ] All 10 mode YAML files updated (venue_manager → execution_manager)
+- [ ] All 10 mode YAML files updated (execution_manager → execution_manager)
 - [ ] .gitignore cleaned up (backend/logs/ removed)
 - [ ] Config validation tests still pass
 
@@ -1480,7 +1480,7 @@ mock_execution_manager.process_orders.return_value = [Mock(ExecutionHandshake)]
 
 ## Success Criteria
 
-1. **Configuration Consistency**: All configs use execution_manager, no venue_manager references
+1. **Configuration Consistency**: All configs use execution_manager, no execution_manager references
 2. **Documentation Completeness**: All specs and docs reflect ExecutionManager/ExecutionHandshake architecture
 3. **Test Readiness**: Test scaffolds ready for implementation completion
 4. **Zero Breaking Changes**: Existing functionality preserved, only naming changes

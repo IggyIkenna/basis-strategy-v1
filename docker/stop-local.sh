@@ -1,6 +1,6 @@
 #!/bin/bash
 # Stop Local Docker Deployment
-# Usage: ./stop-local.sh
+# Usage: ./stop.sh
 
 set -e
 

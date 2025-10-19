@@ -235,7 +235,7 @@ class EnvConfigUsageSyncQualityGates:
             }
             
             if undocumented:
-                logger.warning(f"  ⚠️  {component_name}: {len(undocumented)} undocumented config fields")
+                logger.warning(f"  ⚠️  {component_name}: {len(undocumented)} undocumented config fields: {list(undocumented)}")
             if unused:
                 logger.info(f"  ℹ️  {component_name}: {len(unused)} unused documented config fields")
         
@@ -472,7 +472,7 @@ class EnvConfigUsageSyncQualityGates:
             '01_POSITION_MONITOR': 'core',
             '02_EXPOSURE_MONITOR': 'core', 
             '03_RISK_MONITOR': 'core',
-            '04_pnl_monitor': 'core',
+            '04_PNL_MONITOR': 'core',
             '05_STRATEGY_MANAGER': 'core',
             '06_VENUE_MANAGER': 'core',
             '07_VENUE_INTERFACE_MANAGER': 'core',
@@ -571,7 +571,7 @@ class EnvConfigUsageSyncQualityGates:
             '01_POSITION_MONITOR': 'core',
             '02_EXPOSURE_MONITOR': 'core', 
             '03_RISK_MONITOR': 'core',
-            '04_pnl_monitor': 'core',
+            '04_PNL_MONITOR': 'core',
             '05_STRATEGY_MANAGER': 'core',
             '06_VENUE_MANAGER': 'core',
             '07_VENUE_INTERFACE_MANAGER': 'core',
@@ -672,7 +672,7 @@ class EnvConfigUsageSyncQualityGates:
             '01_POSITION_MONITOR': 'core',
             '02_EXPOSURE_MONITOR': 'core', 
             '03_RISK_MONITOR': 'core',
-            '04_pnl_monitor': 'core',
+            '04_PNL_MONITOR': 'core',
             '05_STRATEGY_MANAGER': 'core',
             '06_VENUE_MANAGER': 'core',
             '07_VENUE_INTERFACE_MANAGER': 'core',

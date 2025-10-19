@@ -42,7 +42,7 @@ Complete architectural refactoring to venue-centric naming and structure. **NO b
 
 **Files to Rename**:
 - `backend/src/basis_strategy_v1/core/execution/execution_interface_manager.py` → `venue_interface_manager.py`
-- `backend/src/basis_strategy_v1/core/execution/execution_manager.py` → `venue_manager.py`
+- `backend/src/basis_strategy_v1/core/execution/execution_manager.py` → `execution_manager.py`
 
 **Files to Update**:
 - All components that use these managers
@@ -138,7 +138,7 @@ Complete architectural refactoring to venue-centric naming and structure. **NO b
 **Files to Rename**:
 - `tests/unit/test_execution_interface_factory.py` → `test_venue_interface_factory.py`
 - `tests/unit/test_execution_interface_manager.py` → `test_venue_interface_manager.py`
-- `tests/unit/test_execution_manager.py` → `test_venue_manager.py`
+- `tests/unit/test_execution_manager.py` → `test_execution_manager.py`
 - `tests/integration/test_execution_interface_factory_extensions.py` → `test_venue_interface_factory_extensions.py`
 
 **Files to Update**:

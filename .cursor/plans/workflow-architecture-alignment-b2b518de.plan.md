@@ -17,7 +17,7 @@ Align WORKFLOW_GUIDE.md with actual implementation and architectural decisions. 
 
 ### 1.1 Update VenueManager
 
-**File**: `backend/src/basis_strategy_v1/core/execution/venue_manager.py`
+**File**: `backend/src/basis_strategy_v1/core/execution/execution_manager.py`
 
 **Changes**:
 
@@ -82,7 +82,7 @@ Align WORKFLOW_GUIDE.md with actual implementation and architectural decisions. 
 
 ### 2.2 Remove Tight Loop from VenueManager
 
-**File**: `backend/src/basis_strategy_v1/core/execution/venue_manager.py`
+**File**: `backend/src/basis_strategy_v1/core/execution/execution_manager.py`
 
 **Changes**:
 
@@ -148,7 +148,7 @@ Align WORKFLOW_GUIDE.md with actual implementation and architectural decisions. 
 
 **Files**:
 
-- `venue_manager.py`
+- `execution_manager.py`
 - `position_update_handler.py`
 - `venue_interface_manager.py`
 
@@ -208,7 +208,7 @@ def update_state(self, timestamp: pd.Timestamp, trigger_source: str, **kwargs):
 
 **Files**:
 
-- `venue_manager.py`
+- `execution_manager.py`
 - `venue_interface_manager.py`
 
 **Changes**:
@@ -402,7 +402,7 @@ def _send_instruction(self, instruction: Dict, timestamp: pd.Timestamp) -> Dict:
 
 **Files**:
 
-- `tests/unit/test_venue_manager_unit.py`
+- `tests/unit/test_execution_manager_unit.py`
 - `tests/unit/test_venue_interface_manager_unit.py`
 - `tests/unit/test_position_monitor_unit.py`
 - `tests/unit/test_position_update_handler_unit.py`
@@ -527,7 +527,7 @@ def _send_instruction(self, instruction: Dict, timestamp: pd.Timestamp) -> Dict:
 
 **Backend Code** (~15 files):
 
-- venue_manager.py (refactor)
+- execution_manager.py (refactor)
 - venue_interface_manager.py (refactor)
 - position_monitor.py (add simulated vs real pattern)
 - position_update_handler.py (remove mode-specific logic)

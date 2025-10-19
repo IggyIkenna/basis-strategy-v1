@@ -115,7 +115,7 @@ class SingletonPatternQualityGates:
                 'PositionMonitor(',
                 'ExposureMonitor(',
                 'RiskMonitor(',
-                'PnLCalculator(',
+                'PnLMonitor(',
                 'StrategyManager(',
                 'PositionUpdateHandler('
             ]
@@ -185,7 +185,7 @@ class SingletonPatternQualityGates:
                 r'RiskMonitor\(',
                 r'StrategyManager\(',
                 r'ExposureMonitor\(',
-                r'PnLCalculator\(',
+                r'PnLMonitor\(',
                 r'PositionUpdateHandler\('
             ]
             
@@ -200,8 +200,8 @@ class SingletonPatternQualityGates:
                     component_name = 'StrategyManager'
                 elif component_name == 'Exposuremonitor':
                     component_name = 'ExposureMonitor'
-                elif component_name == 'Pnlcalculator':
-                    component_name = 'PnLCalculator'
+                elif component_name == 'PnLMonitor':
+                    component_name = 'PnLMonitor'
                 elif component_name == 'Positionupdatehandler':
                     component_name = 'PositionUpdateHandler'
                 
@@ -237,7 +237,7 @@ class SingletonPatternQualityGates:
                 'PositionMonitor(',
                 'ExposureMonitor(',
                 'RiskMonitor(',
-                'PnLCalculator(',
+                'PnLMonitor(',
                 'StrategyManager(',
                 'PositionUpdateHandler('
             ]
@@ -274,7 +274,7 @@ class SingletonPatternQualityGates:
                 'PositionMonitor(',
                 'ExposureMonitor(',
                 'RiskMonitor(',
-                'PnLCalculator('
+                'PnLMonitor('
             ]
             
             for component in components_needing_data_provider:
@@ -344,7 +344,7 @@ class SingletonPatternQualityGates:
             from basis_strategy_v1.core.strategies.components.risk_monitor import RiskMonitor
             from basis_strategy_v1.core.strategies.components.strategy_manager import StrategyManager
             from basis_strategy_v1.core.strategies.components.position_update_handler import PositionUpdateHandler
-            from basis_strategy_v1.core.components.pnl_monitor import PnLCalculator
+            from basis_strategy_v1.core.components.pnl_monitor import PnLMonitor
             
             logger.info("✅ All components imported successfully")
             return True

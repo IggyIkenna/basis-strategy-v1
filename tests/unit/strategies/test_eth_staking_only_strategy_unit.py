@@ -19,8 +19,6 @@ def mock_config():
     return {
         'mode': 'eth_staking_only',
         'share_class': 'ETH',
-        'asset': 'ETH',
-        'eth_allocation': 0.8,  # 80% allocation to ETH
         'max_leverage': 1.0,   # No leverage for staking
         'lst_type': 'weeth',   # Required for ETH strategies
         'staking_protocol': 'etherfi',  # Required for ETH strategies
@@ -114,7 +112,6 @@ class TestETHStakingOnlyStrategyInit:
     def test_init_success_with_valid_config(self, strategy):
         """Test successful initialization with valid config."""
         assert strategy.share_class == 'ETH'
-        assert strategy.asset == 'ETH'
         assert strategy.entry_instrument == 'wallet:BaseToken:ETH'
         assert strategy.staking_instrument == 'etherfi:LST:weETH'
         assert len(strategy.available_instruments) == 4
@@ -244,10 +241,10 @@ class TestETHStakingOnlyStrategyHelpers:
         with patch.object(strategy, '_get_asset_price', return_value=3000.0):
             target = strategy.calculate_target_position(1.0)
             
-            assert 'weeth_balance' in target
-            assert 'eth_balance' in target
-            assert target['weeth_balance'] == 0.0002666666666666667
-            assert target['eth_balance'] == 1.0  # All ETH staked
+            assert 'etherfi:BaseToken:WEETH' in target
+            assert 'wallet:BaseToken:ETH' in target
+            assert target['etherfi:BaseToken:WEETH'] == 0.0003333333333333333  # 1.0 / 3000.0
+            assert target['wallet:BaseToken:ETH'] == 1.0  # All ETH staked
     
     def test_order_operation_id_format(self, strategy):
         """Test that operation_id format is correct (unix microseconds)."""

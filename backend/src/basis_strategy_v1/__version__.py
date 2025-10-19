@@ -4,6 +4,3 @@ __version__ = "2.0.0"
 __author__ = "Basis Strategy Team"
 __email__ = "ikenna@odum-research.com"
 __description__ = "Basis Trading Strategy Platform with DeFi Integration"
-
-
-

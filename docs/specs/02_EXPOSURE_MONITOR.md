@@ -450,13 +450,14 @@ logger = logging.getLogger(__name__)
 class ExposureMonitor:
     """Mode-agnostic exposure monitor using config-driven behavior"""
     
-    def __init__(self, config: Dict, data_provider: 'BaseDataProvider', execution_mode: str,
-                 position_monitor: 'PositionMonitor'):
+    def __init__(self, config: Dict, data_provider: 'BaseDataProvider', utility_manager, correlation_id: str, pid: str, log_dir: str):
         # Store references (NEVER modified)
         self.config = config
         self.data_provider = data_provider
-        self.execution_mode = execution_mode
-        self.position_monitor = position_monitor
+        self.utility_manager = utility_manager
+        self.correlation_id = correlation_id
+        self.pid = pid
+        self.log_dir = log_dir
         
         # Extract config-driven settings
         self.exposure_config = config.get('component_config', {}).get('exposure_monitor', {})

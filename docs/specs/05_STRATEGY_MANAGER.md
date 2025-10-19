@@ -234,8 +234,31 @@ def __init__(self, ...):
 - **component_config.strategy_manager.position_calculation.leverage_ratio**: float - Leverage ratio for positions
   - **Usage**: Defines leverage multiplier for position sizing
   - **Used in**: Position sizing and risk management
+- **component_config.strategy_manager.position_calculation.hedge_allocation**: Dict - Hedge allocation percentages across venues
   - **Usage**: Defines hedge allocation percentages across venues
   - **Used in**: Risk management and hedging execution
+
+### ML Strategy Configuration Fields
+- **signal_threshold**: float - ML signal confidence threshold
+  - **Usage**: Defines minimum confidence level for ML signal execution
+  - **Examples**: 0.65 (65% confidence threshold)
+  - **Used in**: ML strategy decision making and signal validation
+- **max_position_size**: float - Maximum position size as percentage of equity
+  - **Usage**: Defines maximum position size for risk management
+  - **Examples**: 0.8 (80% of equity)
+  - **Used in**: Position sizing and risk calculation
+- **stop_loss_pct**: float - Stop loss percentage
+  - **Usage**: Defines stop loss threshold for position management
+  - **Examples**: 0.05 (5% stop loss)
+  - **Used in**: Risk management and position exit logic
+- **take_profit_pct**: float - Take profit percentage
+  - **Usage**: Defines take profit threshold for position management
+  - **Examples**: 0.10 (10% take profit)
+  - **Used in**: Profit taking and position exit logic
+- **stake_allocation_percentage**: float - Percentage of capital allocated to staking
+  - **Usage**: Defines proportion of capital allocated to staking operations
+  - **Examples**: 0.5 (50% of capital for staking)
+  - **Used in**: Capital allocation and position sizing logic in staking strategies
 
 ### Strategy-Specific Config Fields
 - `lst_type`: str - Liquid staking token type
@@ -408,14 +431,18 @@ import pandas as pd
 class BaseStrategyManager(ABC):
     """Abstract base class for all strategy managers with config-driven behavior"""
     
-    def __init__(self, config: Dict, data_provider: BaseDataProvider, execution_mode: str,
-                 exposure_monitor: ExposureMonitor, risk_monitor: RiskMonitor):
+    def __init__(self, config: Dict, data_provider: BaseDataProvider, exposure_monitor: ExposureMonitor, risk_monitor: RiskMonitor, utility_manager, position_monitor, event_engine, correlation_id: str, pid: str, log_dir: str):
         # Store references (NEVER modified)
         self.config = config
         self.data_provider = data_provider
-        self.execution_mode = execution_mode
         self.exposure_monitor = exposure_monitor
         self.risk_monitor = risk_monitor
+        self.utility_manager = utility_manager
+        self.position_monitor = position_monitor
+        self.event_engine = event_engine
+        self.correlation_id = correlation_id
+        self.pid = pid
+        self.log_dir = log_dir
         
         # Extract config-driven strategy settings
         self.strategy_config = config.get('component_config', {}).get('strategy_manager', {})

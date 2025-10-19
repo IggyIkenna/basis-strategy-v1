@@ -21,6 +21,7 @@ Reference: docs/LOGGING_GUIDE.md - Domain Event Logging
 """
 
 import json
+import asyncio
 from pathlib import Path
 from typing import Optional
 from datetime import datetime, timezone
@@ -37,230 +38,323 @@ from ...core.models.domain_events import (
     ReconciliationEvent,
     TightLoopExecutionEvent,
     EventLoggingOperationEvent,
-    StrategyDecision
+    StrategyDecision,
 )
 
 
 class DomainEventLogger:
     """
-    Logs domain events to JSONL files.
-    
+    Logs domain events to JSONL files with global ordering for audit trails.
+
     Each event type is written to a separate JSONL file for easy
-    querying and analysis.
+    querying and analysis. All events are globally ordered for audit trails.
     """
-    
-    def __init__(self, log_dir: Path):
+
+    _instance = None
+
+    def __new__(cls, *args, **kwargs):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+
+    def __init__(self, log_dir: Path, correlation_id: str, pid: int):
         """
         Initialize domain event logger.
-        
+
         Args:
             log_dir: Path to log directory (logs/{correlation_id}/{pid}/)
+            correlation_id: REQUIRED correlation ID for this run
+            pid: REQUIRED process ID for this run
+            
+        Raises:
+            ValueError: If correlation_id or pid are missing
         """
+        # FAIL FAST: Validate required parameters
+        if not correlation_id:
+            raise ValueError("correlation_id is REQUIRED for DomainEventLogger")
+        if not pid:
+            raise ValueError("pid is REQUIRED for DomainEventLogger")
+            
         self.log_dir = Path(log_dir)
+        self.correlation_id = correlation_id
+        self.pid = pid
         self.events_dir = self.log_dir / "events"
-        
+
         # Ensure events directory exists
         self.events_dir.mkdir(parents=True, exist_ok=True)
-        
-        # Event file mapping
+
+        # Global event ordering for audit trails
+        self._global_order = 0
+        self._order_lock = asyncio.Lock()
+
+        # Event file mapping (matching LOGGING_GUIDE.md specifications)
         self.event_files = {
-            'positions': self.events_dir / 'positions.jsonl',
-            'exposures': self.events_dir / 'exposures.jsonl',
-            'risk_assessments': self.events_dir / 'risk_assessments.jsonl',
-            'pnl_calculations': self.events_dir / 'pnl_calculations.jsonl',
-            'orders': self.events_dir / 'orders.jsonl',
-            'operation_executions': self.events_dir / 'operation_executions.jsonl',
-            'atomic_operation_groups': self.events_dir / 'atomic_operation_groups.jsonl',
-            'execution_deltas': self.events_dir / 'execution_deltas.jsonl',
-            'reconciliations': self.events_dir / 'reconciliations.jsonl',
-            'tight_loop_executions': self.events_dir / 'tight_loop_executions.jsonl',
-            'event_logger_operations': self.events_dir / 'event_logger_operations.jsonl',
-            'strategy_decisions': self.events_dir / 'strategy_decisions.jsonl'
+            "positions": self.events_dir / "positions.jsonl",
+            "exposures": self.events_dir / "exposures.jsonl",
+            "risk_assessments": self.events_dir / "risk_assessments.jsonl",
+            "pnl_calculations": self.events_dir / "pnl_calculations.jsonl",
+            "orders": self.events_dir / "orders.jsonl",
+            "operation_executions": self.events_dir / "operation_executions.jsonl",
+            "atomic_groups": self.events_dir / "atomic_groups.jsonl",  # Matches LOGGING_GUIDE.md
+            "execution_deltas": self.events_dir / "execution_deltas.jsonl",
+            "reconciliation": self.events_dir / "reconciliation.jsonl",  # Matches LOGGING_GUIDE.md
+            "tight_loop": self.events_dir / "tight_loop.jsonl",  # Matches LOGGING_GUIDE.md
+            "event_logger_operations": self.events_dir / "event_logger_operations.jsonl",
+            "strategy_decisions": self.events_dir / "strategy_decisions.jsonl",
         }
-    
+
     def log_position_snapshot(self, event: PositionSnapshot) -> None:
         """
         Log a position snapshot event.
-        
+
         Args:
             event: PositionSnapshot event
         """
-        self._write_event('positions', event)
-    
+        self._write_event("positions", event)
+
+    async def log_position_snapshot_async(self, event: PositionSnapshot) -> None:
+        """
+        Log a position snapshot event asynchronously.
+
+        Args:
+            event: PositionSnapshot event
+        """
+        # Add global order for audit trails
+        event.order = await self._get_next_global_order()
+        await self._write_event_async("positions", event)
+
     def log_exposure_snapshot(self, event: ExposureSnapshot) -> None:
         """
         Log an exposure snapshot event.
-        
+
         Args:
             event: ExposureSnapshot event
         """
-        self._write_event('exposures', event)
-    
+        self._write_event("exposures", event)
+
     def log_risk_assessment(self, event: RiskAssessment) -> None:
         """
         Log a risk assessment event.
-        
+
         Args:
             event: RiskAssessment event
         """
-        self._write_event('risk_assessments', event)
-    
+        self._write_event("risk_assessments", event)
+
     def log_pnl_calculation(self, event: PnLCalculation) -> None:
         """
         Log a P&L calculation event.
-        
+
         Args:
             event: PnLCalculation event
         """
-        self._write_event('pnl_calculations', event)
-    
+        self._write_event("pnl_calculations", event)
+
     def log_order_event(self, event: OrderEvent) -> None:
         """
         Log an order event.
-        
+
         Args:
             event: OrderEvent event
         """
-        self._write_event('orders', event)
-    
+        self._write_event("orders", event)
+
     def log_operation_execution(self, event: OperationExecutionEvent) -> None:
         """
         Log an operation execution event.
-        
+
         Args:
             event: OperationExecutionEvent event
         """
-        self._write_event('operation_executions', event)
-    
+        self._write_event("operation_executions", event)
+
     def log_atomic_group(self, event: AtomicOperationGroupEvent) -> None:
         """
         Log an atomic operation group event.
-        
+
         Args:
             event: AtomicOperationGroupEvent event
         """
-        self._write_event('atomic_operation_groups', event)
-    
+        self._write_event("atomic_groups", event)
+
     def log_execution_delta(self, event: ExecutionDeltaEvent) -> None:
         """
         Log an execution delta event.
-        
+
         Args:
             event: ExecutionDeltaEvent event
         """
-        self._write_event('execution_deltas', event)
-    
+        self._write_event("execution_deltas", event)
+
     def log_reconciliation(self, event: ReconciliationEvent) -> None:
         """
         Log a reconciliation event.
-        
+
         Args:
             event: ReconciliationEvent event
         """
-        self._write_event('reconciliations', event)
-    
+        self._write_event("reconciliation", event)
+
     def log_tight_loop_execution(self, event: TightLoopExecutionEvent) -> None:
         """
         Log a tight loop execution event.
-        
+
         Args:
             event: TightLoopExecutionEvent event
         """
-        self._write_event('tight_loop_executions', event)
-    
+        self._write_event("tight_loop", event)
+
     def log_event_logging_operation(self, event: EventLoggingOperationEvent) -> None:
         """
         Log an event logging operation (meta-logging).
-        
+
         Args:
             event: EventLoggingOperationEvent event
         """
-        self._write_event('event_logger_operations', event)
-    
+        self._write_event("event_logger_operations", event)
+
     def log_strategy_decision(self, event: StrategyDecision) -> None:
         """
         Log a strategy decision event.
-        
+
         Args:
             event: StrategyDecision event
         """
-        self._write_event('strategy_decisions', event)
-    
+        self._write_event("strategy_decisions", event)
+
     def _write_event(self, event_type: str, event: any) -> None:
         """
-        Write event to JSONL file.
-        
+        Write event to JSONL file (synchronous).
+
         Args:
             event_type: Event type key
             event: Pydantic event model instance
+            
+        Raises:
+            ValueError: If event_type is unknown
+            RuntimeError: If event writing fails
         """
+        # FAIL FAST: Validate event type
+        file_path = self.event_files.get(event_type)
+        if not file_path:
+            raise ValueError(f"Unknown event type: {event_type}. Available types: {list(self.event_files.keys())}")
+
+        # FAIL FAST: Validate event has required fields
+        if not hasattr(event, 'correlation_id') or not event.correlation_id:
+            raise ValueError(f"Event missing correlation_id: {event}")
+        if not hasattr(event, 'pid') or not event.pid:
+            raise ValueError(f"Event missing pid: {event}")
+
         try:
-            file_path = self.event_files.get(event_type)
-            
-            if not file_path:
-                # Log error but don't fail
-                print(f"ERROR: Unknown event type: {event_type}")
-                return
-            
             # Serialize event to JSON
             event_json = event.model_dump_json()
-            
+
             # Append to JSONL file
-            with open(file_path, 'a') as f:
-                f.write(event_json + '\n')
+            with open(file_path, "a") as f:
+                f.write(event_json + "\n")
                 f.flush()  # Ensure immediate write
-            
+
         except Exception as e:
-            # Log error but don't fail (avoid recursive logging issues)
-            print(f"ERROR: Failed to write {event_type} event: {e}")
-            # Could log meta-event here, but avoid recursion
-    
+            # FAIL FAST: Re-raise the exception instead of silently continuing
+            raise RuntimeError(f"Failed to write {event_type} event to {file_path}: {e}") from e
+
+    async def _write_event_async(self, event_type: str, event: any) -> None:
+        """
+        Write event to JSONL file asynchronously for better performance.
+
+        Args:
+            event_type: Event type key
+            event: Pydantic event model instance
+            
+        Raises:
+            ValueError: If event_type is unknown
+            RuntimeError: If event writing fails
+        """
+        # FAIL FAST: Validate event type
+        file_path = self.event_files.get(event_type)
+        if not file_path:
+            raise ValueError(f"Unknown event type: {event_type}. Available types: {list(self.event_files.keys())}")
+
+        # FAIL FAST: Validate event has required fields
+        if not hasattr(event, 'correlation_id') or not event.correlation_id:
+            raise ValueError(f"Event missing correlation_id: {event}")
+        if not hasattr(event, 'pid') or not event.pid:
+            raise ValueError(f"Event missing pid: {event}")
+
+        try:
+            # Serialize event to JSON
+            event_json = event.model_dump_json()
+
+            # Write asynchronously using asyncio.to_thread
+            await asyncio.to_thread(self._write_to_file, file_path, event_json)
+
+        except Exception as e:
+            # FAIL FAST: Re-raise the exception instead of silently continuing
+            raise RuntimeError(f"Failed to write {event_type} event to {file_path}: {e}") from e
+
+    def _write_to_file(self, file_path: Path, event_json: str) -> None:
+        """Helper method for async file writing."""
+        with open(file_path, "a") as f:
+            f.write(event_json + "\n")
+            f.flush()  # Ensure immediate write
+
+    async def _get_next_global_order(self) -> int:
+        """
+        Get next global order number for audit trails.
+        
+        Returns:
+            Next global order number
+        """
+        async with self._order_lock:
+            self._global_order += 1
+            return self._global_order
+
     def flush_all(self) -> None:
         """
         Flush all event file buffers.
-        
+
         This ensures all events are written to disk immediately.
         """
         # Python file handles auto-flush on close, but we can
         # ensure by explicitly flushing if files are open
         pass  # No-op for now since we flush after each write
-    
+
     def get_event_count(self, event_type: str) -> int:
         """
         Get count of events in a specific event file.
-        
+
         Args:
             event_type: Event type key
-            
+
         Returns:
             Number of events (lines) in the file
         """
         file_path = self.event_files.get(event_type)
-        
+
         if not file_path or not file_path.exists():
             return 0
-        
-        with open(file_path, 'r') as f:
+
+        with open(file_path, "r") as f:
             return sum(1 for _ in f)
-    
+
     def read_events(self, event_type: str, limit: Optional[int] = None) -> list:
         """
         Read events from a specific event file.
-        
+
         Args:
             event_type: Event type key
             limit: Maximum number of events to read (None = all)
-            
+
         Returns:
             List of event dictionaries
         """
         file_path = self.event_files.get(event_type)
-        
+
         if not file_path or not file_path.exists():
             return []
-        
+
         events = []
-        with open(file_path, 'r') as f:
+        with open(file_path, "r") as f:
             for i, line in enumerate(f):
                 if limit and i >= limit:
                     break
@@ -268,32 +362,31 @@ class DomainEventLogger:
                     events.append(json.loads(line))
                 except json.JSONDecodeError as e:
                     print(f"WARNING: Failed to parse event line {i+1}: {e}")
-        
+
         return events
-    
+
     def get_latest_event(self, event_type: str) -> Optional[dict]:
         """
         Get the most recent event of a specific type.
-        
+
         Args:
             event_type: Event type key
-            
+
         Returns:
             Latest event dictionary or None
         """
         file_path = self.event_files.get(event_type)
-        
+
         if not file_path or not file_path.exists():
             return None
-        
+
         # Read last line
-        with open(file_path, 'rb') as f:
+        with open(file_path, "rb") as f:
             try:
                 f.seek(-2, 2)  # Jump to second-to-last byte
-                while f.read(1) != b'\n':  # Find last newline
+                while f.read(1) != b"\n":  # Find last newline
                     f.seek(-2, 1)
                 last_line = f.readline().decode()
                 return json.loads(last_line)
             except:
                 return None
-

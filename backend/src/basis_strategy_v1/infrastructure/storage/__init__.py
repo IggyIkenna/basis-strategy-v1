@@ -2,6 +2,4 @@
 
 from .chart_storage import ChartStorageManager
 
-__all__ = ['ChartStorageManager']
-
-
+__all__ = ["ChartStorageManager"]

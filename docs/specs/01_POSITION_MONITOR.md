@@ -355,12 +355,18 @@ logger = logging.getLogger(__name__)
 class PositionMonitor:
     """Mode-agnostic position tracking using config-driven behavior"""
     
-    def __init__(self, config: Dict, execution_mode: str, initial_capital: float, share_class: str):
+    def __init__(self, config: Dict, data_provider, utility_manager, venue_interface_factory, execution_mode: str, initial_capital: float, share_class: str, correlation_id: str, pid: str, log_dir: str):
         # Store references (NEVER modified)
         self.config = config
+        self.data_provider = data_provider
+        self.utility_manager = utility_manager
+        self.venue_interface_factory = venue_interface_factory
         self.execution_mode = execution_mode
         self.initial_capital = initial_capital
         self.share_class = share_class
+        self.correlation_id = correlation_id
+        self.pid = pid
+        self.log_dir = log_dir
         
         # Extract position-specific config
         self.position_config = config.get('component_config', {}).get('position_monitor', {})
@@ -744,10 +750,8 @@ class PositionUpdateHandler:
         )
         
         # Step 5: Recalculate P&L
-        updated_pnl = self.pnl_calculator.get_current_pnl(
-            current_exposure=updated_exposure,
-            timestamp=timestamp
-        )
+        self.pnl_calculator.update_state(timestamp, "position_update")
+        updated_pnl = self.pnl_calculator.get_latest_pnl()
         
         return {
             'position_snapshot': updated_snapshot,
@@ -784,14 +788,14 @@ class CEXExecutionInterface:
         )
 ```
 
-### Integration with Reconciliation Component
+### Integration with Position Update Handler
 The Position Monitor provides both simulated and real positions for reconciliation:
 
 **Reconciliation Integration Pattern**:
 ```python
-# Reconciliation Component integration
-class ReconciliationComponent:
-    def reconcile_position(self, timestamp, position_snapshot):
+# Position Update Handler integration (includes reconciliation)
+class PositionUpdateHandler:
+    def _reconcile_positions(self):
         # Get real positions from position monitor
         real_positions = self.position_monitor.get_real_positions()
         
@@ -873,8 +877,7 @@ class ReconciliationComponent:
 - [02_EXPOSURE_MONITOR.md](02_EXPOSURE_MONITOR.md) - Consumes position snapshots
 - [03_RISK_MONITOR.md](03_RISK_MONITOR.md) - Consumes position snapshots
 - [04_PNL_CALCULATOR.md](04_PNL_CALCULATOR.md) - Consumes position snapshots
-- [10_RECONCILIATION_COMPONENT.md](10_RECONCILIATION_COMPONENT.md) - Position validation
-- [11_POSITION_UPDATE_HANDLER.md](11_POSITION_UPDATE_HANDLER.md) - Tight loop orchestration
+- [11_POSITION_UPDATE_HANDLER.md](11_POSITION_UPDATE_HANDLER.md) - Position validation, reconciliation, and tight loop orchestration
 
 ### Architecture Documentation
 - [../REFERENCE_ARCHITECTURE_CANONICAL.md](../REFERENCE_ARCHITECTURE_CANONICAL.md) - Canonical principles

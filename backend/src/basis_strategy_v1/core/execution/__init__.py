@@ -10,7 +10,4 @@ Provides the new execution architecture:
 from .execution_manager import ExecutionManager
 from .venue_interface_manager import VenueInterfaceManager
 
-__all__ = [
-    'ExecutionManager',
-    'VenueInterfaceManager'
-]
+__all__ = ["ExecutionManager", "VenueInterfaceManager"]

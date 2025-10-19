@@ -78,12 +78,11 @@ These components execute during backtest/live strategy runs:
 **Execution** (4 components):
 6. **[Venue Manager](specs/06_VENUE_MANAGER.md)** - Venue orchestration
 7. **[Venue Interface Manager](specs/07_VENUE_INTERFACE_MANAGER.md)** - Venue routing
-8. **[Reconciliation Component](specs/10_RECONCILIATION_COMPONENT.md)** - Position verification
-9. **[Position Update Handler](specs/11_POSITION_UPDATE_HANDLER.md)** - Tight loop orchestration
+8. **[Position Update Handler](specs/11_POSITION_UPDATE_HANDLER.md)** - Tight loop orchestration and reconciliation
 
 **Support** (2 components):
-10. **[Event Logger](specs/08_EVENT_LOGGER.md)** - Audit logging
-11. **[Data Provider](specs/09_DATA_PROVIDER.md)** - Market data access
+9. **[Event Logger](specs/08_EVENT_LOGGER.md)** - Audit logging
+10. **[Data Provider](specs/09_DATA_PROVIDER.md)** - Market data access
 
 ### Supporting Components (9) - Services, Utilities, Infrastructure
 These components provide services and infrastructure:

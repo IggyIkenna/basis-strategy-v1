@@ -324,7 +324,7 @@ BASIS_ENVIRONMENT=staging ./platform.sh backtest  # Staging environment
 BASIS_ENVIRONMENT=prod ./platform.sh backtest     # Production environment
 
 # Stop services
-./platform.sh stop-local   # Stop all local services
+./platform.sh stop   # Stop all local services
 ./platform.sh stop         # Stop all services
 
 # Check backend status
@@ -350,7 +350,7 @@ curl -s http://localhost:8001/health/ | jq
 curl -s http://localhost:8001/health/detailed | jq
 
 # Restart backend if needed
-./platform.sh stop-local
+./platform.sh stop
 ./platform.sh backtest
 ```
 

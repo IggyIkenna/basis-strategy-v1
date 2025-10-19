@@ -53,7 +53,23 @@ def mock_config():
             },
             'position_monitor': {
                 'tracked_venues': ['wallet', 'binance', 'bybit', 'okx'],
-                'tracked_assets': ['BTC', 'ETH', 'USDT', 'weETH', 'aUSDT']
+                'tracked_assets': ['BTC', 'ETH', 'USDT', 'weETH', 'aUSDT'],
+                'position_subscriptions': [
+                    'wallet:BaseToken:USDT',
+                    'wallet:BaseToken:ETH',
+                    'wallet:BaseToken:BTC',
+                    'aave_v3:aToken:aUSDT',
+                    'aave_v3:aToken:aWETH',
+                    'binance:spot:BTC',
+                    'binance:spot:ETH',
+                    'binance:spot:USDT',
+                    'bybit:spot:BTC',
+                    'bybit:spot:ETH',
+                    'bybit:spot:USDT',
+                    'okx:spot:BTC',
+                    'okx:spot:ETH',
+                    'okx:spot:USDT'
+                ]
             }
         },
         'data_dir': 'data',

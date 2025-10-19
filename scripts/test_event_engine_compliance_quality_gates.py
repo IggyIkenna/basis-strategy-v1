@@ -209,7 +209,7 @@ class EventEngineComplianceValidator:
         else:
             # Check that PnL is calculated AFTER process_orders
             pnl_pos = pnl_calculations[0].start()
-            process_orders_matches = list(re.finditer(r'self\.venue_manager\.process_orders', process_timestep_code))
+            process_orders_matches = list(re.finditer(r'self\.execution_manager\.process_orders', process_timestep_code))
             
             if process_orders_matches:
                 last_process_orders_pos = process_orders_matches[-1].end()
@@ -315,7 +315,7 @@ class EventEngineComplianceValidator:
         """Check that components are initialized in correct order (5 phases)."""
         # Phase 1: utility_manager, venue_interface_factory
         # Phase 2: position_monitor, event_logger, exposure_monitor, risk_monitor, pnl_monitor
-        # Phase 3: venue_interface_manager, venue_manager
+        # Phase 3: venue_interface_manager, execution_manager
         # Phase 4: position_update_handler, circular reference
         # Phase 5: strategy_manager, results_store
         
@@ -355,7 +355,7 @@ class EventEngineComplianceValidator:
             self.errors.append("VenueManager not created with position_update_handler=None")
         
         # Check that circular reference is set after both exist
-        if 'self.venue_manager.position_update_handler = self.position_update_handler' not in init_method:
+        if 'self.execution_manager.position_update_handler = self.position_update_handler' not in init_method:
             self.errors.append("Circular reference not established after both components exist")
     
     # Helper Methods

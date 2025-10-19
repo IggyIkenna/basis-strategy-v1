@@ -29,26 +29,26 @@ logger = logging.getLogger(__name__)
 
 class StrategyFactory:
     """Factory for creating strategy instances based on mode."""
-    
+
     # Strategy class mapping - all 10 strategy modes
     STRATEGY_MAP = {
-        'pure_lending_usdt': PureLendingUSDTStrategy,
-        'pure_lending_eth': PureLendingETHStrategy,
-        'btc_basis': BTCBasisStrategy,
-        'eth_basis': ETHBasisStrategy,
-        'eth_staking_only': ETHStakingOnlyStrategy,
-        'eth_leveraged': ETHLeveragedStrategy,
-        'usdt_eth_staking_hedged_simple': USDTETHStakingHedgedSimpleStrategy,
-        'usdt_eth_staking_hedged_leveraged': USDTETHStakingHedgedLeveragedStrategy,
-        'ml_btc_directional_usdt_margin': MLBTCDirectionalUSDTMarginStrategy,
-        'ml_btc_directional_btc_margin': MLBTCDirectionalBTCMarginStrategy,
+        "pure_lending_usdt": PureLendingUSDTStrategy,
+        "pure_lending_eth": PureLendingETHStrategy,
+        "btc_basis": BTCBasisStrategy,
+        "eth_basis": ETHBasisStrategy,
+        "eth_staking_only": ETHStakingOnlyStrategy,
+        "eth_leveraged": ETHLeveragedStrategy,
+        "usdt_eth_staking_hedged_simple": USDTETHStakingHedgedSimpleStrategy,
+        "usdt_eth_staking_hedged_leveraged": USDTETHStakingHedgedLeveragedStrategy,
+        "ml_btc_directional_usdt_margin": MLBTCDirectionalUSDTMarginStrategy,
+        "ml_btc_directional_btc_margin": MLBTCDirectionalBTCMarginStrategy,
     }
-    
+
     @classmethod
     def create_strategy(
-        cls, 
-        mode: str, 
-        config: Dict[str, Any], 
+        cls,
+        mode: str,
+        config: Dict[str, Any],
         data_provider,
         exposure_monitor,
         position_monitor,
@@ -56,11 +56,11 @@ class StrategyFactory:
         utility_manager=None,
         correlation_id: str = None,
         pid: int = None,
-        log_dir = None
+        log_dir=None,
     ) -> BaseStrategyManager:
         """
         Create strategy instance based on mode.
-        
+
         Args:
             mode: Strategy mode (e.g., 'pure_lending_usdt', 'btc_basis')
             config: Strategy configuration
@@ -72,10 +72,10 @@ class StrategyFactory:
             correlation_id: Unique correlation ID for this run
             pid: Process ID
             log_dir: Log directory path
-            
+
         Returns:
             Strategy manager instance
-            
+
         Raises:
             ValueError: If strategy mode is not supported
         """
@@ -83,12 +83,12 @@ class StrategyFactory:
             # Check if strategy mode is supported
             if mode not in cls.STRATEGY_MAP:
                 raise ValueError(f"Unknown strategy mode: {mode}")
-            
+
             # Get strategy class
             strategy_class = cls.STRATEGY_MAP[mode]
             if strategy_class is None:
                 raise ValueError(f"Strategy mode '{mode}' is not yet implemented")
-            
+
             # Create strategy instance with all required dependencies
             strategy = strategy_class(
                 config=config,
@@ -99,55 +99,56 @@ class StrategyFactory:
                 utility_manager=utility_manager,
                 correlation_id=correlation_id,
                 pid=pid,
-                log_dir=log_dir
+                log_dir=log_dir,
             )
-            
+
             logger.info(f"Strategy created successfully: {mode} -> {strategy_class.__name__}")
-            
+
             return strategy
-            
+
         except Exception as e:
             logger.error(f"Failed to create strategy {mode}: {e}")
             raise
-    
+
     @classmethod
     def get_supported_modes(cls) -> list:
         """
         Get list of supported strategy modes.
-        
+
         Returns:
             List of supported strategy modes
         """
-        return [mode for mode, strategy_class in cls.STRATEGY_MAP.items() 
-                if strategy_class is not None]
-    
+        return [
+            mode for mode, strategy_class in cls.STRATEGY_MAP.items() if strategy_class is not None
+        ]
+
     @classmethod
     def is_mode_supported(cls, mode: str) -> bool:
         """
         Check if strategy mode is supported.
-        
+
         Args:
             mode: Strategy mode to check
-            
+
         Returns:
             True if mode is supported and implemented
         """
         return mode in cls.STRATEGY_MAP and cls.STRATEGY_MAP[mode] is not None
-    
+
     @classmethod
     def register_strategy(cls, mode: str, strategy_class: type):
         """
         Register a new strategy class.
-        
+
         Args:
             mode: Strategy mode name
             strategy_class: Strategy class to register
         """
         if not issubclass(strategy_class, BaseStrategyManager):
             raise ValueError(f"Strategy class must inherit from BaseStrategyManager")
-        
+
         cls.STRATEGY_MAP[mode] = strategy_class
-        
+
         logger.info(f"Strategy registered: {mode} -> {strategy_class.__name__}")
 
 
@@ -161,11 +162,11 @@ def create_strategy(
     utility_manager=None,
     correlation_id: str = None,
     pid: int = None,
-    log_dir = None
+    log_dir=None,
 ) -> BaseStrategyManager:
     """
     Convenience function to create strategy instance.
-    
+
     Args:
         mode: Strategy mode
         config: Strategy configuration
@@ -177,7 +178,7 @@ def create_strategy(
         correlation_id: Unique correlation ID for this run
         pid: Process ID
         log_dir: Log directory path
-        
+
     Returns:
         Strategy manager instance
     """
@@ -191,5 +192,5 @@ def create_strategy(
         utility_manager=utility_manager,
         correlation_id=correlation_id,
         pid=pid,
-        log_dir=log_dir
+        log_dir=log_dir,
     )

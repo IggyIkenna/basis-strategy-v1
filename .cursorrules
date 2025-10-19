@@ -102,7 +102,7 @@ This is a live and backtesting framework for multiple web3 and CEX trading strat
 
 ## Server Management Rules
 - **Use `./platform.sh backtest`** to start backend in backtest mode
-- **Use `./platform.sh stop-local`** to stop running servers before restarting
+- **Use `./platform.sh stop`** to stop running servers before restarting
 - **If commands hang or timeout**, restart the server and try again
 - **Check server status** with `ps aux | grep python` if needed
 

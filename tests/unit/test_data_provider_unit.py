@@ -3,6 +3,7 @@ Unit Tests for Data Provider Component
 
 Tests Data Provider in isolation with mocked dependencies.
 Focuses on data loading, validation, and graceful degradation.
+These tests are orchestrated by the main quality gate scripts.
 """
 
 import pytest

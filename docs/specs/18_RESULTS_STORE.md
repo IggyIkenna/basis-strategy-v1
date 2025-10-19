@@ -591,7 +591,7 @@ events = [
 - position_monitor.get_current_positions() - balance sheet data (via stored reference)
 - exposure_monitor.get_current_exposure() - exposure metrics (via stored reference)
 - risk_monitor.get_current_risk_metrics() - risk metrics (via stored reference)
-- pnl_calculator.get_current_pnl() - P&L metrics (via stored reference)
+- pnl_calculator.get_latest_pnl() - P&L metrics (via stored reference)
 - event_logger.get_events(timestamp) - execution log (via stored reference)
 
 ### Communication

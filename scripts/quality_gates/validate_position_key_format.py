@@ -24,11 +24,11 @@ VALID_POSITION_TYPES = {'BaseToken', 'aToken', 'debtToken', 'Perp'}
 # Valid venues
 VALID_VENUES = {
     'wallet', 'binance', 'bybit', 'okx',
-    'aave', 'aave_v3', 'etherfi', 'lido', 'morpho', 'alchemy'
+    'aave', 'aave_v3', 'etherfi', 'lido', 'morpho', 'alchemy', 'curve'
 }
 
 # Deprecated terminology to flag
-DEPRECATED_TERMS = ['instrument_id', 'instrument_key', 'position_id']
+DEPRECATED_TERMS = ['instrument_id', 'position_id', 'position_key']
 
 # Dot notation pattern to flag (but allow legitimate uses)
 DOT_NOTATION_PATTERN = re.compile(r'(wallet|binance|bybit|okx|aave|etherfi|lido)\.\w+')

@@ -312,6 +312,10 @@ component_config:
 - **leverage_supported**: bool - Whether leverage is supported
 - **max_leverage**: float - Maximum leverage ratio
 - **staking_supported**: bool - Whether staking is supported
+- **stake_allocation_percentage**: float - Percentage of capital allocated to staking
+  - **Usage**: Defines proportion of capital allocated to ETH staking operations
+  - **Examples**: 0.5 (50% of capital for staking)
+  - **Used in**: Capital allocation and position sizing logic
 
 ### Venue Configuration
 - **venues.etherfi.venue_type**: str - Venue type ('defi')

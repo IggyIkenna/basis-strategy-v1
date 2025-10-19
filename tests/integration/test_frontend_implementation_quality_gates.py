@@ -144,7 +144,7 @@ def check_react_components(frontend_dir: str = "frontend/") -> Dict[str, any]:
         'StrategyDashboard',
         'PositionMonitor',
         'RiskMonitor',
-        'PnlCalculator',
+        'PnLMonitor',
         'ExecutionManager',
         'DataProvider',
         'EventLogger'
